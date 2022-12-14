@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../../fixtures/common/CommonBase.sol";
+import "../../fixtures/common/CommonTestBase.sol";
 
 import "../../../../contracts/data-verification-mechanism/implementation/VotingV2.sol";
 import "../../../../contracts/data-verification-mechanism/interfaces/VotingAncillaryInterface.sol";
 import "../../../../contracts/common/interfaces/ExpandedIERC20.sol";
 
-contract CommonDataVerificationMechanismTestSetup is CommonBase {
+contract CommonDataVerificationMechanismTestSetup is CommonTestBase {
     VotingV2 voting;
     ExpandedIERC20 votingToken;
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../fixtures/common/CommonBase.sol";
+import "../fixtures/common/CommonTestBase.sol";
 import "../fixtures/optimistic-asserter/OptimisticAsserterFixture.sol";
 import "../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
 
-contract CommonOptimisticAsserterTestSetup is CommonBase {
+contract CommonOptimisticAsserterTestSetup is CommonTestBase {
     // Data structures, that might be used in tests.
     struct OracleRequest {
         bytes32 identifier;

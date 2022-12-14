@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./Common.sol";
+import "./CommonOptimisticAsserterTestSetup.sol";
 
 contract EscalationManagerPolicyEnforced is CommonOptimisticAsserterTestSetup {
     function setUp() public {
