@@ -3988,6 +3988,81 @@ describe("VotingV2", function () {
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
   });
+  it("Staking during active reveal is dealt with correctly via pendingStakes", async function () {
+    // An issue was found in the contract wherein a staked voter stakes again during the active reveal round, thereby
+    // increasing their effective stake to a value higher than what they had at the variable freeze time (first commit).
+    // The contract's pendingStake variable is meant to capture this correctly wherein the pending stake for a given round
+    // offsets stake that has been added by not yet "activated." However, this was found to not correctly work in the
+    // specific case where you stake after committing, but within the reveal phase. The impact of this is that this voter
+    // gets a disproportionate amount of voting impact vs the total votes that participated in the vote and the total
+    // amount of tokens staked is incorrect. This results in wrong slashing/tracker updates, leaving some tokens in the
+    // contract after all rewards have been withdrawn and results in the sum of all slashing trackers not correctly
+    // equalling 0 for the vote in which this voter increase their stake.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // Commit a vote, move to reveal phase.
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const salt = getRandomSignedInt();
+    const price = 0;
+    const hash2 = computeVoteHash({ salt, roundId, identifier, price, account: account1, time });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account1 });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    // Before revealing the vote the staker stakes again. This should be reflected in the pendingStake variable. If the
+    // bug discussed above is still present then this will break heuristic that the sum of all slashing trackers must
+    // always equal 0 and that if all voters withdraw (after some amount of slashing) there should be 0 tokens left.
+    await votingToken.methods.mint(account1, toWei("10000000")).send({ from: account1 });
+    await votingToken.methods.approve(voting.options.address, toWei("10000000")).send({ from: account1 });
+    await voting.methods.stake(toWei("10000000")).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+
+    // Expect that all accounts should be slashed
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+    await voting.methods.updateTrackers(account3).send({ from: account1 });
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+
+    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+
+    const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
+    assert.equal(sum, 0);
+
+    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account1).call()).stake)
+      .send({ from: account1 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account2).call()).stake)
+      .send({ from: account2 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account3).call()).stake)
+      .send({ from: account3 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account4).call()).stake)
+      .send({ from: account4 });
+    await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
+
+    await voting.methods.executeUnstake().send({ from: account1 });
+    await voting.methods.executeUnstake().send({ from: account2 });
+    await voting.methods.executeUnstake().send({ from: account3 });
+    await voting.methods.executeUnstake().send({ from: account4 });
+    await voting.methods.executeUnstake().send({ from: rand });
+
+    const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
+    assert.equal(finalContractBalance, "0");
+  });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following

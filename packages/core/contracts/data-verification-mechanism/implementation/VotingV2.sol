@@ -545,8 +545,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         delete voteSubmission.commit; // Small gas refund for clearing up storage.
 
         voteSubmission.revealHash = keccak256(abi.encode(price)); // Set the voter's submission.
-        uint256 stake = voterStakes[voter].stake;
-        voteInstance.resultComputation.addVote(price, stake); // Add vote to the results.
+        // Compute the voters effective slash as the difference between their pending stake for this round and their
+        // stake. pending stake for this round is only non-zero if the voter staked during this votes reveal phase.
+        uint256 effectiveStake = voterStakes[voter].stake - voterStakes[voter].pendingStakes[currentRoundId];
+        voteInstance.resultComputation.addVote(price, effectiveStake); // Add vote to the results.
         emit VoteRevealed(
             voter,
             msg.sender,
@@ -556,7 +558,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             time,
             ancillaryData,
             price,
-            stake
+            effectiveStake
         );
     }
 
@@ -972,8 +974,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
                     spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex,
-                "Invalid spam request index"
+                    spamRequestIndex[1] > runningValidationIndex
             );
 
             runningValidationIndex = spamRequestIndex[1];
