@@ -25,11 +25,9 @@ async function _seedProposerWithUma(proposer, amountToSend = toWei("50000")) {
     )
     .send({ from: REQUIRED_SIGNER_ADDRESSES["account_with_uma"] });
 
-  await web3.eth.sendTransaction({
-    from: accounts[0],
-    to: REQUIRED_SIGNER_ADDRESSES["foundation"],
-    value: toWei("10"),
-  });
+  await web3.eth.sendTransaction({ from: accounts[0], to: REQUIRED_SIGNER_ADDRESSES["deployer"], value: toWei("10") });
+
+  await web3.eth.sendTransaction({ from: accounts[0], to: REQUIRED_SIGNER_ADDRESSES["foundation"], value: toWei("2") });
   const txn = await uma.methods
     .transfer(proposer, amountToSend)
     .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"] });
