@@ -397,7 +397,7 @@ describe("ServerlessHub.js", function () {
         },
       },
       testServerlessMonitor2: {
-        serverlessCommand: "yarn --silent monitor --network test",
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
@@ -407,7 +407,7 @@ describe("ServerlessHub.js", function () {
         },
       },
       testServerlessMonitor3: {
-        serverlessCommand: "yarn --silent monitor --network test",
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
