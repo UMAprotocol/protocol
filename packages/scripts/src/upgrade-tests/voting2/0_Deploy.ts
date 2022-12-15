@@ -86,7 +86,7 @@ async function main() {
   );
   const startingIndex = totalEventsLength + existingVotingEvents.length + 1; // Existing PriceRequestAdded events plus the new one.
 
-  console.log("Starting index for new Voting contract: ", startingIndex);
+  console.log("Starting index for new Voting2 contract: ", startingIndex);
 
   const votingV2 = await votingV2Factory.deploy(
     emissionRate,
