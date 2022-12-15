@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "../../fixtures/common/CommonTestBase.sol";
@@ -7,11 +7,11 @@ import "../../../../contracts/data-verification-mechanism/implementation/VotingV
 import "../../../../contracts/data-verification-mechanism/interfaces/VotingAncillaryInterface.sol";
 import "../../../../contracts/common/interfaces/ExpandedIERC20.sol";
 
-contract CommonDataVerificationMechanismTest is CommonTestBase {
+contract CommonDataVerificationMechanismForkTest is CommonTestBase {
     VotingV2 voting;
     ExpandedIERC20 votingToken;
 
-    bool shouldRunTest;
+    bool shouldRunForkedTest;
 
     address registeredRequester;
     address governor;
@@ -23,8 +23,8 @@ contract CommonDataVerificationMechanismTest is CommonTestBase {
 
     function _commonSetup() public {
         uint256 chainId = block.chainid;
-        shouldRunTest = (chainId == 1 || chainId == 5);
-        if (!shouldRunTest) return; // Exit early if we are not executing forked tests.
+        shouldRunForkedTest = (chainId == 1 || chainId == 5);
+        if (!shouldRunForkedTest) return; // Exit early if we are not executing forked tests.
 
         // TODO: look into a way to not have to hard code these addresses. Ok for now as we wont be changing them.
         address votingAddress = chainId == 1 ? address(0) : 0xF71cdF8A34c56933A8871354A2570a301364e95F;

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./CommonDataVerificationMechanismTest.sol";
+import "./CommonDataVerificationMechanismForkTest.sol";
 
-contract FakeLifeCycle is CommonDataVerificationMechanismTest {
+contract FakeLifeCycle is CommonDataVerificationMechanismForkTest {
     function setUp() public {
         _commonSetup();
     }
 
     function test_CanEnqueueRequestAndVoteWithNewlyStakedTokens() public {
-        if (!shouldRunTest) return; // Exit early if we are not executing forked tests.
+        if (!shouldRunForkedTest) return; // Exit early if we are not executing forked tests.
 
         // Submit a new request and show it increments.
         // Ensure we are at the start of a voting round so we can stake and vote without the stake being disabled.
