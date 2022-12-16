@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.4.4](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.4.3...@uma/contracts-frontend@0.4.4) (2022-11-23)
+
+**Note:** Version bump only for package @uma/contracts-frontend
+
+## [0.4.3](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.4.2...@uma/contracts-frontend@0.4.3) (2022-11-23)
+
+**Note:** Version bump only for package @uma/contracts-frontend
+
+## [0.4.2](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.4.0...@uma/contracts-frontend@0.4.2) (2022-11-23)
+
+**Note:** Version bump only for package @uma/contracts-frontend
+
+## [0.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.4.0...@uma/contracts-frontend@0.4.1) (2022-11-23)
+
+**Note:** Version bump only for package @uma/contracts-frontend
+
+# [0.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.3.19...@uma/contracts-frontend@0.4.0) (2022-11-02)
+
+### Features
+
+- New Releases ([#4218](https://github.com/UMAprotocol/protocol/issues/4218)) ([845e851](https://github.com/UMAprotocol/protocol/commit/845e851f5702feeb47685ce5ed741c898934b6f8))
+
+## [0.3.19](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.3.18...@uma/contracts-frontend@0.3.19) (2022-11-01)
+
+**Note:** Version bump only for package @uma/contracts-frontend
+
 ## [0.3.18](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.3.17...@uma/contracts-frontend@0.3.18) (2022-10-06)
 
 **Note:** Version bump only for package @uma/contracts-frontend

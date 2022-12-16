@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-import "../../oracle/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
 import "./OptimisticRewarderBase.sol";
 import "./OptimisticRewarderToken.sol";
 

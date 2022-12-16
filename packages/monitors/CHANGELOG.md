@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.14.4](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.14.3...@uma/monitors@2.14.4) (2022-11-23)
+
+**Note:** Version bump only for package @uma/monitors
+
+## [2.14.3](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.14.2...@uma/monitors@2.14.3) (2022-11-23)
+
+**Note:** Version bump only for package @uma/monitors
+
+## [2.14.2](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.14.0...@uma/monitors@2.14.2) (2022-11-23)
+
+**Note:** Version bump only for package @uma/monitors
+
+## [2.14.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.14.0...@uma/monitors@2.14.1) (2022-11-23)
+
+**Note:** Version bump only for package @uma/monitors
+
+# [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.13.11...@uma/monitors@2.14.0) (2022-11-02)
+
+### Features
+
+- New Releases ([#4218](https://github.com/UMAprotocol/protocol/issues/4218)) ([845e851](https://github.com/UMAprotocol/protocol/commit/845e851f5702feeb47685ce5ed741c898934b6f8))
+
+## [2.13.11](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.13.10...@uma/monitors@2.13.11) (2022-11-01)
+
+**Note:** Version bump only for package @uma/monitors
+
 ## [2.13.10](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.13.9...@uma/monitors@2.13.10) (2022-10-06)
 
 **Note:** Version bump only for package @uma/monitors

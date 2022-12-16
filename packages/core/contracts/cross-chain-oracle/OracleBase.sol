@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../oracle/interfaces/FinderInterface.sol";
-import "../oracle/implementation/Constants.sol";
+import "../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../data-verification-mechanism/implementation/Constants.sol";
 import "../common/implementation/HasFinder.sol";
 
 /**
