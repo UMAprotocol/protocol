@@ -24,7 +24,7 @@ contract Store is StoreInterface {
     /**
      * @notice Construct the Store contract.
      */
-    constructor(){}
+    constructor() {}
 
     /****************************************
      *  ORACLE FEE CALCULATION AND PAYMENT  *
@@ -75,24 +75,20 @@ contract Store is StoreInterface {
      * @notice Sets a new oracle fee per second.
      * @param newFixedOracleFeePerSecondPerPfc new fee per second charged to use the oracle.
      */
-    function setFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned memory newFixedOracleFeePerSecondPerPfc)
-        public {}
+    function setFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned memory newFixedOracleFeePerSecondPerPfc) public {}
 
     /**
      * @notice Sets a new weekly delay fee.
      * @param newWeeklyDelayFeePerSecondPerPfc fee escalation per week of late fee payment.
      */
-    function setWeeklyDelayFeePerSecondPerPfc(FixedPoint.Unsigned memory newWeeklyDelayFeePerSecondPerPfc)
-        public{}
+    function setWeeklyDelayFeePerSecondPerPfc(FixedPoint.Unsigned memory newWeeklyDelayFeePerSecondPerPfc) public {}
 
     /**
      * @notice Sets a new final fee for a particular currency.
      * @param currency defines the token currency used to pay the final fee.
      * @param newFinalFee final fee amount.
      */
-    function setFinalFee(address currency, FixedPoint.Unsigned memory newFinalFee)
-        public
-    {
+    function setFinalFee(address currency, FixedPoint.Unsigned memory newFinalFee) public {
         finalFees[currency] = newFinalFee;
     }
 }

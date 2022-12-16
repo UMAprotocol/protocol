@@ -13,7 +13,6 @@ import "../../../contracts/optimistic-asserter/implementation/OptimisticAsserter
  */
 
 contract OptimisticAsserterHarness is OptimisticAsserter {
-
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
@@ -25,7 +24,7 @@ contract OptimisticAsserterHarness is OptimisticAsserter {
     }
 
     function getOracleFeeByAssertion(bytes32 assertionID) external view returns (uint256) {
-        return (assertions[assertionID].bond * burnedBondPercentage)/1e18;
+        return (assertions[assertionID].bond * burnedBondPercentage) / 1e18;
     }
 
     function getId(
@@ -35,9 +34,19 @@ contract OptimisticAsserterHarness is OptimisticAsserter {
         uint64 liveness,
         IERC20 currency,
         uint256 bond,
-        bytes32 identifier) external view returns (bytes32) {
-            return _getId(claim, bond, uint64(getCurrentTime()), liveness,
-            currency, callbackRecipient, escalationManager, identifier);
+        bytes32 identifier
+    ) external view returns (bytes32) {
+        return
+            _getId(
+                claim,
+                bond,
+                uint64(getCurrentTime()),
+                liveness,
+                currency,
+                callbackRecipient,
+                escalationManager,
+                identifier
+            );
     }
 
     function getAssertionSettlementResolution(bytes32 assertionID) external view returns (bool) {

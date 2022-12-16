@@ -5,7 +5,6 @@ import "../../../contracts/data-verification-mechanism/interfaces/OracleAncillar
 import "../../../contracts/optimistic-asserter/interfaces/EscalationManagerInterface.sol";
 
 contract MockEscalationManager is OracleAncillaryInterface, EscalationManagerInterface {
-    
     struct Price {
         bool isAvailable;
         int256 price;
@@ -13,13 +12,13 @@ contract MockEscalationManager is OracleAncillaryInterface, EscalationManagerInt
         uint256 verifiedTime;
     }
 
-     // Conceptually we want a (time, identifier) -> price map.
+    // Conceptually we want a (time, identifier) -> price map.
     mapping(bytes32 => mapping(uint256 => mapping(bytes => Price))) internal verifiedPrices;
-    
+
     function isDisputeAllowed(bytes32, address) external pure returns (bool) {
         return true;
     }
-    
+
     /**
      * @notice Returns the assertion policy for the given assertionId.
      * @param assertionId the assertionId to get the assertion policy for.
@@ -43,12 +42,12 @@ contract MockEscalationManager is OracleAncillaryInterface, EscalationManagerInt
      * @param ancillaryData ancillary data of the price being requested.
      * @return price from the escalation manager to inform the resolution of the dispute.
      */
-     // Gets a price that has already been resolved.
+    // Gets a price that has already been resolved.
     function getPrice(
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override (EscalationManagerInterface, OracleAncillaryInterface) returns (int256) {
+    ) public view override(EscalationManagerInterface, OracleAncillaryInterface) returns (int256) {
         Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
         require(lookup.isAvailable);
         return lookup.price;
@@ -65,7 +64,7 @@ contract MockEscalationManager is OracleAncillaryInterface, EscalationManagerInt
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override (EscalationManagerInterface, OracleAncillaryInterface) {
+    ) public override(EscalationManagerInterface, OracleAncillaryInterface) {
         Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
         lookup.isAvailable = true;
         lookup.verifiedTime = block.timestamp;
@@ -87,8 +86,19 @@ contract MockEscalationManager is OracleAncillaryInterface, EscalationManagerInt
     // Callback function that is called by Optimistic Asserter when an assertion is disputed.
     function assertionDisputedCallback(bytes32 assertionId) public virtual override {}
 
-    function _blockAssertion(bytes32) internal pure returns (bool) {return false;}
-    function _arbitrateViaEscalationManager(bytes32) internal pure returns (bool) {return false;}
-    function _discardOracle(bytes32) internal pure returns (bool) {return false;}
-    function _validateDisputers(bytes32) internal pure returns (bool) {return false;}
+    function _blockAssertion(bytes32) internal pure returns (bool) {
+        return false;
+    }
+
+    function _arbitrateViaEscalationManager(bytes32) internal pure returns (bool) {
+        return false;
+    }
+
+    function _discardOracle(bytes32) internal pure returns (bool) {
+        return false;
+    }
+
+    function _validateDisputers(bytes32) internal pure returns (bool) {
+        return false;
+    }
 }
