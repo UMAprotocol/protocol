@@ -100,6 +100,5 @@ contract MaintenanceTest is Common {
         );
         vm.stopPrank();
         assertTrue(optimisticAsserter.cachedIdentifiers(newIdentifier));
-        assertTrue(false);
     }
 }
