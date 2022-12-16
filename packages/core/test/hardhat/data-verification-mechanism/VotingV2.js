@@ -3990,7 +3990,7 @@ describe("VotingV2", function () {
   });
   it("Staking during active reveal is dealt with correctly via pendingStakes", async function () {
     // An issue was found in the contract wherein a staked voter stakes again during the active reveal round, thereby
-    // increasing their effective stake to a value higher than what they had at the variable freeze time (first commit).
+    // increasing their effective stake to a value higher than what they had at the variable freeze time (first commit or stake during active reveal phase).
     // The contract's pendingStake variable is meant to capture this correctly wherein the pending stake for a given round
     // offsets stake that has been added by not yet "activated." However, this was found to not correctly work in the
     // specific case where you stake after committing, but within the reveal phase. The impact of this is that this voter
