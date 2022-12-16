@@ -6,15 +6,13 @@ import { increaseEvmTime } from "../utils/utils";
 const hre = require("hardhat");
 const { ethers } = hre;
 
-export const getVotingV2 = async (): Promise<VotingV2Ethers> => {
-  const networkId = process.env.HARDHAT_CHAIN_ID;
-
+export const getVotingV2 = async (networkId: number): Promise<VotingV2Ethers> => {
   const votingV2AddressMainnet = "";
   const votingV2AddressGoerli = "0xF71cdF8A34c56933A8871354A2570a301364e95F";
 
   return await getContractInstance<VotingV2Ethers>(
     "VotingV2",
-    networkId == "1" ? votingV2AddressMainnet : votingV2AddressGoerli
+    networkId == 1 ? votingV2AddressMainnet : votingV2AddressGoerli
   );
 };
 
@@ -31,8 +29,7 @@ export const getUniqueVoters = async (votingV2: VotingV2Ethers): Promise<string[
 export const updateTrackers = async (votingV2: VotingV2Ethers, voters: string[]): Promise<void> => {
   console.log("Updating trackers for all voters");
   const tx = await votingV2.multicall(
-    voters.map((voter) => votingV2.interface.encodeFunctionData("updateTrackers", [voter])),
-    { maxFeePerGas: 1000000000 }
+    voters.map((voter) => votingV2.interface.encodeFunctionData("updateTrackers", [voter]))
   );
   await tx.wait();
   console.log("Done updating trackers for all voters");
