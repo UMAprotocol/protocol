@@ -30,6 +30,7 @@
     "@openzeppelin/contracts": "4.4.2",
     "@tsconfig/node14": "^1.0.0",
     "@types/bn.js": "^5.1.0",
+    "@types/sinon": "^10.0.0",
     "@uma/contracts-node-0-1-0": "npm:@uma/contracts-node@0.1.0",
     "bignumber.js": "^9.0.1",
     "chai": "^4.3.4",
