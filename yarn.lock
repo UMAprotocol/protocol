@@ -20344,16 +20344,6 @@ protoduck@^5.0.1:
   dependencies:
     genfun "^5.0.0"
 
-protons@^2.0.0:
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/protons/-/protons-2.0.1.tgz#bfee5123c100001dcf56ab8f71b1b36f2e8289f1"
-  integrity sha512-FlmPorLEeCEDPu+uIn0Qardgiy5XqVA4IyNTz9wb9c0e2U7BEXdRcIbx64r09o4Abtf+4B7mkTtMbsIXMxZzKw==
-  dependencies:
-    protocol-buffers-schema "^3.3.1"
-    signed-varint "^2.0.1"
-    uint8arrays "^2.1.3"
-    varint "^5.0.0"
-
 proxy-addr@~2.0.7:
   version "2.0.7"
   resolved "https://registry.yarnpkg.com/proxy-addr/-/proxy-addr-2.0.7.tgz#f19fe69ceab311eeb94b42e70e8c2070f9ba1025"
@@ -20519,9 +20509,9 @@ qs@^6.4.0, qs@^6.5.1, qs@^6.5.2, qs@^6.7.0, qs@^6.9.4:
     side-channel "^1.0.4"
 
 qs@~6.5.2:
-  version "6.5.2"
-  resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.2.tgz#cb3ae806e8740444584ef154ce8ee98d403f3e36"
-  integrity sha512-N5ZAX4/LxJmF+7wN74pUD6qAh9/wnvdQcjq9TZjevvXzSUo7bfmw91saqMjzGS2xq91/odN2dW/WOl7qQHNDGA==
+  version "6.5.3"
+  resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.3.tgz#3aeeffc91967ef6e35c0e488ef46fb296ab76aad"
+  integrity sha512-qxXIEh4pCGfHICj1mAJQ2/2XVZkjCDTcEgfoSQxc/fYivUZxTkk7L3bDBJSoNrEzXI17oUO5Dp07ktqE5KzczA==
 
 query-string@6.13.6:
   version "6.13.6"
