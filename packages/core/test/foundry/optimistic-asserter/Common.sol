@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../fixtures/optimistic-asserter/OptimisticAsserterFixture.sol";
 import "../fixtures/common/TestAddress.sol";
 import "../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
+import "../../../contracts/optimistic-asserter/implementation/test/AssertingCallerTest.sol";
 
 contract Common is Test {
     // Data structures, that might be used in tests.
@@ -14,6 +15,14 @@ contract Common is Test {
         bytes ancillaryData;
     }
 
+    struct BalancesBeforeSettle {
+        uint256 asserter;
+        uint256 disputer;
+        uint256 store;
+    }
+
+    BalancesBeforeSettle balancesBeforeSettle;
+
     // Contract instances, that might be used in tests.
     OptimisticAsserter optimisticAsserter;
     TestnetERC20 defaultCurrency;
@@ -21,20 +30,21 @@ contract Common is Test {
     Finder finder;
     MockOracleAncillary mockOracle;
     Store store;
+    AssertingCallerTest assertingCaller;
 
     // Constants, that might be used in tests.
-    bytes trueClaimAssertion = bytes("q:'The sky is blue'");
-    bytes falseClaimAssertion = bytes("q:'The sky is red'");
+    bytes constant trueClaimAssertion = bytes("q:'The sky is blue'");
+    bytes constant falseClaimAssertion = bytes("q:'The sky is red'");
     uint256 burnedBondPercentage;
     uint256 defaultBond;
     uint64 defaultLiveness;
     bytes32 defaultIdentifier;
 
     // Mock addresses, used to prank calls.
-    address mockOptimisticAsserterAddress = address(0xfa);
-    address mockedEscalationManager = address(0xfb);
-    address mockedCallbackRecipient = address(0xfc);
-    address mockAssertingCallerAddress = address(0xfd);
+    address constant mockOptimisticAsserterAddress = address(0xfa);
+    address constant mockedEscalationManager = address(0xfb);
+    address constant mockedCallbackRecipient = address(0xfc);
+    address constant mockAssertingCallerAddress = address(0xfd);
 
     // Event structures, that might be used in tests.
     event AssertionMade(
@@ -73,6 +83,7 @@ contract Common is Test {
         timer = oaContracts.timer;
         finder = oaContracts.finder;
         store = oaContracts.store;
+        assertingCaller = new AssertingCallerTest(optimisticAsserter);
         burnedBondPercentage = optimisticAsserter.burnedBondPercentage();
         defaultBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
         defaultLiveness = optimisticAsserter.defaultLiveness();
@@ -147,6 +158,24 @@ contract Common is Test {
             );
     }
 
+    function _wrappedAssertWithCallbackRecipientAndSs(address callbackRecipient, address escalationManager)
+        internal
+        returns (bytes32)
+    {
+        vm.prank(TestAddress.account1);
+        return
+            assertingCaller.assertTruth(
+                trueClaimAssertion,
+                callbackRecipient,
+                escalationManager,
+                defaultLiveness,
+                defaultCurrency,
+                defaultBond,
+                defaultIdentifier,
+                bytes32(0) // No domain.
+            );
+    }
+
     function _disputeAndGetOracleRequest(bytes32 assertionId, uint256 bond) internal returns (OracleRequest memory) {
         // Get expected oracle request on dispute.
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
@@ -202,6 +231,18 @@ contract Common is Test {
         );
     }
 
+    function _expectOraclePriceRequest(address oracleAddress, OracleRequest memory oracleRequest) internal {
+        vm.expectCall(
+            oracleAddress,
+            abi.encodeWithSelector(
+                MockOracleAncillary.requestPrice.selector,
+                oracleRequest.identifier,
+                oracleRequest.time,
+                oracleRequest.ancillaryData
+            )
+        );
+    }
+
     function _mockGetAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
         OptimisticAsserterInterface.Assertion memory assertion;
         assertion.escalationManagerSettings.assertingCaller = mockAssertingCaller;
@@ -210,5 +251,40 @@ contract Common is Test {
             abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
             abi.encode(assertion)
         );
+    }
+
+    function _defaultSaveBalancesBeforeSettle() internal {
+        balancesBeforeSettle = BalancesBeforeSettle({
+            asserter: defaultCurrency.balanceOf(TestAddress.account1),
+            disputer: defaultCurrency.balanceOf(TestAddress.account2),
+            store: defaultCurrency.balanceOf(address(store))
+        });
+    }
+
+    function _defaultCheckBalancesAfterSettle(
+        bool disputed,
+        bool resolvedTruethful,
+        bool payOracleFee
+    ) internal {
+        // Checks below depend on non zero bond and burnedBondPercentage.
+        assertGt(defaultBond, 0);
+        assertGt(burnedBondPercentage, 0);
+
+        // Calculate expected payouts.
+        uint256 multiplier = disputed ? 2 : 1;
+        uint256 expectedOracleFee = payOracleFee ? (defaultBond * burnedBondPercentage) / 1e18 : 0;
+        uint256 expectedBondRecipientAmount = defaultBond * multiplier - expectedOracleFee;
+        uint256 expectedAsserterPayout = resolvedTruethful ? expectedBondRecipientAmount : 0;
+        uint256 expectedDisputerPayout = resolvedTruethful ? 0 : expectedBondRecipientAmount;
+
+        assertEq(
+            defaultCurrency.balanceOf(TestAddress.account1),
+            balancesBeforeSettle.asserter + expectedAsserterPayout
+        );
+        assertEq(
+            defaultCurrency.balanceOf(TestAddress.account2),
+            balancesBeforeSettle.disputer + expectedDisputerPayout
+        );
+        assertEq(defaultCurrency.balanceOf(address(store)), balancesBeforeSettle.store + expectedOracleFee);
     }
 }
