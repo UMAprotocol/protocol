@@ -22754,10 +22754,10 @@ superagent@^3.8.3:
     qs "^6.5.1"
     readable-stream "^2.3.5"
 
-superstruct@^0.16.4:
-  version "0.16.4"
-  resolved "https://registry.yarnpkg.com/superstruct/-/superstruct-0.16.4.tgz#84c80753a3376e16ef5a4f8dafa1e06767ba8e81"
-  integrity sha512-PGf1ZSWwbOb33efMX5Jq/JUM5UpCOk1p3/6jPS6o8mcPy9vd2XXOiEXDKwWOETpnzAvjkXcryL+l+jhvkDaizQ==
+superstruct@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/superstruct/-/superstruct-1.0.3.tgz#de626a5b49c6641ff4d37da3c7598e7a87697046"
+  integrity sha512-8iTn3oSS8nRGn+C2pgXSKPI3jmpm6FExNazNpjvqS6ZUJQCej3PUXEKM8NjHBOs54ExM+LPW/FBRhymrdcCiSg==
 
 supertest@^4.0.2:
   version "4.0.2"

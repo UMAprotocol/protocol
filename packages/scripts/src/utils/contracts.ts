@@ -3,7 +3,7 @@ const hre = require("hardhat");
 import { Contract, ContractFactory } from "ethers";
 import { Provider } from "@ethersproject/abstract-provider";
 
-export const FOUNDATION_WALLET = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
+export const FOUNDATION_WALLET = "0x8180d59b7175d4064bdfa8138a58e9babffda44a";
 export const SECONDS_PER_DAY = 86400;
 export const YES_VOTE = "1";
 
