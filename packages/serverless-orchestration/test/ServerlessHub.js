@@ -396,24 +396,24 @@ describe("ServerlessHub.js", function () {
           MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
-      testServerlessMonitor2: {
-        serverlessCommand: "yarn --silent monitors --network test",
+      testServerlessLiquidator: {
+        serverlessCommand: "yarn --silent liquidator --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.options.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
-      testServerlessMonitor3: {
-        serverlessCommand: "yarn --silent monitors --network test",
+      testServerlessDisputer: {
+        serverlessCommand: "yarn --silent disputer --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.options.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
     };
