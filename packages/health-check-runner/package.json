@@ -10,7 +10,9 @@
     "build": "tsc --build"
   },
   "dependencies": {
+    "@uma/contracts-node": "^0.4.4",
     "@uma/financial-templates-lib": "^2.31.4",
+    "ethers": "^5.7.2",
     "minimist": "^1.2.6",
     "winston": "^3.8.1"
   }
