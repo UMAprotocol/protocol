@@ -29,7 +29,7 @@ async function main() {
   for (const voter of uniqueVoters) {
     await unstakeFromStakedAccount(votingV2, voter);
   }
-  console.log("Unstake health check passed! All voters have been unstaked successfully.");
+  console.log("Unstake health check passed! All voters have been unstaked successfully");
 }
 
 main().then(

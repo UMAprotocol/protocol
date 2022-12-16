@@ -1,20 +1,9 @@
 import { VotingV2Ethers } from "@uma/contracts-node";
 import { BigNumber } from "ethers";
-import { getContractInstance } from "../utils/contracts";
 import { increaseEvmTime } from "../utils/utils";
 
 const hre = require("hardhat");
 const { ethers } = hre;
-
-export const getVotingV2 = async (networkId: number): Promise<VotingV2Ethers> => {
-  const votingV2AddressMainnet = "";
-  const votingV2AddressGoerli = "0xF71cdF8A34c56933A8871354A2570a301364e95F";
-
-  return await getContractInstance<VotingV2Ethers>(
-    "VotingV2",
-    networkId == 1 ? votingV2AddressMainnet : votingV2AddressGoerli
-  );
-};
 
 export const getUniqueVoters = async (votingV2: VotingV2Ethers): Promise<string[]> => {
   const stakedEvents = await votingV2.queryFilter(votingV2.filters.Staked(null, null, null));
@@ -49,7 +38,7 @@ export const unstakeFromStakedAccount = async (votingV2: VotingV2Ethers, voter: 
     console.log("Unstaking from", voter, stakeBalance.toString());
     const impersonatedSigner = await ethers.getImpersonatedSigner(voter);
     if ((await votingV2.voterStakes(voter)).pendingUnstake.gt(ethers.BigNumber.from(0))) {
-      console.log("staker", voter, "has a pending unstake. Executing then re-unstaking");
+      console.log("Staker", voter, "has a pending unstake. Executing then re-unstaking");
       const tx = await votingV2.connect(impersonatedSigner).executeUnstake();
       await tx.wait();
     }

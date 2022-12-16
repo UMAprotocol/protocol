@@ -31,7 +31,7 @@ async function main() {
       "The sum of slashedTokens across all VoterSlashed events is not zero. Instead it is: " + sumSlashEvents.toString()
     );
   }
-  console.log("Slashing health check passed! The sum of slashedTokens across all VoterSlashed events is zero.");
+  console.log("Slashing health check passed! The sum of slashedTokens across all VoterSlashed events is zero");
 }
 
 main().then(

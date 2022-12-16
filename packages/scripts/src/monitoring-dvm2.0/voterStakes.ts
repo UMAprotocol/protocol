@@ -45,7 +45,7 @@ async function main() {
       "The sum of all the stakes should be equal to the votingV2 balance, instead it is: " + sumStakes.toString()
     );
   }
-  console.log("Voter staked health check passed! The sum of all the stakes is equal to the votingV2 balance.");
+  console.log("Voter staked health check passed! The sum of all the stakes is equal to the votingV2 balance");
 }
 
 main().then(
