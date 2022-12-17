@@ -21,3 +21,24 @@ export const logLargeUnstake = (
       createEtherscanLinkMarkdown(unstake.tx, chainId),
   });
 };
+
+export const logLargeStake = (
+  logger: typeof Logger,
+  stake: {
+    tx: string;
+    address: string;
+    amount: string;
+  },
+  chainId: number
+): void => {
+  logger.warn({
+    at: "DVMMonitorStake",
+    message: "Large amount staked 🍖",
+    mrkdwn:
+      createEtherscanLinkMarkdown(stake.address, chainId) +
+      " staked " +
+      createFormatFunction(2, 0, false, 18)(stake.amount) +
+      " UMA at " +
+      createEtherscanLinkMarkdown(stake.tx, chainId),
+  });
+};
