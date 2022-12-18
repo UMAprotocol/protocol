@@ -42,3 +42,18 @@ export const logLargeStake = (
       createEtherscanLinkMarkdown(stake.tx, chainId),
   });
 };
+
+export const logGovernanceProposal = (
+  logger: typeof Logger,
+  proposal: {
+    tx: string;
+    id: string;
+  },
+  chainId: number
+): void => {
+  logger.warn({
+    at: "DVMMonitorGovernance",
+    message: "New governance proposal created 📜",
+    mrkdwn: "New Admin " + proposal.id + " proposal created at " + createEtherscanLinkMarkdown(proposal.tx, chainId),
+  });
+};
