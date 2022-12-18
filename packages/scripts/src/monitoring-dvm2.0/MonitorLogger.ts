@@ -1,5 +1,6 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
 import { Logger } from "@uma/financial-templates-lib";
+import type { BigNumber } from "ethers";
 
 export const logLargeUnstake = (
   logger: typeof Logger,
@@ -55,5 +56,30 @@ export const logGovernanceProposal = (
     at: "DVMMonitorGovernance",
     message: "New governance proposal created 📜",
     mrkdwn: "New Admin " + proposal.id + " proposal created at " + createEtherscanLinkMarkdown(proposal.tx, chainId),
+  });
+};
+
+export const logDeletionProposed = (
+  logger: typeof Logger,
+  proposal: {
+    tx: string;
+    proposalId: string;
+    sender: string;
+    spamRequestIndices: [BigNumber, BigNumber][];
+  },
+  chainId: number
+): void => {
+  const identifiers = proposal.spamRequestIndices
+    .map((range) => (range[0].eq(range[1]) ? range[0].toString() : `${range[0]}-${range[1]}`))
+    .join(", ");
+  logger.warn({
+    at: "DVMMonitorDeletion",
+    message: "New spam deletion proposal created 🔇",
+    mrkdwn:
+      createEtherscanLinkMarkdown(proposal.sender, chainId) +
+      " proposed deletion of requests with following indices: " +
+      identifiers +
+      " at " +
+      createEtherscanLinkMarkdown(proposal.tx, chainId),
   });
 };
