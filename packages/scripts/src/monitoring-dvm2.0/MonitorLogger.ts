@@ -59,6 +59,27 @@ export const logGovernanceProposal = (
   });
 };
 
+export const logEmergencyProposal = (
+  logger: typeof Logger,
+  proposal: {
+    tx: string;
+    id: string;
+    sender: string;
+  },
+  chainId: number
+): void => {
+  logger.warn({
+    at: "DVMMonitorEmergency",
+    message: "New emergency proposal created 🚨",
+    mrkdwn:
+      proposal.sender +
+      " submitted new emergency proposal #" +
+      proposal.id +
+      " at " +
+      createEtherscanLinkMarkdown(proposal.tx, chainId),
+  });
+};
+
 export const logDeletionProposed = (
   logger: typeof Logger,
   proposal: {
