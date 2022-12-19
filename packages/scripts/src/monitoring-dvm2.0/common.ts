@@ -39,6 +39,7 @@ export const unstakeFromStakedAccount = async (votingV2: VotingV2Ethers, voter: 
     const impersonatedSigner = await ethers.getImpersonatedSigner(voter);
     if ((await votingV2.voterStakes(voter)).pendingUnstake.gt(ethers.BigNumber.from(0))) {
       console.log("Staker", voter, "has a pending unstake. Executing then re-unstaking");
+      await increaseEvmTime(await (await votingV2.unstakeCoolDown()).toNumber());
       const tx = await votingV2.connect(impersonatedSigner).executeUnstake();
       await tx.wait();
     }

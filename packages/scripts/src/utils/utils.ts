@@ -19,14 +19,7 @@ export const revertToSnapshot = async (snapshotId: string): Promise<void> => {
 export const forkNetwork = (jsonRpcUrl: string, blockNumber?: string): Promise<void> => {
   return hre.network.provider.request({
     method: "hardhat_reset",
-    params: [
-      {
-        forking: {
-          jsonRpcUrl,
-          blockNumber,
-        },
-      },
-    ],
+    params: [{ forking: { jsonRpcUrl, blockNumber } }],
   });
 };
 

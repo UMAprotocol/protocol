@@ -5,7 +5,7 @@
 // CUSTOM_NODE_URL=https://<goerli OR mainnet>.infura.io/v3/<YOUR-INFURA-KEY> \
 // yarn hardhat run ./src/monitoring-dvm2.0/unstake.ts
 
-import { VotingV2Ethers } from "@uma/contracts-node";
+import { VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { getContractInstance } from "../utils/contracts";
 import { forkNetwork, getForkChainId } from "../utils/utils";
 import { getUniqueVoters, unstakeFromStakedAccount, updateTrackers } from "./common";
@@ -18,6 +18,7 @@ async function main() {
   if (!chainId || (chainId != 1 && chainId != 5)) throw new Error("This script should be run on mainnet or goerli");
 
   const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", undefined, chainId);
+  const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken", undefined, chainId);
 
   const uniqueVoters = await getUniqueVoters(votingV2);
 
@@ -29,6 +30,15 @@ async function main() {
   for (const voter of uniqueVoters) {
     await unstakeFromStakedAccount(votingV2, voter);
   }
+
+  // Balance in voting token of voting v2 should be 0
+  const votingTokenBalance = await votingToken.balanceOf(votingV2.address);
+  if (votingTokenBalance.toString() != "0") throw new Error("Voting token balance is not 0");
+
+  // VotingV2 cumulativeStake should be 0
+  const cumulativeStake = await votingV2.cumulativeStake();
+  if (cumulativeStake.toString() != "0") throw new Error("VotingV2 cumulativeStake is not 0");
+
   console.log("Unstake health check passed! All voters have been unstaked successfully");
 }
 
