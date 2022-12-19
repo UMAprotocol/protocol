@@ -1,6 +1,6 @@
 const hre = require("hardhat");
-import nodeFetch from "node-fetch";
 const { ethers } = hre;
+import { JsonRpcProvider } from "@ethersproject/providers";
 
 export const increaseEvmTime = async (time: number): Promise<void> => {
   await ethers.provider.send("evm_increaseTime", [time]);
@@ -24,20 +24,6 @@ export const forkNetwork = (jsonRpcUrl: string, blockNumber?: string): Promise<v
 };
 
 export const getForkChainId = async (jsonRpcUrl: string): Promise<number> => {
-  const data = JSON.stringify({
-    method: "eth_chainId",
-    params: [],
-    id: 1,
-    jsonrpc: "2.0",
-  });
-
-  const response = await nodeFetch(jsonRpcUrl, {
-    method: "POST",
-    body: data,
-    headers: { "Content-type": "application/json", Accept: "application/json", "Accept-Charset": "utf-8" },
-  });
-
-  const json = await response.json();
-
-  return parseInt(json.result);
+  const provider = new JsonRpcProvider(jsonRpcUrl);
+  return (await provider.getNetwork()).chainId;
 };
