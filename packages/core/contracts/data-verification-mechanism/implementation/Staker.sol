@@ -38,7 +38,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     // Mapping of delegates to their delegators (staker). Reverse mapping from voterStakes.delegate.
     mapping(address => address) public delegateToStaker;
 
-    // Number of UMA emitted per second top incentivize stakers.
+    // Number of UMA emitted per second to incentivize stakers.
     uint256 public emissionRate;
 
     // Total number of UMA staked within the system.

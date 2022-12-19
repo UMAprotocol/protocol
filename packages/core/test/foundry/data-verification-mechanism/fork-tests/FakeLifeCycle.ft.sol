@@ -22,14 +22,27 @@ contract FakeLifeCycle is CommonDataVerificationMechanismForkTest {
 
         // Mint fresh UMA and stake them.
         vm.prank(address(voting));
-        votingToken.mint(TestAddress.account1, gatMeetingAmountOfTokens);
+        uint256 stakedNumOfTokens = gatMeetingNumOfTokens;
+        votingToken.mint(TestAddress.account1, stakedNumOfTokens);
 
         vm.startPrank(TestAddress.account1);
-        votingToken.approve(address(voting), gatMeetingAmountOfTokens);
-        voting.stake(gatMeetingAmountOfTokens);
-        assert(voting.getVoterStakePostUpdate(TestAddress.account1) == gatMeetingAmountOfTokens);
+        votingToken.approve(address(voting), stakedNumOfTokens);
+        uint256 stakeTime = voting.getCurrentTime();
+        voting.stake(stakedNumOfTokens);
+        assert(voting.getVoterStakePostUpdate(TestAddress.account1) == stakedNumOfTokens);
 
-        // Move to next round and vote from the newly staked account.
+        // Advance some time to ensure reward accrual works as expected.
+        moveToNextRound();
+        voting.withdrawRewards(); // Check if the Staker claims rewards now they get the expected amount.
+        uint256 stakerBalanceAfterRewardWithdrawal = votingToken.balanceOf(TestAddress.account1);
+        assert(voting.getVoterStakePostUpdate(TestAddress.account1) == stakedNumOfTokens);
+
+        uint256 rewardsPerToken =
+            ((voting.getCurrentTime() - stakeTime) * voting.emissionRate() * 1e18) / voting.cumulativeStake();
+        uint256 expectedRewards = (rewardsPerToken * voting.getVoterStakePostUpdate(TestAddress.account1)) / 1e18;
+        assertEq(stakerBalanceAfterRewardWithdrawal, expectedRewards);
+
+        // Move to next round, request a price and vote on it from the newly staked account.
         moveToNextRound();
         int256 price = 1e18;
         int256 salt = 42069;
@@ -47,15 +60,12 @@ contract FakeLifeCycle is CommonDataVerificationMechanismForkTest {
         vm.prank(registeredRequester);
         assertEq(voting.getPrice(identifier, requestTime, ancillaryData), price);
 
-        // Can get rewards (time elapsed) and should be able to unstake with more than started with due to + slashing.
-        vm.startPrank(TestAddress.account1);
-        uint256 stakerBalanceBeforeRewardWithdrawal = votingToken.balanceOf(TestAddress.account1);
-        voting.withdrawRewards();
-        uint256 stakerBalanceAfterRewardWithdrawal = votingToken.balanceOf(TestAddress.account1);
-        assert(stakerBalanceAfterRewardWithdrawal > stakerBalanceBeforeRewardWithdrawal);
-        voting.requestUnstake(voting.getVoterStakePostUpdate(TestAddress.account1));
-        vm.warp(voting.getCurrentTime() + voting.unstakeCoolDown());
-        voting.executeUnstake();
-        assert(votingToken.balanceOf(TestAddress.account1) > stakerBalanceAfterRewardWithdrawal);
+        // Finally, considering we were the only voter, we should be able to work out the slashing amount precisely.
+        uint256 totalStakedAtVote = voting.cumulativeStake(); // Has not changed from when we staked.
+        uint256 slashPerTokenPerNoVote =
+            voting.slashingLibrary().calcNoVoteSlashPerToken(totalStakedAtVote, stakedNumOfTokens, stakedNumOfTokens);
+        uint256 totalSlashedTokens = ((totalStakedAtVote - stakedNumOfTokens) * slashPerTokenPerNoVote) / 1e18;
+        uint256 expectedStakerBalanceAfterSlashing = stakedNumOfTokens + totalSlashedTokens;
+        assertEq(voting.getVoterStakePostUpdate(TestAddress.account1), expectedStakerBalanceAfterSlashing);
     }
 }
