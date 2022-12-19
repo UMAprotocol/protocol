@@ -1,14 +1,16 @@
-// This script provides some useful methods for building MerkleTrees. It is taken verbatim from the uniswap implementation
-// https://github.com/Uniswap/merkle-distributor/blob/master/src/merkle-tree.ts
+// This script provides some useful methods for building MerkleTrees. It is essentially the uniswap implementation
+// https://github.com/Uniswap/merkle-distributor/blob/master/src/merkle-tree.ts with some added convenience methods
+// to take the leaves and conversion functions, so the user never has to work with buffers.
 import { bufferToHex, keccak256 } from "ethereumjs-util";
 
-export class MerkleTree {
+export const EMPTY_MERKLE_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000";
+export class MerkleTree<T> {
   private readonly elements: Buffer[];
   private readonly bufferElementPositionIndex: { [hexElement: string]: number };
   private readonly layers: Buffer[][];
 
-  constructor(elements: Buffer[]) {
-    this.elements = [...elements];
+  constructor(leaves: T[], public readonly hashFn: (element: T) => string) {
+    this.elements = leaves.map((leaf) => this.leafToBuf(leaf));
     // Sort elements
     this.elements.sort(Buffer.compare);
     // Deduplicate elements
@@ -23,12 +25,14 @@ export class MerkleTree {
     this.layers = this.getLayers(this.elements);
   }
 
-  getLayers(elements: Buffer[]): Buffer[][] {
-    if (elements.length === 0) {
-      throw new Error("empty tree");
-    }
+  isEmpty(): boolean {
+    return this.layers.length === 0;
+  }
 
-    const layers = [];
+  getLayers(elements: Buffer[]): Buffer[][] {
+    const layers: Buffer[][] = [];
+    if (elements.length === 0) return layers;
+
     layers.push(elements);
 
     // Get next layer until we reach the root
@@ -66,11 +70,27 @@ export class MerkleTree {
   }
 
   getHexRoot(): string {
+    if (this.isEmpty()) return EMPTY_MERKLE_ROOT;
     return bufferToHex(this.getRoot());
   }
 
-  getProof(el: Buffer) {
-    let idx = this.bufferElementPositionIndex[bufferToHex(el)];
+  getProof(leaf: T) {
+    return this.getProofRawBuf(this.leafToBuf(leaf));
+  }
+
+  getHexProof(leaf: T) {
+    return this.getHexProofRawBuf(this.leafToBuf(leaf));
+  }
+
+  leafToBuf(element: T): Buffer {
+    const hash = this.hashFn(element);
+    const hexString = hash.startsWith("0x") ? hash.substring(2) : hash;
+    return Buffer.from(hexString.toLowerCase(), "hex");
+  }
+
+  // Methods that take the raw buffers (hashes).
+  getProofRawBuf(element: Buffer) {
+    let idx = this.bufferElementPositionIndex[bufferToHex(element)];
 
     if (typeof idx !== "number") {
       throw new Error("Element does not exist in Merkle tree");
@@ -89,8 +109,8 @@ export class MerkleTree {
     }, []);
   }
 
-  getHexProof(el: Buffer): string[] {
-    const proof = this.getProof(el);
+  getHexProofRawBuf(el: Buffer): string[] {
+    const proof = this.getProofRawBuf(el);
 
     return MerkleTree.bufArrToHexArr(proof);
   }
