@@ -43,7 +43,6 @@ export function getHardhatConfig(
   require("@nomiclabs/hardhat-ethers");
   require("hardhat-deploy");
   require("hardhat-gas-reporter");
-  require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
   require("hardhat-tracer");
 
