@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../fixtures/common/CommonTestBase.sol";
+import "forge-std/Test.sol";
 import "../fixtures/optimistic-asserter/OptimisticAsserterFixture.sol";
+import "../fixtures/common/TestAddress.sol";
 import "../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
 import "../../../contracts/optimistic-asserter/implementation/test/AssertingCallerTest.sol";
 
-contract CommonOptimisticAsserterTest is CommonTestBase {
+contract Common is Test {
     // Data structures, that might be used in tests.
     struct OracleRequest {
         bytes32 identifier;

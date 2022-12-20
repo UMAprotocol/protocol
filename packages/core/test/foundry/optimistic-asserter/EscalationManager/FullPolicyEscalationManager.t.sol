@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
+import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/FullPolicyEscalationManager.sol";
 
-contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
+contract FullPolicyEscalationManagerTest is Common {
     FullPolicyEscalationManager escalationManager;
     bytes32 assertionId = bytes32(0);
 
