@@ -5,13 +5,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.4...@uma/common@2.29.0) (2022-12-20)
 
-
 ### Features
 
-* restructure core contracts directory ([#4207](https://github.com/UMAprotocol/protocol/issues/4207)) ([40b5b2c](https://github.com/UMAprotocol/protocol/commit/40b5b2cbc1591201d99f2545a2b22b744b01e663))
-- **common:** add MerkleTree improvements made in across-protocol/contracts-v2 ([#4318](https://github.com/UMAprotocol/protocol/issues/4318)) ([3eaa911](https://github.com/UMAprotocol/protocol/commit/3eaa9119345f268acb7693e5708e5f1e2b71d6cd))
+- restructure core contracts directory ([#4207](https://github.com/UMAprotocol/protocol/issues/4207)) ([40b5b2c](https://github.com/UMAprotocol/protocol/commit/40b5b2cbc1591201d99f2545a2b22b744b01e663))
 
-
+* **common:** add MerkleTree improvements made in across-protocol/contracts-v2 ([#4318](https://github.com/UMAprotocol/protocol/issues/4318)) ([3eaa911](https://github.com/UMAprotocol/protocol/commit/3eaa9119345f268acb7693e5708e5f1e2b71d6cd))
 
 ## [2.28.4](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.3...@uma/common@2.28.4) (2022-11-23)
 

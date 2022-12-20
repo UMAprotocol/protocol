@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [1.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.19.5...@uma/scripts@1.20.0) (2022-12-20)
 
-
 ### Features
 
-* update dvm2.0 upgrade script ([#4304](https://github.com/UMAprotocol/protocol/issues/4304)) ([f8a2b10](https://github.com/UMAprotocol/protocol/commit/f8a2b105f7c7570d985a1df8db397f86ccd811cd))
-
-
-
-
+- update dvm2.0 upgrade script ([#4304](https://github.com/UMAprotocol/protocol/issues/4304)) ([f8a2b10](https://github.com/UMAprotocol/protocol/commit/f8a2b105f7c7570d985a1df8db397f86ccd811cd))
 
 ## [1.19.5](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.19.4...@uma/scripts@1.19.5) (2022-11-23)
 
