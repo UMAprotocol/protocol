@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistCallerEscalationManager.sol";
 
-contract WhitelistCallerEscalationManagerTest is Common {
+contract WhitelistCallerEscalationManagerTest is CommonOptimisticAsserterTest {
     WhitelistCallerEscalationManager escalationManager;
 
     function setUp() public {

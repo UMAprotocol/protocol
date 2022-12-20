@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.10...@uma/financial-templates-lib@2.32.0) (2022-12-20)
+
+### Features
+
+- cleanup protocol repo by removing old packages ([#4309](https://github.com/UMAprotocol/protocol/issues/4309)) ([74855fc](https://github.com/UMAprotocol/protocol/commit/74855fcef11644db0bf4f135e7907c9f6078e189))
+- restructure core contracts directory ([#4207](https://github.com/UMAprotocol/protocol/issues/4207)) ([40b5b2c](https://github.com/UMAprotocol/protocol/commit/40b5b2cbc1591201d99f2545a2b22b744b01e663))
+- update dvm2.0 upgrade script ([#4304](https://github.com/UMAprotocol/protocol/issues/4304)) ([f8a2b10](https://github.com/UMAprotocol/protocol/commit/f8a2b105f7c7570d985a1df8db397f86ccd811cd))
+
 ## [2.31.10](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.9...@uma/financial-templates-lib@2.31.10) (2022-11-23)
 
 **Note:** Version bump only for package @uma/financial-templates-lib
