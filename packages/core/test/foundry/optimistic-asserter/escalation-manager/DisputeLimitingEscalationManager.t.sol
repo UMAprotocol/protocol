@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/DisputeLimitingEscalationManager.sol";
 
-contract DisputeLimitingEscalationManagerTest is Common {
+contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
     DisputeLimitingEscalationManager escalationManager;
 
     bytes32 assertionId = "test";
