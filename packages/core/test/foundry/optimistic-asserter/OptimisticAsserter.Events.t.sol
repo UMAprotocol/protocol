@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./Common.sol";
+import "./CommonOptimisticAsserterTest.sol";
 
-contract OptimisticAsserterEvents is Common {
+contract OptimisticAsserterEvents is CommonOptimisticAsserterTest {
     event AdminPropertiesSet(IERC20 defaultCurrency, uint64 defaultLiveness, uint256 burnedBondPercentage);
 
     function setUp() public {

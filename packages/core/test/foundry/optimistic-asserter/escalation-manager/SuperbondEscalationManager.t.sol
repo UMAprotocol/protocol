@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/SuperbondEscalationManager.sol";
 
-contract SuperbondEscalationManagerTest is Common {
+contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTest {
     SuperbondEscalationManager escalationManager;
     uint256 superbond = 100e18;
     uint256 bond = 50e18;

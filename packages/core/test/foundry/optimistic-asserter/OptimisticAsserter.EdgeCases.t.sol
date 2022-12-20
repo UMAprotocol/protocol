@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./Common.sol";
+import "./CommonOptimisticAsserterTest.sol";
 
-contract InvalidParameters is Common {
+contract InvalidParameters is CommonOptimisticAsserterTest {
     function setUp() public {
         _commonSetup();
     }
