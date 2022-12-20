@@ -1,7 +1,6 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
 import { Logger } from "@uma/financial-templates-lib";
-import { utils } from "@uma/sdk";
-import { utils as ethersUtils } from "ethers";
+import { utils } from "ethers";
 import type { BigNumber } from "ethers";
 
 export const logLargeUnstake = (
@@ -124,7 +123,7 @@ export const logRolled = (
       "Vote #" +
       request.priceRequestIndex.toString() +
       " for identifier " +
-      ethersUtils.parseBytes32String(request.identifier) +
+      utils.parseBytes32String(request.identifier) +
       " at " +
       new Date(Number(request.time) * 1000).toUTCString() +
       " is rolled to round #" +
