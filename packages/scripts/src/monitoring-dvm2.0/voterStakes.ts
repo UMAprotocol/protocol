@@ -48,6 +48,8 @@ async function main() {
     votingToken,
     votingV2
   );
+  // The difference between the sum of all the stakes and the votingV2 balance should be less than the number of slashed
+  // because every slash can produce 1 WEI of imprecision in the balance because of rounding.
   const absDiff = bigNumberAbsDiff(sumStakes, votingV2BalanceWithoutExternalTransfers);
   if (!absDiff.lte(numberSlashedEvents)) {
     throw new Error(
