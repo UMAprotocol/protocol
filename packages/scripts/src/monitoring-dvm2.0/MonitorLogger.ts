@@ -1,5 +1,7 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
 import { Logger } from "@uma/financial-templates-lib";
+import { utils } from "@uma/sdk";
+import { utils as ethersUtils } from "ethers";
 import type { BigNumber } from "ethers";
 
 export const logLargeUnstake = (
@@ -102,5 +104,30 @@ export const logDeletionProposed = (
       identifiers +
       " at " +
       createEtherscanLinkMarkdown(proposal.tx, chainId),
+  });
+};
+
+export const logRolled = (
+  logger: typeof Logger,
+  request: {
+    identifier: string;
+    time: BigNumber;
+    ancillaryData: string;
+    priceRequestIndex: BigNumber;
+  },
+  roundId: BigNumber
+): void => {
+  logger.warn({
+    at: "DVMMonitorRolled",
+    message: "Rolled vote 🎲",
+    mrkdwn:
+      "Vote #" +
+      request.priceRequestIndex.toString() +
+      " for identifier " +
+      ethersUtils.parseBytes32String(request.identifier) +
+      " at " +
+      new Date(Number(request.time) * 1000).toUTCString() +
+      " is rolled to round #" +
+      roundId.toString(),
   });
 };

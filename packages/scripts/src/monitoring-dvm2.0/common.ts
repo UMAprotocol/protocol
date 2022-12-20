@@ -1,4 +1,6 @@
 import { getChainIdByUrl, getLatestBlockNumberByUrl } from "../utils/utils";
+import { VotingV2Ethers } from "@uma/contracts-node";
+import { BigNumber, utils } from "ethers";
 
 interface MonitoringParams {
   jsonRpcUrl: string;
@@ -44,4 +46,29 @@ export const updateBlockRange = async (params: MonitoringParams): Promise<void> 
   const latestBlockNumber = await getLatestBlockNumberByUrl(params.jsonRpcUrl);
   params.startingBlock = params.endingBlock + 1;
   params.endingBlock = latestBlockNumber;
+};
+
+export const checkEndBlockVotingRound = async (
+  params: MonitoringParams,
+  votingV2: VotingV2Ethers
+): Promise<{ isNew: boolean; roundId: BigNumber }> => {
+  // Compute end block round id.
+  const endTime = BigNumber.from((await votingV2.provider.getBlock(params.endingBlock)).timestamp);
+  const roundLength = (await votingV2.voteTiming()).phaseLength.mul(2);
+  const roundId = endTime.div(roundLength);
+
+  // Compute previous checked round id only if there is a previous block.
+  if (params.startingBlock === 0) return { isNew: true, roundId };
+
+  // Compute previous round id.
+  const previousTime = BigNumber.from((await votingV2.provider.getBlock(params.startingBlock - 1)).timestamp);
+  const previousRoundId = previousTime.div(roundLength);
+
+  return { isNew: !roundId.eq(previousRoundId), roundId };
+};
+
+export const getRequestId = (identifier: string, time: BigNumber, ancillaryData: string): string => {
+  return utils.keccak256(
+    utils.defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData])
+  );
 };
