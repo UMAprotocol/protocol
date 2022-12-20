@@ -67,7 +67,7 @@ interface OptimisticAsserterInterface {
         uint256 bond
     );
 
-    event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
+    event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
 
     event AssertionSettled(
         bytes32 indexed assertionId,
