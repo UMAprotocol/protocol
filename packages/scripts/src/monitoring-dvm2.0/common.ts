@@ -1,4 +1,5 @@
-import { VotingV2Ethers } from "@uma/contracts-node";
+import { VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
+import { TypedEventFilter } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/commons";
 import { BigNumber } from "ethers";
 import { increaseEvmTime } from "../utils/utils";
 
@@ -25,6 +26,49 @@ export const getSumSlashedEvents = async (votingV2: VotingV2Ethers): Promise<Big
   return voterSlashedEvents
     .map((voterSlashedEvent) => voterSlashedEvent.args.slashedTokens)
     .reduce((a, b) => a.add(b), ethers.BigNumber.from(0));
+};
+
+export const getNumberSlashedEvents = async (votingV2: VotingV2Ethers): Promise<number> => {
+  const voterSlashedEvents = await votingV2.queryFilter(votingV2.filters.VoterSlashed(), 0, "latest");
+  return voterSlashedEvents.length;
+};
+
+export const getVotingTokenExternalTransfersAmount = async (
+  votingToken: VotingTokenEthers,
+  votingV2: VotingV2Ethers
+): Promise<BigNumber> => {
+  const transferEvents = await votingToken.queryFilter(
+    votingToken.filters.Transfer(null, votingV2.address, null),
+    0,
+    "latest"
+  );
+
+  let sumExternalTransfers = BigNumber.from(0);
+
+  for (let i = 0; i < transferEvents.length; i++) {
+    const transferEvent = transferEvents[i];
+    const allVotingV2Events = await votingV2.queryFilter(
+      "*" as TypedEventFilter<void, void>,
+      transferEvent.blockNumber,
+      transferEvent.blockNumber
+    );
+    // Check that at there is a VotingV2 contract event with the same transaction hash as the transfer event.
+    // If there is not, then this is an external transfer.
+    if (!allVotingV2Events.some((stakedEvent) => stakedEvent.transactionHash === transferEvent.transactionHash)) {
+      sumExternalTransfers = sumExternalTransfers.add(transferEvent.args.value);
+    }
+  }
+
+  return sumExternalTransfers;
+};
+
+export const votingV2VotingBalanceWithoutExternalTransfers = async (
+  votingToken: VotingTokenEthers,
+  votingV2: VotingV2Ethers
+): Promise<BigNumber> => {
+  const votingV2Balance = await votingToken.balanceOf(votingV2.address);
+  const externalVotingTokenTransfers = await getVotingTokenExternalTransfersAmount(votingToken, votingV2);
+  return votingV2Balance.sub(externalVotingTokenTransfers);
 };
 
 export const unstakeFromStakedAccount = async (votingV2: VotingV2Ethers, voter: string): Promise<void> => {

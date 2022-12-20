@@ -6,9 +6,16 @@
 // yarn hardhat run ./src/monitoring-dvm2.0/unstake.ts
 
 import { VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
+import { BigNumber } from "ethers";
 import { getContractInstance } from "../utils/contracts";
-import { forkNetwork, getForkChainId } from "../utils/utils";
-import { getUniqueVoters, unstakeFromStakedAccount, updateTrackers } from "./common";
+import { bigNumberAbsDiff, forkNetwork, getForkChainId } from "../utils/utils";
+import {
+  getNumberSlashedEvents,
+  getUniqueVoters,
+  unstakeFromStakedAccount,
+  updateTrackers,
+  votingV2VotingBalanceWithoutExternalTransfers,
+} from "./common";
 
 async function main() {
   if (!process.env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
@@ -35,9 +42,17 @@ async function main() {
     }
   }
 
-  // Balance in voting token of voting v2 should be 0
-  const votingTokenBalance = await votingToken.balanceOf(votingV2.address);
-  if (votingTokenBalance.toString() != "0") throw new Error("Voting token balance is not 0");
+  const numberSlashedEvents = await getNumberSlashedEvents(votingV2);
+  const votingV2BalanceWithoutExternalTransfers = await votingV2VotingBalanceWithoutExternalTransfers(
+    votingToken,
+    votingV2
+  );
+  const absDiff = bigNumberAbsDiff(BigNumber.from(0), votingV2BalanceWithoutExternalTransfers);
+  // Balance in voting token of voting v2 should be 0 (with tolerance)
+  if (!absDiff.lte(numberSlashedEvents))
+    throw new Error(
+      `VotingV2 balance should be between 0 and ${numberSlashedEvents} but is ${votingV2BalanceWithoutExternalTransfers}`
+    );
 
   // VotingV2 cumulativeStake should be 0
   const cumulativeStake = await votingV2.cumulativeStake();

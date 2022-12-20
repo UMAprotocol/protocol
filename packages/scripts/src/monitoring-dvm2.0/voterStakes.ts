@@ -9,8 +9,13 @@
 const hre = require("hardhat");
 import { VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { getContractInstance } from "../utils/contracts";
-import { forkNetwork, getForkChainId } from "../utils/utils";
-import { getUniqueVoters, updateTrackers } from "./common";
+import { bigNumberAbsDiff, forkNetwork, getForkChainId } from "../utils/utils";
+import {
+  getNumberSlashedEvents,
+  getUniqueVoters,
+  updateTrackers,
+  votingV2VotingBalanceWithoutExternalTransfers,
+} from "./common";
 const { ethers } = hre;
 
 async function main() {
@@ -38,11 +43,15 @@ async function main() {
 
   const sumStakes = voterStakes.reduce((a, b) => a.add(b), ethers.BigNumber.from(0));
 
-  const votingV2Balance = await votingToken.balanceOf(votingV2.address);
-
-  if (!sumStakes.eq(votingV2Balance)) {
+  const numberSlashedEvents = await getNumberSlashedEvents(votingV2);
+  const votingV2BalanceWithoutExternalTransfers = await votingV2VotingBalanceWithoutExternalTransfers(
+    votingToken,
+    votingV2
+  );
+  const absDiff = bigNumberAbsDiff(sumStakes, votingV2BalanceWithoutExternalTransfers);
+  if (!absDiff.lte(numberSlashedEvents)) {
     throw new Error(
-      "The sum of all the stakes should be equal to the votingV2 balance, instead it is: " + sumStakes.toString()
+      `The difference between sumStakes(${sumStakes}) and votingV2BalanceWithoutExternalTransfers(${votingV2BalanceWithoutExternalTransfers}) should be less than ${numberSlashedEvents} but it is ${absDiff}.`
     );
   }
   console.log("Voter staked health check passed! The sum of all the stakes is equal to the votingV2 balance");

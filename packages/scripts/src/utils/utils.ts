@@ -1,6 +1,7 @@
 const hre = require("hardhat");
 const { ethers } = hre;
 import { JsonRpcProvider } from "@ethersproject/providers";
+import { BigNumber } from "ethers";
 
 export const increaseEvmTime = async (time: number): Promise<void> => {
   await ethers.provider.send("evm_increaseTime", [time]);
@@ -26,4 +27,8 @@ export const forkNetwork = (jsonRpcUrl: string, blockNumber?: string): Promise<v
 export const getForkChainId = async (jsonRpcUrl: string): Promise<number> => {
   const provider = new JsonRpcProvider(jsonRpcUrl);
   return (await provider.getNetwork()).chainId;
+};
+
+export const bigNumberAbsDiff = (a: BigNumber, b: BigNumber): BigNumber => {
+  return a.gt(b) ? a.sub(b) : b.sub(a);
 };
