@@ -52,8 +52,10 @@ export function createNewLogger(
   transportsConfig = {},
   botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
 ): AugmentedLogger {
+  const sessionId = Date.now();
   const logger = winston.createLogger({
     level: "debug",
+    defaultMeta: { sessionId },
     format: winston.format.combine(
       winston.format(botIdentifyFormatter(botIdentifier))(),
       winston.format((logEntry) => logEntry)(),
