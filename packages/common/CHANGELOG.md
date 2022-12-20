@@ -13,7 +13,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
-
 ## [2.28.4](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.3...@uma/common@2.28.4) (2022-11-23)
 
 **Note:** Version bump only for package @uma/common
