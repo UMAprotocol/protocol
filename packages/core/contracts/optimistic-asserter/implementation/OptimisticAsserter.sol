@@ -461,7 +461,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         if (cachedCurrencies[currency].isWhitelisted) return true;
         cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
         cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
-        return cachedCurrencies[currency].isWhitelisted;
+        return cachedCurrencies[currency].isWhitelisted && cachedCurrencies[currency].finalFee > 0;
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {

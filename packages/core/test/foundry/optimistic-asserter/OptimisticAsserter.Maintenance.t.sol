@@ -75,6 +75,58 @@ contract MaintenanceTest is Common {
         assertEq(cachedFinalFee, newCurrencyFinalFee);
     }
 
+    function test_NewCurrencyWithBadFinalFee() public {
+        TestnetERC20 newCurrency = new TestnetERC20("New Currency", "NEW", 18);
+        uint256 newCurrencyBond = 100e18;
+
+        // Whitelist the currency but dont set the final fee in the store. This currency is effectively misconfigured.
+        AddressWhitelist addressWhitelist =
+            AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+
+        vm.prank(TestAddress.owner);
+        addressWhitelist.addToWhitelist(address(newCurrency));
+
+        // Assertion should revert due to the currency not having a final fee set.
+        vm.startPrank(TestAddress.account1);
+        newCurrency.allocateTo(TestAddress.account1, newCurrencyBond);
+        newCurrency.approve(address(optimisticAsserter), newCurrencyBond);
+        vm.expectRevert("Unsupported currency");
+        optimisticAsserter.assertTruth(
+            trueClaimAssertion,
+            TestAddress.account1,
+            address(0),
+            address(0),
+            defaultLiveness,
+            newCurrency,
+            newCurrencyBond,
+            defaultIdentifier,
+            bytes32(0) // No domain
+        );
+        vm.stopPrank();
+
+        // Set the final fee and the assertion should succeed and the cashe should update as well.
+        Store store = Store(finder.getImplementationAddress(OracleInterfaces.Store));
+        uint256 newCurrencyFinalFee = (newCurrencyBond * optimisticAsserter.burnedBondPercentage()) / 1e18;
+        vm.prank(TestAddress.owner);
+        store.setFinalFee(address(newCurrency), FixedPoint.Unsigned(newCurrencyFinalFee));
+
+        vm.prank(TestAddress.account1);
+        optimisticAsserter.assertTruth(
+            trueClaimAssertion,
+            TestAddress.account1,
+            address(0),
+            address(0),
+            defaultLiveness,
+            newCurrency,
+            newCurrencyBond,
+            defaultIdentifier,
+            bytes32(0) // No domain
+        );
+        (bool cachedWhitelist, uint256 cachedFinalFee) = optimisticAsserter.cachedCurrencies(address(newCurrency));
+        assertTrue(cachedWhitelist);
+        assertEq(cachedFinalFee, newCurrencyFinalFee);
+    }
+
     function test_NewIdentifier() public {
         bytes32 newIdentifier = "New Identifier";
         IdentifierWhitelistInterface identifierWhitelist =
