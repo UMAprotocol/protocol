@@ -521,6 +521,7 @@ describe("SpamGuard", function () {
     await voting.methods.commitVote(spamDeleteIdentifier, signalDeleteTime, hash1).send({ from: account2 });
 
     // There should now be 5 requests as the commit triggered update trackers adding 2 rolled spam requests.
+    // TODO: Check if this really should be the expected behavior.
     assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 5);
 
     // Reveal the spam deletion vote.
@@ -566,7 +567,7 @@ describe("SpamGuard", function () {
 
     // Update trackers should not add any new requests as the spam requests were deleted.
     await voting.methods.updateTrackers(account2).send({ from: account2 });
-    // assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 5);
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 5);
 
     // There should still be no pending requests.
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
@@ -578,25 +579,25 @@ describe("SpamGuard", function () {
         { identifier: spamIdentifier, time: time + 1 },
       ])
       .call();
-    // assert.equal(statuses[0].status, "0");
-    // assert.equal(statuses[1].status, "0");
-    // assert.equal(statuses[0].lastVotingRound, "0");
-    // assert.equal(statuses[1].lastVotingRound, "0");
+    assert.equal(statuses[0].status, "0");
+    assert.equal(statuses[1].status, "0");
+    assert.equal(statuses[0].lastVotingRound, "0");
+    assert.equal(statuses[1].lastVotingRound, "0");
 
     // Also all gettable spam request struct elements should still be initialized to defaults.
     spamRequest1 = await voting.methods.priceRequests(spamRequestId1).call();
     spamRequest2 = await voting.methods.priceRequests(spamRequestId2).call();
-    // assert.equal(spamRequest1.lastVotingRound, "0");
+    assert.equal(spamRequest1.lastVotingRound, "0");
     assert.isFalse(spamRequest1.isGovernance);
     assert.equal(spamRequest1.pendingRequestIndex, "0");
-    // assert.equal(spamRequest1.priceRequestIndex, "0");
+    assert.equal(spamRequest1.priceRequestIndex, "0");
     assert.equal(spamRequest1.time, "0");
     assert.equal(spamRequest1.identifier, padRight(utf8ToHex(""), 64));
     assert.isNull(spamRequest1.ancillaryData);
-    // assert.equal(spamRequest2.lastVotingRound, "0");
+    assert.equal(spamRequest2.lastVotingRound, "0");
     assert.isFalse(spamRequest2.isGovernance);
     assert.equal(spamRequest2.pendingRequestIndex, "0");
-    // assert.equal(spamRequest2.priceRequestIndex, "0");
+    assert.equal(spamRequest2.priceRequestIndex, "0");
     assert.equal(spamRequest2.time, "0");
     assert.equal(spamRequest2.identifier, padRight(utf8ToHex(""), 64));
     assert.isNull(spamRequest2.ancillaryData);
