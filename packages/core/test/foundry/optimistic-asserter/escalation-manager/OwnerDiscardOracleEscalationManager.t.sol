@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/OwnerDiscardOracleEscalationManager.sol";
 
-contract OwnerDiscardOracleEscalationManagerTest is Common {
+contract OwnerDiscardOracleEscalationManagerTest is CommonOptimisticAsserterTest {
     OwnerDiscardOracleEscalationManager escalationManager;
 
     function setUp() public {
