@@ -7,12 +7,8 @@ const { ethers } = hre;
 
 export const getUniqueVoters = async (votingV2: VotingV2Ethers): Promise<string[]> => {
   const stakedEvents = await votingV2.queryFilter(votingV2.filters.Staked(null, null, null));
-
-  const uniqueVoters: string[] = [];
-  for (const event of stakedEvents) {
-    if (!uniqueVoters.includes(event.args.voter)) uniqueVoters.push(event.args.voter);
-  }
-  return uniqueVoters;
+  const uniqueVoters = new Set<string>(stakedEvents.map((event) => event.args.voter));
+  return Array.from(uniqueVoters);
 };
 
 export const updateTrackers = async (votingV2: VotingV2Ethers, voters: string[]): Promise<void> => {
@@ -48,12 +44,25 @@ export const unstakeFromStakedAccount = async (votingV2: VotingV2Ethers, voter: 
       await tx.wait();
     }
 
+    // Move time to the next commit phase if in active reveal phase.
+    const inActiveRevealPhase = (await votingV2.currentActiveRequests()) && (await votingV2.getVotePhase()) == 1;
+    if (inActiveRevealPhase) {
+      const phaseLength = (await votingV2.voteTiming()).phaseLength;
+      const currentTime = await votingV2.getCurrentTime();
+      let newTime = currentTime;
+      const isCommitPhase = newTime.div(phaseLength).mod(2).eq(0);
+      if (!isCommitPhase) {
+        newTime = newTime.add(phaseLength.sub(newTime.mod(phaseLength)));
+      }
+      await increaseEvmTime(newTime.sub(currentTime).toNumber());
+    }
+
     stakeBalance = await votingV2.callStatic.getVoterStakePostUpdate(voter);
     const tx = await votingV2.connect(impersonatedSigner).requestUnstake(stakeBalance);
     await tx.wait();
   }
 
-  await increaseEvmTime(await (await votingV2.unstakeCoolDown()).toNumber());
+  await increaseEvmTime((await votingV2.unstakeCoolDown()).toNumber());
 
   const pendingUnstake = (await votingV2.voterStakes(voter)).pendingUnstake;
   if (pendingUnstake.gt(ethers.BigNumber.from(0))) {

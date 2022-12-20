@@ -26,9 +26,13 @@ async function main() {
   await updateTrackers(votingV2, uniqueVoters);
 
   console.log("Unstaking from all voters");
-  // If the script fails here, it means that some voters are not able to unstake their tokens.
   for (const voter of uniqueVoters) {
-    await unstakeFromStakedAccount(votingV2, voter);
+    try {
+      await unstakeFromStakedAccount(votingV2, voter);
+    } catch (err) {
+      console.log("Unstake failed for voter", voter, err);
+      throw err;
+    }
   }
 
   // Balance in voting token of voting v2 should be 0
