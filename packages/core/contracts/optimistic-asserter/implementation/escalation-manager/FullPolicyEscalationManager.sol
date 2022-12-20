@@ -29,11 +29,11 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     event ArbitrationResolutionSet(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bool resolution);
 
-    event DisputeCallerWhitelistSet(address disputeCaller, bool whitelisted);
+    event DisputeCallerWhitelistSet(address indexed disputeCaller, bool whitelisted);
 
-    event AssertingCallerWhitelistSet(address assertingCaller, bool whitelisted);
+    event AssertingCallerWhitelistSet(address indexed assertingCaller, bool whitelisted);
 
-    event AsserterWhitelistSet(address asserter, bool whitelisted);
+    event AsserterWhitelistSet(address indexed asserter, bool whitelisted);
 
     bool public blockByAssertingCaller; // True if assertions are allowed only by whitelisted asserting callers.
 
