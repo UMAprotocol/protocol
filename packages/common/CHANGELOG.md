@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.4...@uma/common@2.29.0) (2022-12-20)
+
+
+### Features
+
+* restructure core contracts directory ([#4207](https://github.com/UMAprotocol/protocol/issues/4207)) ([40b5b2c](https://github.com/UMAprotocol/protocol/commit/40b5b2cbc1591201d99f2545a2b22b744b01e663))
+
+
+
+
+
 ## [2.28.4](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.3...@uma/common@2.28.4) (2022-11-23)
 
 **Note:** Version bump only for package @uma/common
