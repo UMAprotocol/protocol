@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/examples/PredictionMarket.sol";
 
-contract PredictionMarketTestCommon is Common {
+contract PredictionMarketTestCommon is CommonOptimisticAsserterTest {
     PredictionMarket public predictionMarket;
     string outcome1 = "Red";
     string outcome2 = "Blue";
