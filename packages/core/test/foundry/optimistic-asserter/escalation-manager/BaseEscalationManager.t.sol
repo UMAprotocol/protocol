@@ -40,4 +40,15 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
         int256 price = escalationManager.getPrice(identifier, time, ancillaryData);
         assertTrue(price == 0);
     }
+
+    function test_RevertIf_NotOptimisticAsserter() public {
+        vm.expectRevert("Caller must be the optimistic asserter");
+        escalationManager.requestPrice(identifier, time, ancillaryData);
+
+        vm.expectRevert("Caller must be the optimistic asserter");
+        escalationManager.assertionResolvedCallback(bytes32(0), true);
+
+        vm.expectRevert("Caller must be the optimistic asserter");
+        escalationManager.assertionDisputedCallback(bytes32(0));
+    }
 }
