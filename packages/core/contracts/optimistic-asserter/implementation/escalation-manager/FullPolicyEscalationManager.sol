@@ -121,7 +121,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         bool _arbitrateViaEscalationManager,
         bool _discardOracle
     ) public onlyOwner {
-        require(!_blockByAsserter || (_blockByAsserter && _blockByAssertingCaller), "Cannot block only by asserter");
+        require(!_blockByAsserter || _blockByAssertingCaller, "Cannot block only by asserter");
         blockByAssertingCaller = _blockByAssertingCaller;
         blockByAsserter = _blockByAsserter;
         validateDisputers = _validateDisputers;
