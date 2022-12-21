@@ -203,8 +203,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             currency,
             bond
         );
-
-        return assertionId;
     }
 
     /**
