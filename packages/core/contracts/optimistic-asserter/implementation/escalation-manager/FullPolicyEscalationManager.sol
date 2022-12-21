@@ -86,7 +86,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         uint256 time,
         bytes memory ancillaryData
     ) public view override returns (int256) {
-        bytes32 requestId = keccak256(abi.encode(identifier, time, ancillaryData));
+        bytes32 requestId = getRequestId(identifier, time, ancillaryData);
         require(arbitrationResolutions[requestId].valueSet, "Arbitration resolution not set");
         if (arbitrationResolutions[requestId].resolution) return 1e18;
         return 0;
@@ -152,7 +152,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         bytes memory ancillaryData,
         bool arbitrationResolution
     ) public onlyOwner {
-        bytes32 requestId = keccak256(abi.encode(identifier, time, ancillaryData));
+        bytes32 requestId = getRequestId(identifier, time, ancillaryData);
         arbitrationResolutions[requestId] = ArbitrationResolution(true, arbitrationResolution);
         emit ArbitrationResolutionSet(identifier, time, ancillaryData, arbitrationResolution);
     }
@@ -184,6 +184,21 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     function setWhitelistedAsserters(address asserter, bool value) public onlyOwner {
         whitelistedAsserters[asserter] = value;
         emit AsserterWhitelistSet(asserter, value);
+    }
+
+    /**
+     * @notice Calculates price request identifier for a given identifier, time, and ancillary data.
+     * @param identifier uniquely identifies the price requested.
+     * @param time unix timestamp of the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @return price request identifier.
+     */
+    function getRequestId(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encode(identifier, time, ancillaryData));
     }
 
     // Checks if an assertion is blocked depending on the blockByAssertingCaller / blockByAsserter settings and the
