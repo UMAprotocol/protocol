@@ -8,7 +8,7 @@ contract WhitelistDisputerEscalationManagerTest is CommonOptimisticAsserterTest 
     WhitelistDisputerEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new WhitelistDisputerEscalationManager();
+        escalationManager = new WhitelistDisputerEscalationManager(address(optimisticAsserter));
     }
 
     function test_RevertIf_NotOwner() public {

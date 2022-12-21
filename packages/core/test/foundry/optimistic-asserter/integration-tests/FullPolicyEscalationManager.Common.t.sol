@@ -14,6 +14,6 @@ contract FullPolicyEscalationManagerCommon is BaseEscalationManagerTest {
         defaultCurrency.approve(address(assertingCaller), defaultBond);
         vm.stopPrank();
 
-        escalationManager = address(new FullPolicyEscalationManager());
+        escalationManager = address(new FullPolicyEscalationManager(address(optimisticAsserter)));
     }
 }

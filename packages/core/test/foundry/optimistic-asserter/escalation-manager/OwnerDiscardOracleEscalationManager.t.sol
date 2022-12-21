@@ -8,7 +8,7 @@ contract OwnerDiscardOracleEscalationManagerTest is CommonOptimisticAsserterTest
     OwnerDiscardOracleEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new OwnerDiscardOracleEscalationManager();
+        escalationManager = new OwnerDiscardOracleEscalationManager(address(optimisticAsserter));
     }
 
     function test_SetDiscardOracle() public {

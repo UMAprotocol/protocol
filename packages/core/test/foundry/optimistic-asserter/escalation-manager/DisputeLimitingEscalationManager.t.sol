@@ -41,10 +41,10 @@ contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
     }
 
     function test_RevertIf_UnauthorizedCaller() public {
-        vm.expectRevert("Not authorized");
+        vm.expectRevert("Caller must be the optimistic asserter");
         escalationManager.assertionDisputedCallback(disputedAssertionId);
 
-        vm.expectRevert("Not authorized");
+        vm.expectRevert("Caller must be the optimistic asserter");
         escalationManager.assertionResolvedCallback(disputedAssertionId, false);
     }
 

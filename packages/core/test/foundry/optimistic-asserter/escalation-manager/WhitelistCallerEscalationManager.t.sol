@@ -8,7 +8,7 @@ contract WhitelistCallerEscalationManagerTest is CommonOptimisticAsserterTest {
     WhitelistCallerEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new WhitelistCallerEscalationManager();
+        escalationManager = new WhitelistCallerEscalationManager(mockOptimisticAsserterAddress);
     }
 
     function test_AssertingCallerWhitelist() public {
@@ -16,14 +16,12 @@ contract WhitelistCallerEscalationManagerTest is CommonOptimisticAsserterTest {
 
         // If the asserting caller is not whitelisted, then the assertion should be blocked.
         _mockGetAssertionAssertingCaller(mockAssertingCallerAddress, assertionId);
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policyNotWhitelisted =
             escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policyNotWhitelisted.blockAssertion);
 
         // If the asserting caller is whitelisted, then the assertion should not be blocked.
         escalationManager.setAssertingCallerInWhitelist(mockAssertingCallerAddress, true);
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policyWhitelisted =
             escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policyWhitelisted.blockAssertion);

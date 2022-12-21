@@ -1,6 +1,8 @@
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../interfaces/EscalationManagerInterface.sol";
+import "../../interfaces/OptimisticAsserterInterface.sol";
 
 /**
  * @title BaseEscalationManager
@@ -8,8 +10,26 @@ import "../../interfaces/EscalationManagerInterface.sol";
  * assertions. This base implementation simply exposes the required interface and provides a default implementation
  * (returning default values or doing nothing).
  */
-contract BaseEscalationManager is EscalationManagerInterface {
+contract BaseEscalationManager is EscalationManagerInterface, Ownable {
+    OptimisticAsserterInterface public immutable optimisticAsserter;
+
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+
+    /**
+     * @notice Reverts unless the configured optimistic asserter is the caller.
+     */
+    modifier onlyOptimisticAsserter() {
+        require(msg.sender == address(optimisticAsserter), "Caller must be the optimistic asserter");
+        _;
+    }
+
+    /**
+     * @notice Constructs the escalation manager.
+     * @param _optimisticAsserter the optimistic asserter to use.
+     */
+    constructor(address _optimisticAsserter) {
+        optimisticAsserter = OptimisticAsserterInterface(_optimisticAsserter);
+    }
 
     /**
      * @notice Returns the assertion policy for the given assertionId.
@@ -62,13 +82,18 @@ contract BaseEscalationManager is EscalationManagerInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public virtual override {
+    ) public virtual override onlyOptimisticAsserter {
         emit PriceRequestAdded(identifier, time, ancillaryData);
     }
 
     // Callback function that is called by Optimistic Asserter when an assertion is resolved.
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public virtual override {}
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully)
+        public
+        virtual
+        override
+        onlyOptimisticAsserter
+    {}
 
     // Callback function that is called by Optimistic Asserter when an assertion is disputed.
-    function assertionDisputedCallback(bytes32 assertionId) public virtual override {}
+    function assertionDisputedCallback(bytes32 assertionId) public virtual override onlyOptimisticAsserter {}
 }

@@ -12,14 +12,13 @@ contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTest {
     address anotherCurrency = TestAddress.random;
 
     function setUp() public {
-        escalationManager = new SuperbondEscalationManager();
+        escalationManager = new SuperbondEscalationManager(mockOptimisticAsserterAddress);
         escalationManager.setSuperbond(superbond);
         escalationManager.setSuperbondCurrency(address(defaultCurrency));
     }
 
     function test_SetSuperbond() public {
         _mockGetAssertion(assertionId, bond);
-        vm.prank(mockOptimisticAsserterAddress);
         SuperbondEscalationManager.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policy.blockAssertion);
         assertFalse(policy.arbitrateViaEscalationManager);
@@ -27,7 +26,6 @@ contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTest {
         assertFalse(policy.validateDisputers);
 
         _mockGetAssertion(assertionId, superbond + 1);
-        vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertFalse(policy.blockAssertion);
@@ -38,7 +36,6 @@ contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTest {
         // If the superbond currency is different than the assertion currency, then we use the DVM.
         escalationManager.setSuperbondCurrency(anotherCurrency);
         _mockGetAssertion(assertionId, superbond + 1);
-        vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertFalse(policy.blockAssertion);

@@ -1,10 +1,8 @@
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
-import "../../interfaces/OptimisticAsserterInterface.sol";
 
-contract WhitelistAsserterEscalationManager is BaseEscalationManager, Ownable {
+contract WhitelistAsserterEscalationManager is BaseEscalationManager {
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
     // Security of returning correct policy depends on requesting contract passing msg.sender as asserter.
     address public assertingCaller;
@@ -12,6 +10,8 @@ contract WhitelistAsserterEscalationManager is BaseEscalationManager, Ownable {
     mapping(address => bool) public whitelistedAsserters;
 
     event AssertingCallerSet(address indexed assertingCaller);
+
+    constructor(address _optimisticAsserter) BaseEscalationManager(_optimisticAsserter) {}
 
     // Set the address of the contract that will be allowed to use Optimistic Asserter.
     // This can only be set once. We do not set this at constructor just to allow for some flexibility in the ordering
@@ -28,7 +28,6 @@ contract WhitelistAsserterEscalationManager is BaseEscalationManager, Ownable {
     }
 
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
-        OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         bool blocked = _checkIfAssertionBlocked(assertion);
         return

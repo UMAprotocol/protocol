@@ -14,7 +14,7 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function setUp() public {
-        escalationManager = new BaseEscalationManager();
+        escalationManager = new BaseEscalationManager(address(optimisticAsserter));
     }
 
     function test_GetAssertionPolicy() public {
@@ -32,6 +32,7 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
     function test_RequestPrice() public {
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(identifier, time, ancillaryData);
+        vm.prank(address(optimisticAsserter));
         escalationManager.requestPrice(identifier, time, ancillaryData);
     }
 
