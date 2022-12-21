@@ -5,27 +5,19 @@
 // CUSTOM_NODE_URL=https://<goerli OR mainnet>.infura.io/v3/<YOUR-INFURA-KEY> \
 // yarn hardhat run ./src/monitoring-dvm2.0/unstake.ts
 
-import { VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { BigNumber } from "ethers";
-import { getContractInstance } from "../utils/contracts";
-import { bigNumberAbsDiff, forkNetwork, getForkChainId } from "../utils/utils";
+import { bigNumberAbsDiff } from "../utils/utils";
 import {
   getNumberSlashedEvents,
   getUniqueVoters,
+  getVotingContracts,
   unstakeFromStakedAccount,
   updateTrackers,
   votingV2VotingBalanceWithoutExternalTransfers,
 } from "./common";
 
 async function main() {
-  if (!process.env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
-  await forkNetwork(process.env.CUSTOM_NODE_URL);
-  const chainId = await getForkChainId(process.env.CUSTOM_NODE_URL);
-
-  if (!chainId || (chainId != 1 && chainId != 5)) throw new Error("This script should be run on mainnet or goerli");
-
-  const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", undefined, chainId);
-  const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken", undefined, chainId);
+  const { votingV2, votingToken } = await getVotingContracts();
 
   const uniqueVoters = await getUniqueVoters(votingV2);
 

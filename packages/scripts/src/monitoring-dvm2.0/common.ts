@@ -1,10 +1,23 @@
 import { VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { TypedEventFilter } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/commons";
 import { BigNumber } from "ethers";
-import { increaseEvmTime } from "../utils/utils";
+import { getContractInstance } from "../utils/contracts";
+import { forkNetwork, getForkChainId, increaseEvmTime } from "../utils/utils";
 
 const hre = require("hardhat");
 const { ethers } = hre;
+
+export const getVotingContracts = async (): Promise<{ votingV2: VotingV2Ethers; votingToken: VotingTokenEthers }> => {
+  if (!process.env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
+  await forkNetwork(process.env.CUSTOM_NODE_URL);
+  const chainId = await getForkChainId(process.env.CUSTOM_NODE_URL);
+
+  if (!chainId || (chainId != 1 && chainId != 5)) throw new Error("This script should be run on mainnet or goerli");
+
+  const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", undefined, chainId);
+  const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken", undefined, chainId);
+  return { votingV2, votingToken };
+};
 
 export const getUniqueVoters = async (votingV2: VotingV2Ethers): Promise<string[]> => {
   const stakedEvents = await votingV2.queryFilter(votingV2.filters.Staked(null, null, null));
@@ -52,7 +65,7 @@ export const getVotingTokenExternalTransfersAmount = async (
       transferEvent.blockNumber,
       transferEvent.blockNumber
     );
-    // Check that at there is a VotingV2 contract event with the same transaction hash as the transfer event.
+    // Check that there is a VotingV2 contract event with the same transaction hash as the transfer event.
     // If there is not, then this is an external transfer.
     if (!allVotingV2Events.some((stakedEvent) => stakedEvent.transactionHash === transferEvent.transactionHash)) {
       sumExternalTransfers = sumExternalTransfers.add(transferEvent.args.value);
