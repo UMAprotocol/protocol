@@ -40,8 +40,8 @@ async function main() {
     votingV2
   );
 
-  // Balance in voting token of voting v2 should be 0 with a tolerance of numberSlashedEvents because every slash can
-  // produce 1 WEI of imprecision in the balance because of rounding.
+  // Balance in voting token of voting v2 should be 0 with a tolerance of numberSlashedEvents, as every slash can result
+  // in 1 WEI of imprecision due to rounding.
   const absDiff = bigNumberAbsDiff(BigNumber.from(0), votingV2BalanceWithoutExternalTransfers);
   if (!absDiff.lte(numberSlashedEvents))
     throw new Error(
