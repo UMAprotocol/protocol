@@ -465,21 +465,23 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
-        if (assertions[assertionId].callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient)
-                .assertionResolvedCallback(assertionId, assertedTruthfully);
-        if (_getEscalationManager(assertionId) != address(0))
-            EscalationManagerInterface(_getEscalationManager(assertionId)).assertionResolvedCallback(
+        address callbackRecipient = assertions[assertionId].callbackRecipient;
+        address escalationManager = _getEscalationManager(assertionId);
+        if (callbackRecipient != address(0))
+            OptimisticAsserterCallbackRecipientInterface(callbackRecipient).assertionResolvedCallback(
                 assertionId,
                 assertedTruthfully
             );
+        if (escalationManager != address(0))
+            EscalationManagerInterface(escalationManager).assertionResolvedCallback(assertionId, assertedTruthfully);
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
-        if (assertions[assertionId].callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient)
-                .assertionDisputedCallback(assertionId);
-        if (_getEscalationManager(assertionId) != address(0))
-            EscalationManagerInterface(_getEscalationManager(assertionId)).assertionDisputedCallback(assertionId);
+        address callbackRecipient = assertions[assertionId].callbackRecipient;
+        address escalationManager = _getEscalationManager(assertionId);
+        if (callbackRecipient != address(0))
+            OptimisticAsserterCallbackRecipientInterface(callbackRecipient).assertionDisputedCallback(assertionId);
+        if (escalationManager != address(0))
+            EscalationManagerInterface(escalationManager).assertionDisputedCallback(assertionId);
     }
 }
