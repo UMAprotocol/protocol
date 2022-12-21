@@ -92,7 +92,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @return assertionId unique identifier for this assertion.
      */
 
-    function assertTruthWithDefaults(bytes calldata claim, address asserter) public returns (bytes32 assertionId) {
+    function assertTruthWithDefaults(bytes calldata claim, address asserter) external returns (bytes32 assertionId) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
@@ -214,7 +214,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to dispute.
      * @param disputer receives bonds back at settlement.
      */
-    function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant {
+    function disputeAssertion(bytes32 assertionId, address disputer) external nonReentrant {
         require(disputer != address(0), "Disputer cant be 0");
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist");
@@ -289,7 +289,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to resolve and return the resolution for.
      * @return resolution of the assertion.
      */
-    function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool resolution) {
+    function settleAndGetAssertionResult(bytes32 assertionId) external returns (bool resolution) {
         // Note: re-entrancy guard is done in the inner settleAssertion call.
         if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertionResult(assertionId);
