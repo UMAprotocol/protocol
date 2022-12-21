@@ -119,17 +119,17 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * recipient _must_ implement these callbacks and not revert or the assertion resolution will be blocked.
      * @param escalationManager if configured, this address will control escalation properties of the assertion. This
      * means a) choosing to arbitrate via the UMA DVM, b) choosing to discard assertions on dispute, or choosing to
-     * validate disputes. Combining these, the asserter can define their own security properties the assertion.
+     * validate disputes. Combining these, the asserter can define their own security properties for the assertion.
      * escalationManager also _must_ implement the same callbacks as callbackRecipient.
      * @param liveness time to wait before the assertion can be resolved. Assertion can be disputed in this time.
      * @param currency bond currency pulled from the caller and held in escrow until the assertion is resolved.
      * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved. This
      * must be >= getMinimumBond(address(currency)).
-     * @param identifier UMA DVM identifier to use for price requests in the event of a dispute. Must be a pre-approved.
+     * @param identifier UMA DVM identifier to use for price requests in the event of a dispute. Must be pre-approved.
      * @param domainId optional domain that can be used to relate this assertion to others in the escalationManager and
      * can be used by the configured escalationManager to define custom behavior for groups of assertions. This is
      * typically used for "escalation games" by changing bonds or other assertion properties based on the other
-     * assertions that have come before. If not needed this value should be bytes32 to save gas.
+     * assertions that have come before. If not needed this value should be 0 to save gas.
      */
     function assertTruth(
         bytes memory claim,
@@ -177,7 +177,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             require(!assertionPolicy.blockAssertion, "Assertion not allowed"); // Check if the assertion is permitted.
             EscalationManagerSettings storage emSettings = assertions[assertionId].escalationManagerSettings;
             (emSettings.arbitrateViaEscalationManager, emSettings.discardOracle, emSettings.validateDisputers) = (
-                // Choose which oracle to arbitrate disputes via. If Set to true then the escalation manager will
+                // Choose which oracle to arbitrate disputes via. If set to true then the escalation manager will
                 // arbitrate disputes. Else, the DVM arbitrates disputes. This lets integrations "unplug" the DVM.
                 assertionPolicy.arbitrateViaEscalationManager,
                 // Choose whether to discard the Oracle result. If true then "throw away" the assertion. To get an
@@ -215,7 +215,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param disputer receives bonds back at settlement.
      */
     function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant {
-        require(disputer != address(0), "Disputer cant be 0");
+        require(disputer != address(0), "Disputer can't be 0");
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist");
         require(assertion.disputer == address(0), "Assertion already disputed");
