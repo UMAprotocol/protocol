@@ -17,7 +17,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
      * @param assertionId the assertionId to get the assertion policy for.
      * @return the assertion policy for the given assertionId.
      */
-    function getAssertionPolicy(bytes32 assertionId) public view virtual override returns (AssertionPolicy memory) {
+    function getAssertionPolicy(bytes32 assertionId) public view virtual returns (AssertionPolicy memory) {
         return
             AssertionPolicy({
                 blockAssertion: false,
@@ -34,7 +34,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
      * @param disputeCaller the caller of the dispute function.
      * @return bool true if the dispute is allowed, false otherwise.
      */
-    function isDisputeAllowed(bytes32 assertionId, address disputeCaller) public view virtual override returns (bool) {
+    function isDisputeAllowed(bytes32 assertionId, address disputeCaller) public view virtual returns (bool) {
         return true;
     }
 
@@ -50,7 +50,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view virtual override returns (int256) {}
+    ) public view virtual returns (int256) {}
 
     /**
      * @notice Implements price requesting logic for the escalation manager. This function is called by the Optimistic
@@ -63,13 +63,13 @@ contract BaseEscalationManager is EscalationManagerInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public virtual override {
+    ) public virtual {
         emit PriceRequestAdded(identifier, time, ancillaryData);
     }
 
     // Callback function that is called by Optimistic Asserter when an assertion is resolved.
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public virtual override {}
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public virtual {}
 
     // Callback function that is called by Optimistic Asserter when an assertion is disputed.
-    function assertionDisputedCallback(bytes32 assertionId) public virtual override {}
+    function assertionDisputedCallback(bytes32 assertionId) public virtual {}
 }
