@@ -464,23 +464,17 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
-        address callbackRecipient = assertions[assertionId].callbackRecipient;
-        address escalationManager = _getEscalationManager(assertionId);
-        if (callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(callbackRecipient).assertionResolvedCallback(
-                assertionId,
-                assertedTruthfully
-            );
-        if (escalationManager != address(0))
-            EscalationManagerInterface(escalationManager).assertionResolvedCallback(assertionId, assertedTruthfully);
+        address cr = assertions[assertionId].callbackRecipient;
+        address em = _getEscalationManager(assertionId);
+        if (cr != address(0))
+            OptimisticAsserterCallbackRecipientInterface(cr).assertionResolvedCallback(assertionId, assertedTruthfully);
+        if (em != address(0)) EscalationManagerInterface(em).assertionResolvedCallback(assertionId, assertedTruthfully);
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
-        address callbackRecipient = assertions[assertionId].callbackRecipient;
-        address escalationManager = _getEscalationManager(assertionId);
-        if (callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(callbackRecipient).assertionDisputedCallback(assertionId);
-        if (escalationManager != address(0))
-            EscalationManagerInterface(escalationManager).assertionDisputedCallback(assertionId);
+        address cr = assertions[assertionId].callbackRecipient;
+        address em = _getEscalationManager(assertionId);
+        if (cr != address(0)) OptimisticAsserterCallbackRecipientInterface(cr).assertionDisputedCallback(assertionId);
+        if (em != address(0)) EscalationManagerInterface(em).assertionDisputedCallback(assertionId);
     }
 }
