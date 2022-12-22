@@ -10,7 +10,7 @@ contract WhitelistAsserterEscalationManagerTest is CommonOptimisticAsserterTest 
     bytes32 assertionId = "test";
 
     function setUp() public {
-        escalationManager = new WhitelistAsserterEscalationManager();
+        escalationManager = new WhitelistAsserterEscalationManager(mockOptimisticAsserterAddress);
     }
 
     function test_RevertIf_NotOwner() public {
@@ -49,7 +49,6 @@ contract WhitelistAsserterEscalationManagerTest is CommonOptimisticAsserterTest 
 
         // If the asserter is not whitelisted, then the assertion should be blocked.
         assertFalse(escalationManager.whitelistedAsserters(TestAddress.account1));
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policy.blockAssertion);
 
@@ -64,7 +63,6 @@ contract WhitelistAsserterEscalationManagerTest is CommonOptimisticAsserterTest 
         // If the asserter is whitelisted, then the assertion should not be blocked.
         escalationManager.setAsserterInWhitelist(TestAddress.account1, true);
         assertTrue(escalationManager.whitelistedAsserters(TestAddress.account1));
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policy.blockAssertion);
 
@@ -77,7 +75,6 @@ contract WhitelistAsserterEscalationManagerTest is CommonOptimisticAsserterTest 
 
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
 
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policy.blockAssertion);
     }

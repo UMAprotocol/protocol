@@ -9,7 +9,7 @@ contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
     bytes32 assertionId = bytes32(0);
 
     function setUp() public {
-        escalationManager = new FullPolicyEscalationManager();
+        escalationManager = new FullPolicyEscalationManager(address(mockOptimisticAsserterAddress));
     }
 
     function test_SetArbitrateResolution() public {
@@ -37,7 +37,6 @@ contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
 
     function test_ConfigureEscalationManager() public {
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
-        vm.prank(mockOptimisticAsserterAddress);
         FullPolicyEscalationManager.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policy.blockAssertion);
         assertFalse(policy.arbitrateViaEscalationManager);
@@ -46,7 +45,6 @@ contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
 
         escalationManager.configureEscalationManager(true, false, true, true, true);
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
-        vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertTrue(policy.blockAssertion);
@@ -58,14 +56,12 @@ contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
     function test_BlockByAssertingCaller() public {
         escalationManager.configureEscalationManager(true, false, true, true, true);
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
-        vm.prank(mockOptimisticAsserterAddress);
         FullPolicyEscalationManager.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertTrue(policy.blockAssertion);
 
         escalationManager.setWhitelistedAssertingCallers(TestAddress.account1, true);
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
-        vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertFalse(policy.blockAssertion);
@@ -74,21 +70,18 @@ contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
     function test_BlockByAssertingCallerAndAsserter() public {
         escalationManager.configureEscalationManager(true, true, true, true, true);
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
-        vm.prank(mockOptimisticAsserterAddress);
         FullPolicyEscalationManager.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertTrue(policy.blockAssertion);
 
         escalationManager.setWhitelistedAssertingCallers(TestAddress.account1, true);
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
-        vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertTrue(policy.blockAssertion);
 
         escalationManager.setWhitelistedAsserters(TestAddress.account1, true);
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
-        vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertFalse(policy.blockAssertion);
@@ -96,14 +89,12 @@ contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
 
     function test_DisputeCallerNotOnWhitelist() public {
         // If the dispute caller is not whitelisted, then the dispute should not be allowed.
-        vm.prank(mockOptimisticAsserterAddress);
         assertFalse(escalationManager.isDisputeAllowed(bytes32(0), TestAddress.account2));
     }
 
     function test_DisputeCallerOnWhitelist() public {
         // If the dispute caller is whitelisted, then the dispute should be allowed.
         escalationManager.setDisputeCallerInWhitelist(TestAddress.account2, true);
-        vm.prank(mockOptimisticAsserterAddress);
         assertTrue(escalationManager.isDisputeAllowed(bytes32(0), TestAddress.account2));
     }
 

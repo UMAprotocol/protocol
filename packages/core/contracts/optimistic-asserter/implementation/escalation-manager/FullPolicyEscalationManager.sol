@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
-import "../../interfaces/OptimisticAsserterInterface.sol";
 
 /**
  * @title The FullPolicyEscalationManager enables the owner to configure all policy parameters and store the arbitration
@@ -53,6 +52,12 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     mapping(address => bool) public whitelistedAssertingCallers; // Whitelisted assertingCallers that can assert prices.
 
     mapping(address => bool) public whitelistedAsserters; // Whitelisted asserters that can assert prices.
+
+    /**
+     * @notice Constructs the escalation manager.
+     * @param _optimisticAsserter the optimistic asserter to use.
+     */
+    constructor(address _optimisticAsserter) BaseEscalationManager(_optimisticAsserter) {}
 
     /**
      * @notice Returns the Assertion Policy defined by this contract's parameters and functions.
@@ -206,7 +211,6 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     // Checks if an assertion is blocked depending on the blockByAssertingCaller / blockByAsserter settings and the
     // assertion's properties.
     function _checkIfAssertionBlocked(bytes32 assertionId) internal view returns (bool) {
-        OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         return
             (blockByAssertingCaller &&
