@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import "./OptimisticAsserterCallbackRecipientInterface.sol";
-import "./OptimisticAsserterInterface.sol";
 
 interface EscalationManagerInterface is OptimisticAsserterCallbackRecipientInterface {
     struct AssertionPolicy {
