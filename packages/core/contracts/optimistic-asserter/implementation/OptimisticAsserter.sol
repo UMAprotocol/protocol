@@ -233,7 +233,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         // Send resolve callback if dispute resolution is discarded
         if (assertion.escalationManagerSettings.discardOracle) _callbackOnAssertionResolve(assertionId, false);
 
-        emit AssertionDisputed(assertionId, disputer);
+        emit AssertionDisputed(assertionId, msg.sender, disputer);
     }
 
     /**
