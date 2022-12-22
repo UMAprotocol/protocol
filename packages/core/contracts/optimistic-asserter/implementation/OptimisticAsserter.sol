@@ -84,9 +84,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     /**
-     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient
-     * or escalation manager is enabled. The caller is the asserter and is expected to provide a bond of the
-     * currencies finalFee/burnedBondPercentage (with burnedBondPercentage set to 50%, the bond is 2x final fee).
+     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient or
+     * escalation manager is enabled. The caller is expected to provide a bond of finalFee/burnedBondPercentage
+     * (with burnedBondPercentage set to 50%, the bond is 2x final fee) of the default currency.
      * @dev The caller must approve this contract to spend at least the result of getMinimumBond(defaultCurrency).
      * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
      * @return assertionId unique identifier for this assertion.
@@ -233,7 +233,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         // Send resolve callback if dispute resolution is discarded
         if (assertion.escalationManagerSettings.discardOracle) _callbackOnAssertionResolve(assertionId, false);
 
-        emit AssertionDisputed(assertionId, disputer);
+        emit AssertionDisputed(assertionId, msg.sender, disputer);
     }
 
     /**

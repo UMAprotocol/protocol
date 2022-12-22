@@ -52,7 +52,7 @@ interface OptimisticAsserterInterface {
 
     function getAssertionResult(bytes32 assertionId) external view returns (bool);
 
-    function getMinimumBond(address currencyAddress) external view returns (uint256);
+    function getMinimumBond(address currency) external view returns (uint256);
 
     event AssertionMade(
         bytes32 indexed assertionId,
@@ -67,7 +67,7 @@ interface OptimisticAsserterInterface {
         uint256 bond
     );
 
-    event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
+    event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
 
     event AssertionSettled(
         bytes32 indexed assertionId,
