@@ -58,7 +58,7 @@ contract CommonOptimisticAsserterTest is CommonTestBase {
         IERC20 currency,
         uint256 bond
     );
-    event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
+    event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
 
     event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
