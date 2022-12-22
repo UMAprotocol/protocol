@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "../fixtures/common/CommonTestBase.sol";
@@ -58,7 +58,7 @@ contract CommonOptimisticAsserterTest is CommonTestBase {
         IERC20 currency,
         uint256 bond
     );
-    event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
+    event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
 
     event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 

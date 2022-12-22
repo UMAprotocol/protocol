@@ -84,15 +84,15 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     /**
-     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient
-     * or escalation manager is enabled. The caller is the asserter and is expected to provide a bond of the
-     * currencies finalFee/burnedBondPercentage (with burnedBondPercentage set to 50%, the bond is 2x final fee).
+     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient or
+     * escalation manager is enabled. The caller is expected to provide a bond of finalFee/burnedBondPercentage
+     * (with burnedBondPercentage set to 50%, the bond is 2x final fee) of the default currency.
      * @dev The caller must approve this contract to spend at least the result of getMinimumBond(defaultCurrency).
      * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
      * @return assertionId unique identifier for this assertion.
      */
 
-    function assertTruthWithDefaults(bytes calldata claim, address asserter) public returns (bytes32) {
+    function assertTruthWithDefaults(bytes calldata claim, address asserter) external returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
@@ -214,7 +214,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to dispute.
      * @param disputer receives bonds back at settlement.
      */
-    function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant {
+    function disputeAssertion(bytes32 assertionId, address disputer) external nonReentrant {
         require(disputer != address(0), "Disputer cant be 0");
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist");
@@ -233,7 +233,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         // Send resolve callback if dispute resolution is discarded
         if (assertion.escalationManagerSettings.discardOracle) _callbackOnAssertionResolve(assertionId, false);
 
-        emit AssertionDisputed(assertionId, disputer);
+        emit AssertionDisputed(assertionId, msg.sender, disputer);
     }
 
     /**
@@ -289,7 +289,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to resolve and return the resolution for.
      * @return resolution of the assertion.
      */
-    function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool) {
+    function settleAndGetAssertionResult(bytes32 assertionId) external returns (bool) {
         // Note: re-entrancy guard is done in the inner settleAssertion call.
         if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertionResult(assertionId);
@@ -446,8 +446,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
-        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
         if (!assertions[assertionId].escalationManagerSettings.validateDisputers) return true;
+        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
+        if (em == address(0)) return true;
         return EscalationManagerInterface(em).isDisputeAllowed(assertionId, msg.sender);
     }
 
