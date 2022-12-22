@@ -92,7 +92,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @return assertionId unique identifier for this assertion.
      */
 
-    function assertTruthWithDefaults(bytes calldata claim, address asserter) external returns (bytes32 assertionId) {
+    function assertTruthWithDefaults(bytes calldata claim, address asserter) external returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
@@ -287,7 +287,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to resolve and return the resolution for.
      * @return resolution of the assertion.
      */
-    function settleAndGetAssertionResult(bytes32 assertionId) external returns (bool resolution) {
+    function settleAndGetAssertionResult(bytes32 assertionId) external returns (bool) {
         // Note: re-entrancy guard is done in the inner settleAssertion call.
         if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertionResult(assertionId);
@@ -312,7 +312,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to fetch information for.
      * @return assertion information about the assertion.
      */
-    function getAssertion(bytes32 assertionId) external view returns (Assertion memory assertion) {
+    function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
         return assertions[assertionId];
     }
 
@@ -322,7 +322,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to fetch the resolution for.
      * @return resolution of the assertion.
      */
-    function getAssertionResult(bytes32 assertionId) public view returns (bool resolution) {
+    function getAssertionResult(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
         // Return early if not using answer from resolved dispute.
         if (assertion.disputer != address(0) && assertion.escalationManagerSettings.discardOracle) return false;
