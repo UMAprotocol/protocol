@@ -19,7 +19,7 @@ contract BaseEscalationManager is EscalationManagerInterface, Ownable {
      * @notice Reverts unless the configured optimistic asserter is the caller.
      */
     modifier onlyOptimisticAsserter() {
-        require(msg.sender == address(optimisticAsserter), "Caller must be the optimistic asserter");
+        require(msg.sender == address(optimisticAsserter), "Not the optimistic asserter");
         _;
     }
 
