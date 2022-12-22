@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
 
-contract WhitelistAsserterEscalationManager is BaseEscalationManager {
+contract WhitelistAsserterEscalationManager is BaseEscalationManager, Ownable {
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
     // Security of returning correct policy depends on requesting contract passing msg.sender as asserter.
     address public assertingCaller;

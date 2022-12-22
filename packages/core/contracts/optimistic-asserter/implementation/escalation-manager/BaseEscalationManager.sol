@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../interfaces/EscalationManagerInterface.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 
@@ -11,7 +10,7 @@ import "../../interfaces/OptimisticAsserterInterface.sol";
  * assertions. This base implementation simply exposes the required interface and provides a default implementation
  * (returning default values or doing nothing).
  */
-contract BaseEscalationManager is EscalationManagerInterface, Ownable {
+contract BaseEscalationManager is EscalationManagerInterface {
     OptimisticAsserterInterface public immutable optimisticAsserter;
 
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);

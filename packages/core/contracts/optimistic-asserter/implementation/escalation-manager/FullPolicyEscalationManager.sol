@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
 
 /**
@@ -12,7 +13,7 @@ import "./BaseEscalationManager.sol";
  * @dev If nothing is configured using the setters and configureEscalationManager method upon deployment, the
  * FullPolicyEscalationManager will return a default policy with all values set to false.
  */
-contract FullPolicyEscalationManager is BaseEscalationManager {
+contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     struct ArbitrationResolution {
         bool valueSet; // True if the resolution has been set.
         bool resolution; // True or false depending on the resolution.

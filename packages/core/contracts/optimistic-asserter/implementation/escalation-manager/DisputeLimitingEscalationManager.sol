@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
 
 // This Escalation Manager blocks all assertions till the blocking dispute is resolved by Oracle. In order to avoid
 // interference among different applications this Escalation Manager allows assertions only from one requesting contract.
 // This is useful to create a system where only one assertion dispute can occur at a time.
-contract DisputeLimitingEscalationManager is BaseEscalationManager {
+contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
     address public assertingCaller;
 

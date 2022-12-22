@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
 
-contract OwnerSelectOracleEscalationManager is BaseEscalationManager {
+contract OwnerSelectOracleEscalationManager is BaseEscalationManager, Ownable {
     struct ArbitrationResolution {
         bool valueSet;
         bool resolution;
