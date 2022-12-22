@@ -35,6 +35,8 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     event AsserterWhitelistSet(address indexed asserter, bool whitelisted);
 
+    int256 public constant numericalTrue = 1e18; // Numerical representation of true.
+
     bool public blockByAssertingCaller; // True if assertions are allowed only by whitelisted asserting callers.
 
     bool public blockByAsserter; // True if assertions are allowed only by whitelisted asserters.
@@ -94,7 +96,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     ) public view override returns (int256) {
         bytes32 requestId = getRequestId(identifier, time, ancillaryData);
         require(arbitrationResolutions[requestId].valueSet, "Arbitration resolution not set");
-        if (arbitrationResolutions[requestId].resolution) return 1e18;
+        if (arbitrationResolutions[requestId].resolution) return numericalTrue;
         return 0;
     }
 
