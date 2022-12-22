@@ -10,7 +10,7 @@ import "../../interfaces/OptimisticAsserterInterface.sol";
  * resolutions for the Escalation Manager. Optionally, assertion blocking can be enabled using a whitelist of
  * assertingCallers or assertingCallers and asserters. On the other hand, it enables the determination of whether to
  * arbitrate via the escalation manager as opposed to the DVM, whether to disregard the resolution of a potential
- * dispute arbitrated by the Oracle, and whether to restrict who can register disputes via a whitelistedDisputeCallers.
+ * dispute arbitrated by the Oracle, and whether to restrict who can register disputes via whitelistedDisputeCallers.
  * @dev If nothing is configured using the setters and configureEscalationManager method upon deployment, the
  * FullPolicyEscalationManager will return a default policy with all values set to false.
  */
@@ -99,7 +99,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      * @param assertionId the ID of the assertion to check the disputerCaller for.
      * @param disputeCaller the address of the disputeCaller to check.
      * @return true if the disputerCaller is authorised to dispute the assertion.
-     * @dev In order for this function to be used by the Optimistic Assertor, validateDisputers must be set to true.
+     * @dev In order for this function to be used by the Optimistic Asserter, validateDisputers must be set to true.
      */
     function isDisputeAllowed(bytes32 assertionId, address disputeCaller) public view override returns (bool) {
         return whitelistedDisputeCallers[disputeCaller];
@@ -159,7 +159,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds/removes a disputerCaller to the whitelist of disputers that can file disputes.
+     * @notice Adds/removes a disputeCaller to the whitelist of disputers that can file disputes.
      * @param disputeCaller the address of the disputeCaller to add.
      * @dev This function is only used if validateDisputers is set to true.
      */

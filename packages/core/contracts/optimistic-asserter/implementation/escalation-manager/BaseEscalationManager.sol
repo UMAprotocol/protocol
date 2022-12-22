@@ -32,7 +32,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
      * if the dispute should be allowed based on the escalation policy.
      * @param assertionId the assertionId to validate the dispute for.
      * @param disputeCaller the caller of the dispute function.
-     * @return bool if the dispute is allowed, false otherwise.
+     * @return bool true if the dispute is allowed, false otherwise.
      */
     function isDisputeAllowed(bytes32 assertionId, address disputeCaller) public view virtual returns (bool) {
         return true;
@@ -54,7 +54,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
 
     /**
      * @notice Implements price requesting logic for the escalation manager. This function is called by the Optimistic
-     * on dispute and is constructed to mimic that of the UMA DVM interface.
+     * Asserter on dispute and is constructed to mimic that of the UMA DVM interface.
      * @param identifier the identifier to fetch the price for.
      * @param time the time to fetch the price for.
      * @param ancillaryData ancillary data of the price being requested.

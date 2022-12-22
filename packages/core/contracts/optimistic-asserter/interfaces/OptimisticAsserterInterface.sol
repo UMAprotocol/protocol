@@ -7,7 +7,7 @@ interface OptimisticAsserterInterface {
     struct EscalationManagerSettings {
         bool arbitrateViaEscalationManager; // False if the DVM is used as an oracle (EscalationManager on True).
         bool discardOracle; // False if Oracle result is used for resolving assertion after dispute.
-        bool validateDisputers; // True if the SS isDisputeAllowed should be checked on disputes.
+        bool validateDisputers; // True if the EM isDisputeAllowed should be checked on disputes.
         address assertingCaller;
         address escalationManager;
     }
