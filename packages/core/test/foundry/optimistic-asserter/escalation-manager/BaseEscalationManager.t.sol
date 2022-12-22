@@ -45,10 +45,10 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
         vm.expectRevert("Not the optimistic asserter");
         escalationManager.requestPrice(identifier, time, ancillaryData);
 
-        vm.expectRevert("Caller must be the optimistic asserter");
+        vm.expectRevert("Not the optimistic asserter");
         escalationManager.assertionResolvedCallback(bytes32(0), true);
 
-        vm.expectRevert("Caller must be the optimistic asserter");
+        vm.expectRevert("Not the optimistic asserter");
         escalationManager.assertionDisputedCallback(bytes32(0));
     }
 }
