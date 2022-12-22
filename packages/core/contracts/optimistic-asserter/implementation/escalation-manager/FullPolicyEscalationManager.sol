@@ -158,7 +158,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds a disputerCaller to the whitelist of disputers that can file disputes.
+     * @notice Adds/removes a disputerCaller to the whitelist of disputers that can file disputes.
      * @param disputeCaller the address of the disputeCaller to add.
      * @dev This function is only used if validateDisputers is set to true.
      */
@@ -168,7 +168,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of assertingCallers that can make assertions.
+     * @notice Adds/removes an asserter to the whitelist of assertingCallers that can make assertions.
      * @param assertingCaller the address of the assertingCaller to add.
      */
     function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
@@ -177,7 +177,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of asserters that can make assertions.
+     * @notice Adds/removes an asserter to the whitelist of asserters that can make assertions.
      * @param asserter the address of the asserter to add.
      * @dev This function must be used in conjunction with setWhitelistedAssertingCallers in order to have an effect.
      */
