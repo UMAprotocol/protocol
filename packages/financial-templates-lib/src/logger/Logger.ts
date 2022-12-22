@@ -52,7 +52,8 @@ export function createNewLogger(
   transportsConfig = {},
   botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
 ): AugmentedLogger {
-  const sessionId = Date.now();
+  // Random int between 0 and MAX_SAFE_INTEGER.
+  const sessionId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);;
   const logger = winston.createLogger({
     level: "debug",
     defaultMeta: { sessionId },

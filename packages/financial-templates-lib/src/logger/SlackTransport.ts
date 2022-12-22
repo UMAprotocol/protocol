@@ -52,7 +52,7 @@ export const SLACK_MAX_CHAR_LIMIT = 3000;
 // Note: info is any because it comes directly from winston.
 function slackFormatter(info: any): SlackFormatterResponse {
   try {
-    if (!("level" in info) || !("at" in info) || !("message" in info))
+    if (!("level" in info) || !("at" in info) || !("message" in info) || !("sessionId" in info))
       throw new Error("WINSTON MESSAGE INCORRECTLY CONFIGURED");
 
     // Each part of the slack response is a separate block with markdown text within it.
@@ -62,7 +62,10 @@ function slackFormatter(info: any): SlackFormatterResponse {
       blocks: [
         {
           type: "section",
-          text: { type: "mrkdwn", text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n` },
+          text: {
+            type: "mrkdwn",
+            text: `[${info.level}] *${info["bot-identifier"]}-${info["sessionId"]}* (${info.at})⭢${info.message}\n`,
+          },
         },
       ],
     };
