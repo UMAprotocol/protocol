@@ -8,7 +8,7 @@ contract OwnerSelectOracleEscalationManagerTest is CommonOptimisticAsserterTest 
     OwnerSelectOracleEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new OwnerSelectOracleEscalationManager();
+        escalationManager = new OwnerSelectOracleEscalationManager(address(optimisticAsserter));
     }
 
     function test_SetArbitrateResolution() public {

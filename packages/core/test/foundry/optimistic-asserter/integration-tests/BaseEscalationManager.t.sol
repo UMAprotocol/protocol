@@ -16,7 +16,7 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
         defaultCurrency.approve(address(assertingCaller), defaultBond);
         vm.stopPrank();
 
-        escalationManager = address(new BaseEscalationManager());
+        escalationManager = address(new BaseEscalationManager(address(optimisticAsserter)));
     }
 
     function test_MakeAssertion() public {

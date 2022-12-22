@@ -14,6 +14,8 @@ contract OwnerSelectOracleEscalationManager is BaseEscalationManager, Ownable {
 
     bool arbitrateViaEscalationManager;
 
+    constructor(address _optimisticAsserter) BaseEscalationManager(_optimisticAsserter) {}
+
     function setArbitrationResolution(
         bytes32 identifier,
         uint256 time,

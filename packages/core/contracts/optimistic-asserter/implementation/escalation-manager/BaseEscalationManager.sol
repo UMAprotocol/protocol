@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 import "../../interfaces/EscalationManagerInterface.sol";
+import "../../interfaces/OptimisticAsserterInterface.sol";
 
 /**
  * @title BaseEscalationManager
@@ -10,7 +11,25 @@ import "../../interfaces/EscalationManagerInterface.sol";
  * (returning default values or doing nothing).
  */
 contract BaseEscalationManager is EscalationManagerInterface {
+    OptimisticAsserterInterface public immutable optimisticAsserter;
+
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+
+    /**
+     * @notice Reverts unless the configured optimistic asserter is the caller.
+     */
+    modifier onlyOptimisticAsserter() {
+        require(msg.sender == address(optimisticAsserter), "Not the optimistic asserter");
+        _;
+    }
+
+    /**
+     * @notice Constructs the escalation manager.
+     * @param _optimisticAsserter the optimistic asserter to use.
+     */
+    constructor(address _optimisticAsserter) {
+        optimisticAsserter = OptimisticAsserterInterface(_optimisticAsserter);
+    }
 
     /**
      * @notice Returns the assertion policy for the given assertionId.
@@ -63,13 +82,17 @@ contract BaseEscalationManager is EscalationManagerInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public virtual {
+    ) public virtual onlyOptimisticAsserter {
         emit PriceRequestAdded(identifier, time, ancillaryData);
     }
 
     // Callback function that is called by Optimistic Asserter when an assertion is resolved.
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public virtual {}
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully)
+        public
+        virtual
+        onlyOptimisticAsserter
+    {}
 
     // Callback function that is called by Optimistic Asserter when an assertion is disputed.
-    function assertionDisputedCallback(bytes32 assertionId) public virtual {}
+    function assertionDisputedCallback(bytes32 assertionId) public virtual onlyOptimisticAsserter {}
 }
