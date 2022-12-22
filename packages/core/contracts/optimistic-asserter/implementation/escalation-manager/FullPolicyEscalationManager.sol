@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
 import "./BaseEscalationManager.sol";
@@ -27,11 +28,11 @@ contract FullPolicyEscalationManager is BaseEscalationManager {
 
     event ArbitrationResolutionSet(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bool resolution);
 
-    event DisputeCallerWhitelistSet(address disputeCaller, bool whitelisted);
+    event DisputeCallerWhitelistSet(address indexed disputeCaller, bool whitelisted);
 
-    event AssertingCallerWhitelistSet(address assertingCaller, bool whitelisted);
+    event AssertingCallerWhitelistSet(address indexed assertingCaller, bool whitelisted);
 
-    event AsserterWhitelistSet(address asserter, bool whitelisted);
+    event AsserterWhitelistSet(address indexed asserter, bool whitelisted);
 
     bool public blockByAssertingCaller; // True if assertions are allowed only by whitelisted asserting callers.
 
@@ -90,7 +91,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager {
         uint256 time,
         bytes memory ancillaryData
     ) public view override returns (int256) {
-        bytes32 requestId = keccak256(abi.encode(identifier, time, ancillaryData));
+        bytes32 requestId = getRequestId(identifier, time, ancillaryData);
         require(arbitrationResolutions[requestId].valueSet, "Arbitration resolution not set");
         if (arbitrationResolutions[requestId].resolution) return 1e18;
         return 0;
@@ -125,7 +126,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager {
         bool _arbitrateViaEscalationManager,
         bool _discardOracle
     ) public onlyOwner {
-        require(!_blockByAsserter || (_blockByAsserter && _blockByAssertingCaller), "Cannot block only by asserter");
+        require(!_blockByAsserter || _blockByAssertingCaller, "Cannot block only by asserter");
         blockByAssertingCaller = _blockByAssertingCaller;
         blockByAsserter = _blockByAsserter;
         validateDisputers = _validateDisputers;
@@ -156,13 +157,13 @@ contract FullPolicyEscalationManager is BaseEscalationManager {
         bytes memory ancillaryData,
         bool arbitrationResolution
     ) public onlyOwner {
-        bytes32 requestId = keccak256(abi.encode(identifier, time, ancillaryData));
+        bytes32 requestId = getRequestId(identifier, time, ancillaryData);
         arbitrationResolutions[requestId] = ArbitrationResolution(true, arbitrationResolution);
         emit ArbitrationResolutionSet(identifier, time, ancillaryData, arbitrationResolution);
     }
 
     /**
-     * @notice Adds a disputerCaller to the whitelist of disputers that can file disputes.
+     * @notice Adds/removes a disputerCaller to the whitelist of disputers that can file disputes.
      * @param disputeCaller the address of the disputeCaller to add.
      * @dev This function is only used if validateDisputers is set to true.
      */
@@ -172,7 +173,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of assertingCallers that can make assertions.
+     * @notice Adds/removes an asserter to the whitelist of assertingCallers that can make assertions.
      * @param assertingCaller the address of the assertingCaller to add.
      */
     function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
@@ -181,13 +182,28 @@ contract FullPolicyEscalationManager is BaseEscalationManager {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of asserters that can make assertions.
+     * @notice Adds/removes an asserter to the whitelist of asserters that can make assertions.
      * @param asserter the address of the asserter to add.
      * @dev This function must be used in conjunction with setWhitelistedAssertingCallers in order to have an effect.
      */
     function setWhitelistedAsserters(address asserter, bool value) public onlyOwner {
         whitelistedAsserters[asserter] = value;
         emit AsserterWhitelistSet(asserter, value);
+    }
+
+    /**
+     * @notice Calculates price request identifier for a given identifier, time, and ancillary data.
+     * @param identifier uniquely identifies the price requested.
+     * @param time unix timestamp of the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @return price request identifier.
+     */
+    function getRequestId(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encode(identifier, time, ancillaryData));
     }
 
     // Checks if an assertion is blocked depending on the blockByAssertingCaller / blockByAsserter settings and the

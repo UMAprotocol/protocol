@@ -84,15 +84,15 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     /**
-     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient
-     * or escalation manager is enabled. The caller is the asserter and is expected to provide a bond of the
-     * currencies finalFee/burnedBondPercentage (with burnedBondPercentage set to 50%, the bond is 2x final fee).
+     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient or
+     * escalation manager is enabled. The caller is expected to provide a bond of finalFee/burnedBondPercentage
+     * (with burnedBondPercentage set to 50%, the bond is 2x final fee) of the default currency.
      * @dev The caller must approve this contract to spend at least the result of getMinimumBond(defaultCurrency).
      * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
      * @return assertionId unique identifier for this assertion.
      */
 
-    function assertTruthWithDefaults(bytes calldata claim, address asserter) public returns (bytes32 assertionId) {
+    function assertTruthWithDefaults(bytes calldata claim, address asserter) external returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
@@ -203,8 +203,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             currency,
             bond
         );
-
-        return assertionId;
     }
 
     /**
@@ -214,7 +212,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to dispute.
      * @param disputer receives bonds back at settlement.
      */
-    function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant {
+    function disputeAssertion(bytes32 assertionId, address disputer) external nonReentrant {
         require(disputer != address(0), "Disputer cant be 0");
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist");
@@ -233,7 +231,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         // Send resolve callback if dispute resolution is discarded
         if (assertion.escalationManagerSettings.discardOracle) _callbackOnAssertionResolve(assertionId, false);
 
-        emit AssertionDisputed(assertionId, disputer);
+        emit AssertionDisputed(assertionId, msg.sender, disputer);
     }
 
     /**
@@ -289,7 +287,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to resolve and return the resolution for.
      * @return resolution of the assertion.
      */
-    function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool resolution) {
+    function settleAndGetAssertionResult(bytes32 assertionId) external returns (bool) {
         // Note: re-entrancy guard is done in the inner settleAssertion call.
         if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertionResult(assertionId);
@@ -314,7 +312,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to fetch information for.
      * @return assertion information about the assertion.
      */
-    function getAssertion(bytes32 assertionId) external view returns (Assertion memory assertion) {
+    function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
         return assertions[assertionId];
     }
 
@@ -324,7 +322,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param assertionId unique identifier for the assertion to fetch the resolution for.
      * @return resolution of the assertion.
      */
-    function getAssertionResult(bytes32 assertionId) public view returns (bool resolution) {
+    function getAssertionResult(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
         // Return early if not using answer from resolved dispute.
         if (assertion.disputer != address(0) && assertion.escalationManagerSettings.discardOracle) return false;
@@ -411,7 +409,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
         if (assertions[assertionId].escalationManagerSettings.arbitrateViaEscalationManager)
-            return OracleAncillaryInterface(address(_getEscalationManager(assertionId)));
+            return OracleAncillaryInterface(_getEscalationManager(assertionId));
         return OracleAncillaryInterface(cachedOracle);
     }
 
@@ -431,8 +429,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return _getOracle(assertionId).getPrice(identifier, time, _stampAssertion(assertionId));
     }
 
-    function _getEscalationManager(bytes32 assertionId) internal view returns (EscalationManagerInterface) {
-        return EscalationManagerInterface(assertions[assertionId].escalationManagerSettings.escalationManager);
+    function _getEscalationManager(bytes32 assertionId) internal view returns (address) {
+        return assertions[assertionId].escalationManagerSettings.escalationManager;
     }
 
     function _getAssertionPolicy(bytes32 assertionId)
@@ -440,14 +438,15 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         view
         returns (EscalationManagerInterface.AssertionPolicy memory)
     {
-        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
+        address em = _getEscalationManager(assertionId);
         if (em == address(0)) return EscalationManagerInterface.AssertionPolicy(false, false, false, false);
         return EscalationManagerInterface(em).getAssertionPolicy(assertionId);
     }
 
     function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
-        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
         if (!assertions[assertionId].escalationManagerSettings.validateDisputers) return true;
+        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
+        if (em == address(0)) return true;
         return EscalationManagerInterface(em).isDisputeAllowed(assertionId, msg.sender);
     }
 
@@ -465,20 +464,17 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
-        if (assertions[assertionId].callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient)
-                .assertionResolvedCallback(assertionId, assertedTruthfully);
-        if (assertions[assertionId].escalationManagerSettings.escalationManager != address(0))
-            EscalationManagerInterface(assertions[assertionId].escalationManagerSettings.escalationManager)
-                .assertionResolvedCallback(assertionId, assertedTruthfully);
+        address cr = assertions[assertionId].callbackRecipient;
+        address em = _getEscalationManager(assertionId);
+        if (cr != address(0))
+            OptimisticAsserterCallbackRecipientInterface(cr).assertionResolvedCallback(assertionId, assertedTruthfully);
+        if (em != address(0)) EscalationManagerInterface(em).assertionResolvedCallback(assertionId, assertedTruthfully);
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
-        if (assertions[assertionId].callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient)
-                .assertionDisputedCallback(assertionId);
-        if (assertions[assertionId].escalationManagerSettings.escalationManager != address(0))
-            EscalationManagerInterface(assertions[assertionId].escalationManagerSettings.escalationManager)
-                .assertionDisputedCallback(assertionId);
+        address cr = assertions[assertionId].callbackRecipient;
+        address em = _getEscalationManager(assertionId);
+        if (cr != address(0)) OptimisticAsserterCallbackRecipientInterface(cr).assertionDisputedCallback(assertionId);
+        if (em != address(0)) EscalationManagerInterface(em).assertionDisputedCallback(assertionId);
     }
 }
