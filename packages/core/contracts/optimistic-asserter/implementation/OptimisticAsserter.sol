@@ -43,6 +43,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     uint256 public burnedBondPercentage; // Percentage of the bond that is paid to the UMA store if the assertion is disputed.
 
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
+    int256 public constant numericalTrue = 1e18; // Numerical representation of true.
     IERC20 public defaultCurrency;
     uint64 public defaultLiveness;
 
@@ -261,9 +262,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
             // If set to discard settlement resolution then false. Else, use oracle value to find resolution.
             if (assertion.escalationManagerSettings.discardOracle) assertion.settlementResolution = false;
-            else assertion.settlementResolution = resolvedPrice == 1e18;
+            else assertion.settlementResolution = resolvedPrice == numericalTrue;
 
-            address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
+            address bondRecipient = resolvedPrice == numericalTrue ? assertion.asserter : assertion.disputer;
 
             // If set to use UMA DVM as oracle then oracleFee must be sent to UMA Store contract. Else, if not using UMA
             // DVM then the bond is returned to the correct party (asserter or disputer).
