@@ -90,6 +90,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * (with burnedBondPercentage set to 50%, the bond is 2x final fee) of the default currency.
      * @dev The caller must approve this contract to spend at least the result of getMinimumBond(defaultCurrency).
      * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
+     * @param asserter receives bonds back at settlement. This could be msg.sender or
+     * any other account that the caller wants to receive the bond at settlement time.
      * @return assertionId unique identifier for this assertion.
      */
 
@@ -131,6 +133,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * can be used by the configured escalationManager to define custom behavior for groups of assertions. This is
      * typically used for "escalation games" by changing bonds or other assertion properties based on the other
      * assertions that have come before. If not needed this value should be 0 to save gas.
+     * @return assertionId unique identifier for this assertion.
      */
     function assertTruth(
         bytes memory claim,
@@ -334,6 +337,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
+     * @return current block timestamp.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
