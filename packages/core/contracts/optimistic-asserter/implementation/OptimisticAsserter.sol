@@ -446,8 +446,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
-        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
         if (!assertions[assertionId].escalationManagerSettings.validateDisputers) return true;
+        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
+        if (em == address(0)) return true;
         return EscalationManagerInterface(em).isDisputeAllowed(assertionId, msg.sender);
     }
 
