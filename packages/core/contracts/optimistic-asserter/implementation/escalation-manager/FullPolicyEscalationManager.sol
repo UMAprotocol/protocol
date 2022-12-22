@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -29,11 +30,11 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     event ArbitrationResolutionSet(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bool resolution);
 
-    event DisputeCallerWhitelistSet(address disputeCaller, bool whitelisted);
+    event DisputeCallerWhitelistSet(address indexed disputeCaller, bool whitelisted);
 
-    event AssertingCallerWhitelistSet(address assertingCaller, bool whitelisted);
+    event AssertingCallerWhitelistSet(address indexed assertingCaller, bool whitelisted);
 
-    event AsserterWhitelistSet(address asserter, bool whitelisted);
+    event AsserterWhitelistSet(address indexed asserter, bool whitelisted);
 
     bool public blockByAssertingCaller; // True if assertions are allowed only by whitelisted asserting callers.
 
@@ -158,7 +159,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds a disputerCaller to the whitelist of disputers that can file disputes.
+     * @notice Adds/removes a disputerCaller to the whitelist of disputers that can file disputes.
      * @param disputeCaller the address of the disputeCaller to add.
      * @dev This function is only used if validateDisputers is set to true.
      */
@@ -168,7 +169,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of assertingCallers that can make assertions.
+     * @notice Adds/removes an asserter to the whitelist of assertingCallers that can make assertions.
      * @param assertingCaller the address of the assertingCaller to add.
      */
     function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
@@ -177,7 +178,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of asserters that can make assertions.
+     * @notice Adds/removes an asserter to the whitelist of asserters that can make assertions.
      * @param asserter the address of the asserter to add.
      * @dev This function must be used in conjunction with setWhitelistedAssertingCallers in order to have an effect.
      */
