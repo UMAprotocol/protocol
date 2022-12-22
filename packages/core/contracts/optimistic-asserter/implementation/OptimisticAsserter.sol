@@ -363,6 +363,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return (finalFee * 1e18) / burnedBondPercentage;
     }
 
+    // Returns the unique identifier for this assertion. This identifier is used to identify the assertion.
     function _getId(
         bytes memory claim,
         uint256 bond,
@@ -373,7 +374,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         address escalationManager,
         bytes32 identifier
     ) internal view returns (bytes32) {
-        // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
                 abi.encode(
@@ -390,8 +390,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             );
     }
 
+    // Returns ancillary data for the Oracle request containing assertionId and asserter.
     function _stampAssertion(bytes32 assertionId) internal view returns (bytes memory) {
-        // Returns ancillary data for the Oracle request containing assertionId and asserter.
         return
             AncillaryData.appendKeyValueAddress(
                 AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),
@@ -400,24 +400,29 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             );
     }
 
+    // Returns the Address Whitelist contract to validate the currency.
     function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
         return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
+    // Returns the Identifier Whitelist contract to validate the identifier.
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
+    // Returns the Store contract to fetch the final fee.
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
+    // Returns the Oracle contract to use on dispute. This can be either UMA DVM or the escalation manager.
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
         if (assertions[assertionId].escalationManagerSettings.arbitrateViaEscalationManager)
             return OracleAncillaryInterface(_getEscalationManager(assertionId));
         return OracleAncillaryInterface(cachedOracle);
     }
 
+    // Requests resolving dispute from the Oracle (UMA DVM or escalation manager).
     function _oracleRequestPrice(
         bytes32 assertionId,
         bytes32 identifier,
@@ -426,6 +431,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         _getOracle(assertionId).requestPrice(identifier, time, _stampAssertion(assertionId));
     }
 
+    // Returns the resolved resolution from the Oracle (UMA DVM or escalation manager).
     function _oracleGetPrice(
         bytes32 assertionId,
         bytes32 identifier,
@@ -434,10 +440,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return _getOracle(assertionId).getPrice(identifier, time, _stampAssertion(assertionId));
     }
 
+    // Returns the escalation manager address for the assertion.
     function _getEscalationManager(bytes32 assertionId) internal view returns (address) {
         return assertions[assertionId].escalationManagerSettings.escalationManager;
     }
 
+    // Returns the assertion policy parameters from the escalation manager. If no escalation manager is set then return
+    // default values.
     function _getAssertionPolicy(bytes32 assertionId)
         internal
         view
@@ -448,6 +457,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return EscalationManagerInterface(em).getAssertionPolicy(assertionId);
     }
 
+    // Returns whether the dispute is allowed by the escalation manager. If no escalation manager is set or the
+    // escalation manager is not configured to validate disputers then return true.
     function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
         if (!assertions[assertionId].escalationManagerSettings.validateDisputers) return true;
         address em = assertions[assertionId].escalationManagerSettings.escalationManager;
@@ -455,12 +466,16 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return EscalationManagerInterface(em).isDisputeAllowed(assertionId, msg.sender);
     }
 
+    // Validates if the identifier is whitelisted by first checking the cache. If not whitelisted in the cache then
+    // checks it from the identifier whitelist contract and caches result.
     function _validateAndCacheIdentifier(bytes32 identifier) internal returns (bool) {
         if (cachedIdentifiers[identifier]) return true;
         cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
         return cachedIdentifiers[identifier];
     }
 
+    // Validates if the currency is whitelisted by first checking the cache. If not whitelisted in the cache then
+    // checks it from the collateral whitelist contract and caches whitelist status and final fee.
     function _validateAndCacheCurrency(address currency) internal returns (bool) {
         if (cachedCurrencies[currency].isWhitelisted) return true;
         cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
@@ -468,6 +483,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return cachedCurrencies[currency].isWhitelisted;
     }
 
+    // Sends assertion resolved callback to the callback recipient and escalation manager (if set).
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
         address cr = assertions[assertionId].callbackRecipient;
         address em = _getEscalationManager(assertionId);
@@ -476,6 +492,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         if (em != address(0)) EscalationManagerInterface(em).assertionResolvedCallback(assertionId, assertedTruthfully);
     }
 
+    // Sends assertion disputed callback to the callback recipient and escalation manager (if set).
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
         address cr = assertions[assertionId].callbackRecipient;
         address em = _getEscalationManager(assertionId);
