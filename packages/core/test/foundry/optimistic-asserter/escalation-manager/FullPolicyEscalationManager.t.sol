@@ -18,13 +18,16 @@ contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
         bytes memory ancillaryData = "ancillary";
 
         vm.expectRevert("Arbitration resolution not set");
-        escalationManager.getPrice(identifier, time, ancillaryData);
 
+        escalationManager.getPrice(identifier, time, ancillaryData);
         escalationManager.setArbitrationResolution(identifier, time, ancillaryData, true);
         assertTrue(escalationManager.getPrice(identifier, time, ancillaryData) == 1e18);
 
+        vm.expectRevert("Arbitration already resolved"); // Can not re-set the resolution price once set.
         escalationManager.setArbitrationResolution(identifier, time, ancillaryData, false);
-        assertTrue(escalationManager.getPrice(identifier, time, ancillaryData) == 0);
+
+        escalationManager.setArbitrationResolution(identifier, time + 1, ancillaryData, false); // Can set for new time.
+        assertTrue(escalationManager.getPrice(identifier, time + 1, ancillaryData) == 0);
     }
 
     function test_RevertIf_InvalidConfiguration() public {

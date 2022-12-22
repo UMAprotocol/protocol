@@ -154,6 +154,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         bool arbitrationResolution
     ) public onlyOwner {
         bytes32 requestId = getRequestId(identifier, time, ancillaryData);
+        require(arbitrationResolutions[requestId].valueSet == false, "Arbitration already resolved");
         arbitrationResolutions[requestId] = ArbitrationResolution(true, arbitrationResolution);
         emit ArbitrationResolutionSet(identifier, time, ancillaryData, arbitrationResolution);
     }
