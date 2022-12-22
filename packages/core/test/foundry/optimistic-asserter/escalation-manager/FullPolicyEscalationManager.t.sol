@@ -23,7 +23,7 @@ contract FullPolicyEscalationManagerTest is CommonOptimisticAsserterTest {
         escalationManager.setArbitrationResolution(identifier, time, ancillaryData, true);
         assertTrue(escalationManager.getPrice(identifier, time, ancillaryData) == 1e18);
 
-        vm.expectRevert("Arbitration resolution already set"); // Can not re-set the resolution price once set.
+        vm.expectRevert("Arbitration already resolved"); // Can not re-set the resolution price once set.
         escalationManager.setArbitrationResolution(identifier, time, ancillaryData, false);
 
         escalationManager.setArbitrationResolution(identifier, time + 1, ancillaryData, false); // Can set for new time.
