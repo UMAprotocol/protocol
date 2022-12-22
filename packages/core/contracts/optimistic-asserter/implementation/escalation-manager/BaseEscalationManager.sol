@@ -88,7 +88,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
 
     /**
      * @notice Callback function that is called by Optimistic Asserter when an assertion is resolved.
-     * @param assertionId The ID of the assertion that was resolved.
+     * @param assertionId The identifier of the assertion that was resolved.
      * @param assertedTruthfully Whether the assertion was resolved as truthful or not.
      */
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully)
@@ -99,7 +99,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
 
     /**
      * @notice Callback function that is called by Optimistic Asserter when an assertion is disputed.
-     * @param assertionId The ID of the assertion that was disputed.
+     * @param assertionId The identifier of the assertion that was disputed.
      */
     function assertionDisputedCallback(bytes32 assertionId) public virtual onlyOptimisticAsserter {}
 }

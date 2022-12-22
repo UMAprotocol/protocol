@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @title Optimistic Asserter Interface that callers must use to assert truths about the world.
  */
 interface OptimisticAsserterInterface {
-    // Struct grouping together the settings related to the stored escalation manager in the assertion.
+    // Struct grouping together the settings related to the escalation manager stored in the assertion.
     struct EscalationManagerSettings {
         bool arbitrateViaEscalationManager; // False if the DVM is used as an oracle (EscalationManager on True).
         bool discardOracle; // False if Oracle result is used for resolving assertion after dispute.

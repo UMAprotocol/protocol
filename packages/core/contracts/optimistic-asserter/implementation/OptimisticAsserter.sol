@@ -90,7 +90,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * (with burnedBondPercentage set to 50%, the bond is 2x final fee) of the default currency.
      * @dev The caller must approve this contract to spend at least the result of getMinimumBond(defaultCurrency).
      * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
-     * @param asserter receives bonds back at settlement. This could be msg.sender or
+     * @param asserter account that receives bonds back at settlement. This could be msg.sender or
      * any other account that the caller wants to receive the bond at settlement time.
      * @return assertionId unique identifier for this assertion.
      */
@@ -115,7 +115,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @notice Asserts a truth about the world, using a fully custom configuration.
      * @dev The caller must approve this contract to spend at least bond amount of currency.
      * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
-     * @param asserter receives bonds back at settlement. This could be msg.sender or
+     * @param asserter account that receives bonds back at settlement. This could be msg.sender or
      * any other account that the caller wants to receive the bond at settlement time.
      * @param callbackRecipient if configured, this address will receive a function call assertionResolvedCallback and
      * assertionDisputedCallback at resolution or dispute respectively. Enables dynamic responses to these events. The
