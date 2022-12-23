@@ -45,8 +45,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // Each request has a unique requestIndex number that is used to order all requests. This is the index within
         // the priceRequestIds array and is incremented on each request.
         uint64 priceRequestIndex;
-        // Timestamp that should be used when evaluating the request. Note: this is a uint64 to allow better variable
-        // packing while still leaving more than ample room for timestamps to stretch far into the future.
+        // Timestamp that should be used when evaluating the request.
+        // Note: this is a uint64 to allow better variable packing while still leaving more than ample room for
+        // timestamps to stretch far into the future.
         uint64 time;
         // Identifier that defines how the voters should resolve the request.
         bytes32 identifier;
@@ -955,11 +956,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Declare a specific price requests range to be spam and request its deletion.
-     * @dev note that this method should almost never be used. The bond to call this should be set to a very large
-     * number (say 10k UMA) as it could be abused if set too low. Function constructs a price request that, if passed,
-     * enables pending requests to be disregarded by the contract.
-     * @param spamRequestIndices list of request indices to be declared as spam. Each element is a pair of uint256s
-     * representing the start and end of the range.
+     * @dev note that this method should almost never be used. The bond to call this should be set to
+     * a very large number (say 10k UMA) as it could be abused if set too low. Function constructs a price
+     * request that, if passed, enables pending requests to be disregarded by the contract.
+     * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
+     * pair of uint256s representing the start and end of the range.
      */
     function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices)
         external
