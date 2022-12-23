@@ -272,7 +272,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
             // Pay out the oracle fee and remaining bonds to the correct party. Note: the oracle fee is sent to the
             // Store contract, even if the escalation manager is used to arbitrate disputes.
-            if (oracleFee > 0) assertion.currency.safeTransfer(address(_getStore()), oracleFee);
+            assertion.currency.safeTransfer(address(_getStore()), oracleFee);
             assertion.currency.safeTransfer(bondRecipient, bondRecipientAmount);
 
             if (!assertion.escalationManagerSettings.discardOracle)
