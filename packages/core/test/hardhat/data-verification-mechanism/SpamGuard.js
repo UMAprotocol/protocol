@@ -485,4 +485,109 @@ describe("SpamGuard", function () {
 
   it("Correctly sends bond to store if voted down", async function () {});
   it("Correctly handles rolled votes", async function () {});
+  it("Can delete request even if spam was voted on above gat without other pending requests", async function () {
+    // Test that the spam deletion request can be executed even if the spam request was voted on above the gat.
+    // This is the case if there are no other pending requests in the queue.
+    const time = Number(await voting.methods.getCurrentTime().call()) - 10; // 10 seconds in the past.
+
+    // Request prices and move to the next round where that will be voted on.
+    await voting.methods.requestPrice(validIdentifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(spamIdentifier, time).send({ from: registeredContract });
+
+    // Construct the request to delete the spam votes.
+    await voting.methods.signalRequestsAsSpamForDeletion([[1, 1]]).send({ from: account1 });
+    const signalDeleteTime = await voting.methods.getCurrentTime().call();
+
+    // All the requests should be enqueued in the following voting round.
+    await moveToNextRound(voting, accounts[0]);
+
+    const spamDeleteIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
+
+    // Commit votes. account1 votes on the valid request and supporting vote ("1e18") on spam deletion request.
+    // account2 votes on the spam request.
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const price = "42069";
+    const salt = getRandomSignedInt();
+
+    const hash1 = computeVoteHash({ price, salt, account: account1, roundId, time, identifier: validIdentifier });
+    const hash2 = computeVoteHash({
+      price: toWei("1"),
+      salt,
+      account: account1,
+      roundId,
+      time: signalDeleteTime,
+      identifier: spamDeleteIdentifier,
+    });
+    await voting.methods.commitVote(validIdentifier, time, hash1).send({ from: account1 });
+    await voting.methods.commitVote(spamDeleteIdentifier, signalDeleteTime, hash2).send({ from: account1 });
+
+    const hash3 = computeVoteHash({ price, salt, account: account2, roundId, time, identifier: spamIdentifier });
+    await voting.methods.commitVote(spamIdentifier, time, hash3).send({ from: account2 });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.revealVote(validIdentifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(spamDeleteIdentifier, signalDeleteTime, toWei("1"), salt).send({ from: account1 });
+    await voting.methods.revealVote(spamIdentifier, time, price, salt).send({ from: account2 });
+
+    // Execute the spam deletion call.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.updateTrackers(account2).send({ from: account2 });
+
+    await voting.methods.executeSpamDeletion(0).send({ from: account1 });
+  });
+  it("Can delete request even if spam was voted on above gat with another pending request", async function () {
+    // Test that the spam deletion request can be executed even if the spam request was voted on above the gat.
+    // This is the case if there is another pending request in the queue.
+    const time = Number(await voting.methods.getCurrentTime().call()) - 10; // 10 seconds in the past.
+
+    // Request prices and move to the next round where that will be voted on.
+    await voting.methods.requestPrice(validIdentifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(spamIdentifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(validIdentifier, time + 1).send({ from: registeredContract });
+
+    // Construct the request to delete the spam votes.
+    await voting.methods.signalRequestsAsSpamForDeletion([[1, 1]]).send({ from: account1 });
+    const signalDeleteTime = await voting.methods.getCurrentTime().call();
+
+    // All the requests should be enqueued in the following voting round.
+    await moveToNextRound(voting, accounts[0]);
+
+    const spamDeleteIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
+
+    // Commit votes. account1 votes on the valid request and supporting vote ("1e18") on spam deletion request.
+    // account2 votes on the spam request.
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const price = "42069";
+    const salt = getRandomSignedInt();
+
+    const hash1 = computeVoteHash({ price, salt, account: account1, roundId, time, identifier: validIdentifier });
+    const hash2 = computeVoteHash({
+      price: toWei("1"),
+      salt,
+      account: account1,
+      roundId,
+      time: signalDeleteTime,
+      identifier: spamDeleteIdentifier,
+    });
+    await voting.methods.commitVote(validIdentifier, time, hash1).send({ from: account1 });
+    await voting.methods.commitVote(spamDeleteIdentifier, signalDeleteTime, hash2).send({ from: account1 });
+
+    const hash3 = computeVoteHash({ price, salt, account: account2, roundId, time, identifier: spamIdentifier });
+    await voting.methods.commitVote(spamIdentifier, time, hash3).send({ from: account2 });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.revealVote(validIdentifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(spamDeleteIdentifier, signalDeleteTime, toWei("1"), salt).send({ from: account1 });
+    await voting.methods.revealVote(spamIdentifier, time, price, salt).send({ from: account2 });
+
+    // Execute the spam deletion call.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.updateTrackers(account2).send({ from: account2 });
+
+    await voting.methods.executeSpamDeletion(0).send({ from: account1 });
+  });
 });
