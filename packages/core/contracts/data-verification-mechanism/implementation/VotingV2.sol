@@ -45,9 +45,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // Each request has a unique requestIndex number that is used to order all requests. This is the index within
         // the priceRequestIds array and is incremented on each request.
         uint64 priceRequestIndex;
-        // Timestamp that should be used when evaluating the request.
-        // Note: this is a uint64 to allow better variable packing while still leaving more than ample room for
-        // timestamps to stretch far into the future.
+        // Timestamp that should be used when evaluating the request. Note: this is a uint64 to allow better variable
+        // packing while still leaving more than ample room for timestamps to stretch far into the future.
         uint64 time;
         // Identifier that defines how the voters should resolve the request.
         bytes32 identifier;
@@ -917,6 +916,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 skippedRequestIndexes[nextIndexToProcess] != 0
                     ? skippedRequestIndexes[nextIndexToProcess] + 1
                     : nextIndexToProcess;
+
+            // Note it is possible to have nextIndex > the number of price requests if and only if we've traversed to a
+            // rolled & then deleted vote. This happens due to the executeSpamDeletion setting the skippedRequestIndexes
+            // to consider the rolled value on deletion without re-indexing the same requestIndex (which is what happens
+            // during the normal rolling process and is why we increment +1 in the above ternary operator).
+            //
+            if (nextIndex >= priceRequestIds.length) nextIndex = priceRequestIds.length - 1;
+
             if (
                 nextIndexToProcess < priceRequestIds.length &&
                 nextIndexToProcess != 0 &&
@@ -948,11 +955,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Declare a specific price requests range to be spam and request its deletion.
-     * @dev note that this method should almost never be used. The bond to call this should be set to
-     * a very large number (say 10k UMA) as it could be abused if set too low. Function constructs a price
-     * request that, if passed, enables pending requests to be disregarded by the contract.
-     * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
-     * pair of uint256s representing the start and end of the range.
+     * @dev note that this method should almost never be used. The bond to call this should be set to a very large
+     * number (say 10k UMA) as it could be abused if set too low. Function constructs a price request that, if passed,
+     * enables pending requests to be disregarded by the contract.
+     * @param spamRequestIndices list of request indices to be declared as spam. Each element is a pair of uint256s
+     * representing the start and end of the range.
      */
     function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices)
         external
@@ -1021,10 +1028,21 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
                 uint64 startIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][0]);
                 uint64 endIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][1]);
+                uint64 firstRolledToIndex = 0;
+                uint64 lastRolledToIndex = 0;
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
                     _removeRequestFromPendingPriceRequests(priceRequests[requestId].pendingRequestIndex);
+
+                    // If the priceRequestIndex is bigger than the current iteration index, we know that we are looking
+                    // at a request that was rolled and then attempted to be deleted. To accommodate this, we need to
+                    // track the start and end range of the rolled requests and then update the skippedRequestIndexes
+                    // later to cover this full range. This to accommodates votes that are: rolled and then deleted.
+                    if (priceRequests[requestId].priceRequestIndex > j) {
+                        if (firstRolledToIndex == 0) firstRolledToIndex = priceRequests[requestId].priceRequestIndex;
+                        lastRolledToIndex = priceRequests[requestId].priceRequestIndex;
+                    }
 
                     // Remove the request from the priceRequests mapping.
                     delete priceRequests[requestId];
@@ -1033,6 +1051,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 // Set the deletion request jump mapping. This enables the for loops that iterate over requests to skip
                 // the deleted requests via a "jump" over the removed elements from the array.
                 skippedRequestIndexes[startIndex] = endIndex;
+
+                // If values are set for firstRolledToIndex then we encountered rolled votes and we need to jump over
+                // the full rolled range in the skippedRequestIndexes mapping.
+                if (firstRolledToIndex != 0) skippedRequestIndexes[firstRolledToIndex] = lastRolledToIndex;
             }
 
             // Return the spamDeletionProposalBond.

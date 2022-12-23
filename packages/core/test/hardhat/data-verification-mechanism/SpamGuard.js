@@ -5,6 +5,7 @@ const { getContract, assertEventEmitted } = hre;
 const { RegistryRolesEnum, didContractThrow, getRandomSignedInt, computeVoteHash } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { assert } = require("chai");
+
 const { toBN } = web3.utils;
 
 const Registry = getContract("Registry");
@@ -12,6 +13,8 @@ const VotingV2 = getContract("VotingV2ControllableTiming");
 
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
+const SlashingLibrary = getContract("SlashingLibrary");
+const ZeroedSlashingSlashingLibraryTest = getContract("ZeroedSlashingSlashingLibraryTest");
 
 const { utf8ToHex, padRight } = web3.utils;
 
@@ -485,32 +488,59 @@ describe("SpamGuard", function () {
 
   it("Correctly sends bond to store if voted down", async function () {});
   it("Correctly handles rolled votes", async function () {
-    // Request 2 spam requests and move to the next round before signaling them as spam.
+    // Request 2 spam requests and one valid request. Move to the next round before signaling them as spam.
     const time = Number(await voting.methods.getCurrentTime().call()) - 10; // 10 seconds in the past.
-    await voting.methods.requestPrice(spamIdentifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(validIdentifier, time).send({ from: registeredContract });
     await voting.methods.requestPrice(spamIdentifier, time + 1).send({ from: registeredContract });
-    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 2);
-    const spamRequestId1 = await voting.methods.priceRequestIds(0).call();
-    const spamRequestId2 = await voting.methods.priceRequestIds(1).call();
-    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.requestPrice(spamIdentifier, time + 2).send({ from: registeredContract });
 
-    // Construct the request to delete the spam votes (index #0-1).
-    await voting.methods.signalRequestsAsSpamForDeletion([[0, 1]]).send({ from: account1 });
+    // There should be 3 requests to start (the ones just enqueue). Pending requests start at 0 as the votes are not yet
+    // active and pending requests show votes that are currently being voted on.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 3);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
+
+    // Logically, the first request should be index 0, spam request index 1 and 2.
+    const validRequestId = await voting.methods.priceRequestIds(0).call();
+    assert.equal((await voting.methods.priceRequests(validRequestId).call()).priceRequestIndex, 0);
+    const spamRequestId1 = await voting.methods.priceRequestIds(1).call();
+    assert.equal((await voting.methods.priceRequests(spamRequestId1).call()).priceRequestIndex, 1);
+    const spamRequestId2 = await voting.methods.priceRequestIds(2).call();
+    assert.equal((await voting.methods.priceRequests(spamRequestId2).call()).priceRequestIndex, 2);
+
+    // Now move to the next round and signal the requests for deletion as spam. This should be index 1 and 2, the indexes
+    // shown above.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.signalRequestsAsSpamForDeletion([[1, 2]]).send({ from: account1 });
     const signalDeleteTime = await voting.methods.getCurrentTime().call();
     const spamDeleteIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
 
-    // There should now be 3 requests as the signal to delete votes as spam creates another vote.
-    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 3);
+    // There should now be 4 requests as the signal to delete votes as spam creates another vote. There should be 3
+    // pending requests as the spam deletion request was just enqueued and can only be voted on in the next round.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 4);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 3);
 
     // Move to the next round to vote on the spam deletion request.
     await moveToNextRound(voting, accounts[0]);
+    // Update account trackers to ensure rolling happens. After this there should be 7 requests: 3 original, 1 spam
+    // deletion, 3 rolled.
+    await voting.methods.updateTrackers(account2).send({ from: account2 });
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 7);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 4);
 
-    // Commit votes. Vote only on spam deletion request. Voting to delete the spam is with a
-    // vote of "1e18". Dont vote on the spam requests. Only vote from account2 to simplify the test.
+    // Now that the votes have been rolled we should expect the indices of all 3 requests to be updated.
+    // (note that index 3 is occupied by the spam deletion request).
+    assert.equal((await voting.methods.priceRequests(validRequestId).call()).priceRequestIndex, 4);
+    assert.equal((await voting.methods.priceRequests(spamRequestId1).call()).priceRequestIndex, 5);
+    assert.equal((await voting.methods.priceRequests(spamRequestId2).call()).priceRequestIndex, 6);
+
+    // Now, vote on the valid requests and the spam deletion identifier.
     const account = account2;
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const salt = getRandomSignedInt();
-    const hash1 = computeVoteHash({
+    const hash1 = computeVoteHash({ price: toWei("1"), salt, account, roundId, time, identifier: validIdentifier });
+    await voting.methods.commitVote(validIdentifier, time, hash1).send({ from: account2 });
+
+    const hash2 = computeVoteHash({
       price: toWei("1"),
       salt,
       account,
@@ -518,28 +548,29 @@ describe("SpamGuard", function () {
       time: signalDeleteTime,
       identifier: spamDeleteIdentifier,
     });
-    await voting.methods.commitVote(spamDeleteIdentifier, signalDeleteTime, hash1).send({ from: account2 });
+    await voting.methods.commitVote(spamDeleteIdentifier, signalDeleteTime, hash2).send({ from: account2 });
 
-    // There should now be 5 requests as the commit triggered update trackers adding 2 rolled spam requests.
-    // TODO: Check if this really should be the expected behavior.
-    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 5);
+    // There should still be 7 requests at this point.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 7);
 
-    // Reveal the spam deletion vote.
+    // Reveal the votes.
     await moveToNextPhase(voting, accounts[0]);
     await voting.methods.revealVote(spamDeleteIdentifier, signalDeleteTime, toWei("1"), salt).send({ from: account2 });
+    await voting.methods.revealVote(validIdentifier, time, toWei("1"), salt).send({ from: account2 });
 
     // Execute the spam deletion call in the next round as the vote should have been resolved.
     await moveToNextRound(voting, accounts[0]);
     await voting.methods.executeSpamDeletion(0).send({ from: account1 });
 
     // The spam requests should have been deleted, they should have been removed from pending requests.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 7);
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
 
     // All spam request status elements should be 0 (not requested) as they were deleted.
     let statuses = await voting.methods
       .getPriceRequestStatuses([
-        { identifier: spamIdentifier, time: time },
         { identifier: spamIdentifier, time: time + 1 },
+        { identifier: spamIdentifier, time: time + 2 },
       ])
       .call();
     assert.equal(statuses[0].status, "0");
@@ -566,8 +597,10 @@ describe("SpamGuard", function () {
     assert.isNull(spamRequest2.ancillaryData);
 
     // Update trackers should not add any new requests as the spam requests were deleted.
+
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 7);
     await voting.methods.updateTrackers(account2).send({ from: account2 });
-    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 5);
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 7);
 
     // There should still be no pending requests.
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
@@ -601,5 +634,218 @@ describe("SpamGuard", function () {
     assert.equal(spamRequest2.time, "0");
     assert.equal(spamRequest2.identifier, padRight(utf8ToHex(""), 64));
     assert.isNull(spamRequest2.ancillaryData);
+
+    // The valid request should have the correct properties.
+    const validRequest = await voting.methods.priceRequests(validRequestId).call();
+    assert.equal(validRequest.lastVotingRound, roundId.toString());
+    assert.isFalse(validRequest.isGovernance);
+    assert.equal(validRequest.pendingRequestIndex, "18446744073709551615"); // Int64 Max; used when a vote is resolved.
+    assert.equal(validRequest.priceRequestIndex, "4");
+    assert.equal(validRequest.time, time.toString());
+    assert.equal(validRequest.identifier, validIdentifier);
+    assert.isNull(validRequest.ancillaryData);
   });
+  it("Rolled spam deletion does not balloon gas costs of other voters", async function () {
+    // Consider the situation where someone spams the DVM with many requests and we are too slow to enqueue a spam
+    // deletion request in time. In this situation the spam will need to be rolled to the next round. It is critical
+    // that in this situation the core spam deletion logic continues to work such that gas costs for voter interactions
+    // do not balloon out of control, enabling us to keep all the benefits of deletion while rolling. In theory, only the
+    // first committer (or caller to updateTrackersRange after the roll) should have to pay the gas. This test shows this.
+
+    await addNonSlashingVote();
+
+    // Construct a test that creates 400 spam requests, This is 100 * 4.
+    const numberOfRequestsPerMulticall = 100;
+    const numberOfMulticallCalls = 4;
+    const numberOfRequests = numberOfRequestsPerMulticall * numberOfMulticallCalls;
+    await submitManySpamRequests(numberOfMulticallCalls, numberOfRequestsPerMulticall);
+
+    // Mimic these being rolled to the following round, only in this subsequent round do we submit the spam deletion
+    // request. This mimics us being too slow at submitting the deletion request.
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), numberOfRequests + 1);
+
+    let time = await voting.methods.getCurrentTime().call();
+    await voting.methods.signalRequestsAsSpamForDeletion([[1, numberOfRequests]]).send({ from: account1 });
+
+    // Move to the next round so we can vote on these.
+    await moveToNextRound(voting, accounts[0]);
+
+    // Due to the number of request we actually cant roll them all within the same transaction on the first commit.
+    // To accommodate this we need to call updateTrackersRange multiple times. This idea here is that only ONE voter
+    // needs to do this and no over voters should have to pay the gas.
+    let didRunOutOfGas = false;
+    try {
+      await voting.methods.updateTrackers(account1).send({ from: account1 });
+    } catch (error) {
+      didRunOutOfGas = true;
+      assert(error.data.stack.includes("Transaction ran out of gas"));
+    }
+    assert(didRunOutOfGas);
+
+    await voting.methods.updateTrackersRange(account1, numberOfRequests / 2).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, numberOfRequests).send({ from: account1 });
+
+    // Now we should be able to delete the spam requests by voting on them.
+    const deleteIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
+    let account = account1;
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const salt = getRandomSignedInt();
+    const hash = computeVoteHash({ price: toWei("1"), salt, account, roundId, time, identifier: deleteIdentifier });
+    const tx = await voting.methods.commitVote(deleteIdentifier, time, hash).send({ from: account1 });
+    assert.isBelow(tx.gasUsed, 200000); // The gas used by this commit action should be standard (<200k gas)
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(deleteIdentifier, time, toWei("1"), salt).send({ from: account1 });
+
+    // Execute the spam deletion now that we've voted on it.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.executeSpamDeletion(0).send({ from: account1 });
+
+    // After deletion, We should have 0 pending requests as they were all removed.
+    assert.equal(await voting.methods.getPendingRequests().call(), 0);
+
+    // Critically if a voter that did not participate in the spam deletion process tries to update their trackers
+    // they should no pay any additional gas as this was covered by the: a) updateTrackersRange call and
+    // b) executeSpamDeletion call.
+    const tx2 = await voting.methods.updateTrackers(account2).send({ from: account2 });
+
+    assert.isBelow(tx2.gasUsed, 150000); // The gas used by this commit action should be standard (<200k gas).
+
+    // Tto prove the point, re-request another price and both voters when voting on this should not pay any outsized gas.
+    time = (await voting.methods.getCurrentTime().call()) - 10;
+    await voting.methods.requestPrice(validIdentifier, time).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]); // Move to the next round so we can vote on these.
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash1 = computeVoteHash({ price: toWei("1"), salt, account, roundId, time, identifier: validIdentifier });
+    const tx3 = await voting.methods.commitVote(validIdentifier, time, hash1).send({ from: account1 });
+    assert.isBelow(tx3.gasUsed, 200000); // The gas used by this commit action should be standard (<200k gas)
+    account = account2;
+    const hash2 = computeVoteHash({ price: toWei("1"), salt, account, roundId, time, identifier: validIdentifier });
+    const tx4 = await voting.methods.commitVote(validIdentifier, time, hash2).send({ from: account2 });
+    assert.isBelow(tx4.gasUsed, 200000); // The gas used by this commit action should be standard (<200k gas)
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(validIdentifier, time, toWei("1"), salt).send({ from: account1 });
+    await voting.methods.revealVote(validIdentifier, time, toWei("1"), salt).send({ from: account2 });
+
+    // Validate the price settled
+    await moveToNextRound(voting, accounts[0]); // Move to the next round so we can get the price.
+    assert.equal(await voting.methods.getPrice(validIdentifier, time).call({ from: registeredContract }), toWei("1"));
+  });
+  it("Can correctly handle more votes rolled on one round than can be deleted in one tx", async function () {
+    // If enough votes are constructed in one round it is possible that we need to delete them in multiple spam deletion
+    // requests (i.e due to the cost of the delete operation in executeSpamDeletion exceeding the block gas limit). This
+    // test shows that, even in this situation, the spam deletion process is still able to delete all the spam votes and
+    // That other voters are safe from paying any additional gas once the votes have been removed.
+
+    // Construct a test that creates 1000 spam requests, This is 100 * 10.
+    const numberOfRequestsPerMulticall = 100;
+    const numberOfMulticallCalls = 10;
+    const numberOfRequests = numberOfRequestsPerMulticall * numberOfMulticallCalls;
+    await submitManySpamRequests(numberOfMulticallCalls, numberOfRequestsPerMulticall);
+
+    // Mimic these being rolled.
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), numberOfRequests);
+
+    // From testing this directly, it is known that we can execute a spam deletion of all the request in one go. To
+    // Deal with this, we need to split this up over 3 spam deletion request so they can be executed separately later.
+    const time = await voting.methods.getCurrentTime().call();
+    await voting.methods.signalRequestsAsSpamForDeletion([[0, 333]]).send({ from: account1 });
+    await voting.methods.signalRequestsAsSpamForDeletion([[334, 666]]).send({ from: account1 });
+    await voting.methods.signalRequestsAsSpamForDeletion([[667, 1000]]).send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), numberOfRequests + 3);
+    await moveToNextRound(voting, accounts[0]);
+
+    // Equally, We need to split up the update tracker process into multiple calls.
+    await voting.methods.updateTrackersRange(account1, 300).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, 600).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, 900).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, 1000).send({ from: account1 });
+
+    // Now, vote on the 3 spam deletion requests. Each of these votes should cost a standard amount of gas.
+    const deleteIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
+    const account = account1;
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const salt = getRandomSignedInt();
+    const hash = computeVoteHash({ price: toWei("1"), salt, account, roundId, time, identifier: deleteIdentifier });
+    const tx1 = await voting.methods.commitVote(deleteIdentifier, time, hash).send({ from: account1 });
+    assert.isBelow(tx1.gasUsed, 200000);
+
+    const deleteIdentifier2 = padRight(utf8ToHex("SpamDeletionProposal 1"), 64);
+    const hash2 = computeVoteHash({ price: toWei("1"), salt, account, roundId, time, identifier: deleteIdentifier2 });
+    const tx2 = await voting.methods.commitVote(deleteIdentifier2, time, hash2).send({ from: account1 });
+    assert.isBelow(tx2.gasUsed, 200000);
+
+    const deleteIdentifier3 = padRight(utf8ToHex("SpamDeletionProposal 2"), 64);
+    const hash3 = computeVoteHash({ price: toWei("1"), salt, account, roundId, time, identifier: deleteIdentifier3 });
+    const tx3 = await voting.methods.commitVote(deleteIdentifier3, time, hash3).send({ from: account1 });
+    assert.isBelow(tx3.gasUsed, 200000);
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(deleteIdentifier, time, toWei("1"), salt).send({ from: account1 });
+    await voting.methods.revealVote(deleteIdentifier2, time, toWei("1"), salt).send({ from: account1 });
+    await voting.methods.revealVote(deleteIdentifier3, time, toWei("1"), salt).send({ from: account1 });
+
+    // Execute the spam deletion.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.executeSpamDeletion(0).send({ from: account1 });
+    await voting.methods.executeSpamDeletion(1).send({ from: account1 });
+    await voting.methods.executeSpamDeletion(2).send({ from: account1 });
+
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
+
+    // Finally, updating trackers, as per usual, should not cost an extra amount of gas due to the spam deletion.
+    const tx4 = await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.isBelow(tx4.gasUsed, 200000);
+
+    const tx5 = await voting.methods.updateTrackers(account2).send({ from: account2 });
+    assert.isBelow(tx5.gasUsed, 200000);
+  });
+  const addNonSlashingVote = async () => {
+    const zeroedSlashingSlashingLibraryTest = await ZeroedSlashingSlashingLibraryTest.new().send({ from: accounts[0] });
+    await voting.methods
+      .setSlashingLibrary(zeroedSlashingSlashingLibraryTest.options.address)
+      .send({ from: accounts[0] });
+    let identifier = padRight(utf8ToHex("slash-test-advance"), 64);
+    let time = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    let salt = getRandomSignedInt();
+    let price = "69696969";
+    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+
+    let baseRequest = { salt, roundId: (await voting.methods.getCurrentRoundId().call()).toString(), identifier };
+    const hash = computeVoteHash({ ...baseRequest, price, account: account1, time });
+    await voting.methods.commitVote(identifier, time, hash).send({ from: account1 });
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await moveToNextRound(voting, accounts[0]);
+
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    await voting.methods.updateTrackers(account2).send({ from: account2 });
+
+    await voting.methods
+      .setSlashingLibrary((await SlashingLibrary.deployed()).options.address)
+      .send({ from: accounts[0] });
+  };
+
+  const submitManySpamRequests = async (numberOfMulticallCalls, numberOfRequestsPerMulticall) => {
+    const firstRequestTime = Number(await voting.methods.getCurrentTime().call()) - 10000;
+
+    for (const j of [...Array(numberOfMulticallCalls).keys()]) {
+      const priceRequestData = [];
+      for (const i of [...Array(numberOfRequestsPerMulticall).keys()]) {
+        const time = firstRequestTime + i + j * numberOfRequestsPerMulticall;
+        priceRequestData.push(voting.methods.requestPrice(spamIdentifier, time).encodeABI());
+      }
+      await voting.methods.multicall(priceRequestData).send({ from: registeredContract });
+    }
+  };
 });
