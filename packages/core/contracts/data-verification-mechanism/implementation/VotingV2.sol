@@ -752,10 +752,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) external {
-        require(
-            voterStakes[voterAddress].nextIndexToProcess < indexTo && indexTo <= priceRequestIds.length,
-            "Invalid indexTo"
-        );
+        require(voterStakes[voterAddress].nextIndexToProcess < indexTo && indexTo <= priceRequestIds.length);
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -980,8 +977,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
                     spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex,
-                "Invalid spam request index"
+                    spamRequestIndex[1] > runningValidationIndex
             );
 
             runningValidationIndex = spamRequestIndex[1];
@@ -1014,14 +1010,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
 
     function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
-        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
+        require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice, "Spam proposal has not resolved");
+        require(hasPrice);
 
         // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
         if (resolutionPrice != 0) {
