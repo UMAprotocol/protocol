@@ -752,7 +752,7 @@ describe("SpamGuard", function () {
     await moveToNextRound(voting, accounts[0]);
     assert.equal(await voting.methods.getNumberOfPriceRequests().call(), numberOfRequests);
 
-    // From testing this directly, it is known that we can execute a spam deletion of all the request in one go. To
+    // From testing this directly, it is known that we can't execute a spam deletion for all the request in one go. To
     // Deal with this, we need to split this up over 3 spam deletion request so they can be executed separately later.
     const time = await voting.methods.getCurrentTime().call();
     await voting.methods.signalRequestsAsSpamForDeletion([[0, 333]]).send({ from: account1 });
