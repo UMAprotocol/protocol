@@ -42,7 +42,7 @@ export function getHardhatConfig(
   require("@nomiclabs/hardhat-etherscan");
   require("@nomiclabs/hardhat-ethers");
   require("hardhat-deploy");
-  // require("hardhat-gas-reporter");
+  require("hardhat-gas-reporter");
   require("./gckms/KeyInjectorPlugin");
   require("hardhat-tracer");
 
@@ -93,7 +93,7 @@ export function getHardhatConfig(
         gasPrice: "auto",
         initialBaseFeePerGas: 1_000_000_000,
         gas: 11500000,
-        blockGasLimit: 30_000_000,
+        blockGasLimit: 15_000_000,
         timeout: 1800000,
         testBlacklist,
         allowUnlimitedContractSize: true,
