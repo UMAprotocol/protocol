@@ -45,15 +45,18 @@ contract EscalationManagerPolicyEnforced is CommonOptimisticAsserterTest {
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(mockedEscalationManager, oracleRequest, true);
 
-        // As we are not using the DVM as the arbitration oracle the "winner" of the dispute should get back 2x the bond
-        // and nothing should be burnt.
+        // Also when arbitrating via the escalation manager the oracle fee is paid to the Store.
         uint256 proposerBalanceBeforeSettle = defaultCurrency.balanceOf(TestAddress.account1);
         uint256 storeBalanceBeforeSettle = defaultCurrency.balanceOf(address(store));
+        uint256 expectedOracleFee = (defaultBond * burnedBondPercentage) / 1e18;
 
         assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
-        assertTrue(defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBeforeSettle == defaultBond * 2);
-        assertTrue(defaultCurrency.balanceOf(address(store)) == storeBalanceBeforeSettle);
+        assertTrue(
+            defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBeforeSettle ==
+                defaultBond * 2 - expectedOracleFee
+        );
+        assertTrue(defaultCurrency.balanceOf(address(store)) == storeBalanceBeforeSettle + expectedOracleFee);
         vm.clearMockedCalls();
     }
 
