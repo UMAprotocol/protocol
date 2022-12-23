@@ -13,12 +13,14 @@ const VotingV2 = getContract("VotingV2ControllableTiming");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
 
+const Store = getContract("Store");
+
 const { utf8ToHex, padRight } = web3.utils;
 
 const toWei = (value) => toBN(web3.utils.toWei(value, "ether"));
 
 describe("SpamGuard", function () {
-  let voting, votingToken, registry, supportedIdentifiers, registeredContract;
+  let voting, votingToken, registry, supportedIdentifiers, registeredContract, store;
   let accounts, account1, account2;
 
   const validIdentifier = padRight(utf8ToHex("valid-price"), 64);
@@ -33,6 +35,7 @@ describe("SpamGuard", function () {
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
+    store = await Store.deployed();
 
     // Allow account1 to mint tokens.
     const minterRole = 1;
@@ -483,6 +486,62 @@ describe("SpamGuard", function () {
     assert.equal(await votingToken.methods.balanceOf(account2).call(), toWei("0")); // 0mm.
   });
 
-  it("Correctly sends bond to store if voted down", async function () {});
+  it("Correctly sends bond to store if voted down", async function () {
+    // Test rejecting proposal to delete request as spam.
+    const time = Number(await voting.methods.getCurrentTime().call()) - 10; // 10 seconds in the past.
+
+    // Initiate two price requests and move to the next round where they will be voted on.
+    await voting.methods.requestPrice(validIdentifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(validIdentifier, time + 1).send({ from: registeredContract });
+
+    // Construct the request to delete the second request as spam.
+    await voting.methods.signalRequestsAsSpamForDeletion([[1, 1]]).send({ from: account1 });
+    const signalDeleteTime = await voting.methods.getCurrentTime().call();
+
+    // The caller of this method should have lost 10k votingTokens as a bond when calling this function.
+    assert.equal(await votingToken.methods.balanceOf(account1).call(), toWei("9990000")); // 10mm - 10k bond
+
+    // All the requests should be enqueued in the following voting round.
+    await moveToNextRound(voting, accounts[0]);
+
+    const spamDeleteIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
+
+    // Commit votes. Vote on both initial and spam deletion request. Voting to disregard the request as
+    // spam is with a vote of "0". Only vote from account2 to simplify the test.
+    const account = account2;
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const price = 42069;
+    const salt = getRandomSignedInt();
+
+    const hash1 = computeVoteHash({ price, salt, account, time, roundId, identifier: validIdentifier });
+    const hash2 = computeVoteHash({ price, salt, account, time: time + 1, roundId, identifier: validIdentifier });
+    const hash3 = computeVoteHash({
+      price: toWei("0"),
+      salt,
+      account,
+      roundId,
+      time: signalDeleteTime,
+      identifier: spamDeleteIdentifier,
+    });
+    await voting.methods.commitVote(validIdentifier, time, hash1).send({ from: account2 });
+    await voting.methods.commitVote(validIdentifier, time + 1, hash2).send({ from: account2 });
+    await voting.methods.commitVote(spamDeleteIdentifier, signalDeleteTime, hash3).send({ from: account2 });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.revealVote(validIdentifier, time, price, salt).send({ from: account2 });
+    await voting.methods.revealVote(validIdentifier, time + 1, price, salt).send({ from: account2 });
+    await voting.methods.revealVote(spamDeleteIdentifier, signalDeleteTime, toWei("0"), salt).send({ from: account2 });
+
+    // Execute the downvoted spam deletion call.
+    await moveToNextRound(voting, accounts[0]);
+
+    await voting.methods.executeSpamDeletion(0).send({ from: account1 });
+
+    // Store contract should have received the bond as the spam deletion proposal was downvoted.
+    assert.equal(await votingToken.methods.balanceOf(account1).call(), toWei("9990000")); // 10mm - 10k bond
+    assert.equal(await votingToken.methods.balanceOf(store.options.address).call(), toWei("10000")); // 10k.
+  });
   it("Correctly handles rolled votes", async function () {});
 });
