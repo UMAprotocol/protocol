@@ -14,6 +14,7 @@ import "./BaseEscalationManager.sol";
  * FullPolicyEscalationManager will return a default policy with all values set to false.
  */
 contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
+    // Struct to store the arbitration resolution for a given identifier, time, and ancillary data.
     struct ArbitrationResolution {
         bool valueSet; // True if the resolution has been set.
         bool resolution; // True or false depending on the resolution.
@@ -169,6 +170,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     /**
      * @notice Adds/removes a disputeCaller to the whitelist of disputers that can file disputes.
      * @param disputeCaller the address of the disputeCaller to add.
+     * @param value true represents adding and false represents removing the disputeCaller from the whitelist.
      * @dev This function is only used if validateDisputers is set to true.
      */
     function setDisputeCallerInWhitelist(address disputeCaller, bool value) public onlyOwner {
@@ -179,6 +181,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     /**
      * @notice Adds/removes an asserter to the whitelist of assertingCallers that can make assertions.
      * @param assertingCaller the address of the assertingCaller to add.
+     * @param value true represents adding and false represents removing the assertingCaller from the whitelist.
      */
     function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
         whitelistedAssertingCallers[assertingCaller] = value;
@@ -188,6 +191,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     /**
      * @notice Adds/removes an asserter to the whitelist of asserters that can make assertions.
      * @param asserter the address of the asserter to add.
+     * @param value true represents adding and false represents removing the asserter from the whitelist.
      * @dev This function must be used in conjunction with setWhitelistedAssertingCallers in order to have an effect.
      */
     function setWhitelistedAsserters(address asserter, bool value) public onlyOwner {
