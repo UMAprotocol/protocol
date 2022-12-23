@@ -490,7 +490,7 @@ describe("SpamGuard", function () {
     // Test rejecting proposal to delete request as spam.
     const time = Number(await voting.methods.getCurrentTime().call()) - 10; // 10 seconds in the past.
 
-    // Initiate two price requests and move to the next round where they will be voted on.
+    // Initiate two price requests and move to the next round.
     await voting.methods.requestPrice(validIdentifier, time).send({ from: registeredContract });
     await voting.methods.requestPrice(validIdentifier, time + 1).send({ from: registeredContract });
 
@@ -506,16 +506,13 @@ describe("SpamGuard", function () {
 
     const spamDeleteIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
 
-    // Commit votes. Vote on both initial and spam deletion request. Voting to disregard the request as
-    // spam is with a vote of "0". Only vote from account2 to simplify the test.
+    // Commit vote. Vote only on the spam deletion request to disregard it as spam with a vote of "0".
+    // Only vote from account2 to simplify the test.
     const account = account2;
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-    const price = 42069;
     const salt = getRandomSignedInt();
 
-    const hash1 = computeVoteHash({ price, salt, account, time, roundId, identifier: validIdentifier });
-    const hash2 = computeVoteHash({ price, salt, account, time: time + 1, roundId, identifier: validIdentifier });
-    const hash3 = computeVoteHash({
+    const hash1 = computeVoteHash({
       price: toWei("0"),
       salt,
       account,
@@ -523,15 +520,11 @@ describe("SpamGuard", function () {
       time: signalDeleteTime,
       identifier: spamDeleteIdentifier,
     });
-    await voting.methods.commitVote(validIdentifier, time, hash1).send({ from: account2 });
-    await voting.methods.commitVote(validIdentifier, time + 1, hash2).send({ from: account2 });
-    await voting.methods.commitVote(spamDeleteIdentifier, signalDeleteTime, hash3).send({ from: account2 });
+    await voting.methods.commitVote(spamDeleteIdentifier, signalDeleteTime, hash1).send({ from: account2 });
 
-    // Reveal the votes.
+    // Reveal the vote.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.revealVote(validIdentifier, time, price, salt).send({ from: account2 });
-    await voting.methods.revealVote(validIdentifier, time + 1, price, salt).send({ from: account2 });
     await voting.methods.revealVote(spamDeleteIdentifier, signalDeleteTime, toWei("0"), salt).send({ from: account2 });
 
     // Execute the downvoted spam deletion call.
