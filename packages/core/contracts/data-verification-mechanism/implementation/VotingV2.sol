@@ -919,7 +919,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // rolled & then deleted vote. This happens due to the executeSpamDeletion setting the skippedRequestIndexes
             // to consider the rolled value on deletion without re-indexing the same requestIndex (which is what happens
             // during the normal rolling process and is why we increment +1 in the above ternary operator).
-            //
             if (nextIndex >= priceRequestIds.length) nextIndex = priceRequestIds.length - 1;
 
             if (
