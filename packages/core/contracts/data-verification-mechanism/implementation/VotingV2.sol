@@ -737,7 +737,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         emit GatChanged(newGat);
     }
 
-    // Here for abi compatibility. to be removed.
+    /**
+     * @notice Does nothing.
+     * @dev Here for abi compatibility only, to be removed.
+     * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
+     */
     function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) external override onlyOwner {}
 
     /**
