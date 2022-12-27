@@ -413,12 +413,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Gets the price for identifier and time if it has already been requested and resolved.
+     * @notice Gets the price for identifier, time and ancillary data if it has already been requested and resolved.
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @return int256 representing the resolved price for the given identifier and timestamp.
+     * @return int256 representing the resolved price for the given identifier, timestamp and ancillary data.
      */
     function getPrice(
         bytes32 identifier,
@@ -432,7 +432,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return price;
     }
 
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    /**
+     * @notice Gets the price for identifier and time if it has already been requested and resolved.
+     * @dev Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+     * If the price is not available, the method reverts.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
+     * @param time unix timestamp of the price request.
+     * @return int256 representing the resolved price for the given identifier and timestamp.
+     */
     function getPrice(bytes32 identifier, uint256 time) external view override returns (int256) {
         return getPrice(identifier, time, "");
     }
