@@ -232,8 +232,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param _phaseLength length of the voting phases in seconds.
      * @param _minRollToNextRoundLength time before the end of a round in which a request must be made for the request
      *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
-     * @param _startingRequestIndex offset index to increment the first index in the priceRequestIds array.
      * @param _gat number of tokens that must participate to resolve a vote.
+     * @param _startingRequestIndex offset index to increment the first index in the priceRequestIds array.
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
