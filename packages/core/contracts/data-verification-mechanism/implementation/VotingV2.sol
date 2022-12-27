@@ -436,7 +436,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Gets the price for identifier and time if it has already been requested and resolved.
      * @dev Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-     * If the price is not available, the method reverts.
+     * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of the price request.
      * @return int256 representing the resolved price for the given identifier and timestamp.
