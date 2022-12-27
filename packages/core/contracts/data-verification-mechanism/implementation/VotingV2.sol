@@ -385,12 +385,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Whether the price for identifier and time is available.
+     * @notice Whether the price for identifier, time and ancillary data is available.
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @return _hasPrice bool if the DVM has resolved to a price for the given identifier and timestamp.
+     * @return bool if the DVM has resolved to a price for the given identifier, timestamp and ancillary data.
      */
     function hasPrice(
         bytes32 identifier,
@@ -401,7 +401,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return _hasPrice;
     }
 
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    /**
+     * @notice Whether the price for identifier and time is available.
+     * @dev Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
+     * @param time unix timestamp of the price request.
+     * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
+     */
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
         return hasPrice(identifier, time, "");
     }
