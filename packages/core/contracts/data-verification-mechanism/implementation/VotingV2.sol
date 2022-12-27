@@ -768,10 +768,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     // Starting index for a staker is the first value that nextIndexToProcess is set to and defines the first index that
-    // a staker is suspectable to receiving slashing on. Note that we offset the length of the pendingPriceRequests
-    // array as you are still suspectable to slashing if you stake for the first time in the commit phase of an active
-    //vote. If you stake during an active reveal then your liquidity will be marked as inactive within Staker.sol until
-    // the its activated in the next round and as such you'll miss out on being slashed for that round.
+    // a staker is susceptible to receiving slashing on. Note that we offset the length of the pendingPriceRequests
+    // array as you are still susceptible to slashing if you stake for the first time in the commit phase of an active
+    // vote. If you stake during an active reveal then your liquidity will be marked as inactive within Staker.sol until
+    // it is activated in the next round and as such you'll miss out on being slashed for that round.
     function _getStartingIndexForStaker() internal view override returns (uint64) {
         return SafeCast.toUint64(priceRequestIds.length - pendingPriceRequests.length);
     }
@@ -787,7 +787,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _computePendingStakes(address voterAddress, uint256 amount) internal override {
         if (_inActiveReveal()) {
             uint256 currentRoundId = getCurrentRoundId();
-            // Now freeze, the round variables as we do not want the cumulativeActiveStakeAtRound to change based on the
+            // Now freeze the round variables as we do not want the cumulativeActiveStakeAtRound to change based on the
             // stakes during the active reveal phase. This only happens if the first action within the active reveal is
             // someone staking, rather than someone revealing their vote.
             _freezeRoundVariables(currentRoundId);
@@ -827,7 +827,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
             // and set this within the skippedRequestIndexes mapping so the next time we hit this it is skipped.
             if (!_priceRequestResolved(priceRequest, voteInstance, currentRoundId)) {
-                // If the request is not resolved and the lastVotingRound less than the current round then the vote
+                // If the request is not resolved and the lastVotingRound is less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
                     priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
@@ -885,7 +885,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             )
                 slash -= int256((effectiveStake * wrongVoteSlashPerToken) / 1e18);
 
-                // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
+                // The voter voted correctly. Receive a pro-rata share of the other voters slashed amounts as a reward.
             else {
                 // Compute the total amount slashed over all stakers. This is the sum of the total slashed for not voting
                 // and the total slashed for voting incorrectly. Use this to work out the stakers prorate share.
@@ -991,7 +991,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         uint256 proposalId = spamDeletionProposals.length - 1;
 
-        // Note that for proposalId>= 10^11 the generated identifier will no longer be unique but the manner
+        // Note that for proposalId >= 10^11 the generated identifier will no longer be unique but the manner
         // in which the priceRequest id is encoded in _encodePriceRequest guarantees its uniqueness.
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 

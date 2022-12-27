@@ -49,7 +49,7 @@ contract EmergencyProposer is Ownable, Lockable {
 
     // The only address that can execute an emergency proposal. Will be set to a multisig. Acts to guardrail the
     // emergency recovery mechanism and ensure that only valid proposals can be executed. Note that while this address
-    // is somewhat privileged, it cant unilaterally push through proposals as a proposal must pass the minimum wait
+    // is somewhat privileged, it can't unilaterally push through proposals as a proposal must pass the minimum wait
     // time without the DVM voters voting to slash the proposal.
     address public executor;
 
