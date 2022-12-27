@@ -349,14 +349,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // the minRollToNextRoundLength. This limits when a request must be made for it to occur in the next round.
             uint256 roundIdToVoteOnPriceRequest =
                 isGovernance ? currentRoundId + 1 : voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
-            PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
-            newPriceRequest.identifier = identifier;
-            newPriceRequest.time = SafeCast.toUint64(time);
-            newPriceRequest.lastVotingRound = SafeCast.toUint32(roundIdToVoteOnPriceRequest);
-            newPriceRequest.pendingRequestIndex = SafeCast.toUint64(pendingPriceRequests.length);
-            newPriceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
-            newPriceRequest.ancillaryData = ancillaryData;
-            if (isGovernance) newPriceRequest.isGovernance = isGovernance;
+            priceRequest.identifier = identifier;
+            priceRequest.time = SafeCast.toUint64(time);
+            priceRequest.lastVotingRound = SafeCast.toUint32(roundIdToVoteOnPriceRequest);
+            priceRequest.pendingRequestIndex = SafeCast.toUint64(pendingPriceRequests.length);
+            priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
+            priceRequest.ancillaryData = ancillaryData;
+            if (isGovernance) priceRequest.isGovernance = isGovernance;
 
             pendingPriceRequests.push(priceRequestId);
             priceRequestIds.push(priceRequestId);
@@ -364,7 +363,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             emit PriceRequestAdded(
                 msg.sender,
                 roundIdToVoteOnPriceRequest,
-                newPriceRequest.priceRequestIndex,
+                priceRequest.priceRequestIndex,
                 identifier,
                 time,
                 ancillaryData,
