@@ -13,7 +13,7 @@ export const logLargeUnstake = (
   chainId: number
 ): void => {
   logger.warn({
-    at: "DVMMonitorUnstake",
+    at: "DVMMonitor",
     message: "Large unstake requested 😟",
     mrkdwn:
       createEtherscanLinkMarkdown(unstake.address, chainId) +
@@ -34,7 +34,7 @@ export const logLargeStake = (
   chainId: number
 ): void => {
   logger.warn({
-    at: "DVMMonitorStake",
+    at: "DVMMonitor",
     message: "Large amount staked 🍖",
     mrkdwn:
       createEtherscanLinkMarkdown(stake.address, chainId) +
@@ -54,7 +54,7 @@ export const logGovernanceProposal = (
   chainId: number
 ): void => {
   logger.warn({
-    at: "DVMMonitorGovernance",
+    at: "DVMMonitor",
     message: "New governance proposal created 📜",
     mrkdwn: "New Admin " + proposal.id + " proposal created at " + createEtherscanLinkMarkdown(proposal.tx, chainId),
   });
@@ -70,7 +70,7 @@ export const logEmergencyProposal = (
   chainId: number
 ): void => {
   logger.warn({
-    at: "DVMMonitorEmergency",
+    at: "DVMMonitor",
     message: "New emergency proposal created 🚨",
     mrkdwn:
       proposal.sender +
@@ -95,7 +95,7 @@ export const logDeletionProposed = (
     .map((range) => (range[0].eq(range[1]) ? range[0].toString() : `${range[0]}-${range[1]}`))
     .join(", ");
   logger.warn({
-    at: "DVMMonitorDeletion",
+    at: "DVMMonitor",
     message: "New spam deletion proposal created 🔇",
     mrkdwn:
       createEtherscanLinkMarkdown(proposal.sender, chainId) +
@@ -117,7 +117,7 @@ export const logRolled = (
   roundId: BigNumber
 ): void => {
   logger.warn({
-    at: "DVMMonitorRolled",
+    at: "DVMMonitor",
     message: "Rolled vote 🎲",
     mrkdwn:
       "Vote #" +

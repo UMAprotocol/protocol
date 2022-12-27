@@ -2,12 +2,22 @@ import { getChainIdByUrl, getLatestBlockNumberByUrl } from "../utils/utils";
 import { VotingV2Ethers } from "@uma/contracts-node";
 import { BigNumber, utils } from "ethers";
 
-interface MonitoringParams {
+interface BotModes {
+  unstakesEnabled: boolean;
+  stakesEnabled: boolean;
+  governanceEnabled: boolean;
+  deletionEnabled: boolean;
+  emergencyEnabled: boolean;
+  rolledEnabled: boolean;
+}
+
+export interface MonitoringParams {
   jsonRpcUrl: string;
   chainId: number;
   startingBlock: number;
   endingBlock: number;
   pollingDelay: number;
+  botModes: BotModes;
 }
 
 export const initCommonEnvVars = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -33,12 +43,22 @@ export const initCommonEnvVars = async (env: NodeJS.ProcessEnv): Promise<Monitor
     throw new Error("STARTING_BLOCK_NUMBER must be less than or equal to ENDING_BLOCK_NUMBER");
   }
 
+  const botModes = {
+    unstakesEnabled: env.UNSTAKES_ENABLED === "true",
+    stakesEnabled: env.STAKES_ENABLED === "true",
+    governanceEnabled: env.GOVERNANCE_ENABLED === "true",
+    deletionEnabled: env.DELETION_ENABLED === "true",
+    emergencyEnabled: env.EMERGENCY_ENABLED === "true",
+    rolledEnabled: env.ROLLED_ENABLED === "true",
+  };
+
   return {
     jsonRpcUrl,
     chainId,
     startingBlock,
     endingBlock,
     pollingDelay,
+    botModes,
   };
 };
 
@@ -71,4 +91,8 @@ export const getRequestId = (identifier: string, time: BigNumber, ancillaryData:
   return utils.keccak256(
     utils.defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData])
   );
+};
+
+export const startupLogLevel = (params: MonitoringParams): "debug" | "info" => {
+  return params.pollingDelay === 0 ? "debug" : "info";
 };
