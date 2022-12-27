@@ -177,6 +177,7 @@ contract GovernorV2 is MultiRole, Lockable {
     /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
+     * @return the current block timestamp.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
