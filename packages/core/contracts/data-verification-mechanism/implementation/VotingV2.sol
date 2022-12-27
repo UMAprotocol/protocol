@@ -287,7 +287,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      ****************************************/
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the identifier, time pair.
+     * @notice Enqueues a request (if a request isn't already present) for the identifier, time and ancillary data.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
@@ -303,7 +303,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Enqueues a governance action request (if a request isn't already present) for identifier, time pair.
+     * @notice Enqueues a governance action request (if a request isn't already present) for identifier, time and
+     * ancillary data.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
@@ -373,7 +374,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         }
     }
 
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    /**
+     * @notice Enqueues a request (if a request isn't already present) for the identifier, time pair.
+     * @dev Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
+     * @param time unix timestamp for the price request.
+     */
     function requestPrice(bytes32 identifier, uint256 time) external override {
         requestPrice(identifier, time, "");
     }
