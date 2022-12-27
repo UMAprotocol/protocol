@@ -234,6 +234,7 @@ contract GovernorV2 is MultiRole, Lockable {
         return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
+    // Returns the IdentifierWhitelist contract address, named "IdentifierWhitelist" in the finder.
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
