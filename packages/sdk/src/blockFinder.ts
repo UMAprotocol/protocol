@@ -8,7 +8,8 @@ export type WithoutStringTimestamp<T extends { timestamp: number | string }> = T
 export default class BlockFinder<T extends { number: number; timestamp: number | string }> {
   constructor(
     private readonly requestBlock: (requestedBlock: string | number) => Promise<T>,
-    private readonly blocks: T[] = []
+    private readonly blocks: T[] = [],
+    private readonly networkId: number = 1
   ) {
     assert(requestBlock, "requestBlock function must be provided");
   }
@@ -31,7 +32,10 @@ export default class BlockFinder<T extends { number: number; timestamp: number |
       const initialBlock = this.blocks[0] as WithoutStringTimestamp<T>;
       const cushion = 1.1;
       // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
-      const incrementDistance = Math.max(await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion), 1);
+      const incrementDistance = Math.max(
+        await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion, this.networkId),
+        1
+      );
 
       // Search backwards by a constant increment until we find a block before the timestamp or hit block 0.
       for (let multiplier = 1; ; multiplier++) {
