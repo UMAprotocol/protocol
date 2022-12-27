@@ -18,7 +18,7 @@ export const logLargeUnstake = (
     mrkdwn:
       createEtherscanLinkMarkdown(unstake.address, chainId) +
       " requested unstake of " +
-      createFormatFunction(2, 0, false, 18)(unstake.amount) +
+      createFormatFunction(2, 2, false, 18)(unstake.amount) +
       " UMA at " +
       createEtherscanLinkMarkdown(unstake.tx, chainId),
   });
@@ -39,7 +39,7 @@ export const logLargeStake = (
     mrkdwn:
       createEtherscanLinkMarkdown(stake.address, chainId) +
       " staked " +
-      createFormatFunction(2, 0, false, 18)(stake.amount) +
+      createFormatFunction(2, 2, false, 18)(stake.amount) +
       " UMA at " +
       createEtherscanLinkMarkdown(stake.tx, chainId),
   });
@@ -128,5 +128,26 @@ export const logRolled = (
       new Date(Number(request.time) * 1000).toUTCString() +
       " is rolled to round #" +
       roundId.toString(),
+  });
+};
+
+export const logGovernorTransfer = (
+  logger: typeof Logger,
+  transfer: {
+    tx: string;
+    to: string;
+    value: string;
+  },
+  chainId: number
+): void => {
+  logger.warn({
+    at: "DVMMonitor",
+    message: "Large governor transfer 📤",
+    mrkdwn:
+      createFormatFunction(2, 2, false, 18)(transfer.value) +
+      " UMA was transferred from governor to " +
+      createEtherscanLinkMarkdown(transfer.to, chainId) +
+      " at " +
+      createEtherscanLinkMarkdown(transfer.tx, chainId),
   });
 };

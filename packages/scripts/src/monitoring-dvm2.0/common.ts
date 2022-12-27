@@ -9,6 +9,7 @@ interface BotModes {
   deletionEnabled: boolean;
   emergencyEnabled: boolean;
   rolledEnabled: boolean;
+  governorTransfersEnabled: boolean;
 }
 
 export interface MonitoringParams {
@@ -50,6 +51,7 @@ export const initCommonEnvVars = async (env: NodeJS.ProcessEnv): Promise<Monitor
     deletionEnabled: env.DELETION_ENABLED === "true",
     emergencyEnabled: env.EMERGENCY_ENABLED === "true",
     rolledEnabled: env.ROLLED_ENABLED === "true",
+    governorTransfersEnabled: env.GOVERNOR_TRANSFERS_ENABLED === "true",
   };
 
   return {
