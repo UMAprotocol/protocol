@@ -1,5 +1,6 @@
 import { getChainIdByUrl, getLatestBlockNumberByUrl } from "../utils/utils";
 import { VotingV2Ethers } from "@uma/contracts-node";
+import { delay } from "@uma/financial-templates-lib";
 import { BigNumber, utils } from "ethers";
 
 interface BotModes {
@@ -66,7 +67,8 @@ export const initCommonEnvVars = async (env: NodeJS.ProcessEnv): Promise<Monitor
   };
 };
 
-export const updateBlockRange = async (params: MonitoringParams): Promise<void> => {
+export const waitNextBlockRange = async (params: MonitoringParams): Promise<void> => {
+  await delay(Number(params.pollingDelay));
   const latestBlockNumber = await getLatestBlockNumberByUrl(params.jsonRpcUrl);
   params.startingBlock = params.endingBlock + 1;
   params.endingBlock = latestBlockNumber;

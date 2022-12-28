@@ -1,5 +1,5 @@
 import { delay, Logger } from "@uma/financial-templates-lib";
-import { initCommonEnvVars, updateBlockRange, startupLogLevel } from "./common";
+import { initCommonEnvVars, startupLogLevel, waitNextBlockRange } from "./common";
 import { monitorUnstakes } from "./MonitorUnstakes";
 import { monitorStakes } from "./MonitorStakes";
 import { monitorGovernance } from "./MonitorGovernance";
@@ -28,8 +28,11 @@ async function main() {
   };
 
   for (;;) {
+    // In case of non-zero polling delay waitNextBlockRange at the end of the loop could have caused the starting block
+    // to be greater than the ending block if there were no new blocks in the last polling delay. In this case we should
+    // wait for the next block range before running the commands.
     if (params.startingBlock > params.endingBlock) {
-      await updateBlockRange(params);
+      await waitNextBlockRange(params);
       continue;
     }
 
@@ -39,9 +42,9 @@ async function main() {
 
     await Promise.all(runCmds);
 
+    // If polling delay is 0 then we are running in serverless mode and should exit after one iteration.
     if (params.pollingDelay === 0) break;
-    await delay(Number(params.pollingDelay));
-    await updateBlockRange(params);
+    await waitNextBlockRange(params);
   }
 }
 
@@ -55,6 +58,7 @@ main().then(
       message: "DVM Monitor execution error🚨",
       error,
     });
+    // Wait 5 seconds to allow logger to flush.
     await delay(5);
     process.exit(1);
   }
