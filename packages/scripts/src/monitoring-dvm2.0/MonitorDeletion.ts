@@ -2,7 +2,7 @@ import { Logger } from "@uma/financial-templates-lib";
 import { VotingV2Ethers } from "@uma/contracts-node";
 import { logDeletionProposed } from "./MonitorLogger";
 import { getContractInstanceByUrl } from "../utils/contracts";
-import type { MonitoringParams } from "./common";
+import type { MonitoringParams } from "./MonitorCommon";
 
 export async function monitorDeletion(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const votingV2 = await getContractInstanceByUrl<VotingV2Ethers>("VotingV2", params.jsonRpcUrl);

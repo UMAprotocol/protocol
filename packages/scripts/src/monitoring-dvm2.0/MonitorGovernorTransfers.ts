@@ -3,7 +3,7 @@ import { VotingTokenEthers, getAddress } from "@uma/contracts-node";
 import { utils } from "ethers";
 import { logGovernorTransfer } from "./MonitorLogger";
 import { getContractInstanceByUrl } from "../utils/contracts";
-import type { MonitoringParams } from "./common";
+import type { MonitoringParams } from "./MonitorCommon";
 
 export async function monitorGovernorTransfers(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const governorTransfersThreshold = utils.parseEther(process.env.GOVERNOR_TRANSFERS_THRESHOLD || "0");
