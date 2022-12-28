@@ -19,9 +19,9 @@ export async function averageBlockTimeSeconds(chainId?: number): Promise<number>
   switch (chainId) {
     // Source: https://polygonscan.com/chart/blocktime
     case 10:
-      return 0.5; // 2 TPS, an underestimate
+      return 0.5; 
     case 42161:
-      return 0.5; // 2 TPS, an underestimate
+      return 0.5;
     case 288:
       return 30;
     case 137:

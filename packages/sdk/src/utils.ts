@@ -100,9 +100,9 @@ export const BatchReadWithErrors = (multicall2: Multicall2) => (contract: Contra
 export async function estimateBlocksElapsed(
   seconds: number,
   cushionPercentage = 0.0,
-  networkId?: number
+  chainId?: number
 ): Promise<number> {
   const cushionMultiplier = cushionPercentage + 1.0;
-  const averageBlockTime = await averageBlockTimeSeconds(networkId);
+  const averageBlockTime = await averageBlockTimeSeconds(chainId);
   return Math.floor((seconds * cushionMultiplier) / averageBlockTime);
 }
