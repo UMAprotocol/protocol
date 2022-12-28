@@ -501,12 +501,12 @@ contract Voting is
 
         delete voteSubmission.commit;
 
-        // Set the voter's submission.
-        voteSubmission.revealHash = keccak256(abi.encode(price));
-
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
+
+        // Set the voter's submission.
+        voteSubmission.revealHash = keccak256(abi.encode(price));
 
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
