@@ -1,5 +1,5 @@
 import { delay, Logger } from "@uma/financial-templates-lib";
-import { initCommonEnvVars, updateBlockRange, startupLogLevel } from "./MonitorCommon";
+import { initCommonEnvVars, updateBlockRange, startupLogLevel } from "./common";
 import { monitorUnstakes } from "./MonitorUnstakes";
 import { monitorStakes } from "./MonitorStakes";
 import { monitorGovernance } from "./MonitorGovernance";

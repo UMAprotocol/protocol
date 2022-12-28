@@ -3,7 +3,7 @@ import { VotingV2Ethers } from "@uma/contracts-node";
 import { utils } from "ethers";
 import { logLargeStake } from "./MonitorLogger";
 import { getContractInstanceByUrl } from "../utils/contracts";
-import type { MonitoringParams } from "./MonitorCommon";
+import type { MonitoringParams } from "./common";
 
 export async function monitorStakes(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const stakeThreshold = utils.parseEther(process.env.STAKE_THRESHOLD || "0");

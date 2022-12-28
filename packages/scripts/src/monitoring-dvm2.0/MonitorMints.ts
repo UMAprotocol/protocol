@@ -4,7 +4,7 @@ import { VotingTokenEthers } from "@uma/contracts-node";
 import { utils } from "ethers";
 import { logMint } from "./MonitorLogger";
 import { getContractInstanceByUrl } from "../utils/contracts";
-import type { MonitoringParams } from "./MonitorCommon";
+import type { MonitoringParams } from "./common";
 
 export async function monitorMints(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const mintsThreshold = utils.parseEther(process.env.MINTS_THRESHOLD || "0");
