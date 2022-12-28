@@ -7,6 +7,7 @@ import { monitorDeletion } from "./MonitorDeletion";
 import { monitorEmergency } from "./MonitorEmergency";
 import { monitorRolled } from "./MonitorRolled";
 import { monitorGovernorTransfers } from "./MonitorGovernorTransfers";
+import { monitorMints } from "./MonitorMints";
 
 const logger = Logger;
 
@@ -23,6 +24,7 @@ async function main() {
     emergencyEnabled: monitorEmergency,
     rolledEnabled: monitorRolled,
     governorTransfersEnabled: monitorGovernorTransfers,
+    mintsEnabled: monitorMints,
   };
 
   for (;;) {

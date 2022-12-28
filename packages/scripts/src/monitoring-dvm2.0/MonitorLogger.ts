@@ -151,3 +151,24 @@ export const logGovernorTransfer = (
       createEtherscanLinkMarkdown(transfer.tx, chainId),
   });
 };
+
+export const logMint = (
+  logger: typeof Logger,
+  mint: {
+    tx: string;
+    to: string;
+    value: string;
+  },
+  chainId: number
+): void => {
+  logger.warn({
+    at: "DVMMonitor",
+    message: "Large UMA minting 💸",
+    mrkdwn:
+      createFormatFunction(2, 2, false, 18)(mint.value) +
+      " UMA was minted to " +
+      createEtherscanLinkMarkdown(mint.to, chainId) +
+      " at " +
+      createEtherscanLinkMarkdown(mint.tx, chainId),
+  });
+};

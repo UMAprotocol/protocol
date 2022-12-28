@@ -25,5 +25,7 @@ All the configuration should be provided with following environment variables:
 - `ROLLED_ENABLED` is boolean enabling/disabling monitoring rolled votes (disabled by default).
 - `GOVERNOR_TRANSFERS_ENABLED` is boolean enabling/disabling monitoring large UMA transfers out of governor (disabled by default).
 - `GOVERNOR_TRANSFERS_THRESHOLD` is UMA amount threshold to use when `GOVERNOR_TRANSFERS_ENABLED=true` (defaults to `"0"`).
+- `MINTS_ENABLED` is boolean enabling/disabling monitoring large UMA mints (disabled by default).
+- `MINTS_THRESHOLD` is UMA amount threshold to use when `MINTS_ENABLED=true` (defaults to `"0"`).
 - `BOT_IDENTIFIER` identifies the application name in the logs.
 - `SLACK_CONFIG` is a JSON object containing `defaultWebHookUrl` for the default Slack webhook URL.
