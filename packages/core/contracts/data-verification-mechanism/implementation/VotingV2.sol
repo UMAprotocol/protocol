@@ -925,12 +925,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Check request end index is greater than start index, endIndex is less than the total number of requests,
             // and validate index continuity (each sequential element within the spamRequestIndices array is sequential
             // and increasing in size).
-            // require(
-            //     spamRequestIndex[0] <= spamRequestIndex[1] &&
-            //         spamRequestIndex[1] < priceRequestIds.length &&
-            //         spamRequestIndex[1] > runningValidationIndex,
-            //     "Invalid spam request index"
-            // );
+            require(
+                spamRequestIndex[0] <= spamRequestIndex[1] &&
+                    spamRequestIndex[1] < pendingPriceRequestsIds.length &&
+                    spamRequestIndex[1] > runningValidationIndex,
+                "Invalid spam request index"
+            );
 
             runningValidationIndex = spamRequestIndex[1];
         }
