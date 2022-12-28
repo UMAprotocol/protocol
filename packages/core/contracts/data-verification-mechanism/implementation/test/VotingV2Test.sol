@@ -67,7 +67,7 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
     }
 
     function getPendingPriceRequestsArray() external view returns (bytes32[] memory) {
-        return pendingPriceRequests;
+        return pendingPriceRequestsIds;
     }
 
     function getPriceRequestStatuses(PendingRequest[] memory requests) external view returns (RequestState[] memory) {
