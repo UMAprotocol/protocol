@@ -34,7 +34,7 @@ export default class BlockFinder<T extends { number: number; timestamp: number |
       // that the first block we find sets a floor for the target timestamp. The loop converges on the correct block
       // slower than the following incremental search performed by `findBlock`, so we want to minimize the number of
       // loop iterations in favor of searching more blocks over the `findBlock` search.
-      const cushion = 2;
+      const cushion = 1;
       const incrementDistance = Math.max(
         // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
         await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion, this.chainId),
