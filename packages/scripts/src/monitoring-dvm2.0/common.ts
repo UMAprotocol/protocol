@@ -37,7 +37,7 @@ export const initCommonEnvVars = async (env: NodeJS.ProcessEnv): Promise<Monitor
     throw new Error("Must provide STARTING_BLOCK_NUMBER and ENDING_BLOCK_NUMBER if running serverless");
   }
 
-  // If no block numbers are privided, default to the latest block.
+  // If no block numbers are provided, default to the latest block.
   const latestBlockNumber = await getLatestBlockNumberByUrl(jsonRpcUrl);
   const startingBlock = env.STARTING_BLOCK_NUMBER ? Number(env.STARTING_BLOCK_NUMBER) : latestBlockNumber;
   const endingBlock = env.ENDING_BLOCK_NUMBER ? Number(env.ENDING_BLOCK_NUMBER) : latestBlockNumber;
