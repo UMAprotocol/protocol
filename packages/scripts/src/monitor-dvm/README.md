@@ -29,3 +29,6 @@ All the configuration should be provided with following environment variables:
 - `MINTS_THRESHOLD` is UMA amount threshold to use when `MINTS_ENABLED=true` (defaults to `"0"`).
 - `BOT_IDENTIFIER` identifies the application name in the logs.
 - `SLACK_CONFIG` is a JSON object containing `defaultWebHookUrl` for the default Slack webhook URL.
+
+**_Note_**: all token amounts in `UNSTAKE_THRESHOLD`, `STAKE_THRESHOLD`, `GOVERNOR_TRANSFERS_THRESHOLD` and `MINTS_THRESHOLD`
+parameters should be provided as number of tokens scaled down by decimals in their human readable representation.
