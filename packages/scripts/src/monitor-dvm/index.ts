@@ -1,5 +1,5 @@
 import { delay, Logger } from "@uma/financial-templates-lib";
-import { initCommonEnvVars, startupLogLevel, waitNextBlockRange } from "./common";
+import { initMonitoringParams, startupLogLevel, waitNextBlockRange } from "./common";
 import { monitorUnstakes } from "./MonitorUnstakes";
 import { monitorStakes } from "./MonitorStakes";
 import { monitorGovernance } from "./MonitorGovernance";
@@ -12,7 +12,7 @@ import { monitorMints } from "./MonitorMints";
 const logger = Logger;
 
 async function main() {
-  const params = await initCommonEnvVars(process.env);
+  const params = await initMonitoringParams(process.env);
 
   logger[startupLogLevel(params)]({ at: "DMVMonitor", message: "DVM Monitor started 🔭", botModes: params.botModes });
 

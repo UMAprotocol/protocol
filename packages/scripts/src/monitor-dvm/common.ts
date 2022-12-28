@@ -21,9 +21,13 @@ export interface MonitoringParams {
   endingBlock: number;
   pollingDelay: number;
   botModes: BotModes;
+  unstakeThreshold: BigNumber;
+  stakeThreshold: BigNumber;
+  governorTransfersThreshold: BigNumber;
+  mintsThreshold: BigNumber;
 }
 
-export const initCommonEnvVars = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
+export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
   if (!env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
   const jsonRpcUrl = env.CUSTOM_NODE_URL;
 
@@ -57,6 +61,12 @@ export const initCommonEnvVars = async (env: NodeJS.ProcessEnv): Promise<Monitor
     mintsEnabled: env.MINTS_ENABLED === "true",
   };
 
+  // Parse all bot mode specific parameters.
+  const unstakeThreshold = utils.parseEther(process.env.UNSTAKE_THRESHOLD || "0");
+  const stakeThreshold = utils.parseEther(process.env.STAKE_THRESHOLD || "0");
+  const governorTransfersThreshold = utils.parseEther(process.env.GOVERNOR_TRANSFERS_THRESHOLD || "0");
+  const mintsThreshold = utils.parseEther(process.env.MINTS_THRESHOLD || "0");
+
   return {
     jsonRpcUrl,
     chainId,
@@ -64,6 +74,10 @@ export const initCommonEnvVars = async (env: NodeJS.ProcessEnv): Promise<Monitor
     endingBlock,
     pollingDelay,
     botModes,
+    unstakeThreshold,
+    stakeThreshold,
+    governorTransfersThreshold,
+    mintsThreshold,
   };
 };
 
