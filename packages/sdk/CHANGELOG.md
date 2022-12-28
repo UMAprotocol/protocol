@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/sdk
 
-
-
-
-
 # [0.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.31.2...@uma/sdk@0.32.0) (2022-12-20)
 
 ### Features

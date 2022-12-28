@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/affiliates
 
-
-
-
-
 ## [1.15.16](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.15...@uma/affiliates@1.15.16) (2022-12-20)
 
 **Note:** Version bump only for package @uma/affiliates

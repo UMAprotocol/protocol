@@ -5,21 +5,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.45.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.44.0...@uma/core@2.45.0) (2022-12-28)
 
-
 ### Bug Fixes
 
-* dont use named return variables ([#4341](https://github.com/UMAprotocol/protocol/issues/4341)) ([59364ce](https://github.com/UMAprotocol/protocol/commit/59364cedf50403d3764771d8dd818cc1f9a0cdef))
-* remove unused import ([#4338](https://github.com/UMAprotocol/protocol/issues/4338)) ([e4f47ee](https://github.com/UMAprotocol/protocol/commit/e4f47eeee8c981334bf55041ee9659d609887994))
-* use external functions in oa ([#4337](https://github.com/UMAprotocol/protocol/issues/4337)) ([bbe05e1](https://github.com/UMAprotocol/protocol/commit/bbe05e12a3aa3abe1bdcb5cbe55a14ba4ba21d0f))
-
+- dont use named return variables ([#4341](https://github.com/UMAprotocol/protocol/issues/4341)) ([59364ce](https://github.com/UMAprotocol/protocol/commit/59364cedf50403d3764771d8dd818cc1f9a0cdef))
+- remove unused import ([#4338](https://github.com/UMAprotocol/protocol/issues/4338)) ([e4f47ee](https://github.com/UMAprotocol/protocol/commit/e4f47eeee8c981334bf55041ee9659d609887994))
+- use external functions in oa ([#4337](https://github.com/UMAprotocol/protocol/issues/4337)) ([bbe05e1](https://github.com/UMAprotocol/protocol/commit/bbe05e12a3aa3abe1bdcb5cbe55a14ba4ba21d0f))
 
 ### Features
 
-* Add mainnet forking test case ([#4306](https://github.com/UMAprotocol/protocol/issues/4306)) ([48127c6](https://github.com/UMAprotocol/protocol/commit/48127c6e45ad8acd2914657f0a630946e18a66fe))
-
-
-
-
+- Add mainnet forking test case ([#4306](https://github.com/UMAprotocol/protocol/issues/4306)) ([48127c6](https://github.com/UMAprotocol/protocol/commit/48127c6e45ad8acd2914657f0a630946e18a66fe))
 
 # [2.44.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.43.2...@uma/core@2.44.0) (2022-12-20)
 

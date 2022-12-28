@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/serverless-orchestration
 
-
-
-
-
 # [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.13.4...@uma/serverless-orchestration@2.14.0) (2022-12-20)
 
 ### Features
