@@ -30,14 +30,14 @@ export default class BlockFinder<T extends { number: number; timestamp: number |
     // Check the first block. If it's grater than our timestamp, we need to find an earlier block.
     if (this.blocks[0].timestamp > timestamp) {
       const initialBlock = this.blocks[0] as WithoutStringTimestamp<T>;
-      const cushion = 1.1;
-      // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
-      // We double this distance to reduce the number of iterations in the following loop and increase the chance
+      // We use a 2x cushion to reduce the number of iterations in the following loop and increase the chance
       // that the first block we find sets a floor for the target timestamp. The loop converges on the correct block
       // slower than the following incremental search performed by `findBlock`, so we want to minimize the number of
       // loop iterations in favor of searching more blocks over the `findBlock` search.
+      const cushion = 2;
       const incrementDistance = Math.max(
-        (await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion, this.chainId)) * 2,
+        // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
+        await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion, this.chainId),
         1
       );
 
