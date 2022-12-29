@@ -371,7 +371,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     // Returns the starting index for a staker. This function should be overridden by the implementing contract.
-    function _getStartingIndexForStaker() internal view virtual returns (uint64) {
+    function _getStartingIndexForStaker() internal virtual returns (uint64) {
         return 0;
     }
 

@@ -4035,7 +4035,7 @@ describe("VotingV2", function () {
 
     // Both requests should be deleted now. First, check events content and count. Then, check the state is purged.
     // Lastly, check the arrays were updated correctly.
-    const events = await voting.getPastEvents("RequestDeleted", { fromBlock: 0, toBlock: "latest" });
+    const events = await voting.getPastEvents("PriceRequestDeleted", { fromBlock: 0, toBlock: "latest" });
     assert.equal(events.length, 2);
     assert.equal(events[0].returnValues.identifier, identifier);
     assert.equal(events[0].returnValues.time, time);
@@ -4062,6 +4062,8 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
   });
+  it("Handles calling settle during reveal", async function () {});
+  it("Handles multiple rolls with no contract interactions", async function () {});
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following
