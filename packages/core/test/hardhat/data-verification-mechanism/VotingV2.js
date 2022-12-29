@@ -4062,8 +4062,64 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
   });
-  it("Handles calling settle during reveal", async function () {});
-  it("Handles multiple rolls with no contract interactions", async function () {});
+  it("Handles calling settle during reveal", async function () {
+    // In the event that someone calls resolveResolvablePriceRequests() during the reveal phase, after a vote has reached
+    // the gat but before the end of the round.
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time = 420;
+
+    // Make 4 requests. Pass 1 and 4. Roll 2 and 3.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 1);
+
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+
+    // We are now in the reveal phase with the vote having met the gat. If someone tries to settle the request now
+    // nothing should happen as the round is not over yet, even though the gat has been met.
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 1);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 1);
+  });
+  it("Handles multiple rolls with no contract interactions", async function () {
+    // Consider the case where a vote rolls for a number of rounds with no voter interaction with the voting contract to
+    // resolve votes. Even in this case rolling trackers should update as expected.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 2);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
+
+    const request1Id = await voting.methods.pendingPriceRequestsIds(0).call();
+    const request2Id = await voting.methods.pendingPriceRequestsIds(1).call();
+
+    // Within the first active commit the roll counter should be 0.
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
+
+    // Now, roll two rounds forward. in neither round call resolveResolvablePriceRequests. The roll counter should still
+    // be 0. Only after updating call it should we see both jump to 2.
+
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 2);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 2);
+  });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following
