@@ -91,13 +91,13 @@ describe("VotingV2", function () {
   });
 
   afterEach(async function () {
-    // for (const ac of [account1, account2, account3, account4, rand]) {
-    //   if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
-    // }
-    // if (!voting.events["VoterSlashed"]) return;
-    // const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
-    // const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
-    // assert(Math.abs(sum) < 10e-10, `VoterSlashed events should sum to 0, but sum is ${sum}`);
+    for (const ac of [account1, account2, account3, account4, rand]) {
+      if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
+    }
+    if (!voting.events["VoterSlashed"]) return;
+    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
+    assert(Math.abs(sum) < 10e-10, `VoterSlashed events should sum to 0, but sum is ${sum}`);
   });
 
   it("Constructor", async function () {
