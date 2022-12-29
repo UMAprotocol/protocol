@@ -4,9 +4,8 @@
 pragma solidity 0.8.16;
 
 import "./ResultComputationV2.sol";
-import "./SpamGuardIdentifierLib.sol";
 import "./Staker.sol";
-import "./VoteTimingV2.sol";
+import "./VoteTiming.sol";
 import "./Constants.sol";
 
 import "../interfaces/MinimumVotingAncillaryInterface.sol";
@@ -27,7 +26,7 @@ import "hardhat/console.sol";
  */
 
 contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGovernanceInterface, VotingV2Interface {
-    using VoteTimingV2 for VoteTimingV2.Data;
+    using VoteTiming for VoteTiming.Data;
     using ResultComputationV2 for ResultComputationV2.Data;
 
     /****************************************
@@ -41,16 +40,16 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 lastVotingRound;
         // Denotes whether this is a governance request or not.
         bool isGovernance;
-        // The pendingRequestIndex in the pendingPriceRequestsIds that references this PriceRequest. A value of UINT64_MAX
-        // means that this PriceRequest is resolved and has been cleaned up from pendingPriceRequestsIds.
+        // The pendingRequestIndex in the pendingPriceRequestsIds that references this PriceRequest. A value of
+        // UINT64_MAX means that this PriceRequest is resolved and has been cleaned up from pendingPriceRequestsIds.
         uint64 pendingRequestIndex;
-        // Each request has a unique requestIndex number that is used to order all requests. This is the index within
-        // the priceRequestIds array and is incremented on each request.
+        // The resolvedRequestIndex in the resolvedPriceRequestIds that references this PriceRequest.
         uint64 resolvedRequestIndex;
-        // Timestamp that should be used when evaluating the request.
-        // Note: this is a uint64 to allow better variable packing while still leaving more than ample room for
-        // timestamps to stretch far into the future.
+        // Timestamp that should be used when evaluating the request. This is a uint64 to allow better variable packing
+        // while still leaving more than ample room for timestamps to stretch far into the future.
         uint64 time;
+        // The number of rounds that this price request has been rolled. Informs if a request should be deleted.
+        uint32 rollCount;
         // Identifier that defines how the voters should resolve the request.
         bytes32 identifier;
         // A map containing all votes for this price in various rounds.
@@ -80,15 +79,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         Active, // Is being voted on in the current round.
         Resolved, // Was resolved in a previous round.
         Future // Is scheduled to be voted on in a future round.
-    }
-
-    // Represents a deletion request of pending votes that are still to be voted on. Used to remove DVM spam.
-    struct SpamDeletionRequest {
-        uint256[2][] spamRequestIndices;
-        uint256 requestTime;
-        bool executed;
-        address proposer;
-        uint256 bond;
     }
 
     // Only used as a return value in view methods -- never stored in the contract.
@@ -123,11 +113,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // RequestIds for requests that are not resolved. May be for future rounds.
     bytes32[] public pendingPriceRequestsIds;
 
-    // Spam deletion requests. These are requests to delete pending price requests that are still to be voted on.
-    SpamDeletionRequest[] internal spamDeletionProposals;
+    // A maximum number of times a request can roll before it is deleted automatically.
+    uint32 public deleteAfterRollCount;
 
     // Vote timing library used to compute round timing related logic.
-    VoteTimingV2.Data public voteTiming;
+    VoteTiming.Data public voteTiming;
 
     // Reference to the UMA Finder contract, used to find other UMA contracts.
     FinderInterface private immutable finder;
@@ -143,9 +133,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     // Number of tokens that must participate to resolve a vote.
     uint256 public gat;
-
-    // Bond, in voting token, required to propose a spam deletion request.
-    uint256 public spamDeletionProposalBond;
 
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
@@ -206,30 +193,22 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event VotingContractMigrated(address newAddress);
 
+    event RequestDeleted(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData);
+
     event GatChanged(uint256 newGat);
 
     event SlashingLibraryChanged(address newAddress);
 
-    event SpamDeletionProposalBondChanged(uint256 newBond);
+    event DeleteAfterRollCountChanged(uint32 newDeleteAfterRollCount);
 
     event VoterSlashed(address indexed voter, int256 slashedTokens, uint256 postStake);
-
-    event SignaledRequestsAsSpamForDeletion(
-        uint256 indexed proposalId,
-        address indexed sender,
-        uint256[2][] spamRequestIndices
-    );
-
-    event ExecutedSpamDeletion(uint256 indexed proposalId, bool indexed executed);
 
     /**
      * @notice Construct the VotingV2 contract.
      * @param _emissionRate amount of voting tokens that are emitted per second, split prorate between stakers.
-     * @param _spamDeletionProposalBond amount of voting tokens that are required to propose a spam deletion.
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
      * @param _phaseLength length of the voting phases in seconds.
-     * @param _minRollToNextRoundLength time before the end of a round in which a request must be made for the request
-     *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
+     * @param _deleteAfterRollCount number of times a vote must roll to be auto deleted by the DVM.
      * @param _startingRequestIndex offset index to increment the first index in the resolvedPriceRequestIds array.
      * @param _gat number of tokens that must participate to resolve a vote.
      * @param _votingToken address of the UMA token contract used to commit votes.
@@ -239,10 +218,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
     constructor(
         uint256 _emissionRate,
-        uint256 _spamDeletionProposalBond,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
-        uint64 _minRollToNextRoundLength,
+        uint32 _deleteAfterRollCount,
         uint256 _gat,
         uint64 _startingRequestIndex,
         address _votingToken,
@@ -250,13 +228,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         address _slashingLibrary,
         address _previousVotingContract
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
-        voteTiming.init(_phaseLength, _minRollToNextRoundLength);
+        voteTiming.init(_phaseLength);
         require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
         gat = _gat;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibraryInterface(_slashingLibrary);
         previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
-        setSpamDeletionProposalBond(_spamDeletionProposalBond);
+        setDeleteAfterRollCount(_deleteAfterRollCount);
 
         // We assume indices never get above 2^64. So we should never start with an index above half that range.
         require(_startingRequestIndex < type(uint64).max / 2);
@@ -342,11 +320,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // Price has never been requested.
         if (requestStatus == RequestStatus.NotRequested) {
-            // If the price request is a governance action then always place it in the following round. If the price
-            // request is a normal request then either place it in the next round or the following round based off
-            // the minRollToNextRoundLength. This limits when a request must be made for it to occur in the next round.
-            uint256 roundIdToVoteOnPriceRequest =
-                isGovernance ? currentRoundId + 1 : voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
+            uint256 roundIdToVoteOnPriceRequest = currentRoundId + 1;
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
             newPriceRequest.identifier = identifier;
             newPriceRequest.time = SafeCast.toUint64(time);
@@ -485,9 +459,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[voter].commit = hash;
 
-        // TODO: comment on this for rolling.
-        priceRequest.lastVotingRound = uint32(currentRoundId);
-
         emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
@@ -616,7 +587,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES }.
      */
     function getVotePhase() public view override returns (Phase) {
-        return voteTiming.computeCurrentPhase(getCurrentTime());
+        return VotingV2Interface.Phase(uint256(voteTiming.computeCurrentPhase(getCurrentTime())));
     }
 
     /**
@@ -691,6 +662,16 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function setMigrated(address newVotingAddress) external override onlyOwner {
         migratedAddress = newVotingAddress;
         emit VotingContractMigrated(newVotingAddress);
+    }
+
+    /**
+     * @notice Sets the number of rounds to roll a request before the DVM auto deletes it.
+     * @dev Can only be called by the contract owner.
+     * @param newDeleteAfterRollCount the new number of rounds to roll a request before the DVM auto deletes it.
+     */
+    function setDeleteAfterRollCount(uint32 newDeleteAfterRollCount) public override onlyOwner {
+        deleteAfterRollCount = newDeleteAfterRollCount;
+        emit DeleteAfterRollCountChanged(newDeleteAfterRollCount);
     }
 
     /**
@@ -899,121 +880,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /****************************************
-     *       SPAM DELETION FUNCTIONS        *
-     ****************************************/
-
-    /**
-     * @notice Declare a specific price requests range to be spam and request its deletion.
-     * @dev note that this method should almost never be used. The bond to call this should be set to
-     * a very large number (say 10k UMA) as it could be abused if set too low. Function constructs a price
-     * request that, if passed, enables pending requests to be disregarded by the contract.
-     * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
-     * pair of uint256s representing the start and end of the range.
-     */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices)
-        external
-        nonReentrant()
-        onlyIfNotMigrated()
-    {
-        votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
-        uint256 currentTime = getCurrentTime();
-        uint256 runningValidationIndex;
-        uint256 spamRequestIndicesLength = spamRequestIndices.length;
-        for (uint256 i = 0; i < spamRequestIndicesLength; i = unsafe_inc(i)) {
-            uint256[2] memory spamRequestIndex = spamRequestIndices[i];
-
-            // Check request end index is greater than start index, endIndex is less than the total number of requests,
-            // and validate index continuity (each sequential element within the spamRequestIndices array is sequential
-            // and increasing in size).
-            require(
-                spamRequestIndex[0] <= spamRequestIndex[1] &&
-                    spamRequestIndex[1] < pendingPriceRequestsIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex,
-                "Invalid spam request index"
-            );
-
-            runningValidationIndex = spamRequestIndex[1];
-        }
-
-        spamDeletionProposals.push(
-            SpamDeletionRequest({
-                spamRequestIndices: spamRequestIndices,
-                requestTime: currentTime,
-                executed: false,
-                proposer: msg.sender,
-                bond: spamDeletionProposalBond
-            })
-        );
-
-        uint256 proposalId = spamDeletionProposals.length - 1;
-
-        // Note that for proposalId>= 10^11 the generated identifier will no longer be unique but the manner
-        // in which the priceRequest id is encoded in _encodePriceRequest guarantees its uniqueness.
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
-
-        _requestPrice(identifier, currentTime, "", true);
-
-        emit SignaledRequestsAsSpamForDeletion(proposalId, msg.sender, spamRequestIndices);
-    }
-
-    /**
-     * @notice Execute the spam deletion proposal if it has been approved by voting.
-     * @param proposalId spam deletion proposal id.
-     */
-
-    function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
-        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
-        spamDeletionProposals[proposalId].executed = true;
-
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
-
-        (bool hasPrice, int256 resolutionPrice, ) =
-            _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice, "Spam proposal has not resolved");
-
-        // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
-        if (resolutionPrice != 0) {
-            // Delete the price requests associated with the spam.
-            for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
-                uint64 startIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][0]);
-                uint64 endIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][1]);
-                // Remove from pendingPriceRequestsIds.
-                for (uint256 j = startIndex; j <= endIndex; j++)
-                    _removeRequestFromPendingPriceRequestsIds(
-                        priceRequests[pendingPriceRequestsIds[j]].pendingRequestIndex
-                    );
-            }
-
-            // Return the spamDeletionProposalBond.
-            votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposals[proposalId].bond);
-            emit ExecutedSpamDeletion(proposalId, true);
-        }
-        // Else, the spam deletion request was voted down. In this case we send the spamDeletionProposalBond to the store.
-        else {
-            votingToken.transfer(finder.getImplementationAddress(OracleInterfaces.Store), spamDeletionProposalBond);
-            emit ExecutedSpamDeletion(proposalId, false);
-        }
-    }
-
-    /**
-     * @notice Set the spam deletion proposal bond.
-     * @param _spamDeletionProposalBond new spam deletion proposal bond.
-     */
-    function setSpamDeletionProposalBond(uint256 _spamDeletionProposalBond) public onlyOwner() {
-        spamDeletionProposalBond = _spamDeletionProposalBond;
-        emit SpamDeletionProposalBondChanged(_spamDeletionProposalBond);
-    }
-
-    /**
-     * @notice Get the spam deletion request by the proposal id.
-     * @param spamDeletionRequestId spam deletion request id.
-     * @return SpamDeletionRequest the spam deletion request.
-     */
-    function getSpamDeletionRequest(uint256 spamDeletionRequestId) external view returns (SpamDeletionRequest memory) {
-        return spamDeletionProposals[spamDeletionRequestId];
-    }
-
-    /****************************************
      *      MIGRATION SUPPORT FUNCTIONS     *
      ****************************************/
 
@@ -1041,7 +907,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
 
-    // Deletes a request from the pending requests array, based on index.
+    // Deletes a request from the pending requests array, based on index. Swap and pop.
     function _removeRequestFromPendingPriceRequestsIds(uint64 pendingRequestIndex) internal {
         uint256 lastIndex = pendingPriceRequestsIds.length - 1;
         PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequestsIds[lastIndex]];
@@ -1130,21 +996,33 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         }
     }
 
-    // Resolves all pending price requests that are resolvable.
     function _resolveResolvablePriceRequests() private {
-        uint256 currentRoundId = getCurrentRoundId();
+        uint32 currentRoundId = uint32(getCurrentRoundId());
 
-        bytes32[] memory resolvedRequestsIds = new bytes32[](pendingPriceRequestsIds.length);
-        for (uint256 i = pendingPriceRequestsIds.length; i > 0; i--) {
-            PriceRequest storage request = priceRequests[pendingPriceRequestsIds[i - 1]];
+        uint256 index = 0;
+        while (index < pendingPriceRequestsIds.length) {
+            PriceRequest storage request = priceRequests[pendingPriceRequestsIds[index]];
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
             (bool isResolvable, int256 resolvedPrice) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(request.lastVotingRound));
-            if (!isResolvable) continue;
+            if (!isResolvable) {
+                if (request.lastVotingRound < currentRoundId) {
+                    request.rollCount++;
+                    request.lastVotingRound = currentRoundId;
+                    if (request.rollCount == deleteAfterRollCount && !request.isGovernance) {
+                        emit RequestDeleted(request.identifier, request.time, request.ancillaryData);
+
+                        delete priceRequests[pendingPriceRequestsIds[index]];
+                        _removeRequestFromPendingPriceRequestsIds(request.pendingRequestIndex);
+                    }
+                } else index++;
+                continue;
+            }
+
+            request.resolvedRequestIndex = SafeCast.toUint64(resolvedPriceRequestIds.length);
+            resolvedPriceRequestIds.push(_encodePriceRequest(request.identifier, request.time, request.ancillaryData));
 
             _removeRequestFromPendingPriceRequestsIds(request.pendingRequestIndex);
-            request.resolvedRequestIndex = SafeCast.toUint64(resolvedPriceRequestIds.length);
-            resolvedRequestsIds[i - 1] = _encodePriceRequest(request.identifier, request.time, request.ancillaryData);
             request.pendingRequestIndex = UINT64_MAX;
 
             emit PriceResolved(
@@ -1155,10 +1033,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 request.ancillaryData,
                 resolvedPrice
             );
-        }
-        for (uint256 i = 0; i < resolvedRequestsIds.length; i++) {
-            if (resolvedRequestsIds[i] == bytes32(0)) continue;
-            resolvedPriceRequestIds.push(resolvedRequestsIds[i]);
         }
     }
 

@@ -8,10 +8,9 @@ import "../../../common/implementation/Testable.sol";
 contract VotingV2ControllableTiming is VotingV2, Testable {
     constructor(
         uint256 _emissionRate,
-        uint256 _spamDeletionProposalBond,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
-        uint64 _minRollToNextRoundLength,
+        uint32 _deleteAfterRollCount,
         uint256 _gat,
         uint64 _startingRequestIndex,
         address _votingToken,
@@ -22,10 +21,9 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
     )
         VotingV2(
             _emissionRate,
-            _spamDeletionProposalBond,
             _unstakeCoolDown,
             _phaseLength,
-            _minRollToNextRoundLength,
+            _deleteAfterRollCount,
             _gat,
             _startingRequestIndex,
             _votingToken,
@@ -86,10 +84,9 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
 contract VotingV2Test is VotingV2ControllableTiming {
     constructor(
         uint256 _emissionRate,
-        uint256 _spamDeletionProposalBond,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
-        uint64 _minRollToNextRoundLength,
+        uint32 _deleteAfterRollCount,
         uint256 _gat,
         uint64 _startingRequestIndex,
         address _votingToken,
@@ -100,10 +97,9 @@ contract VotingV2Test is VotingV2ControllableTiming {
     )
         VotingV2ControllableTiming(
             _emissionRate,
-            _spamDeletionProposalBond,
             _unstakeCoolDown,
             _phaseLength,
-            _minRollToNextRoundLength,
+            _deleteAfterRollCount,
             _gat,
             _startingRequestIndex,
             _votingToken,
