@@ -69,7 +69,7 @@ export const logEmergencyProposal = (
   },
   chainId: number
 ): void => {
-  logger.warn({
+  logger.error({
     at: "DVMMonitor",
     message: "New emergency proposal created 🚨",
     mrkdwn:
@@ -94,7 +94,7 @@ export const logDeletionProposed = (
   const identifiers = proposal.spamRequestIndices
     .map((range) => (range[0].eq(range[1]) ? range[0].toString() : `${range[0]}-${range[1]}`))
     .join(", ");
-  logger.warn({
+  logger.error({
     at: "DVMMonitor",
     message: "New spam deletion proposal created 🔇",
     mrkdwn:
@@ -116,7 +116,7 @@ export const logRolled = (
   },
   roundId: BigNumber
 ): void => {
-  logger.warn({
+  logger.error({
     at: "DVMMonitor",
     message: "Rolled vote 🎲",
     mrkdwn:
@@ -140,7 +140,7 @@ export const logGovernorTransfer = (
   },
   chainId: number
 ): void => {
-  logger.warn({
+  logger.error({
     at: "DVMMonitor",
     message: "Large governor transfer 📤",
     mrkdwn:
@@ -161,7 +161,7 @@ export const logMint = (
   },
   chainId: number
 ): void => {
-  logger.warn({
+  logger.error({
     at: "DVMMonitor",
     message: "Large UMA minting 💸",
     mrkdwn:
