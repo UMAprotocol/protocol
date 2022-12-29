@@ -107,10 +107,10 @@ describe("VotingV2", function () {
       await didContractThrow(
         VotingV2.new(
           "42069", // emissionRate
-          toWei("10000"), // spamDeletionProposalBond
+
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
-          7200, // minRollToNextRoundLength
+          5, // deleteAfterRollCount
           invalidGat, // GAT
           "0", // startingRequestIndex
           votingToken.options.address, // voting token
@@ -911,9 +911,7 @@ describe("VotingV2", function () {
         .subn(1)
         .toString()
     );
-
-    assert.equal((await voting.methods.voteTiming().call()).phaseLength, "86400");
-    assert.equal((await voting.methods.voteTiming().call()).minRollToNextRoundLength, "7200");
+    assert.equal(await voting.methods.voteTiming().call(), "86400");
   });
 
   it("Events", async function () {
@@ -945,12 +943,6 @@ describe("VotingV2", function () {
       (ev) => {
         return ev.newGat == web3.utils.toWei("6000000", "ether");
       }
-    );
-
-    await assertEventEmitted(
-      await voting.methods.setSpamDeletionProposalBond(toWei("0.1")).send({ from: accounts[0] }),
-      voting,
-      "SpamDeletionProposalBondChanged"
     );
 
     await moveToNextRound(voting, accounts[0]);
@@ -1264,10 +1256,9 @@ describe("VotingV2", function () {
     // Deploy our own voting because this test case will migrate it.
     const newVoting = await VotingV2.new(
       "640000000000000000", // emission rate
-      toWei("10000"), // spamDeletionProposalBond
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
-      7200, // minRollToNextRoundLength
+      5, // deleteAfterRollCount
       web3.utils.toWei("5000000"), // GAT 5MM
       "0", // startingRequestIndex
       votingToken.options.address, // voting token
@@ -1428,10 +1419,9 @@ describe("VotingV2", function () {
     // Now, deploy a "new" VotingV2 contract that can have the old one set in the constructor.
     voting = await VotingV2Test.new(
       "42069", // emissionRate
-      toWei("10000"), // spamDeletionProposalBond
       60 * 60 * 24 * 7, // Unstake cooldown
       86400, // PhaseLength
-      7200, // minRollToNextRoundLength
+      5, // deleteAfterRollCount
       toWei("5000000"), // GAT 5MM
       "0", // startingRequestIndex
       votingToken.options.address, // voting token
@@ -1473,10 +1463,9 @@ describe("VotingV2", function () {
       (
         await VotingV2Test.new(
           "42069", // emissionRate
-          toWei("10000"), // spamDeletionProposalBond
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
-          7200, // minRollToNextRoundLength
+          5, // deleteAfterRollCount
           toWei("5000000"), // GAT 5MM
           "0", // startingRequestIndex
           votingToken.options.address, // voting token
@@ -2486,91 +2475,6 @@ describe("VotingV2", function () {
     );
   });
 
-  it("Correctly selects voting round based on request time", async function () {
-    // If requests are placed in the last minRollToNextRoundLength of a voting round then they should be placed in the
-    // subsequent voting round (auto rolled). minRollToNextRoundLength is set to 7200. i.e requests done 2 hours before
-    // the end of the reveal phase should be auto-rolled into the following round.
-
-    await moveToNextRound(voting, accounts[0]); // Move to the start of a voting round to be right at the beginning.
-    const startingVotingRoundId = Number(await voting.methods.getCurrentRoundId().call());
-
-    // Requesting prices now should place them in the following voting round (normal behaviour).
-    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
-    const time1 = "420";
-    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
-    await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
-
-    assert.equal(
-      (await voting.methods.getPriceRequestStatuses([{ identifier, time: time1 }]).call())[0].lastVotingRound,
-      startingVotingRoundId + 1
-    );
-
-    // Pending requests should return empty array as it only returns votes being voted on this round.
-    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
-
-    // If we move to the next phase we should now be able to vote on the requests and they should show up as active.
-    await moveToNextRound(voting, accounts[0]);
-    // Set the contract time to be exactly at the start of the current round.
-    const roundEndTime = Number(await voting.methods.getRoundEndTime(startingVotingRoundId + 1).call());
-    // Set time exactly 2 days before end of the current round to ensure we are aligned with the clock timers.
-    await voting.methods.setCurrentTime(roundEndTime - 60 * 60 * 24 * 2).send({ from: accounts[0] });
-    assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
-    const roundStartTime = Number(await voting.methods.getCurrentTime().call());
-
-    // There should now be one outstanding price request as we are in the active round. We can vote on it.
-    assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
-    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
-
-    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-    const hash1 = computeVoteHash({ salt, roundId, identifier, price: 42069, account: account2, time: time1 });
-    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
-    await moveToNextPhase(voting, accounts[0]);
-    assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
-    await voting.methods.revealVote(identifier, time1, 42069, salt).send({ from: account2 });
-
-    // Now, move to within the last minRollToNextRoundLength of the next round. If another price request happens in this
-    // period it should be place in the round after the next round as it's too close to the next round. To verify we are
-    // in time where we think we are we should be exactly 24 hours after the roundStartTime as we've done exactly one
-    // action of moveToNextPhase call. We can therefore advance the time to currentTime + 60 * 60 * 23 to be one hour
-    // before the end of the voting round.
-    const currentTime = Number(await voting.methods.getCurrentTime().call());
-    assert.equal(currentTime, roundStartTime + 60 * 60 * 24);
-    await voting.methods.setCurrentTime(currentTime + 60 * 60 * 23).send({ from: accounts[0] });
-    // We should still be in the same voting round.
-    assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
-
-    // now, when price requests happen they should be placed in the round after the current round.
-    const secondRequestRoundId = Number(await voting.methods.getCurrentRoundId().call());
-    await voting.methods.requestPrice(identifier, time1 + 1).send({ from: registeredContract });
-    assert.equal(
-      (await voting.methods.getPriceRequestStatuses([{ identifier, time: time1 + 1 }]).call())[0].lastVotingRound,
-      secondRequestRoundId + 2
-    );
-
-    // If we move to the next voting round you should not be able vote as the vote is not yet active (its only active
-    // in the subsequent round due to the roll).
-    await moveToNextRound(voting, accounts[0]);
-
-    // Commit call should revert as this can only be voted on in the next round due to the auto roll.
-    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-    const hash2 = computeVoteHash({ salt, roundId, identifier, price: 42069, account: account2, time: time1 + 1 });
-    assert(await didContractThrow(voting.methods.commitVote(identifier, time1 + 1, hash2).send({ from: account2 })));
-
-    // Move to the next voting phase and the next voting round. now, we should be able to vote on the second identifier.
-    await moveToNextPhase(voting, accounts[0]);
-    await moveToNextRound(voting, accounts[0]);
-    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-    const hash3 = computeVoteHash({ salt, roundId, identifier, price: 42069, account: account2, time: time1 + 1 });
-    await voting.methods.commitVote(identifier, time1 + 1, hash3).send({ from: account2 });
-    await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.revealVote(identifier, time1 + 1, 42069, salt).send({ from: account2 });
-    await moveToNextRound(voting, accounts[0]);
-    assert.equal(
-      (await voting.methods.getPrice(identifier, time1 + 1).call({ from: registeredContract })).toString(),
-      "42069"
-    );
-  });
-
   it("Can delegate voting to another address to vote on your stakes behalf", async function () {
     // Delegate from account1 to rand.
     await voting.methods.setDelegate(rand).send({ from: account1 });
@@ -3163,10 +3067,9 @@ describe("VotingV2", function () {
   it("Can offset the starting index for requests during a migration", async function () {
     const voting2 = await VotingV2Test.new(
       "42069", // emissionRate
-      toWei("10000"), // spamDeletionProposalBond
       60 * 60 * 24 * 7, // Unstake cooldown
       86400, // PhaseLength
-      7200, // minRollToNextRoundLength
+      5, // deleteAfterRollCount
       toWei("0.05"), // GatPct
       10, // offset starting index for requests.
       votingToken.options.address, // voting token
@@ -3953,6 +3856,211 @@ describe("VotingV2", function () {
 
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
+  });
+  it("Roll tracker updates as expected after request", async function () {
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    let requestRound = Number(await voting.methods.getCurrentRoundId().call());
+
+    // We should expect the lastVotingRound to be the next round (the round the request is voted on).
+    let statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
+    assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 1);
+
+    // If we call resolveResolvablePriceRequests this should not change as it's for the next round.
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
+    assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 1);
+
+    // Move to the next round so we can vote on this. Again, calling resolveResolvablePriceRequests should not change
+    // the lastVotingRound as we are currently in the voting round.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
+    assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 1);
+
+    // Move to the next round without voting on this. This time, when we resolve resolvable price requests we should
+    // see the lastVotingRound update to the current round.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
+    assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 2);
+
+    // Now, let's vote on this request and ensure that once settled it does not further increment the lastVotingRound.
+    const voteRoundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const salt = getRandomSignedInt();
+    const price2 = 0;
+    const hash2 = computeVoteHash({ salt, roundId: voteRoundId, identifier, price: price2, account: account1, time });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account1 });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time, price2, salt).send({ from: account1 });
+
+    // No changes made at this point.
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
+    assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 2);
+
+    // Move to the next round and resolve the price request. This should not change the lastVotingRound as we are settled.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
+    assert.equal(statuses[0].status.toString(), "2"); // status should be 2 for settled.
+    assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 2);
+
+    // Equally, if we move to the next round and then call resolveResolvablePriceRequests, it should not change the value.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
+    assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 2);
+  });
+  it("Request order is respected", async function () {
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    // Verify that the order of requests is respected as they move between the pending and settled arrays.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 4);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
+
+    // Roll request 2 and 3. Settle request 1 and 2. We should see the order respected when settled.
+    await moveToNextRound(voting, accounts[0]);
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    const hash2 = computeVoteHash({ ...baseRequest, price: price, account: account4, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash2).send({ from: account4 });
+    const hash3 = computeVoteHash({ ...baseRequest, price: price, account: account4, time: time + 2 });
+    await voting.methods.commitVote(identifier, time + 2, hash3).send({ from: account4 });
+    const hash4 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 3 });
+    await voting.methods.commitVote(identifier, time + 3, hash4).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 2);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 2);
+
+    // Check slot 0 in the resolved array is the first request (based on time of the request).
+    const resolvedRequest1Id = await voting.methods.resolvedPriceRequestIds(0).call();
+    assert.equal((await voting.methods.priceRequests(resolvedRequest1Id).call()).time, time);
+
+    // Check slot 1 in the resolved array is the fourth request (based on time of the request).
+    const resolvedRequest2Id = await voting.methods.resolvedPriceRequestIds(1).call();
+    assert.equal((await voting.methods.priceRequests(resolvedRequest2Id).call()).time, time + 3);
+
+    // Now, move to the next round and settle the remaining two requests. We should see the order respected when settled.
+
+    await moveToNextRound(voting, accounts[0]);
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    baseRequest = { salt, roundId, identifier };
+    const hash5 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash5).send({ from: account1 });
+    const hash6 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 2 });
+    await voting.methods.commitVote(identifier, time + 2, hash6).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 4);
+
+    // Check slot 2 in the resolved array is the second request (based on time of the request).
+    // const resolvedRequest3Id = await voting.methods.resolvedPriceRequestIds(2).call();
+    // // assert.equal((await voting.methods.priceRequests(resolvedRequest3Id).call()).time, time + 1);
+
+    // // Check slot 3 in the resolved array is the third request (based on time of the request).
+    // const resolvedRequest4Id = await voting.methods.resolvedPriceRequestIds(3).call();
+    // assert.equal((await voting.methods.priceRequests(resolvedRequest4Id).call()).time, time + 2);
+  });
+  it("Requests are automatically removed after a fixed number of rolls", async function () {
+    // Verify that if a request rolls enough times (to hit deleteAfterRollCount) it is automatically removed from the
+    // pending requests array and becomes unresolvable.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    // Verify that the order of requests is respected as they move between the pending and settled arrays.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 2);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
+
+    const request1Id = await voting.methods.pendingPriceRequestsIds(0).call();
+    const request2Id = await voting.methods.pendingPriceRequestsIds(1).call();
+
+    // First, verify that the roll counter increments as expected as requests roll.
+
+    // Within the first active commit the roll counter should be 0.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
+
+    // Now, roll the votes by moving to the next round. We should see the roll count increment.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 1);
+
+    // Now, roll the votes up to the deleteAfterRollCount. This is set to 3 by default
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 2);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 2);
+
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 2);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
+
+    // On the next roll these requests should be automatically removed from the pending array and become unresolvable.
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+
+    // Both requests should be deleted now. First, check events content and count. Then, check the state is purged.
+    // Lastly, check the arrays were updated correctly.
+    const events = await voting.getPastEvents("RequestDeleted", { fromBlock: 0, toBlock: "latest" });
+    assert.equal(events.length, 2);
+    assert.equal(events[0].returnValues.identifier, identifier);
+    assert.equal(events[0].returnValues.time, time);
+    assert.equal(events[1].returnValues.identifier, identifier);
+    assert.equal(events[1].returnValues.time, time + 1);
+
+    const spamRequest1 = await voting.methods.priceRequests(request1Id).call();
+    const spamRequest2 = await voting.methods.priceRequests(request2Id).call();
+    assert.equal(spamRequest1.lastVotingRound, "0");
+    assert.isFalse(spamRequest1.isGovernance);
+    assert.equal(spamRequest1.pendingRequestIndex, "0");
+    assert.equal(spamRequest1.resolvedRequestIndex, "0");
+    assert.equal(spamRequest1.time, "0");
+    assert.equal(spamRequest1.identifier, padRight(utf8ToHex(""), 64));
+    assert.isNull(spamRequest1.ancillaryData);
+    assert.equal(spamRequest2.lastVotingRound, "0");
+    assert.isFalse(spamRequest2.isGovernance);
+    assert.equal(spamRequest2.pendingRequestIndex, "0");
+    assert.equal(spamRequest2.resolvedRequestIndex, "0");
+    assert.equal(spamRequest2.time, "0");
+    assert.equal(spamRequest2.identifier, padRight(utf8ToHex(""), 64));
+    assert.isNull(spamRequest2.ancillaryData);
+
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
   });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
