@@ -11,8 +11,8 @@ export async function monitorMints(logger: typeof Logger, params: MonitoringPara
   const largeMints = (
     await votingToken.queryFilter(
       votingToken.filters.Transfer(ZERO_ADDRESS, null),
-      params.startingBlock,
-      params.endingBlock
+      params.blockRange.start,
+      params.blockRange.end
     )
   )
     .filter((event) => event.args.value.gte(params.mintsThreshold))

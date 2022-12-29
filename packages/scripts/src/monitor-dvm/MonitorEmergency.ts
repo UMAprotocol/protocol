@@ -13,8 +13,8 @@ export async function monitorEmergency(logger: typeof Logger, params: Monitoring
   const emergencyProposals = (
     await emergencyProposer.queryFilter(
       emergencyProposer.filters.EmergencyTransactionsProposed(),
-      params.startingBlock,
-      params.endingBlock
+      params.blockRange.start,
+      params.blockRange.end
     )
   ).map((event) => ({
     tx: event.transactionHash,

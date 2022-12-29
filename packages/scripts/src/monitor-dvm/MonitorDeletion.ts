@@ -10,8 +10,8 @@ export async function monitorDeletion(logger: typeof Logger, params: MonitoringP
   const deletionProposals = (
     await votingV2.queryFilter(
       votingV2.filters.SignaledRequestsAsSpamForDeletion(),
-      params.startingBlock,
-      params.endingBlock
+      params.blockRange.start,
+      params.blockRange.end
     )
   ).map((event) => ({
     tx: event.transactionHash,

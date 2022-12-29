@@ -14,11 +14,15 @@ interface BotModes {
   mintsEnabled: boolean;
 }
 
+interface BlockRange {
+  start: number;
+  end: number;
+}
+
 export interface MonitoringParams {
   jsonRpcUrl: string;
   chainId: number;
-  startingBlock: number;
-  endingBlock: number;
+  blockRange: BlockRange;
   pollingDelay: number;
   botModes: BotModes;
   unstakeThreshold: BigNumber;
@@ -70,8 +74,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   return {
     jsonRpcUrl,
     chainId,
-    startingBlock,
-    endingBlock,
+    blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
     botModes,
     unstakeThreshold,
@@ -81,27 +84,26 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   };
 };
 
-export const waitNextBlockRange = async (params: MonitoringParams): Promise<void> => {
+export const waitNextBlockRange = async (params: MonitoringParams): Promise<BlockRange> => {
   await delay(Number(params.pollingDelay));
   const latestBlockNumber = await getLatestBlockNumberByUrl(params.jsonRpcUrl);
-  params.startingBlock = params.endingBlock + 1;
-  params.endingBlock = latestBlockNumber;
+  return { start: params.blockRange.end + 1, end: latestBlockNumber };
 };
 
 export const checkEndBlockVotingRound = async (
-  params: MonitoringParams,
+  blockRange: BlockRange,
   votingV2: VotingV2Ethers
 ): Promise<{ isNew: boolean; roundId: BigNumber }> => {
   // Compute end block round id.
-  const endTime = BigNumber.from((await votingV2.provider.getBlock(params.endingBlock)).timestamp);
+  const endTime = BigNumber.from((await votingV2.provider.getBlock(blockRange.end)).timestamp);
   const roundLength = (await votingV2.voteTiming()).phaseLength.mul(2);
   const roundId = endTime.div(roundLength);
 
   // Compute previous checked round id only if there is a previous block.
-  if (params.startingBlock === 0) return { isNew: true, roundId };
+  if (blockRange.start === 0) return { isNew: true, roundId };
 
   // Compute previous round id.
-  const previousTime = BigNumber.from((await votingV2.provider.getBlock(params.startingBlock - 1)).timestamp);
+  const previousTime = BigNumber.from((await votingV2.provider.getBlock(blockRange.start - 1)).timestamp);
   const previousRoundId = previousTime.div(roundLength);
 
   return { isNew: !roundId.eq(previousRoundId), roundId };

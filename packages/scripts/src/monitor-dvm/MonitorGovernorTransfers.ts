@@ -11,8 +11,8 @@ export async function monitorGovernorTransfers(logger: typeof Logger, params: Mo
   const largeGovernorTransfers = (
     await votingToken.queryFilter(
       votingToken.filters.Transfer(governorV2Address, null),
-      params.startingBlock,
-      params.endingBlock
+      params.blockRange.start,
+      params.blockRange.end
     )
   )
     .filter((event) => event.args.value.gte(params.governorTransfersThreshold))

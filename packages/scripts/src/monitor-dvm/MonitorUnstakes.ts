@@ -8,7 +8,7 @@ export async function monitorUnstakes(logger: typeof Logger, params: MonitoringP
   const votingV2 = await getContractInstanceByUrl<VotingV2Ethers>("VotingV2", params.jsonRpcUrl);
 
   const largeUnstakes = (
-    await votingV2.queryFilter(votingV2.filters.RequestedUnstake(), params.startingBlock, params.endingBlock)
+    await votingV2.queryFilter(votingV2.filters.RequestedUnstake(), params.blockRange.start, params.blockRange.end)
   )
     .filter((event) => event.args.amount.gte(params.unstakeThreshold))
     .map((event) => ({

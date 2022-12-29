@@ -10,9 +10,9 @@ export async function monitorRolled(logger: typeof Logger, params: MonitoringPar
 
   // Check rolled votes among pending requests only if a new voting round has started compared to the last block checked.
   // It is assumed that checked block range does not exceed voting round length in order not to miss any rolled votes.
-  const endBlockRoundStatus = await checkEndBlockVotingRound(params, votingV2);
+  const endBlockRoundStatus = await checkEndBlockVotingRound(params.blockRange, votingV2);
   if (endBlockRoundStatus.isNew) {
-    const pendingRequests = await votingV2.getPendingRequests({ blockTag: params.endingBlock });
+    const pendingRequests = await votingV2.getPendingRequests({ blockTag: params.blockRange.end });
     const newRequests = await votingV2.queryFilter(
       votingV2.filters.PriceRequestAdded(null, endBlockRoundStatus.roundId, null)
     );

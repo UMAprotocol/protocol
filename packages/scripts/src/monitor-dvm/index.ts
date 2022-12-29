@@ -28,11 +28,11 @@ async function main() {
   };
 
   for (;;) {
-    // In case of non-zero polling delay waitNextBlockRange at the end of the loop could have caused the starting block
+    // In case of non-zero polling delay waitNextBlockRange at the end of the loop could have returned the starting block
     // to be greater than the ending block if there were no new blocks in the last polling delay. In this case we should
     // wait for the next block range before running the commands.
-    if (params.startingBlock > params.endingBlock) {
-      await waitNextBlockRange(params);
+    if (params.blockRange.start > params.blockRange.end) {
+      params.blockRange = await waitNextBlockRange(params);
       continue;
     }
 
@@ -44,7 +44,7 @@ async function main() {
 
     // If polling delay is 0 then we are running in serverless mode and should exit after one iteration.
     if (params.pollingDelay === 0) break;
-    await waitNextBlockRange(params);
+    params.blockRange = await waitNextBlockRange(params);
   }
 }
 

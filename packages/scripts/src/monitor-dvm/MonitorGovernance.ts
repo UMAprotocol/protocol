@@ -8,7 +8,7 @@ export async function monitorGovernance(logger: typeof Logger, params: Monitorin
   const governorV2 = await getContractInstanceByUrl<GovernorV2Ethers>("GovernorV2", params.jsonRpcUrl);
 
   const governanceProposals = (
-    await governorV2.queryFilter(governorV2.filters.NewProposal(), params.startingBlock, params.endingBlock)
+    await governorV2.queryFilter(governorV2.filters.NewProposal(), params.blockRange.start, params.blockRange.end)
   ).map((event) => ({
     tx: event.transactionHash,
     id: event.args.id.toString(),

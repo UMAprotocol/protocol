@@ -7,7 +7,9 @@ import type { MonitoringParams } from "./common";
 export async function monitorStakes(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const votingV2 = await getContractInstanceByUrl<VotingV2Ethers>("VotingV2", params.jsonRpcUrl);
 
-  const largeStakes = (await votingV2.queryFilter(votingV2.filters.Staked(), params.startingBlock, params.endingBlock))
+  const largeStakes = (
+    await votingV2.queryFilter(votingV2.filters.Staked(), params.blockRange.start, params.blockRange.end)
+  )
     .filter((event) => event.args.amount.gte(params.stakeThreshold))
     .map((event) => ({
       tx: event.transactionHash,
