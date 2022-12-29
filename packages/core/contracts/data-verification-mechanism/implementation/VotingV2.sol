@@ -1007,7 +1007,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         while (index < pendingPriceRequestsIds.length) {
             PriceRequest storage request = priceRequests[pendingPriceRequestsIds[index]];
             if (request.lastVotingRound >= currentRoundId) {
-                index++;
+                ++index;
                 continue;
             }
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
@@ -1024,7 +1024,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                         delete priceRequests[pendingPriceRequestsIds[index]];
                         _removeRequestFromPendingPriceRequestsIds(request.pendingRequestIndex);
                     }
-                } else index++;
+                } else ++index;
                 continue;
             }
 
