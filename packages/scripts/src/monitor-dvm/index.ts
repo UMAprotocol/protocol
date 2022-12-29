@@ -8,6 +8,7 @@ import { monitorEmergency } from "./MonitorEmergency";
 import { monitorRolled } from "./MonitorRolled";
 import { monitorGovernorTransfers } from "./MonitorGovernorTransfers";
 import { monitorMints } from "./MonitorMints";
+import type { BotModes } from "./common";
 
 const logger = Logger;
 
@@ -37,7 +38,7 @@ async function main() {
     }
 
     const runCmds = Object.entries(cmds)
-      .filter(([mode]) => params.botModes[mode])
+      .filter(([mode]) => params.botModes[mode as keyof BotModes])
       .map(([, cmd]) => cmd(logger, params));
 
     await Promise.all(runCmds);

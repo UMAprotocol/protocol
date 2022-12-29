@@ -3,7 +3,7 @@ import { VotingV2Ethers } from "@uma/contracts-node";
 import { delay } from "@uma/financial-templates-lib";
 import { BigNumber, utils } from "ethers";
 
-interface BotModes {
+export interface BotModes {
   unstakesEnabled: boolean;
   stakesEnabled: boolean;
   governanceEnabled: boolean;
@@ -14,7 +14,7 @@ interface BotModes {
   mintsEnabled: boolean;
 }
 
-interface BlockRange {
+export interface BlockRange {
   start: number;
   end: number;
 }
