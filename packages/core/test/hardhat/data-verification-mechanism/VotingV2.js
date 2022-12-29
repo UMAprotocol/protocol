@@ -4120,6 +4120,14 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 2);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 2);
   });
+  it("Sequential interactions with resolveResolvablePriceRequests do not re-traverse pending requests", async function () {
+    // Resolve resolvable price requests requires, in the worst case, to loop over all pending price requests. This is
+    // an action that only needs to be
+  });
+
+  it("Request resolution can happen piecewise", async function () {
+    //
+  });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following

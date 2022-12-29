@@ -71,6 +71,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     struct Round {
         uint256 gat; // GAT is the required number of tokens to vote to not roll the vote.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
+        uint256 resolvableIndex;
     }
 
     // Represents the status a price request has.
@@ -720,7 +721,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) external {
-        _resolveResolvablePriceRequests();
+        _resolveResolvablePriceRequests(pendingPriceRequestsIds.length);
         require(
             voterStakes[voterAddress].nextIndexToProcess < indexTo && indexTo <= resolvedPriceRequestIds.length,
             "Invalid indexTo"
@@ -730,13 +731,17 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     function resolveResolvablePriceRequests() external {
-        _resolveResolvablePriceRequests();
+        _resolveResolvablePriceRequests(pendingPriceRequestsIds.length);
+    }
+
+    function resolveResolvablePriceRequestsRange(uint256 maxTraversals) external {
+        _resolveResolvablePriceRequests(maxTraversals);
     }
 
     // Updates the global and selected wallet's trackers for staking and voting. Note that the order of these calls is
     // very important due to the interplay between slashing and inactive/active liquidity.
     function _updateTrackers(address voterAddress) internal override {
-        _resolveResolvablePriceRequests();
+        _resolveResolvablePriceRequests(pendingPriceRequestsIds.length);
         _updateAccountSlashingTrackers(voterAddress, resolvedPriceRequestIds.length);
         super._updateTrackers(voterAddress);
     }
@@ -748,7 +753,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     //vote. If you stake during an active reveal then your liquidity will be marked as inactive within Staker.sol until
     // the its activated in the next round and as such you'll miss out on being slashed for that round.
     function _getStartingIndexForStaker() internal override returns (uint64) {
-        _resolveResolvablePriceRequests();
+        _resolveResolvablePriceRequests(pendingPriceRequestsIds.length);
         return SafeCast.toUint64(resolvedPriceRequestIds.length);
     }
 
@@ -1000,11 +1005,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         }
     }
 
-    function _resolveResolvablePriceRequests() private {
+    function _resolveResolvablePriceRequests(uint256 maxTraversals) private {
         uint32 currentRoundId = uint32(getCurrentRoundId());
 
-        uint256 index = 0;
-        while (index < pendingPriceRequestsIds.length) {
+        uint256 index = rounds[currentRoundId].resolvableIndex;
+        uint256 requestsTraversed = 0;
+        while (index < pendingPriceRequestsIds.length && requestsTraversed <= maxTraversals) {
+            ++requestsTraversed;
+
             PriceRequest storage request = priceRequests[pendingPriceRequestsIds[index]];
             if (request.lastVotingRound >= currentRoundId) {
                 ++index;
@@ -1043,6 +1051,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 resolvedPrice
             );
         }
+        rounds[currentRoundId].resolvableIndex = index;
     }
 
     // Return the GAT: the minimum number of tokens needed to participate to resolve a vote.
