@@ -24,6 +24,7 @@
     "url": "https://github.com/UMAprotocol/protocol/issues"
   },
   "scripts": {
-    "test": "mocha 'test/**/*.js'"
+    "test": "mocha 'test/**/*.js'",
+    "build": "tsc --build"
   }
 }
