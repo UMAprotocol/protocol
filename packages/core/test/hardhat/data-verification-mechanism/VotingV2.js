@@ -4253,14 +4253,106 @@ describe("VotingV2", function () {
     // Request so many requests in one go that we cant resolve them all in one transaction. Rather, we need to update
     // them piecewise. The same goes for deleting the requests once we've rolled enough times. This checks that in the
     // event the DVM is spammed we can recover gracefully.
-    await submitManyRequests(5, 150); // send 750 requests, split over 5 multicalls of size 150.
+    await submitManyRequests(5, 125); // send 625 requests, split over 5 multicalls of size 125.
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 625);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
 
+    // Move to the active round and then a following round. This will force these requests to need to be rolled.
+    // When resolving we will now need to roll 625 requests in one go.
+    await moveToNextRound(voting, accounts[0]);
     await moveToNextRound(voting, accounts[0]);
 
     // look at the gas used to resolve the 30 requests. a second call should use a fraction of this gas.
 
-    let gasUsed1 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
-    console.log("gas used to resolve requests", gasUsed1);
+    // If we try and update these all in one go we will run out of gas (note that Hardhat tests have a lower gas limit
+    // than ethereum mainnet but the same concept still applies).
+    let didRunOutOfGas = false;
+    try {
+      await voting.methods.resolveResolvablePriceRequests().send({ from: account1 });
+    } catch (error) {
+      didRunOutOfGas = true;
+      assert(error.data.stack.includes("Transaction ran out of gas"));
+    }
+    assert(didRunOutOfGas);
+
+    // Now, show that we can still update by splitting this request into two goes. Let's do one of 315 and one of 310.
+    await voting.methods.resolveResolvablePriceRequestsRange(315).send({ from: account1 });
+    await voting.methods.resolveResolvablePriceRequestsRange(310).send({ from: account1 });
+
+    // verify that we've traversed all the requests and that subsequent calls are very cheap.
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 625);
+    const roundId = await voting.methods.getCurrentRoundId().call();
+    assert.equal((await voting.methods.rounds(roundId).call()).resolvedIndex, 625);
+    const gasUsed1 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    assert(gasUsed1 < 40000);
+
+    // now, keep rolling until these requests are deletable.
+
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+
+    // If we now try resolve these requests can be deleted. Again, we cant do this in one go and need to split it into
+    // multiple transactions.
+    didRunOutOfGas = false;
+    try {
+      await voting.methods.resolveResolvablePriceRequests().send({ from: account1 });
+    } catch (error) {
+      didRunOutOfGas = true;
+      assert(error.data.stack.includes("Transaction ran out of gas"));
+    }
+    assert(didRunOutOfGas);
+    await voting.methods.resolveResolvablePriceRequestsRange(315).send({ from: account1 });
+    await voting.methods.resolveResolvablePriceRequestsRange(310).send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
+    assert.equal((await voting.getPastEvents("PriceRequestDeleted", { fromBlock: 0, toBlock: "latest" })).length, 625);
+    const gasUsed2 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    assert(gasUsed2 < 40000);
+  });
+  it("Can successfully remove votes that need to be deleted, interspersed with valid votes", async function () {
+    // Consider a combination of spam and valid votes. We should be able to correctly resolve the valid requests and
+    // remove the spam without issue.
+    await submitManyRequests(2, 125); // send 250 spam requests.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await submitManyRequests(2, 125, 500); // send 250 spam requests.
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 501);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
+
+    // Move to the active round and then a following round. This will force these requests to need to be rolled.
+    // When resolving we will now need to roll 501 requests in one go.
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+
+    // Now, commit and reveal on the one valid request. by proxy of committing we should roll the other votes.
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    assert.equal((await voting.getPastEvents("PriceRequestRolled", { fromBlock: 0, toBlock: "latest" })).length, 501);
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequests().send({ from: account1 });
+
+    // There should now be 1 resolved request and 500 rolled requests.
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 500);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 1);
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+
+    // Now, roll again and then update. this should delete these requests.
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.resolveResolvablePriceRequestsRange(250).send({ from: account1 });
+    await voting.methods.resolveResolvablePriceRequestsRange(250).send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 1);
   });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this

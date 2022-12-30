@@ -1048,7 +1048,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 resolvedPrice
             );
         }
-        rounds[currentRoundId].resolvedIndex = index; //
+        rounds[currentRoundId].resolvedIndex = index;
     }
 
     // Return the GAT: the minimum number of tokens needed to participate to resolve a vote.
