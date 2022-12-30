@@ -43,8 +43,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // The pendingRequestIndex in the pendingPriceRequestsIds that references this PriceRequest. A value of
         // UINT64_MAX means that this PriceRequest is resolved and has been cleaned up from pendingPriceRequestsIds.
         uint64 pendingRequestIndex;
-        // The resolvedRequestIndex in the resolvedPriceRequestIds that references this PriceRequest.
-        uint64 resolvedRequestIndex;
         // Timestamp that should be used when evaluating the request. This is a uint64 to allow better variable packing
         // while still leaving more than ample room for timestamps to stretch far into the future.
         uint64 time;
@@ -1036,7 +1034,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 continue;
             }
 
-            request.resolvedRequestIndex = SafeCast.toUint64(resolvedPriceRequestIds.length);
             resolvedPriceRequestIds.push(pendingPriceRequestsIds[index]);
 
             _removeRequestFromPendingPriceRequestsIds(request.pendingRequestIndex);
@@ -1044,7 +1041,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             emit PriceResolved(
                 request.lastVotingRound,
-                request.resolvedRequestIndex,
+                resolvedPriceRequestIds.length - 1,
                 request.identifier,
                 request.time,
                 request.ancillaryData,
