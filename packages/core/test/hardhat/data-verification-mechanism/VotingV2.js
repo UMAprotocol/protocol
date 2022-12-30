@@ -4047,14 +4047,12 @@ describe("VotingV2", function () {
     assert.equal(spamRequest1.lastVotingRound, "0");
     assert.isFalse(spamRequest1.isGovernance);
     assert.equal(spamRequest1.pendingRequestIndex, "0");
-    assert.equal(spamRequest1.resolvedRequestIndex, "0");
     assert.equal(spamRequest1.time, "0");
     assert.equal(spamRequest1.identifier, padRight(utf8ToHex(""), 64));
     assert.isNull(spamRequest1.ancillaryData);
     assert.equal(spamRequest2.lastVotingRound, "0");
     assert.isFalse(spamRequest2.isGovernance);
     assert.equal(spamRequest2.pendingRequestIndex, "0");
-    assert.equal(spamRequest2.resolvedRequestIndex, "0");
     assert.equal(spamRequest2.time, "0");
     assert.equal(spamRequest2.identifier, padRight(utf8ToHex(""), 64));
     assert.isNull(spamRequest2.ancillaryData);
@@ -4251,7 +4249,7 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 4);
   });
-  it.only("Can successfully remove large amounts of spam piecewise", async function () {
+  it("Can successfully remove large amounts of spam piecewise", async function () {
     // Request so many requests in one go that we cant resolve them all in one transaction. Rather, we need to update
     // them piecewise. The same goes for deleting the requests once we've rolled enough times. This checks that in the
     // event the DVM is spammed we can recover gracefully.
