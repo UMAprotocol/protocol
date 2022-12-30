@@ -71,7 +71,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     struct Round {
         uint256 gat; // GAT is the required number of tokens to vote to not roll the vote.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
-        uint256 resolvableIndex;
+        uint256 resolvedIndex; // Index of pendingPriceRequestsIds that has been resolved in this round.
     }
 
     // Represents the status a price request has.
@@ -673,6 +673,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newDeleteAfterRollCount the new number of rounds to roll a request before the DVM auto deletes it.
      */
     function setDeleteAfterRollCount(uint32 newDeleteAfterRollCount) public override onlyOwner {
+        require(newDeleteAfterRollCount > 0, "Cannot set to 0");
         deleteAfterRollCount = newDeleteAfterRollCount;
         emit DeleteAfterRollCountChanged(newDeleteAfterRollCount);
     }
@@ -1008,9 +1009,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _resolveResolvablePriceRequests(uint256 maxTraversals) private {
         uint32 currentRoundId = uint32(getCurrentRoundId());
 
-        uint256 index = rounds[currentRoundId].resolvableIndex;
+        uint256 index = rounds[currentRoundId].resolvedIndex;
         uint256 requestsTraversed = 0;
-        while (index < pendingPriceRequestsIds.length && requestsTraversed <= maxTraversals) {
+        while (index < pendingPriceRequestsIds.length && requestsTraversed < maxTraversals) {
             ++requestsTraversed;
 
             PriceRequest storage request = priceRequests[pendingPriceRequestsIds[index]];
@@ -1022,17 +1023,16 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             (bool isResolvable, int256 resolvedPrice) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(request.lastVotingRound));
             if (!isResolvable) {
-                if (request.lastVotingRound < currentRoundId) {
-                    request.rollCount += currentRoundId - request.lastVotingRound;
-                    request.lastVotingRound = currentRoundId;
-                    emit PriceRequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
-                    if (request.rollCount == deleteAfterRollCount && !request.isGovernance) {
-                        emit PriceRequestDeleted(request.identifier, request.time, request.ancillaryData);
+                request.rollCount += currentRoundId - request.lastVotingRound;
+                request.lastVotingRound = currentRoundId;
+                emit PriceRequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
+                if (request.rollCount >= deleteAfterRollCount && !request.isGovernance) {
+                    emit PriceRequestDeleted(request.identifier, request.time, request.ancillaryData);
 
-                        delete priceRequests[pendingPriceRequestsIds[index]];
-                        _removeRequestFromPendingPriceRequestsIds(request.pendingRequestIndex);
-                    }
+                    delete priceRequests[pendingPriceRequestsIds[index]];
+                    _removeRequestFromPendingPriceRequestsIds(request.pendingRequestIndex);
                 } else ++index;
+
                 continue;
             }
 
@@ -1051,7 +1051,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 resolvedPrice
             );
         }
-        rounds[currentRoundId].resolvableIndex = index;
+        rounds[currentRoundId].resolvedIndex = index; //
     }
 
     // Return the GAT: the minimum number of tokens needed to participate to resolve a vote.

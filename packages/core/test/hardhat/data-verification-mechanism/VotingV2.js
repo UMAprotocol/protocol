@@ -4122,11 +4122,147 @@ describe("VotingV2", function () {
   });
   it("Sequential interactions with resolveResolvablePriceRequests do not re-traverse pending requests", async function () {
     // Resolve resolvable price requests requires, in the worst case, to loop over all pending price requests. This is
-    // an action that only needs to be
+    // an action that only needs to be done by the first account to interact with the voting contracts within a given
+    // round. We can show this is the case by submitting a large number of requests (30) and then looking at the gas used
+    // between the first and second caller.
+
+    await submitManyRequests(1, 30); // send 30 requests within 1 multical tx.
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // look at the gas used to resolve the 30 requests. a second call should use a fraction of this gas.
+
+    let gasUsed1 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    let gasUsed2 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account2 })).gasUsed;
+    // The gas used on the first call should be at least 5x that of the second call.
+    assert(gasUsed1 > gasUsed2 * 5);
+
+    // Moving to the next round, we should need to re-spend the gas used on the first call and should see the same behavour.
+    await moveToNextRound(voting, accounts[0]);
+    gasUsed1 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    gasUsed2 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account2 })).gasUsed;
+    assert(gasUsed1 > gasUsed2 * 5);
   });
 
   it("Request resolution can happen piecewise", async function () {
-    //
+    // It should be possible to sequentially update the resolvable index for a given round by calling resolve resolvable
+    // price request range.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    // Verify that the order of requests is respected as they move between the pending and settled arrays.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
+
+    const request1Id = await voting.methods.pendingPriceRequestsIds(0).call();
+    const request2Id = await voting.methods.pendingPriceRequestsIds(1).call();
+    const request3Id = await voting.methods.pendingPriceRequestsIds(2).call();
+    const request4Id = await voting.methods.pendingPriceRequestsIds(3).call();
+
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 4);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
+
+    // Before doing anything the resolvableIndex should be 0.
+    assert.equal(
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
+      "0"
+    );
+
+    // Updating in range should update the resolvable index to 1.
+    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    assert.equal(
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
+      "1"
+    );
+
+    // calling resolveResolvablePriceRequests should update to the end of the range.
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal(
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
+      "4"
+    );
+
+    // Equally, we can show the same behavior works when rolling and updating the rolling trackers.
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request4Id).call()).rollCount, 0);
+
+    // Now, update in range and we should see the number of indices update correspond to which requests are updated.
+    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request4Id).call()).rollCount, 0);
+
+    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 1);
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request4Id).call()).rollCount, 0);
+
+    // Update the remaining.
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 1);
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 1);
+    assert.equal((await voting.methods.priceRequests(request4Id).call()).rollCount, 1);
+
+    // Same behavour occurs when settling requests.
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    const hash2 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash2).send({ from: account1 });
+    const hash3 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 2 });
+    await voting.methods.commitVote(identifier, time + 2, hash3).send({ from: account1 });
+    const hash4 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 3 });
+    await voting.methods.commitVote(identifier, time + 3, hash4).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 4);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
+
+    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 3);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 1);
+
+    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 2);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 2);
+
+    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 4);
+  });
+  it.only("Can successfully remove large amounts of spam piecewise", async function () {
+    // Request so many requests in one go that we cant resolve them all in one transaction. Rather, we need to update
+    // them piecewise. The same goes for deleting the requests once we've rolled enough times. This checks that in the
+    // event the DVM is spammed we can recover gracefully.
+    await submitManyRequests(5, 150); // send 750 requests, split over 5 multicalls of size 150.
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // look at the gas used to resolve the 30 requests. a second call should use a fraction of this gas.
+
+    let gasUsed1 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    console.log("gas used to resolve requests", gasUsed1);
   });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
@@ -4163,5 +4299,19 @@ describe("VotingV2", function () {
     await voting.methods
       .setSlashingLibrary((await SlashingLibrary.deployed()).options.address)
       .send({ from: accounts[0] });
+  };
+  const submitManyRequests = async (numberOfMulticallCalls, numberOfRequestsPerMulticall, timeOffset = 0) => {
+    const identifier = padRight(utf8ToHex("bulk"), 64);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    const firstRequestTime = Number(await voting.methods.getCurrentTime().call()) - 10000;
+
+    for (const j of [...Array(numberOfMulticallCalls).keys()]) {
+      const priceRequestData = [];
+      for (const i of [...Array(numberOfRequestsPerMulticall).keys()]) {
+        const time = firstRequestTime + i + j * numberOfRequestsPerMulticall + timeOffset;
+        priceRequestData.push(voting.methods.requestPrice(identifier, time).encodeABI());
+      }
+      await voting.methods.multicall(priceRequestData).send({ from: registeredContract });
+    }
   };
 });
