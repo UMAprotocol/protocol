@@ -1998,6 +1998,8 @@ describe("VotingV2", function () {
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
     // the slash per wrong vote and slash per no vote set correctly.
     await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 1);
 
     // The test configuration has a wrong vote and no vote slash per token set to 0.0016. This works out to ~ equal to
     // the emission rate of the contract assuming 10 votes per month over a year. At this rate we should see two groups
@@ -2012,6 +2014,7 @@ describe("VotingV2", function () {
 
     // These slashings should be removed from the slashed token holders and added pro-rata to the correct voters.
     // Account 1 should loose 51200 tokens and account 2 should lose 6400 tokens.
+
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).stake,
       toWei("32000000").sub(toWei("51200")) // Their original stake amount of 32mm minus the slashing of 51200.
@@ -3928,7 +3931,7 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 4);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
 
-    // Roll request 2 and 3. Settle request 1 and 2. We should see the order respected when settled.
+    // Roll request 2 and 3. Settle request 1 and 4. We should see the order respected when settled.
     await moveToNextRound(voting, accounts[0]);
     const price = 123;
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
