@@ -4066,7 +4066,7 @@ describe("VotingV2", function () {
   it("Handles calling settle during reveal", async function () {
     // In the event that someone calls resolveResolvablePriceRequests() during the reveal phase, after a vote has reached
     // the gat but before the end of the round.
-    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const identifier = padRight(utf8ToHex("slash-test"), 64);
     const time = 420;
 
     // Make 4 requests. Pass 1 and 4. Roll 2 and 3.
