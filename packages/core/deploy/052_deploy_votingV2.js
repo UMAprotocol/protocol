@@ -21,7 +21,7 @@ const func = async function (hre) {
   // Set phase length to one day.
   const phaseLength = "86400";
 
-  // If a price request rolls 5 times then it is auto deleted.
+  // If a price request rolls 3 times then it is auto deleted.
   const deleteAfterRollCount = 3;
 
   // Note: this is a bit hacky, but we must have _some_ tokens in existence to set a GAT.

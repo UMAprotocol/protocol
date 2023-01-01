@@ -729,7 +729,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
 
-    function resolveResolvablePriceRequests() external {
+    function resolveResolvablePriceRequests() public {
         _resolveResolvablePriceRequests(pendingPriceRequestsIds.length);
     }
 
@@ -782,33 +782,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
         uint256 currentRoundId = getCurrentRoundId();
         VoterStake storage voterStake = voterStakes[voterAddress];
-        // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
-        // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = voterStake.unappliedSlash; // Load in any unapplied slashing from the previous iteration.
-        uint64 nextIndexToProcess = voterStake.nextIndexToProcess;
-        for (
-            uint64 requestIndex = voterStake.nextIndexToProcess;
-            requestIndex < indexTo;
-            requestIndex = unsafe_inc_64(requestIndex)
-        ) {
+        uint64 requestIndex = voterStake.nextIndexToProcess;
+        for (; requestIndex < indexTo; requestIndex = unsafe_inc_64(requestIndex)) {
             PriceRequest storage priceRequest = priceRequests[resolvedPriceRequestIds[requestIndex]];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-
-            // If the request we're processing now is not the same round as the last index we processed successfully
-            // (not rolled), then we need to apply slashing because there's been a round change.
-            if (
-                slash != 0 &&
-                nextIndexToProcess != 0 &&
-                priceRequests[resolvedPriceRequestIds[nextIndexToProcess - 1]].lastVotingRound !=
-                priceRequest.lastVotingRound
-            ) {
-                _applySlashToVoter(slash, voterStake, voterAddress);
-
-                slash = 0;
-            }
 
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
 
@@ -850,29 +831,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 slash += int256(((effectiveStake * totalSlashed)) / totalCorrectVotes);
             }
 
-            nextIndexToProcess = requestIndex + 1;
+            if (isNextRequestRoundDifferent(requestIndex)) {
+                _applySlashToVoter(slash, voterStake, voterAddress);
+                slash = 0;
+            }
         }
 
-        // If there is any remaining slashing then apply it. This occurs when there is unapplied slashing in the loop
-        // due to the last unlashed elements all being all from the same round. i.e we only slash within the loop when
-        // transitioning between rounds and the last round is slashed here. Note that there is a special case that needs
-        // to be considered separately: if the nextIndex that we're going to process is >= priceRequestIds, then we
-        // know that there's going to be a round change because new requests never get added to a past round.
-        // If we are not in this case and the next element to be processed has the same round, then we know that
-        // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
-        // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
-
         if (slash != 0) {
-            if (
-                nextIndexToProcess + 1 <= resolvedPriceRequestIds.length &&
-                priceRequests[resolvedPriceRequestIds[nextIndexToProcess - 1]].lastVotingRound ==
-                priceRequests[resolvedPriceRequestIds[nextIndexToProcess]].lastVotingRound
-            ) voterStake.unappliedSlash = slash;
+            if (!isNextRequestRoundDifferent(requestIndex - 1)) voterStake.unappliedSlash = slash;
             else _applySlashToVoter(slash, voterStake, voterAddress);
         }
 
         // Set the account's next index to process to the next index so the next entry starts where we left off.
-        voterStake.nextIndexToProcess = nextIndexToProcess;
+        voterStake.nextIndexToProcess = requestIndex;
     }
 
     // Applies a given slash to a given voter's stake.
@@ -885,6 +856,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         else voterStake.stake = 0;
         voterStake.unappliedSlash = 0;
         emit VoterSlashed(voterAddress, slash, voterStake.stake);
+    }
+
+    function isNextRequestRoundDifferent(uint64 index) internal view returns (bool) {
+        if (index + 1 >= resolvedPriceRequestIds.length) return true;
+
+        return
+            priceRequests[resolvedPriceRequestIds[index]].lastVotingRound !=
+            priceRequests[resolvedPriceRequestIds[index + 1]].lastVotingRound;
     }
 
     /****************************************
