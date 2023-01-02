@@ -16,8 +16,6 @@ import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/RegistryInterface.sol";
 import "../interfaces/SlashingLibraryInterface.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title VotingV2 contract for the UMA DVM.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting schelling scheme.
@@ -290,7 +288,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     // Enqueues a request (if a request isn't already present) for the given identifier, time and ancillary data. Time
-    // must be in the  past and the identifier must be supported. The length of the ancillary data is limited such that this method abides by the EVM transaction gas limit. Identifier uniquely identifies the requested (E.g. BTC/USD)
+    // must be in the  past and the identifier must be supported. The length of the ancillary data is limited such that
+    // this method abides by the EVM transaction gas limit. Identifier uniquely identifies the requested (E.g. BTC/USD)
     // as encoded as bytes32 & time unix timestamp for the request. ancillaryData arbitrary data appended to a request
     // to give the voters more information. isGovernance indicates whether the request is for a governance action.
     function _requestPrice(
@@ -466,7 +465,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes memory ancillaryData,
         int256 salt
     ) public override nonReentrant() onlyIfNotMigrated() {
-        // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
+        // Note: computing the current round is needed to disallow people from revealing an old commit after the round.
         uint256 currentRoundId = getCurrentRoundId();
         _freezeRoundVariables(currentRoundId);
         VoteInstance storage voteInstance =
@@ -793,7 +792,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
-                // Compute the total amount slashed over all stakers. This is the sum of the total slashed for not voting
+                // Compute the total amount slashed over all stakers. This is the sum of total slashed for not voting
                 // and the total slashed for voting incorrectly. Use this to work out the stakers prorate share.
                 uint256 totalSlashed =
                     ((noVoteSlashPerToken * (totalStaked - vote.results.totalVotes)) +
