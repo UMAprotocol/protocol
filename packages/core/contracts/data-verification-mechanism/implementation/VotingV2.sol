@@ -16,6 +16,8 @@ import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/RegistryInterface.sol";
 import "../interfaces/SlashingLibraryInterface.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title VotingV2 contract for the UMA DVM.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting schelling scheme.
@@ -810,13 +812,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // Once we've traversed all requests, apply any remaining slash to the voter. This would be the case if the we
         // had not traversed all settled requests in the above loop due to the maxTraversals parameter. If the following
-        // request round is the same as the current round then we need to store the unapplied slash in the voterStake
-        // so that the next iteration of this method continues off from where we end now. Else, if we are bisecting
-        // a round (or are at the end of the resolvedPriceRequestIds array) we can apply the slash to the voter now.
-        if (slash != 0) {
-            if (!isNextRequestRoundDifferent(requestIndex - 1)) voterStake.unappliedSlash = slash;
-            else _applySlashToVoter(slash, voterStake, voterAddress);
-        }
+        // request round is the same as the current round and we have an unapplied slash then store it within the voters
+        // unappliedSlash tracker so that the next iteration of this method continues off from where we end now.
+        if (slash != 0 && !isNextRequestRoundDifferent(requestIndex - 1)) voterStake.unappliedSlash = slash;
 
         // Set the account's next index to process to the next index so the next entry starts where we left off.
         voterStake.nextIndexToProcess = requestIndex;
