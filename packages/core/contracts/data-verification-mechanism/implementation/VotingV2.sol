@@ -870,9 +870,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     // Deletes a request from the pending requests array, based on index. Swap and pop.
     function _removeRequestFromPendingPriceRequestsIds(uint64 pendingRequestIndex) internal {
-        uint256 lastIndex = pendingPriceRequestsIds.length - 1;
-        PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequestsIds[lastIndex]];
-        pendingPriceRequestsIds[pendingRequestIndex] = pendingPriceRequestsIds[lastIndex];
+        pendingPriceRequestsIds[pendingRequestIndex] = pendingPriceRequestsIds[pendingPriceRequestsIds.length - 1];
         pendingPriceRequestsIds.pop();
     }
 
