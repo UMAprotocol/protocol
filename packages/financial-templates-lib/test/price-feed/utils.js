@@ -93,8 +93,7 @@ describe("Price Feed Utils", async function () {
       assert.isAtLeast(blockNumber, 0);
     };
 
-    const generateCases = (min, max) => {
-      const numCases = 100;
+    const generateCases = (min, max, numCases = 100) => {
       const cases = [];
       for (let i = 0; i < numCases; i++) cases.push(Math.round(Math.random() * (max - min) + min));
       cases.push(min, max); // Ensure first and last blocks are tested.
@@ -116,6 +115,30 @@ describe("Price Feed Utils", async function () {
 
       // Timestamp before the first block should fail.
       assert.isTrue(await blockFinder.getBlockForTimestamp(-1).catch(() => true));
+    });
+
+    it("Timestamp collisions", async function () {
+      // Get block just generates timestamps by dividing them by 10 and ceiling them, causing them to collide.
+      // This essentially simulats a 10 TPS chain.
+      const getBlock = async (blockNumber) => {
+        if (blockNumber === "latest") blockNumber = latestBlockNumber;
+        checkBlockNumber(blockNumber);
+        return { number: blockNumber, timestamp: Math.ceil(blockNumber / 10) };
+      };
+
+      const blockFinder = new BlockFinder(getBlock);
+
+      // Last timestamp is just the last block number / 10.
+      const cases = generateCases(1, Math.ceil(latestBlockNumber / 10), 1000);
+
+      // Tests each case by ensuring the floored sqrt of the timestamp matches the block number.
+      await Promise.all(
+        cases.map((timestamp) =>
+          blockFinder
+            .getBlockForTimestamp(timestamp)
+            .then((block) => assert.equal(Math.ceil(block.number / 10), timestamp))
+        )
+      );
     });
 
     it("Squared timestamps", async function () {

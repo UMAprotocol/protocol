@@ -124,6 +124,7 @@ contract EmergencyProposer is Ownable, Lockable {
      */
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
         require(msg.sender != address(governor), "Governor can't propose"); // The governor should never be the proposer.
+        require(transactions.length > 0, "No transactions to propose");
         token.safeTransferFrom(msg.sender, address(this), quorum);
         uint256 id = emergencyProposals.length;
         EmergencyProposal storage proposal = emergencyProposals.push();

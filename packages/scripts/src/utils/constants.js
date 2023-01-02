@@ -1,7 +1,7 @@
 // Accounts we will request to impersonate on hardhat node.
 const REQUIRED_SIGNER_ADDRESSES = {
   deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25",
-  foundation: "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc",
+  foundation: "0x8180d59b7175d4064bdfa8138a58e9babffda44a",
   account_with_uma: "0xcb287f69707d84cbd56ab2e7a4f32390fa98120b",
 };
 

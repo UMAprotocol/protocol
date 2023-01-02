@@ -38,7 +38,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     // Mapping of delegates to their delegators (staker). Reverse mapping from voterStakes.delegate.
     mapping(address => address) public delegateToStaker;
 
-    // Number of UMA emitted per second top incentivize stakers.
+    // Number of UMA emitted per second to incentivize stakers.
     uint256 public emissionRate;
 
     // Total number of UMA staked within the system.
@@ -144,8 +144,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         voterStake.stake += amount;
         cumulativeStake += amount;
 
-        // Tokens are pulled from the "from" address and sent to this contract.
-        // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
+        // Tokens are pulled from the from address and sent to this contract.
+        // During withdrawAndRestake, from is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
         emit Staked(recipient, from, amount, voterStake.stake, voterStake.pendingUnstake, cumulativeStake);
     }
@@ -371,7 +371,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     // Returns the starting index for a staker. This function should be overridden by the implementing contract.
-    function _getStartingIndexForStaker() internal view virtual returns (uint64) {
+    function _getStartingIndexForStaker() internal virtual returns (uint64) {
         return 0;
     }
 

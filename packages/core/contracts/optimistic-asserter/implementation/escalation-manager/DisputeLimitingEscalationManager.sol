@@ -1,15 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
-import "../../interfaces/OptimisticAsserterInterface.sol";
 
 // This Escalation Manager blocks all assertions till the blocking dispute is resolved by Oracle. In order to avoid
 // interference among different applications this Escalation Manager allows assertions only from one requesting contract.
 // This is useful to create a system where only one assertion dispute can occur at a time.
 contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
-    OptimisticAsserterInterface public immutable optimisticAsserter;
-
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
     address public assertingCaller;
 
@@ -17,9 +15,7 @@ contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
 
     event AssertingCallerSet(address indexed assertingCaller);
 
-    constructor(address _optimisticAsserter) {
-        optimisticAsserter = OptimisticAsserterInterface(_optimisticAsserter);
-    }
+    constructor(address _optimisticAsserter) BaseEscalationManager(_optimisticAsserter) {}
 
     // Set the address of the contract that will be allowed to use Optimistic Asserter.
     // This can only be set once. We do not set this at constructor just to allow for some flexibility in the ordering
@@ -42,9 +38,7 @@ contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
     }
 
     // Callback function that is called by Optimistic Asserter when an assertion is disputed.
-    function assertionDisputedCallback(bytes32 assertionId) public override {
-        require(msg.sender == address(optimisticAsserter), "Not authorized");
-
+    function assertionDisputedCallback(bytes32 assertionId) public override onlyOptimisticAsserter {
         // Only apply new assertion block if the dispute is related to the linked client contract.
         if (optimisticAsserter.getAssertion(assertionId).escalationManagerSettings.assertingCaller == assertingCaller) {
             disputedAssertionId = assertionId;
@@ -52,9 +46,7 @@ contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
     }
 
     // Callback function that is called by Optimistic Asserter when an assertion is resolved.
-    function assertionResolvedCallback(bytes32 assertionId, bool) public override {
-        require(msg.sender == address(optimisticAsserter), "Not authorized");
-
+    function assertionResolvedCallback(bytes32 assertionId, bool) public override onlyOptimisticAsserter {
         // Remove assertion block if the disputed assertion was resolved.
         if (assertionId == disputedAssertionId) disputedAssertionId = bytes32(0);
     }

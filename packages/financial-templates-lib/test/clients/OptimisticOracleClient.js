@@ -427,7 +427,7 @@ describe("OptimisticOracleClient.js", function () {
         web3,
         optimisticOracle.options.address,
         mockOracle.options.address,
-        13
+        11
       );
 
       // Request a price and check that the longer lookback client currently sees it
@@ -678,7 +678,7 @@ describe("OptimisticOracleClient.js", function () {
         web3,
         optimisticOracle.options.address,
         mockOracle.options.address,
-        13,
+        11,
         OptimisticOracleType.SkinnyOptimisticOracle
       );
 
@@ -1015,7 +1015,7 @@ describe("OptimisticOracleClient.js", function () {
         web3,
         optimisticOracle.options.address,
         mockOracle.options.address,
-        13
+        11
       );
 
       // Request a price and check that the longer lookback client currently sees it

@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/examples/DataAsserter.sol";
 
-contract DataAsserterTest is Common {
+contract DataAsserterTest is CommonOptimisticAsserterTest {
     DataAsserter public dataAsserter;
     bytes32 dataId = bytes32("dataId");
     bytes32 correctData = bytes32("correctData");

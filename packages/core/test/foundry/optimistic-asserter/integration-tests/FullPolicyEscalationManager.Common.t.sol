@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "./BaseEscalationManager.t.sol";
@@ -14,6 +14,6 @@ contract FullPolicyEscalationManagerCommon is BaseEscalationManagerTest {
         defaultCurrency.approve(address(assertingCaller), defaultBond);
         vm.stopPrank();
 
-        escalationManager = address(new FullPolicyEscalationManager());
+        escalationManager = address(new FullPolicyEscalationManager(address(optimisticAsserter)));
     }
 }

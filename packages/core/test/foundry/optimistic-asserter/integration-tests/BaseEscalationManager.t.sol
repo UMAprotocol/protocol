@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/BaseEscalationManager.sol";
 
-contract BaseEscalationManagerTest is Common {
+contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
     address escalationManager;
 
     function setUp() public virtual {
@@ -16,7 +16,7 @@ contract BaseEscalationManagerTest is Common {
         defaultCurrency.approve(address(assertingCaller), defaultBond);
         vm.stopPrank();
 
-        escalationManager = address(new BaseEscalationManager());
+        escalationManager = address(new BaseEscalationManager(address(optimisticAsserter)));
     }
 
     function test_MakeAssertion() public {

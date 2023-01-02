@@ -11,22 +11,21 @@ export async function averageBlockTimeSeconds(chainId?: number): Promise<number>
   // TODO: Call an external API to get this data. Currently this value is a hard-coded estimate
   // based on the data from https://etherscan.io/chart/blocktime. ~13.5 seconds has been the average
   // since April 2016, although this value seems to spike periodically for a relatively short period of time.
-  const defaultBlockTimeSeconds = 13.5;
+  const defaultBlockTimeSeconds = 12;
   if (!defaultBlockTimeSeconds) {
     throw "Missing default block time value";
   }
 
   switch (chainId) {
-    // Block time is irrelevant on Arbitrum since one transaction ~= 1 block, so this time value is based on empirical
-    // observation as of January 4 2022 of Arbitrum block propogation.
-    case 42161:
-      return 2.2;
-    // Source: https://blockexplorer.boba.network/
-    case 288:
-      return 3.8;
     // Source: https://polygonscan.com/chart/blocktime
+    case 10:
+      return 0.5;
+    case 42161:
+      return 0.5;
+    case 288:
+      return 30;
     case 137:
-      return 2.2;
+      return 2.5;
     case 1:
       return defaultBlockTimeSeconds;
     default:
@@ -44,15 +43,4 @@ export async function getFromBlock(web3: Web3): Promise<number> {
   } else {
     return 0;
   }
-}
-
-/**
- * @notice Estimates the blocks elapsed over a certain number of seconds.
- * @param seconds the number of seconds.
- * @param cushionPercentage the percentage to add to the number as a cushion.
- */
-export async function estimateBlocksElapsed(seconds: number, cushionPercentage = 0.0): Promise<number> {
-  const cushionMultiplier = cushionPercentage + 1.0;
-  const averageBlockTime = await averageBlockTimeSeconds();
-  return Math.floor((seconds * cushionMultiplier) / averageBlockTime);
 }

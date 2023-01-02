@@ -1,5 +1,5 @@
 {
-  "version": "0.31.2",
+  "version": "0.32.1",
   "license": "MIT",
   "name": "@uma/sdk",
   "author": "David Adams",
@@ -37,9 +37,10 @@
   "dependencies": {
     "@google-cloud/datastore": "^7.0.0",
     "@types/lodash-es": "^4.17.5",
-    "@uma/contracts-frontend": "^0.4.4",
-    "@uma/contracts-node": "^0.4.4",
+    "@uma/contracts-frontend": "^0.4.6",
+    "@uma/contracts-node": "^0.4.6",
     "axios": "^0.24.0",
+    "bluebird": "^3.7.2",
     "bn.js": "^4.11.9",
     "decimal.js": "^10.3.1",
     "highland": "^2.13.5",
@@ -47,13 +48,14 @@
     "lodash-es": "^4.17.21"
   },
   "peerDependencies": {
-    "@eth-optimism/contracts": "^0.5.5",
-    "@eth-optimism/core-utils": "^0.7.3",
-    "ethers": "^5.4.2"
+    "@eth-optimism/contracts": "^0.5.37",
+    "@eth-optimism/core-utils": "^0.10.1",
+    "ethers": "^5.7.2"
   },
   "devDependencies": {
     "@rollup/plugin-replace": "^3.0.0",
     "@size-limit/preset-small-lib": "^4.10.2",
+    "@types/bluebird": "^3.5.33",
     "@types/bn.js": "^5.1.0",
     "@types/dotenv": "^8.2.0",
     "@types/highland": "^2.12.13",

@@ -1,19 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
-import "../../interfaces/OptimisticAsserterInterface.sol";
 
 /**
  * @title The FullPolicyEscalationManager enables the owner to configure all policy parameters and store the arbitration
  * resolutions for the Escalation Manager. Optionally, assertion blocking can be enabled using a whitelist of
  * assertingCallers or assertingCallers and asserters. On the other hand, it enables the determination of whether to
  * arbitrate via the escalation manager as opposed to the DVM, whether to disregard the resolution of a potential
- * dispute arbitrated by the Oracle, and whether to restrict who can register disputes via a whitelistedDisputeCallers.
+ * dispute arbitrated by the Oracle, and whether to restrict who can register disputes via whitelistedDisputeCallers.
  * @dev If nothing is configured using the setters and configureEscalationManager method upon deployment, the
  * FullPolicyEscalationManager will return a default policy with all values set to false.
  */
 contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
+    // Struct to store the arbitration resolution for a given identifier, time, and ancillary data.
     struct ArbitrationResolution {
         bool valueSet; // True if the resolution has been set.
         bool resolution; // True or false depending on the resolution.
@@ -29,11 +30,13 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     event ArbitrationResolutionSet(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bool resolution);
 
-    event DisputeCallerWhitelistSet(address disputeCaller, bool whitelisted);
+    event DisputeCallerWhitelistSet(address indexed disputeCaller, bool whitelisted);
 
-    event AssertingCallerWhitelistSet(address assertingCaller, bool whitelisted);
+    event AssertingCallerWhitelistSet(address indexed assertingCaller, bool whitelisted);
 
-    event AsserterWhitelistSet(address asserter, bool whitelisted);
+    event AsserterWhitelistSet(address indexed asserter, bool whitelisted);
+
+    int256 public constant numericalTrue = 1e18; // Numerical representation of true.
 
     bool public blockByAssertingCaller; // True if assertions are allowed only by whitelisted asserting callers.
 
@@ -52,6 +55,12 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     mapping(address => bool) public whitelistedAssertingCallers; // Whitelisted assertingCallers that can assert prices.
 
     mapping(address => bool) public whitelistedAsserters; // Whitelisted asserters that can assert prices.
+
+    /**
+     * @notice Constructs the escalation manager.
+     * @param _optimisticAsserter the optimistic asserter to use.
+     */
+    constructor(address _optimisticAsserter) BaseEscalationManager(_optimisticAsserter) {}
 
     /**
      * @notice Returns the Assertion Policy defined by this contract's parameters and functions.
@@ -86,9 +95,9 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         uint256 time,
         bytes memory ancillaryData
     ) public view override returns (int256) {
-        bytes32 requestId = keccak256(abi.encode(identifier, time, ancillaryData));
+        bytes32 requestId = getRequestId(identifier, time, ancillaryData);
         require(arbitrationResolutions[requestId].valueSet, "Arbitration resolution not set");
-        if (arbitrationResolutions[requestId].resolution) return 1e18;
+        if (arbitrationResolutions[requestId].resolution) return numericalTrue;
         return 0;
     }
 
@@ -98,7 +107,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      * @param assertionId the ID of the assertion to check the disputerCaller for.
      * @param disputeCaller the address of the disputeCaller to check.
      * @return true if the disputerCaller is authorised to dispute the assertion.
-     * @dev In order for this function to be used by the Optimistic Assertor, validateDisputers must be set to true.
+     * @dev In order for this function to be used by the Optimistic Asserter, validateDisputers must be set to true.
      */
     function isDisputeAllowed(bytes32 assertionId, address disputeCaller) public view override returns (bool) {
         return whitelistedDisputeCallers[disputeCaller];
@@ -121,7 +130,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         bool _arbitrateViaEscalationManager,
         bool _discardOracle
     ) public onlyOwner {
-        require(!_blockByAsserter || (_blockByAsserter && _blockByAssertingCaller), "Cannot block only by asserter");
+        require(!_blockByAsserter || _blockByAssertingCaller, "Cannot block only by asserter");
         blockByAssertingCaller = _blockByAssertingCaller;
         blockByAsserter = _blockByAsserter;
         validateDisputers = _validateDisputers;
@@ -152,14 +161,16 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         bytes memory ancillaryData,
         bool arbitrationResolution
     ) public onlyOwner {
-        bytes32 requestId = keccak256(abi.encode(identifier, time, ancillaryData));
+        bytes32 requestId = getRequestId(identifier, time, ancillaryData);
+        require(arbitrationResolutions[requestId].valueSet == false, "Arbitration already resolved");
         arbitrationResolutions[requestId] = ArbitrationResolution(true, arbitrationResolution);
         emit ArbitrationResolutionSet(identifier, time, ancillaryData, arbitrationResolution);
     }
 
     /**
-     * @notice Adds a disputerCaller to the whitelist of disputers that can file disputes.
+     * @notice Adds/removes a disputeCaller to the whitelist of disputers that can file disputes.
      * @param disputeCaller the address of the disputeCaller to add.
+     * @param value true represents adding and false represents removing the disputeCaller from the whitelist.
      * @dev This function is only used if validateDisputers is set to true.
      */
     function setDisputeCallerInWhitelist(address disputeCaller, bool value) public onlyOwner {
@@ -168,8 +179,9 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of assertingCallers that can make assertions.
+     * @notice Adds/removes an asserter to the whitelist of assertingCallers that can make assertions.
      * @param assertingCaller the address of the assertingCaller to add.
+     * @param value true represents adding and false represents removing the assertingCaller from the whitelist.
      */
     function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
         whitelistedAssertingCallers[assertingCaller] = value;
@@ -177,8 +189,9 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of asserters that can make assertions.
+     * @notice Adds/removes an asserter to the whitelist of asserters that can make assertions.
      * @param asserter the address of the asserter to add.
+     * @param value true represents adding and false represents removing the asserter from the whitelist.
      * @dev This function must be used in conjunction with setWhitelistedAssertingCallers in order to have an effect.
      */
     function setWhitelistedAsserters(address asserter, bool value) public onlyOwner {
@@ -186,10 +199,24 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         emit AsserterWhitelistSet(asserter, value);
     }
 
+    /**
+     * @notice Calculates price request identifier for a given identifier, time, and ancillary data.
+     * @param identifier uniquely identifies the price requested.
+     * @param time unix timestamp of the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @return price request identifier.
+     */
+    function getRequestId(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encode(identifier, time, ancillaryData));
+    }
+
     // Checks if an assertion is blocked depending on the blockByAssertingCaller / blockByAsserter settings and the
     // assertion's properties.
     function _checkIfAssertionBlocked(bytes32 assertionId) internal view returns (bool) {
-        OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         return
             (blockByAssertingCaller &&
