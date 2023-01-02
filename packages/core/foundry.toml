@@ -1,0 +1,7 @@
+[profile.default]
+allow_paths = ["../../node_modules"]
+cache_path = 'forge-cache'
+libs = ['node_modules', 'lib']
+out = 'out'
+src = 'contracts'
+test = 'test/foundry'

@@ -10,8 +10,8 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AncillaryData.sol";
 
-import "../../oracle/implementation/Constants.sol";
-import "../../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../../data-verification-mechanism/implementation/Constants.sol";
+import "../../optimistic-oracle/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
 import "./EmergencyShutdownable.sol";

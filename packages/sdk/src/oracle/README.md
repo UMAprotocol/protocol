@@ -33,6 +33,8 @@ const config:PartialConfig = {
       optimisticOracleAddress: string; // override default oracle address, or provide one if we cannot look it up, ie with testing
       earliestBlockNumber?: number;  // ignore blocks before this block number if specified
       maxEventRangeQuery?: number;  // optimize how quickly the first batch of requests are fetched by restricting the max number of events queried.
+      disableFetchEventBased?: boolean; // disables checking all requests for event based data, which may slow down app or cause high requests
+      fetchEventBasedConcurrency?: number; // set the concurrency for fetching event based data on requests, default 5
     },
     // other chains follow the same configuration schema
   },

@@ -1,8 +1,0 @@
-{
-  "name": "@uma/tvl-fetcher",
-  "version": "0.0.1",
-  "dependencies": {
-    "@google-cloud/datastore": "^7.0.0"
-  },
-  "private": true
-}
