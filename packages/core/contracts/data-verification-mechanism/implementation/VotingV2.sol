@@ -18,8 +18,6 @@ import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/RegistryInterface.sol";
 import "../interfaces/SlashingLibraryInterface.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title VotingV2 contract for the UMA DVM.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting schelling scheme.
