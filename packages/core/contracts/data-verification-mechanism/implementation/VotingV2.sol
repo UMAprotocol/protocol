@@ -299,10 +299,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
-        uint32 currentRoundId = getCurrentRoundId();
+        uint32 currentRoundId = uint32(getCurrentRoundId());
 
         // Price has never been requested.
-        if (requestStatus == _getRequestStatus(priceRequest, currentRoundId).NotRequested) {
+        if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.NotRequested) {
             uint32 roundIdToVoteOn = currentRoundId + 1; // Vote on request in the following round.
             priceRequests[priceRequestId].identifier = identifier;
             priceRequests[priceRequestId].time = SafeCast.toUint64(time);
@@ -567,7 +567,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @return uint256 the unique round ID.
      */
     function getCurrentRoundId() public view override returns (uint256) {
-        return uint32(voteTiming.computeCurrentRoundId(getCurrentTime()));
+        return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
     /**
