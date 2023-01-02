@@ -155,11 +155,11 @@ abstract contract VotingV2Interface {
     function setMigrated(address newVotingAddress) external virtual;
 
     /**
-     * @notice Sets the number of rounds to roll a request before the DVM auto deletes it.
+     * @notice Sets the maximum number of rounds to roll a request can have before the DVM auto deletes it.
      * @dev Can only be called by the contract owner.
-     * @param newDeleteAfterRollCount the new number of rounds to roll a request before the DVM auto deletes it.
+     * @param newMaxRolls the new number of rounds to roll a request before the DVM auto deletes it.
      */
-    function setDeleteAfterRollCount(uint32 newDeleteAfterRollCount) external virtual;
+    function setMaxRolls(uint32 newMaxRolls) external virtual;
 
     /**
      * @notice Resets the Gat. Note: this change only applies to rounds that have not yet begun.

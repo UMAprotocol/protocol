@@ -110,7 +110,7 @@ describe("VotingV2", function () {
 
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
-          5, // deleteAfterRollCount
+          2, // maxRolls
           invalidGat, // GAT
           "0", // startingRequestIndex
           votingToken.options.address, // voting token
@@ -1258,7 +1258,7 @@ describe("VotingV2", function () {
       "640000000000000000", // emission rate
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
-      5, // deleteAfterRollCount
+      2, // maxRolls
       web3.utils.toWei("5000000"), // GAT 5MM
       "0", // startingRequestIndex
       votingToken.options.address, // voting token
@@ -1421,7 +1421,7 @@ describe("VotingV2", function () {
       "42069", // emissionRate
       60 * 60 * 24 * 7, // Unstake cooldown
       86400, // PhaseLength
-      5, // deleteAfterRollCount
+      2, // maxRolls
       toWei("5000000"), // GAT 5MM
       "0", // startingRequestIndex
       votingToken.options.address, // voting token
@@ -1465,7 +1465,7 @@ describe("VotingV2", function () {
           "42069", // emissionRate
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
-          5, // deleteAfterRollCount
+          2, // maxRolls
           toWei("5000000"), // GAT 5MM
           "0", // startingRequestIndex
           votingToken.options.address, // voting token
@@ -2949,7 +2949,10 @@ describe("VotingV2", function () {
 
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, toWei("32000000").add(toWei("108800")));
 
-    await voting.methods.updateTrackersRange(account1, 3).send({ from: account1 });
+    // Now, update the tracker one more time with maxItterations on updateTracker range set to 1. Should increment once.
+    await voting.methods.updateTrackersRange(account1, 1).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 2);
+    await voting.methods.updateTrackersRange(account1, 1).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 3);
 
     // We can consider the account1 amount by looking at the partial update to their slashing trackers. They were
@@ -2958,25 +2961,14 @@ describe("VotingV2", function () {
     // should have (32mm + 68mm * 0.0016) * (1 - 0.0016) * (1 - 0.0016) = 32006134.038528
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, toWei("32006134.038528"));
 
-    // Now, try sync an invalid index. We should not be able to sync below or at the last updated tracker for this
-    // account (i.e <=3 should error).
-    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 2).send({ from: accounts[0] })));
-    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 3).send({ from: accounts[0] })));
-
-    // Equally, should revert on an invalid toIndex that is above the maximum number of requests.
-    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 8).send({ from: accounts[0] })));
-
-    // However, we can update just one index.
-    await voting.methods.updateTrackersRange(account1, 4).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, 1).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 4);
 
     // Slashing should now be 32006134.0385 slashed again at 0.0016 = 32006134.0385 * (1 - 0.0016) = 31954924.2240663552
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, toWei("31954924.2240663552"));
 
     // Finally, can update the entire remaining range.
-    // await voting.methods.updateTrackers(account1).send({ from: account1 });
-
-    await voting.methods.updateTrackersRange(account1, 6).send({ from: account1 });
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
 
     // Slashing should now be 31954924.2240663552 (1 - 0.0016) * (1 - 0.0016)= 31852750.2712.
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, toBN("31852750271155356473229312"));
@@ -3072,7 +3064,7 @@ describe("VotingV2", function () {
       "42069", // emissionRate
       60 * 60 * 24 * 7, // Unstake cooldown
       86400, // PhaseLength
-      5, // deleteAfterRollCount
+      2, // maxRolls
       toWei("0.05"), // GatPct
       10, // offset starting index for requests.
       votingToken.options.address, // voting token
@@ -3295,13 +3287,14 @@ describe("VotingV2", function () {
     // Now, update the trackers piece wise to validate that this still works over multiple discrete rounds. This is the
     // first rolled but settled index. it was settled in the same round as index3 and so we should see it set within the unappliedSlash tracker. Expected unapplied slashing is (68e6-108800)*0.0016 = 108625.92 which is the total amount of
     // all tokens other than account1, minus the first slashing, slashed at 0.0016.
-    await voting.methods.updateTrackersRange(account1, 2).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, 1).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 2);
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, toWei("32000000").add(toWei("108800")));
     assert.equal((await voting.methods.voterStakes(account1).call()).unappliedSlash, toWei("108625.92"));
 
     // Now, update to request 3 (the final request. we should see 2x the unapplied slasing now applied to the ballance.
-    await voting.methods.updateTrackersRange(account1, 3).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, 1).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 3);
     let expectedStake = toWei("32000000").add(toWei("108800")).add(toWei("108625.92")).add(toWei("108625.92"));
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, expectedStake);
 
@@ -3321,7 +3314,6 @@ describe("VotingV2", function () {
 
     // Apply the final slashing trackers. we should see (68e6-108800-108625.92*2)*0.0016 = 108278.317056 added to the
     // active stake of account1.
-    await voting.methods.updateTrackersRange(account1, 4).send({ from: account1 });
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 4);
     assert.equal(
@@ -3994,7 +3986,7 @@ describe("VotingV2", function () {
     // assert.equal((await voting.methods.priceRequests(resolvedRequest4Id).call()).time, time + 2);
   });
   it("Requests are automatically removed after a fixed number of rolls", async function () {
-    // Verify that if a request rolls enough times (to hit deleteAfterRollCount) it is automatically removed from the
+    // Verify that if a request rolls enough times (to hit maxRolls) it is automatically removed from the
     // pending requests array and becomes unresolvable.
     const identifier = padRight(utf8ToHex("test"), 64);
     const time = "1000";
@@ -4023,7 +4015,7 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 1);
 
-    // Now, roll the votes up to the deleteAfterRollCount. This is set to 3 by default
+    // Now, roll the votes up to the maxRolls. This is set to 3 by default
     await moveToNextRound(voting, accounts[0]);
     await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 2);
