@@ -522,12 +522,8 @@ describe("VotingV2", function () {
 
     // Pending requests should be 2 because one vote was rolled over and the second was dispatched after the previous
     // voting round started.
-    const pendingPriceRequests = await voting.methods.getPendingRequests().call();
-    assert.equal(pendingPriceRequests.length, 2);
 
-    // check that the price request index is correct within each of these.
-    assert.equal(pendingPriceRequests[0].pendingRequestIndex, 0);
-    assert.equal(pendingPriceRequests[1].pendingRequestIndex, 1);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 2);
 
     // Commit votes.
     const price1 = getRandomSignedInt();
@@ -4041,13 +4037,11 @@ describe("VotingV2", function () {
     const spamRequest2 = await voting.methods.priceRequests(request2Id).call();
     assert.equal(spamRequest1.lastVotingRound, "0");
     assert.isFalse(spamRequest1.isGovernance);
-    assert.equal(spamRequest1.pendingRequestIndex, "0");
     assert.equal(spamRequest1.time, "0");
     assert.equal(spamRequest1.identifier, padRight(utf8ToHex(""), 64));
     assert.isNull(spamRequest1.ancillaryData);
     assert.equal(spamRequest2.lastVotingRound, "0");
     assert.isFalse(spamRequest2.isGovernance);
-    assert.equal(spamRequest2.pendingRequestIndex, "0");
     assert.equal(spamRequest2.time, "0");
     assert.equal(spamRequest2.identifier, padRight(utf8ToHex(""), 64));
     assert.isNull(spamRequest2.ancillaryData);

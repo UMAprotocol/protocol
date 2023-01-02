@@ -22,7 +22,6 @@ abstract contract VotingV2Interface {
         bytes32 identifier;
         uint256 time;
         bytes ancillaryData;
-        uint64 pendingRequestIndex;
     }
 
     // Captures the necessary data for making a commitment.
