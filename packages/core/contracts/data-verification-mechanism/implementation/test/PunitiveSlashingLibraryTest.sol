@@ -4,13 +4,6 @@ pragma solidity 0.8.16;
 import "../../interfaces/SlashingLibraryInterface.sol";
 
 contract PunitiveSlashingLibraryTest is SlashingLibraryInterface {
-    uint256 public slashPerToken;
-
-    // setter function
-    function setSlashPerToken(uint256 _slashPerToken) external {
-        slashPerToken = _slashPerToken;
-    }
-
     function calcWrongVoteSlashPerToken(
         uint256 totalStaked,
         uint256 totalVotes,

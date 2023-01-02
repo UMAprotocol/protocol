@@ -4522,13 +4522,8 @@ describe("VotingV2", function () {
       }
     };
 
-    await punitiveSlashingLibraryTest.methods.setSlashPerToken(toWei("0.99"));
     // Test that user is never slashed below 0
-    await testSlashing("1000", 10);
-
-    await punitiveSlashingLibraryTest.methods.setSlashPerToken(toWei("1"));
-    // Test that user is never slashed below 0
-    await testSlashing("2000", 10);
+    await testSlashing("1000", 20);
   });
 
   const addNonSlashingVote = async () => {
