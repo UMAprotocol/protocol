@@ -1,5 +1,3 @@
-// TODO: this whole /oracle/implementation directory should be restructured to separate the DVM and the OO.
-
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
@@ -53,7 +51,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     struct VoteInstance {
         mapping(address => VoteSubmission) voteSubmissions; // Maps (voterAddress) to their submission.
-        ResultComputationV2.Data resultComputation; // The data structure containing the computed voting results.
+        ResultComputationV2.Data results; // The data structure containing the computed voting results.
     }
 
     struct VoteSubmission {
@@ -117,7 +115,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     FinderInterface private immutable finder;
 
     // Reference to Slashing Library, used to compute slashing amounts.
-    SlashingLibraryInterface public slashingLibrary;
+    SlashingLibraryInterface public slashingLib;
 
     // Address of the previous voting contract.
     OracleAncillaryInterface public immutable previousVotingContract;
@@ -167,7 +165,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 numTokens
     );
 
-    event PriceRequestAdded(
+    event RequestAdded(
         address indexed requester,
         uint256 indexed roundId,
         bytes32 indexed identifier,
@@ -176,7 +174,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bool isGovernance
     );
 
-    event PriceResolved(
+    event RequestResolved(
         uint256 indexed roundId,
         uint256 indexed resolvedPriceRequestIndex,
         bytes32 indexed identifier,
@@ -187,9 +185,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event VotingContractMigrated(address newAddress);
 
-    event PriceRequestDeleted(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData);
+    event RequestDeleted(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
 
-    event PriceRequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
+    event RequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
 
     event GatChanged(uint256 newGat);
 
@@ -225,11 +223,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         address _previousVotingContract
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength);
-        require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
-        gat = _gat;
         finder = FinderInterface(_finder);
-        slashingLibrary = SlashingLibraryInterface(_slashingLibrary);
         previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
+        setGat(_gat);
+        setSlashingLibrary(_slashingLibrary);
         setMaxRolls(_maxRolls);
 
         // We assume indices never get above 2^64. So we should never start with an index above half that range.
@@ -316,25 +313,18 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // Price has never been requested.
         if (requestStatus == RequestStatus.NotRequested) {
-            uint256 roundIdToVoteOnPriceRequest = currentRoundId + 1;
+            uint256 roundIdToVoteOn = currentRoundId + 1; // Vote on request in the following round.
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
             newPriceRequest.identifier = identifier;
             newPriceRequest.time = SafeCast.toUint64(time);
-            newPriceRequest.lastVotingRound = SafeCast.toUint32(roundIdToVoteOnPriceRequest);
+            newPriceRequest.lastVotingRound = SafeCast.toUint32(roundIdToVoteOn);
 
             newPriceRequest.ancillaryData = ancillaryData;
             if (isGovernance) newPriceRequest.isGovernance = isGovernance;
 
             pendingPriceRequestsIds.push(priceRequestId);
 
-            emit PriceRequestAdded(
-                msg.sender,
-                roundIdToVoteOnPriceRequest,
-                identifier,
-                time,
-                ancillaryData,
-                isGovernance
-            );
+            emit RequestAdded(msg.sender, roundIdToVoteOn, identifier, time, ancillaryData, isGovernance);
         }
     }
 
@@ -503,7 +493,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         voteSubmission.revealHash = keccak256(abi.encode(price)); // Set the voter's submission.
         uint256 stake = voterStakes[voter].stake;
-        voteInstance.resultComputation.addVote(price, stake); // Add vote to the results.
+        voteInstance.results.addVote(price, stake); // Add vote to the results.
         emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, ancillaryData, price, stake);
     }
 
@@ -630,12 +620,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
-        uint256 totalVotes = voteInstance.resultComputation.totalVotes;
-        uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
+        uint256 totalVotes = voteInstance.results.totalVotes;
+        uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
         uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, priceRequest.isGovernance);
+            slashingLib.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, priceRequest.isGovernance);
 
         uint256 totalSlashed =
             ((noVoteSlash * (stakedAtRound - totalVotes)) / 1e18) +
@@ -673,7 +663,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @param newGat sets the next round's Gat.
      */
-    function setGat(uint256 newGat) external override onlyOwner {
+    function setGat(uint256 newGat) public override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
         gat = newGat;
         emit GatChanged(newGat);
@@ -686,8 +676,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) external override onlyOwner {
-        slashingLibrary = SlashingLibraryInterface(_newSlashingLibrary);
+    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
+        slashingLib = SlashingLibraryInterface(_newSlashingLibrary);
         emit SlashingLibraryChanged(_newSlashingLibrary);
     }
 
@@ -712,7 +702,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param voterAddress address of the voter to update the trackers for.
      * @param maxTraversals last price request index to update the trackers for.
      */
-    function updateTrackersRange(address voterAddress, uint256 maxTraversals) external {
+    function updateTrackersRange(address voterAddress, uint32 maxTraversals) external {
         resolveResolvablePriceRequests();
         _updateAccountSlashingTrackers(voterAddress, maxTraversals);
     }
@@ -729,7 +719,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // very important due to the interplay between slashing and inactive/active liquidity.
     function _updateTrackers(address voterAddress) internal override {
         resolveResolvablePriceRequests();
-        _updateAccountSlashingTrackers(voterAddress, resolvedPriceRequestIds.length);
+        _updateAccountSlashingTrackers(voterAddress, type(uint64).max);
         super._updateTrackers(voterAddress);
     }
 
@@ -767,56 +757,45 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // voting activity the voters balance is updated accordingly. The caller can provide a maxTraversals parameter to
     // limit the number of resolved requests to traverse in this call. This is useful if the number of resolved requests
     // is large and the update needs to be split over multiple transactions.
-    function _updateAccountSlashingTrackers(address voterAddress, uint256 maxTraversals) internal {
-        uint256 currentRoundId = getCurrentRoundId();
+    function _updateAccountSlashingTrackers(address voterAddress, uint64 maxTraversals) internal {
         VoterStake storage voterStake = voterStakes[voterAddress];
         int256 slash = voterStake.unappliedSlash; // Load in any unapplied slashing from the previous iteration.
         uint64 requestIndex = voterStake.nextIndexToProcess; // Traverse all requests from the last considered request.
-        uint256 requestsTraversed = 0; // Tracker to limit the number of requests to traverse in this call.
+        uint64 requestsTraversed = 0; // Tracker to limit the number of requests to traverse in this call.
         while (requestIndex < resolvedPriceRequestIds.length && requestsTraversed < maxTraversals) {
             ++requestsTraversed;
 
-            PriceRequest storage priceRequest = priceRequests[resolvedPriceRequestIds[requestIndex]];
-            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+            PriceRequest storage request = priceRequests[resolvedPriceRequestIds[requestIndex]];
+            VoteInstance storage vote = request.voteInstances[request.lastVotingRound];
 
-            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
+            uint256 totalStaked = rounds[request.lastVotingRound].cumulativeStakeAtRound;
+            uint256 totalCorrectVotes = vote.results.getTotalCorrectlyVotedTokens();
 
             // Calculate aggregate metrics for this round.
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
-                slashingLibrary.calcSlashing(
-                    rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound,
-                    voteInstance.resultComputation.totalVotes,
-                    totalCorrectVotes,
-                    priceRequest.isGovernance
-                );
+                slashingLib.calcSlashing(totalStaked, vote.results.totalVotes, totalCorrectVotes, request.isGovernance);
 
             // During this round's tracker calculation, we deduct the pending stake from the voter's total stake. Also,
             // the pending stakes of voters in a given round are excluded from the cumulativeStakeAtRound;
             // _computePendingStakes handles this. Thus, the voter's stakes during the active reveal phase of this round
             // won't be included in the slashes calculations.
-            uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[priceRequest.lastVotingRound];
+            uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[request.lastVotingRound];
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
-            if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
+            if (vote.voteSubmissions[voterAddress].revealHash == 0)
                 slash -= int256((effectiveStake * noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
-            else if (
-                !voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
-            )
+            else if (!vote.results.wasVoteCorrect(vote.voteSubmissions[voterAddress].revealHash))
                 slash -= int256((effectiveStake * wrongVoteSlashPerToken) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
                 // Compute the total amount slashed over all stakers. This is the sum of the total slashed for not voting
                 // and the total slashed for voting incorrectly. Use this to work out the stakers prorate share.
-
                 uint256 totalSlashed =
-                    ((noVoteSlashPerToken *
-                        (rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound -
-                            voteInstance.resultComputation.totalVotes)) +
-                        ((wrongVoteSlashPerToken * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)))) /
-                        1e18;
+                    ((noVoteSlashPerToken * (totalStaked - vote.results.totalVotes)) +
+                        ((wrongVoteSlashPerToken * (vote.results.totalVotes - totalCorrectVotes)))) / 1e18;
                 slash += int256(((effectiveStake * totalSlashed)) / totalCorrectVotes);
             }
 
@@ -921,8 +900,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
         if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (, int256 resolvedPrice) =
-                voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+            (, int256 resolvedPrice) = voteInstance.results.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
             return (true, resolvedPrice, "");
         }
 
@@ -998,16 +976,16 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             }
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
             (bool isResolvable, int256 resolvedPrice) =
-                voteInstance.resultComputation.getResolvedPrice(_computeGat(request.lastVotingRound));
+                voteInstance.results.getResolvedPrice(_computeGat(request.lastVotingRound));
             if (!isResolvable) {
                 request.rollCount += currentRoundId - request.lastVotingRound;
                 if (request.rollCount > maxRolls && !request.isGovernance) {
-                    emit PriceRequestDeleted(request.identifier, request.time, request.ancillaryData);
+                    emit RequestDeleted(request.identifier, request.time, request.ancillaryData, request.rollCount);
                     delete priceRequests[pendingPriceRequestsIds[requestIndex]];
                     _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
                 } else {
                     request.lastVotingRound = currentRoundId;
-                    emit PriceRequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
+                    emit RequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
                     ++requestIndex;
                 }
 
@@ -1017,7 +995,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             resolvedPriceRequestIds.push(pendingPriceRequestsIds[requestIndex]);
             _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
 
-            emit PriceResolved(
+            emit RequestResolved(
                 request.lastVotingRound,
                 resolvedPriceRequestIds.length - 1,
                 request.identifier,
@@ -1043,8 +1021,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
         else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (bool isResolved, ) =
-                voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+            (bool isResolved, ) = voteInstance.results.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
 
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
         } else if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;

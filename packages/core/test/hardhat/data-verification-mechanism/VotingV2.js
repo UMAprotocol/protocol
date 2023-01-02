@@ -835,7 +835,7 @@ describe("VotingV2", function () {
     assert(await didContractThrow(voting.methods.setSlashingLibrary(newSlashingLibrary).send({ from: accounts[1] })));
 
     // Check that the slashing library was set.
-    assert.equal(await voting.methods.slashingLibrary().call({ from: accounts[0] }), newSlashingLibrary);
+    assert.equal(await voting.methods.slashingLib().call({ from: accounts[0] }), newSlashingLibrary);
   });
 
   it("View methods", async function () {
@@ -923,7 +923,7 @@ describe("VotingV2", function () {
 
     // New price requests trigger events.
     result = await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await assertEventEmitted(result, voting, "PriceRequestAdded", (ev) => {
+    await assertEventEmitted(result, voting, "RequestAdded", (ev) => {
       return (
         // The vote is added to the next round, so we have to add 1 to the current round id.
         ev.roundId.toString() == currentRoundId.addn(1).toString() &&
@@ -946,7 +946,7 @@ describe("VotingV2", function () {
 
     // Repeated price requests don't trigger events.
     result = await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await assertEventNotEmitted(result, voting, "PriceRequestAdded");
+    await assertEventNotEmitted(result, voting, "RequestAdded");
 
     // Commit vote.
     const price = 123;
@@ -1004,7 +1004,7 @@ describe("VotingV2", function () {
       return ev.newAddress == migratedVoting;
     });
 
-    const oldSlashingLibrary = await voting.methods.slashingLibrary().call();
+    const oldSlashingLibrary = await voting.methods.slashingLib().call();
     result = await voting.methods.setSlashingLibrary(oldSlashingLibrary).send({ from: accounts[0] });
     await assertEventEmitted(result, voting, "SlashingLibraryChanged");
   });
@@ -4026,7 +4026,7 @@ describe("VotingV2", function () {
 
     // Both requests should be deleted now. First, check events content and count. Then, check the state is purged.
     // Lastly, check the arrays were updated correctly.
-    const events = await voting.getPastEvents("PriceRequestDeleted", { fromBlock: 0, toBlock: "latest" });
+    const events = await voting.getPastEvents("RequestDeleted", { fromBlock: 0, toBlock: "latest" });
     assert.equal(events.length, 2);
     assert.equal(events[0].returnValues.identifier, identifier);
     assert.equal(events[0].returnValues.time, time);
@@ -4292,7 +4292,7 @@ describe("VotingV2", function () {
     await voting.methods.resolveResolvablePriceRequestsRange(315).send({ from: account1 });
     await voting.methods.resolveResolvablePriceRequestsRange(310).send({ from: account1 });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
-    assert.equal((await voting.getPastEvents("PriceRequestDeleted", { fromBlock: 0, toBlock: "latest" })).length, 625);
+    assert.equal((await voting.getPastEvents("RequestDeleted", { fromBlock: 0, toBlock: "latest" })).length, 625);
     const gasUsed2 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
     assert(gasUsed2 < 40000);
   });
@@ -4320,7 +4320,7 @@ describe("VotingV2", function () {
     let baseRequest = { salt, roundId, identifier };
     const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
-    assert.equal((await voting.getPastEvents("PriceRequestRolled", { fromBlock: 0, toBlock: "latest" })).length, 501);
+    assert.equal((await voting.getPastEvents("RequestRolled", { fromBlock: 0, toBlock: "latest" })).length, 501);
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
     await moveToNextRound(voting, accounts[0]);
