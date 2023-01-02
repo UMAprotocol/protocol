@@ -16,15 +16,13 @@ const func = async function (hre) {
 
   const emissionRate = "640000000000000000"; // 0.64 UMA per second.
 
-  const spamDeletionProposalBond = hre.web3.utils.toWei("10000", "ether"); // 10k UMA to propose to delete spam.
-
   const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
 
   // Set phase length to one day.
   const phaseLength = "86400";
 
-  // If a price request falls in the last 2 hours of the previous reveal phase then auto roll it to the next round.
-  const minRollToNextRoundLength = "7200";
+  // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
+  const maxRolls = 2;
 
   // Note: this is a bit hacky, but we must have _some_ tokens in existence to set a GAT.
   const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
@@ -38,10 +36,9 @@ const func = async function (hre) {
       from: deployer,
       args: [
         emissionRate,
-        spamDeletionProposalBond,
         unstakeCooldown,
         phaseLength,
-        minRollToNextRoundLength,
+        maxRolls,
         gat.toString(),
         "0", // Starting request index of 0 (no offset).
         VotingToken.address,
@@ -57,10 +54,9 @@ const func = async function (hre) {
       from: deployer,
       args: [
         emissionRate,
-        spamDeletionProposalBond,
         unstakeCooldown,
         phaseLength,
-        minRollToNextRoundLength,
+        maxRolls,
         gat.toString(),
         "0", // Starting request index of 0 (no offset).
         VotingToken.address,
