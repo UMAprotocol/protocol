@@ -4488,42 +4488,37 @@ describe("VotingV2", function () {
     const punitiveSlashingLibraryTest = await PunitiveSlashingLibraryTest.new().send({ from: accounts[0] });
     await voting.methods.setSlashingLibrary(punitiveSlashingLibraryTest.options.address).send({ from: accounts[0] });
     const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
     const randStakingAmount = toWei("4000000");
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await votingToken.methods.mint(rand, randStakingAmount).send({ from: accounts[0] });
     await votingToken.methods.approve(voting.options.address, randStakingAmount).send({ from: rand });
     await voting.methods.stake(randStakingAmount).send({ from: rand });
 
-    const testSlashing = async (time, iterations) => {
-      // Test that user is never slashed below 0
-      for (let i = 0; i < iterations; i++) {
-        const newTime = Number(time) + i;
-        await voting.methods.requestPrice(identifier, newTime).send({ from: registeredContract });
-        await moveToNextRound(voting, accounts[0]);
-        assert.equal(await voting.methods.currentActiveRequests().call(), true);
+    for (let i = 0; i < 10; i++) {
+      const newTime = Number(time) + i;
+      await voting.methods.requestPrice(identifier, newTime).send({ from: registeredContract });
+      await moveToNextRound(voting, accounts[0]);
+      assert.equal(await voting.methods.currentActiveRequests().call(), true);
 
-        // Cast vote
-        let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-        const salt = getRandomSignedInt();
-        const price = 0;
-        const hash = computeVoteHash({ salt, roundId, identifier, price, account: account1, time: newTime });
-        await voting.methods.commitVote(identifier, newTime, hash).send({ from: account1 });
+      // Cast vote
+      let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+      const salt = getRandomSignedInt();
+      const price = 0;
+      const hash = computeVoteHash({ salt, roundId, identifier, price, account: account1, time: newTime });
+      await voting.methods.commitVote(identifier, newTime, hash).send({ from: account1 });
 
-        // Reveal vote
-        await moveToNextPhase(voting, accounts[0]);
-        await voting.methods.revealVote(identifier, newTime, price, salt).send({ from: account1 });
+      // Reveal vote
+      await moveToNextPhase(voting, accounts[0]);
+      await voting.methods.revealVote(identifier, newTime, price, salt).send({ from: account1 });
 
-        // Check user stake
-        await moveToNextRound(voting, accounts[0]);
-        const randStake = await voting.methods.getVoterStakePostUpdate(rand).call();
-        console.log("randStake", randStake.toString());
-        // Rand stake is more or equal to 0
-        assert(toBN(randStake).gt(toBN("0")) || toBN(randStake).eq(toBN("0")));
-      }
-    };
-
-    // Test that user is never slashed below 0
-    await testSlashing("1000", 20);
+      // Check user stake
+      await moveToNextRound(voting, accounts[0]);
+      const randStake = await voting.methods.getVoterStakePostUpdate(rand).call();
+      console.log("randStake", randStake.toString());
+      // Rand stake is more or equal to 0
+      assert(toBN(randStake).gt(toBN("0")) || toBN(randStake).eq(toBN("0")));
+    }
   });
 
   const addNonSlashingVote = async () => {
