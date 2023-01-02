@@ -4069,7 +4069,6 @@ describe("VotingV2", function () {
     const identifier = padRight(utf8ToHex("slash-test"), 64);
     const time = 420;
 
-    // Make 4 requests. Pass 1 and 4. Roll 2 and 3.
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
 
