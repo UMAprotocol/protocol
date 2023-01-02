@@ -22,7 +22,6 @@ abstract contract VotingV2Interface {
         bytes32 identifier;
         uint256 time;
         bytes ancillaryData;
-        uint64 priceRequestIndex;
     }
 
     // Captures the necessary data for making a commitment.
@@ -153,6 +152,13 @@ abstract contract VotingV2Interface {
      * @param newVotingAddress the newly migrated contract address.
      */
     function setMigrated(address newVotingAddress) external virtual;
+
+    /**
+     * @notice Sets the maximum number of rounds to roll a request can have before the DVM auto deletes it.
+     * @dev Can only be called by the contract owner.
+     * @param newMaxRolls the new number of rounds to roll a request before the DVM auto deletes it.
+     */
+    function setMaxRolls(uint32 newMaxRolls) external virtual;
 
     /**
      * @notice Resets the Gat. Note: this change only applies to rounds that have not yet begun.
