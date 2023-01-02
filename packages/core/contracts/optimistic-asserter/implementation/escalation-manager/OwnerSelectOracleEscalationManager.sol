@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -12,6 +13,8 @@ contract OwnerSelectOracleEscalationManager is BaseEscalationManager, Ownable {
     mapping(bytes32 => ArbitrationResolution) arbitrationResolutions;
 
     bool arbitrateViaEscalationManager;
+
+    constructor(address _optimisticAsserter) BaseEscalationManager(_optimisticAsserter) {}
 
     function setArbitrationResolution(
         bytes32 identifier,

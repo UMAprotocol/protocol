@@ -3,6 +3,61 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.45.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.44.0...@uma/core@2.45.0) (2022-12-28)
+
+### Bug Fixes
+
+- dont use named return variables ([#4341](https://github.com/UMAprotocol/protocol/issues/4341)) ([59364ce](https://github.com/UMAprotocol/protocol/commit/59364cedf50403d3764771d8dd818cc1f9a0cdef))
+- remove unused import ([#4338](https://github.com/UMAprotocol/protocol/issues/4338)) ([e4f47ee](https://github.com/UMAprotocol/protocol/commit/e4f47eeee8c981334bf55041ee9659d609887994))
+- use external functions in oa ([#4337](https://github.com/UMAprotocol/protocol/issues/4337)) ([bbe05e1](https://github.com/UMAprotocol/protocol/commit/bbe05e12a3aa3abe1bdcb5cbe55a14ba4ba21d0f))
+
+### Features
+
+- Add mainnet forking test case ([#4306](https://github.com/UMAprotocol/protocol/issues/4306)) ([48127c6](https://github.com/UMAprotocol/protocol/commit/48127c6e45ad8acd2914657f0a630946e18a66fe))
+
+# [2.44.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.43.2...@uma/core@2.44.0) (2022-12-20)
+
+### Bug Fixes
+
+- address issue in CI ([#4315](https://github.com/UMAprotocol/protocol/issues/4315)) ([dc247f4](https://github.com/UMAprotocol/protocol/commit/dc247f4bfb0afaec7394825c4ac69bd9fed06c97))
+- data asserter test ([#4268](https://github.com/UMAprotocol/protocol/issues/4268)) ([99e3d57](https://github.com/UMAprotocol/protocol/commit/99e3d5762906052a1356fd88797916a6679503ed))
+
+### Features
+
+- add additional code reading todos ([#4279](https://github.com/UMAprotocol/protocol/issues/4279)) ([5afd4aa](https://github.com/UMAprotocol/protocol/commit/5afd4aa2b5508f7ea3da9ff495f493a37672272c))
+- add additional props to assertionId ([#4290](https://github.com/UMAprotocol/protocol/issues/4290)) ([de9964c](https://github.com/UMAprotocol/protocol/commit/de9964c85a7611d0725ed0d3ba66d2b6599ec6b2))
+- add asserter argument to assertTruthWithDefaults ([#4298](https://github.com/UMAprotocol/protocol/issues/4298)) ([7e52808](https://github.com/UMAprotocol/protocol/commit/7e5280894f8620306ab1336c43d08abcc9da9dc3))
+- add foundry to CI ([#4247](https://github.com/UMAprotocol/protocol/issues/4247)) ([b7c338d](https://github.com/UMAprotocol/protocol/commit/b7c338d144c93e976b0fd9cec3d9d61e4e44cac7))
+- add full policy escalation manager ([#4293](https://github.com/UMAprotocol/protocol/issues/4293)) ([f20f8b7](https://github.com/UMAprotocol/protocol/commit/f20f8b7c962e5a231e6b0d9ab6251e6203d4e074))
+- add new health check runner package ([#4311](https://github.com/UMAprotocol/protocol/issues/4311)) ([1fe7bba](https://github.com/UMAprotocol/protocol/commit/1fe7bbae5eadb28fce6ed24bc87dce9fae4635d7))
+- add setter for burned bond percentage ([#4275](https://github.com/UMAprotocol/protocol/issues/4275)) ([476bd98](https://github.com/UMAprotocol/protocol/commit/476bd98ab3b7d8b76aa4ca8bcace81b06b88a4a4))
+- add todos optimistic assertor and ssm ([#4266](https://github.com/UMAprotocol/protocol/issues/4266)) ([6ac7317](https://github.com/UMAprotocol/protocol/commit/6ac7317f9fef1f75fe784e16cf089a758c31de68))
+- continue adding small OA refinements ([#4273](https://github.com/UMAprotocol/protocol/issues/4273)) ([39a13eb](https://github.com/UMAprotocol/protocol/commit/39a13eb21509a496d79f7f6caba709b9a9534a4d))
+- data asserter contract ([#4261](https://github.com/UMAprotocol/protocol/issues/4261)) ([1a97672](https://github.com/UMAprotocol/protocol/commit/1a9767236565249d4971ede0723c4b0136c638eb))
+- further cleanup ([#4299](https://github.com/UMAprotocol/protocol/issues/4299)) ([fed1c56](https://github.com/UMAprotocol/protocol/commit/fed1c5677b5e764eb0b3e59817941c129e6c26f7))
+- Further refine how assertFor address prop works ([#4281](https://github.com/UMAprotocol/protocol/issues/4281)) ([170ef23](https://github.com/UMAprotocol/protocol/commit/170ef230b5cd86cb4e2bfe82290c504f2ff1fc67))
+- refine structure and commenting ([#4292](https://github.com/UMAprotocol/protocol/issues/4292)) ([f904369](https://github.com/UMAprotocol/protocol/commit/f904369ff154828b33062ee4d746df334bf8992f))
+- **core:** add domain id property to oa ([#4291](https://github.com/UMAprotocol/protocol/issues/4291)) ([bc6d59d](https://github.com/UMAprotocol/protocol/commit/bc6d59d01e8259bc60b98602b7592bbd102ae6d0))
+- further refine OA bonds under disputes ([#4274](https://github.com/UMAprotocol/protocol/issues/4274)) ([afb196e](https://github.com/UMAprotocol/protocol/commit/afb196ea62733738216d2d2296f380d6a93c8947))
+- improved variable packing ([#4295](https://github.com/UMAprotocol/protocol/issues/4295)) ([96f7b83](https://github.com/UMAprotocol/protocol/commit/96f7b83d5c3a99e68af1918f19f34d804fd3fff4))
+- merge owner controlled properties in one call ([#4284](https://github.com/UMAprotocol/protocol/issues/4284)) ([520e868](https://github.com/UMAprotocol/protocol/commit/520e868720aa450ed7ad77305e9200f01175a038))
+- minor oa gas improvement ([#4296](https://github.com/UMAprotocol/protocol/issues/4296)) ([ce79399](https://github.com/UMAprotocol/protocol/commit/ce79399eae7f99b976c7393393212eac445115e4))
+- optimistic assertor gas optimisations ([#4282](https://github.com/UMAprotocol/protocol/issues/4282)) ([cf53d5c](https://github.com/UMAprotocol/protocol/commit/cf53d5c62cc0c03cc5c27807eb1a838e9a864d90))
+- optimistic assertor refactor ([#4270](https://github.com/UMAprotocol/protocol/issues/4270)) ([8ab97f5](https://github.com/UMAprotocol/protocol/commit/8ab97f594475fe1c67b93af060778b598c53cfa1))
+- rename and re-work variables ([#4280](https://github.com/UMAprotocol/protocol/issues/4280)) ([0369768](https://github.com/UMAprotocol/protocol/commit/036976835e1b5a75e30b893077aa242d870f13e1))
+- restructure core contracts directory ([#4207](https://github.com/UMAprotocol/protocol/issues/4207)) ([40b5b2c](https://github.com/UMAprotocol/protocol/commit/40b5b2cbc1591201d99f2545a2b22b744b01e663))
+- review oa todos ([#4294](https://github.com/UMAprotocol/protocol/issues/4294)) ([76771bb](https://github.com/UMAprotocol/protocol/commit/76771bb342106f60bcdf3918c7b90b55507c8b99))
+- superbond escalation manager ([#4287](https://github.com/UMAprotocol/protocol/issues/4287)) ([21b88e5](https://github.com/UMAprotocol/protocol/commit/21b88e59df198e3266ec9b34c7c1f0a571381e3c))
+- use renamed claimdata library ([#4289](https://github.com/UMAprotocol/protocol/issues/4289)) ([2bc5e6d](https://github.com/UMAprotocol/protocol/commit/2bc5e6db391cec0a3d56987c8f1cb83b7c426d47))
+- **core:** add oa callbacks to ss ([#4276](https://github.com/UMAprotocol/protocol/issues/4276)) ([a2ec177](https://github.com/UMAprotocol/protocol/commit/a2ec1770826e88fd98cc0fdbc9ddf5b8b4d135cc))
+- **core:** add oa reentrancy guard ([#4271](https://github.com/UMAprotocol/protocol/issues/4271)) ([45b0e16](https://github.com/UMAprotocol/protocol/commit/45b0e16247978e44c68f67428e79c571242b2915))
+- **core:** default false ss policy properties ([#4277](https://github.com/UMAprotocol/protocol/issues/4277)) ([0d7fe64](https://github.com/UMAprotocol/protocol/commit/0d7fe64fa45463724c6f2a718840076da5d2ae72))
+- **core:** example prediction markets using oa ([#4257](https://github.com/UMAprotocol/protocol/issues/4257)) ([cab4673](https://github.com/UMAprotocol/protocol/commit/cab46735a9e4a01c81a51a2ed911e9343f0bece6))
+- **core:** implement dispute limiting escalation manager ([#4286](https://github.com/UMAprotocol/protocol/issues/4286)) ([8afd0a1](https://github.com/UMAprotocol/protocol/commit/8afd0a13afeccf50424c78bb8b594b3b830849ae))
+- **core:** implement oa disputer whitelist in ssm ([#4252](https://github.com/UMAprotocol/protocol/issues/4252)) ([78254e0](https://github.com/UMAprotocol/protocol/commit/78254e0476eec135f1bbd70bf4485599c4853068))
+- **core:** oa cached uma params ([#4278](https://github.com/UMAprotocol/protocol/issues/4278)) ([6475790](https://github.com/UMAprotocol/protocol/commit/6475790ff92ee604e110e83b5d977ff79d12d3fc))
+- **core:** store claimId in oa ([#4267](https://github.com/UMAprotocol/protocol/issues/4267)) ([dc0ed4e](https://github.com/UMAprotocol/protocol/commit/dc0ed4e315c69240638b34668dcad4bb9898f692))
+
 ## [2.43.2](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.43.1...@uma/core@2.43.2) (2022-11-23)
 
 **Note:** Version bump only for package @uma/core

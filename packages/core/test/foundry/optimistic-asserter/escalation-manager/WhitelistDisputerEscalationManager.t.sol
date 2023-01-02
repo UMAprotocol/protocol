@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistDisputerEscalationManager.sol";
 
-contract WhitelistDisputerEscalationManagerTest is Common {
+contract WhitelistDisputerEscalationManagerTest is CommonOptimisticAsserterTest {
     WhitelistDisputerEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new WhitelistDisputerEscalationManager();
+        escalationManager = new WhitelistDisputerEscalationManager(address(optimisticAsserter));
     }
 
     function test_RevertIf_NotOwner() public {

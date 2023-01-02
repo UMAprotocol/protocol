@@ -812,10 +812,9 @@ describe("GovernorV2", function () {
 
     const newVoting = await VotingV2.new(
       toWei("0.64"), // emission rate
-      toWei("10000"), // spamDeletionProposalBond
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
-      "7200", // minRollToNextRoundLength
+      "3", // maxRolls
       web3.utils.toWei("5000000"), // 5% GAT
       "0", // startingRequestIndex
       votingToken.options.address, // voting token

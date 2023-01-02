@@ -1,13 +1,12 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "forge-std/Test.sol";
+import "../fixtures/common/CommonTestBase.sol";
 import "../fixtures/optimistic-asserter/OptimisticAsserterFixture.sol";
-import "../fixtures/common/TestAddress.sol";
 import "../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
 import "../../../contracts/optimistic-asserter/implementation/test/AssertingCallerTest.sol";
 
-contract Common is Test {
+contract CommonOptimisticAsserterTest is CommonTestBase {
     // Data structures, that might be used in tests.
     struct OracleRequest {
         bytes32 identifier;
@@ -59,7 +58,7 @@ contract Common is Test {
         IERC20 currency,
         uint256 bond
     );
-    event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
+    event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
 
     event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -5,6 +6,8 @@ import "./BaseEscalationManager.sol";
 
 contract OwnerDiscardOracleEscalationManager is BaseEscalationManager, Ownable {
     bool public discardOracle;
+
+    constructor(address _optimisticAsserter) BaseEscalationManager(_optimisticAsserter) {}
 
     function setDiscardOracle(bool value) public onlyOwner {
         discardOracle = value;

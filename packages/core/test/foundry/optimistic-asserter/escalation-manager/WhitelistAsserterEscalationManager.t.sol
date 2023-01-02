@@ -1,16 +1,16 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistAsserterEscalationManager.sol";
 
-contract WhitelistAsserterEscalationManagerTest is Common {
+contract WhitelistAsserterEscalationManagerTest is CommonOptimisticAsserterTest {
     WhitelistAsserterEscalationManager escalationManager;
 
     bytes32 assertionId = "test";
 
     function setUp() public {
-        escalationManager = new WhitelistAsserterEscalationManager();
+        escalationManager = new WhitelistAsserterEscalationManager(mockOptimisticAsserterAddress);
     }
 
     function test_RevertIf_NotOwner() public {
@@ -49,7 +49,6 @@ contract WhitelistAsserterEscalationManagerTest is Common {
 
         // If the asserter is not whitelisted, then the assertion should be blocked.
         assertFalse(escalationManager.whitelistedAsserters(TestAddress.account1));
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policy.blockAssertion);
 
@@ -64,7 +63,6 @@ contract WhitelistAsserterEscalationManagerTest is Common {
         // If the asserter is whitelisted, then the assertion should not be blocked.
         escalationManager.setAsserterInWhitelist(TestAddress.account1, true);
         assertTrue(escalationManager.whitelistedAsserters(TestAddress.account1));
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policy.blockAssertion);
 
@@ -77,7 +75,6 @@ contract WhitelistAsserterEscalationManagerTest is Common {
 
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
 
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policy.blockAssertion);
     }

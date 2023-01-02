@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "./FullPolicyEscalationManager.Common.t.sol";
@@ -57,8 +57,8 @@ contract FullPolicyEscalationManagerArbitrateTest is FullPolicyEscalationManager
         _defaultSaveBalancesBeforeSettle();
         assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
-        // Asserter should get double the bond without paying Oracle fees.
-        _defaultCheckBalancesAfterSettle(true, true, false);
+        // Asserter should get double the bond less Oracle fees.
+        _defaultCheckBalancesAfterSettle(true, true, true);
     }
 
     function test_ResolveAssertionNotTruthfulViaEscalationManager() public {
@@ -80,7 +80,7 @@ contract FullPolicyEscalationManagerArbitrateTest is FullPolicyEscalationManager
         _defaultSaveBalancesBeforeSettle();
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
-        // Disputer should get double the bond without paying Oracle fees.
-        _defaultCheckBalancesAfterSettle(true, false, false);
+        // Disputer should get double the bond less Oracle fees.
+        _defaultCheckBalancesAfterSettle(true, false, true);
     }
 }

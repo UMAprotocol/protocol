@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/SuperbondEscalationManager.sol";
 
-contract SuperbondEscalationManagerTest is Common {
+contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTest {
     SuperbondEscalationManager escalationManager;
     uint256 superbond = 100e18;
     uint256 bond = 50e18;
@@ -12,14 +12,13 @@ contract SuperbondEscalationManagerTest is Common {
     address anotherCurrency = TestAddress.random;
 
     function setUp() public {
-        escalationManager = new SuperbondEscalationManager();
+        escalationManager = new SuperbondEscalationManager(mockOptimisticAsserterAddress);
         escalationManager.setSuperbond(superbond);
         escalationManager.setSuperbondCurrency(address(defaultCurrency));
     }
 
     function test_SetSuperbond() public {
         _mockGetAssertion(assertionId, bond);
-        vm.prank(mockOptimisticAsserterAddress);
         SuperbondEscalationManager.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policy.blockAssertion);
         assertFalse(policy.arbitrateViaEscalationManager);
@@ -27,7 +26,6 @@ contract SuperbondEscalationManagerTest is Common {
         assertFalse(policy.validateDisputers);
 
         _mockGetAssertion(assertionId, superbond + 1);
-        vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertFalse(policy.blockAssertion);
@@ -38,7 +36,6 @@ contract SuperbondEscalationManagerTest is Common {
         // If the superbond currency is different than the assertion currency, then we use the DVM.
         escalationManager.setSuperbondCurrency(anotherCurrency);
         _mockGetAssertion(assertionId, superbond + 1);
-        vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
 
         assertFalse(policy.blockAssertion);

@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../Common.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistCallerEscalationManager.sol";
 
-contract WhitelistCallerEscalationManagerTest is Common {
+contract WhitelistCallerEscalationManagerTest is CommonOptimisticAsserterTest {
     WhitelistCallerEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new WhitelistCallerEscalationManager();
+        escalationManager = new WhitelistCallerEscalationManager(mockOptimisticAsserterAddress);
     }
 
     function test_AssertingCallerWhitelist() public {
@@ -16,14 +16,12 @@ contract WhitelistCallerEscalationManagerTest is Common {
 
         // If the asserting caller is not whitelisted, then the assertion should be blocked.
         _mockGetAssertionAssertingCaller(mockAssertingCallerAddress, assertionId);
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policyNotWhitelisted =
             escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policyNotWhitelisted.blockAssertion);
 
         // If the asserting caller is whitelisted, then the assertion should not be blocked.
         escalationManager.setAssertingCallerInWhitelist(mockAssertingCallerAddress, true);
-        vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policyWhitelisted =
             escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policyWhitelisted.blockAssertion);

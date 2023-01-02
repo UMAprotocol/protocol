@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./Common.sol";
+import "./CommonOptimisticAsserterTest.sol";
 import "../../../contracts/data-verification-mechanism/implementation/Store.sol";
 
-contract MaintenanceTest is Common {
+contract MaintenanceTest is CommonOptimisticAsserterTest {
     function setUp() public {
         _commonSetup();
     }
