@@ -729,7 +729,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _computePendingStakes(address voterAddress, uint256 amount) internal override {
         if (_inActiveReveal()) {
             uint256 currentRoundId = getCurrentRoundId();
-            // Now freeze, the round variables as we do not want the cumulativeActiveStakeAtRound to change based on the
+            // Now freeze the round variables as we do not want the cumulativeActiveStakeAtRound to change based on the
             // stakes during the active reveal phase. This only happens if the first action within the active reveal is
             // someone staking, rather than someone revealing their vote.
             _freezeRoundVariables(currentRoundId);
