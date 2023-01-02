@@ -30,6 +30,7 @@ const VotingToken = getContract("VotingToken");
 const Timer = getContract("Timer");
 const SlashingLibrary = getContract("SlashingLibrary");
 const ZeroedSlashingSlashingLibraryTest = getContract("ZeroedSlashingSlashingLibraryTest");
+const PunitiveSlashingLibraryTest = getContract("PunitiveSlashingLibraryTest");
 
 const { utf8ToHex, padRight } = web3.utils;
 
@@ -4481,6 +4482,55 @@ describe("VotingV2", function () {
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
   });
+
+  it("Ensure Users Are Never Slashed Below 0", async function () {
+    // Set up contracts
+    const punitiveSlashingLibraryTest = await PunitiveSlashingLibraryTest.new().send({ from: accounts[0] });
+    await voting.methods.setSlashingLibrary(punitiveSlashingLibraryTest.options.address).send({ from: accounts[0] });
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const randStakingAmount = toWei("4000000");
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await votingToken.methods.mint(rand, randStakingAmount).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, randStakingAmount).send({ from: rand });
+    await voting.methods.stake(randStakingAmount).send({ from: rand });
+
+    const testSlashing = async (time, iterations) => {
+      // Test that user is never slashed below 0
+      for (let i = 0; i < iterations; i++) {
+        const newTime = Number(time) + i;
+        await voting.methods.requestPrice(identifier, newTime).send({ from: registeredContract });
+        await moveToNextRound(voting, accounts[0]);
+        assert.equal(await voting.methods.currentActiveRequests().call(), true);
+
+        // Cast vote
+        let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+        const salt = getRandomSignedInt();
+        const price = 0;
+        const hash = computeVoteHash({ salt, roundId, identifier, price, account: account1, time: newTime });
+        await voting.methods.commitVote(identifier, newTime, hash).send({ from: account1 });
+
+        // Reveal vote
+        await moveToNextPhase(voting, accounts[0]);
+        await voting.methods.revealVote(identifier, newTime, price, salt).send({ from: account1 });
+
+        // Check user stake
+        await moveToNextRound(voting, accounts[0]);
+        const randStake = await voting.methods.getVoterStakePostUpdate(rand).call();
+        console.log("randStake", randStake.toString());
+        // Rand stake is more or equal to 0
+        assert(toBN(randStake).gt(toBN("0")) || toBN(randStake).eq(toBN("0")));
+      }
+    };
+
+    await punitiveSlashingLibraryTest.methods.setSlashPerToken(toWei("0.99"));
+    // Test that user is never slashed below 0
+    await testSlashing("1000", 10);
+
+    await punitiveSlashingLibraryTest.methods.setSlashPerToken(toWei("1"));
+    // Test that user is never slashed below 0
+    await testSlashing("2000", 10);
+  });
+
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following
