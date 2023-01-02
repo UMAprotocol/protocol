@@ -288,7 +288,6 @@ describe("EmergencyProposer", function () {
 
     // Cannot remove proposal before expiry.
     assert(await didContractThrow(proposer.methods.removeProposal(id).send({ from: executor })));
-    assert(await didContractThrow(proposer.methods.removeProposal(id).send({ from: submitter })));
 
     // Wait through expiry.
     const currentTime = await proposer.methods.getCurrentTime().call();
@@ -298,12 +297,11 @@ describe("EmergencyProposer", function () {
 
     // Only certain addresses can remove proposals.
     assert(await didContractThrow(proposer.methods.removeProposal(id).send({ from: rando })));
-    assert(await didContractThrow(proposer.methods.removeProposal(id).send({ from: owner })));
     await proposer.methods.removeProposal(id).call({ from: executor });
-    const receipt = await proposer.methods.removeProposal(id).send({ from: submitter });
+    const receipt = await proposer.methods.removeProposal(id).send({ from: executor });
 
     // Cannot remove again.
-    assert(await didContractThrow(proposer.methods.removeProposal(id).send({ from: submitter })));
+    assert(await didContractThrow(proposer.methods.removeProposal(id).send({ from: executor })));
 
     // Check that the event resolved as expected for a true value and the bond was repaid to the submitter.
     assert.equal(await votingToken.methods.balanceOf(submitter).call(), quorum);
@@ -312,7 +310,7 @@ describe("EmergencyProposer", function () {
       proposer,
       "EmergencyProposalRemoved",
       (event) =>
-        event.id === id && event.caller === submitter && event.sender === submitter && event.lockedTokens == quorum
+        event.id === id && event.caller === executor && event.sender === submitter && event.lockedTokens == quorum
     );
 
     // Clean up votingToken balance.

@@ -150,7 +150,7 @@ contract EmergencyProposer is Ownable, Lockable {
     function removeProposal(uint256 id) external nonReentrant() {
         EmergencyProposal storage proposal = emergencyProposals[id];
         require(proposal.expiryTime <= getCurrentTime(), "must be expired to remove");
-        require(msg.sender == proposal.sender || msg.sender == executor, "proposer or executor");
+        require(msg.sender == owner() || msg.sender == executor, "proposer or executor");
         require(proposal.lockedTokens != 0, "invalid proposal");
         token.safeTransfer(proposal.sender, proposal.lockedTokens);
         emit EmergencyProposalRemoved(
