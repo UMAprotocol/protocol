@@ -167,13 +167,6 @@ abstract contract VotingV2Interface {
     function setGat(uint256 newGat) external virtual;
 
     /**
-     * @notice Resets the rewards expiration timeout.
-     * @dev This change only applies to rounds that have not yet begun.
-     * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
-     */
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) external virtual;
-
-    /**
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
