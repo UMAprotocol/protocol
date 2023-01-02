@@ -15,10 +15,10 @@ contract FakeLifeCycle is CommonDataVerificationMechanismForkTest {
         // Ensure we are at the start of a voting round so we can stake and vote without the stake being disabled.
         if (voting.getVotePhase() == VotingV2Interface.Phase.Reveal) moveToNextRound();
 
-        uint256 numberRequestsPreRequest = voting.getNumberOfPriceRequests();
+        uint256 numberRequestsPreRequest = voting.getNumberOfPendingPriceRequests();
         vm.prank(registeredRequester);
         voting.requestPrice(identifier, requestTime, ancillaryData);
-        assert(voting.getNumberOfPriceRequests() == numberRequestsPreRequest + 1);
+        assert(voting.getNumberOfPendingPriceRequests() == numberRequestsPreRequest + 1);
 
         // Mint fresh UMA and stake them.
         vm.prank(address(voting));
@@ -62,7 +62,7 @@ contract FakeLifeCycle is CommonDataVerificationMechanismForkTest {
         // Finally, considering we were the only voter, we should be able to work out the slashing amount precisely.
         uint256 totalStakedAtVote = voting.cumulativeStake(); // Has not changed from when we staked.
         uint256 slashPerTokenPerNoVote =
-            voting.slashingLibrary().calcNoVoteSlashPerToken(totalStakedAtVote, stakedNumOfTokens, stakedNumOfTokens);
+            voting.slashingLib().calcNoVoteSlashPerToken(totalStakedAtVote, stakedNumOfTokens, stakedNumOfTokens);
         uint256 totalSlashedTokens = ((totalStakedAtVote - stakedNumOfTokens) * slashPerTokenPerNoVote) / 1e18;
         uint256 expectedStakerBalanceAfterSlashing = stakedNumOfTokens + totalSlashedTokens;
         assertEq(voting.getVoterStakePostUpdate(TestAddress.account1), expectedStakerBalanceAfterSlashing);
