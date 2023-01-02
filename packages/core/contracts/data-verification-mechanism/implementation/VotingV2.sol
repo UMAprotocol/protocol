@@ -783,7 +783,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         int256 slash = voterStake.unappliedSlash; // Load in any unapplied slashing from the previous iteration.
         uint64 requestIndex = voterStake.nextIndexToProcess;
         uint256 requestsTraversed = 0;
-
         while (requestIndex < resolvedPriceRequestIds.length && requestsTraversed < maxTraversals) {
             ++requestsTraversed;
             PriceRequest storage priceRequest = priceRequests[resolvedPriceRequestIds[requestIndex]];
