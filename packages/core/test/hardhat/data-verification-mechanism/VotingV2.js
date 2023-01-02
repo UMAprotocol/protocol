@@ -4342,6 +4342,70 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 1);
   });
+  it("Can correctly handel non-zero starting request index plus account tracking update", async function () {
+    // A bug was found in the voting contract where a non-staked account is updated results in an empty request being
+    // added to the requests set IF the startingRequestIndex is set to a non-zero value. This causes subsequent requests
+    // to not settle correctly due to the empty request being unsealable.
+    const newVoting = await VotingV2.new(
+      "640000000000000000", // emission rate
+      60 * 60 * 24 * 30, // unstakeCooldown
+      "86400", // phase length
+      2, // maxRolls
+      web3.utils.toWei("5000000"), // GAT 5MM
+      10, // startingRequestIndex Set this to 10. This needs to be set to a non-zero value to break the DVM.
+      votingToken.options.address, // voting token
+      (await Finder.deployed()).options.address, // finder
+      (await SlashingLibrary.deployed()).options.address, // slashing library
+      voting.options.address, // pass in the old voting contract to the new voting contract.
+      (await Timer.deployed()).options.address // timer
+    ).send({ from: accounts[0] });
+
+    // Before any requests are sent this should equal the startingRequestIndex of 10.
+    assert.equal(await newVoting.methods.getNumberOfResolvedPriceRequests().call(), 10);
+    assert.equal(await newVoting.methods.getNumberOfPendingPriceRequests().call(), 0);
+
+    // With the bug present, simply updating a non-staking accounts trackers will break the contract. This is evedent
+    // by the increment of the number of price requests. Note that if this bug is fixed then there should be no increment.
+    await newVoting.methods.updateTrackers(account1).send({ from: account1 });
+
+    assert.equal(await newVoting.methods.getNumberOfResolvedPriceRequests().call(), 10); // Check that bug is fixed.
+    assert.equal(await newVoting.methods.getNumberOfPendingPriceRequests().call(), 0); // Check that bug is fixed.
+
+    // Now, requesting a price should increment the total again.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await newVoting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    await moveToNextPhase(newVoting, accounts[0]);
+
+    // Move to next round and roll the first request over.
+    await moveToNextRound(newVoting, accounts[0]);
+
+    // Now that a request is sent the number of requests should be 11.
+    assert.equal(await newVoting.methods.getNumberOfResolvedPriceRequests().call(), 10);
+    assert.equal(await newVoting.methods.getNumberOfPendingPriceRequests().call(), 1);
+
+    // Updating the account tracker of a non-staking account, if broken, will increment this yet again.
+    await newVoting.methods.updateTrackers(account2).send({ from: account1 });
+
+    assert.equal(await newVoting.methods.getNumberOfResolvedPriceRequests().call(), 10); // Check that bug is fixed.
+    assert.equal(await newVoting.methods.getNumberOfPendingPriceRequests().call(), 1); // Check that bug is fixed.
+
+    // Verify that all price requests are correct
+    // Before the bug was fixed we introduced new price requests with bytes32(0) as the identifier in the request array.
+    for (
+      let priceRequestIndex = 10;
+      priceRequestIndex < Number(await newVoting.methods.getNumberOfResolvedPriceRequests().call());
+      priceRequestIndex++
+    ) {
+      assert(
+        (await newVoting.methods.priceRequestIds(priceRequestIndex).call()) !=
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+      );
+    }
+  });
   it("Staking during active reveal is dealt with correctly via pendingStakes", async function () {
     // An issue was found in the contract wherein a staked voter stakes again during the active reveal round, thereby
     // increasing their effective stake to a value higher than what they had at the variable freeze time (first commit or stake during active reveal phase).
