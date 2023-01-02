@@ -480,9 +480,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         delete voteSubmission.commit; // Small gas refund for clearing up storage.
 
         voteSubmission.revealHash = keccak256(abi.encode(price)); // Set the voter's submission.
-        uint256 stake = voterStakes[voter].stake;
-        voteInstance.results.addVote(price, stake); // Add vote to the results.
-        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, ancillaryData, price, stake);
+        uint256 effectiveStake = voterStakes[voter].stake - voterStakes[voter].pendingStakes[currentRoundId];
+        voteInstance.results.addVote(price, effectiveStake); // Add vote to the results.
+        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, ancillaryData, price, effectiveStake);
     }
 
     /**
