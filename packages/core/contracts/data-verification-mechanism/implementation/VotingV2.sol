@@ -716,12 +716,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     // Starting index for a staker is the first value that nextIndexToProcess is set to and defines the first index that
-    // a staker is susceptible to receiving slashing on. Note that we offset the length of the pendingPriceRequests
-    // array as you are still susceptible to slashing if you stake for the first time in the commit phase of an active
-    // vote. If you stake during an active reveal then your liquidity will be marked as inactive within Staker.sol until
-    // it is activated in the next round and as such you'll miss out on being slashed for that round.
-    function _getStartingIndexForStaker() internal view override returns (uint64) {
-        return SafeCast.toUint64(priceRequestIds.length - pendingPriceRequests.length);
+    // a staker is suspectable to receiving slashing on. This is set to current length of the resolvedPriceRequestIds.
+    function _getStartingIndexForStaker() internal override returns (uint64) {
+        resolveResolvablePriceRequests();
+        return SafeCast.toUint64(resolvedPriceRequestIds.length);
     }
 
     // Checks if we are in an active voting reveal phase (currently revealing votes).
@@ -762,44 +760,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             PriceRequest storage request = priceRequests[resolvedPriceRequestIds[requestIndex]];
             VoteInstance storage vote = request.voteInstances[request.lastVotingRound];
 
-            // If the request status is not resolved then: a) Either we are still in the current voting round, in which
-            // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
-            // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
-            // and set this within the skippedRequestIndexes mapping so the next time we hit this it is skipped.
-            if (!_priceRequestResolved(priceRequest, voteInstance, currentRoundId)) {
-                // If the request is not resolved and the lastVotingRound is less than the current round then the vote
-                // must have been rolled. In this case, update the internal trackers for this vote.
-                if (priceRequest.lastVotingRound < currentRoundId) {
-                    priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
-                    priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
-
-                    // This is a subtle operation. This is not setting the skip value for the _current request_ to this
-                    // value. It is setting the skip value for the element after the last processed index to the skip
-                    // value. This causes this skip interval to extend on each subsequent rolled request because no
-                    // new elements are processed on a skip, thereby leaving nextIndexToProcess the same.
-                    skippedRequestIndexes[nextIndexToProcess] = requestIndex;
-
-                    // Re-enqueue the price request so that it'll be traversed later, when settled and slashing then.
-                    priceRequestIds.push(priceRequestIds[requestIndex]);
-                    continue;
-                }
-                // Else, we are simply evaluating a request that is still actively being voted on. In this case, break.
-                // All subsequent requests within the array must be in the same state and can't have slashing applied.
-                break;
-            }
-
-            // If the request we're processing now is not the same round as the last index we processed successfully
-            // (not rolled), then we need to apply slashing because there's been a round change.
-            if (
-                slash != 0 &&
-                nextIndexToProcess != 0 &&
-                priceRequests[priceRequestIds[nextIndexToProcess - 1]].lastVotingRound != priceRequest.lastVotingRound
-            ) {
-                _applySlashToVoter(slash, voterStake, voterAddress);
-                slash = 0;
-            }
-
-            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
+            uint256 totalStaked = rounds[request.lastVotingRound].cumulativeStakeAtRound;
+            uint256 totalCorrectVotes = vote.results.getTotalCorrectlyVotedTokens();
 
             // Calculate aggregate metrics for this round.
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
@@ -819,7 +781,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             else if (!vote.results.wasVoteCorrect(vote.voteSubmissions[voterAddress].revealHash))
                 slash -= int256((effectiveStake * wrongVoteSlashPerToken) / 1e18);
 
-                // The voter voted correctly. Receive a pro-rata share of the other voters slashed amounts as a reward.
+                // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
                 // Compute the total amount slashed over all stakers. This is the sum of total slashed for not voting
                 // and the total slashed for voting incorrectly. Use this to work out the stakers prorate share.
@@ -863,122 +825,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function isNextRequestRoundDifferent(uint64 index) internal view returns (bool) {
         if (index + 1 >= resolvedPriceRequestIds.length) return true;
 
-    /**
-     * @notice Declare a specific price requests range to be spam and request its deletion.
-     * @dev note that this method should almost never be used. The bond to call this should be set to
-     * a very large number (say 10k UMA) as it could be abused if set too low. Function constructs a price
-     * request that, if passed, enables pending requests to be disregarded by the contract.
-     * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
-     * pair of uint256s representing the start and end of the range.
-     */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices)
-        external
-        nonReentrant()
-        onlyIfNotMigrated()
-    {
-        votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
-        uint256 currentTime = getCurrentTime();
-        uint256 runningValidationIndex;
-        uint256 spamRequestIndicesLength = spamRequestIndices.length;
-        for (uint256 i = 0; i < spamRequestIndicesLength; i = unsafe_inc(i)) {
-            uint256[2] memory spamRequestIndex = spamRequestIndices[i];
-
-            // Check request end index is greater than start index, endIndex is less than the total number of requests,
-            // and validate index continuity (each sequential element within the spamRequestIndices array is sequential
-            // and increasing in size).
-            require(
-                spamRequestIndex[0] <= spamRequestIndex[1] &&
-                    spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex,
-                "Invalid spam request index"
-            );
-
-            runningValidationIndex = spamRequestIndex[1];
-        }
-
-        spamDeletionProposals.push(
-            SpamDeletionRequest({
-                spamRequestIndices: spamRequestIndices,
-                requestTime: currentTime,
-                executed: false,
-                proposer: msg.sender,
-                bond: spamDeletionProposalBond
-            })
-        );
-
-        uint256 proposalId = spamDeletionProposals.length - 1;
-
-        // Note that for proposalId >= 10^11 the generated identifier will no longer be unique but the manner
-        // in which the priceRequest id is encoded in _encodePriceRequest guarantees its uniqueness.
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
-
-        _requestPrice(identifier, currentTime, "", true);
-
-        emit SignaledRequestsAsSpamForDeletion(proposalId, msg.sender, spamRequestIndices);
-    }
-
-    /**
-     * @notice Execute the spam deletion proposal if it has been approved by voting.
-     * @param proposalId spam deletion proposal id.
-     */
-
-    function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
-        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
-        spamDeletionProposals[proposalId].executed = true;
-
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
-
-        (bool hasPrice, int256 resolutionPrice, ) =
-            _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice, "Spam proposal has not resolved");
-
-        // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
-        if (resolutionPrice != 0) {
-            // Delete the price requests associated with the spam.
-            for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
-                uint64 startIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][0]);
-                uint64 endIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][1]);
-                for (uint256 j = startIndex; j <= endIndex; j++) {
-                    bytes32 requestId = priceRequestIds[j];
-                    // Remove from pendingPriceRequests.
-                    _removeRequestFromPendingPriceRequests(priceRequests[requestId].pendingRequestIndex);
-
-                    // Remove the request from the priceRequests mapping.
-                    delete priceRequests[requestId];
-                }
-
-                // Set the deletion request jump mapping. This enables the for loops that iterate over requests to skip
-                // the deleted requests via a "jump" over the removed elements from the array.
-                skippedRequestIndexes[startIndex] = endIndex;
-            }
-
-            // Return the spamDeletionProposalBond.
-            votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposals[proposalId].bond);
-            emit ExecutedSpamDeletion(proposalId, true);
-        }
-        // Else, the spam deletion request was voted down. In this case we send the spamDeletionProposalBond to the store.
-        else {
-            votingToken.transfer(finder.getImplementationAddress(OracleInterfaces.Store), spamDeletionProposalBond);
-            emit ExecutedSpamDeletion(proposalId, false);
-        }
-    }
-
-    /**
-     * @notice Set the spam deletion proposal bond.
-     * @param _spamDeletionProposalBond new spam deletion proposal bond.
-     */
-    function setSpamDeletionProposalBond(uint256 _spamDeletionProposalBond) public onlyOwner() {
-        spamDeletionProposalBond = _spamDeletionProposalBond;
-        emit SpamDeletionProposalBondChanged(_spamDeletionProposalBond);
-    }
-
-    /**
-     * @notice Get the spam deletion request by the proposal id.
-     * @param spamDeletionRequestId spam deletion request id.
-     * @return SpamDeletionRequest the spam deletion request.
-     */
-    function getSpamDeletionRequest(uint256 spamDeletionRequestId) external view returns (SpamDeletionRequest memory) {
-        return spamDeletionProposals[spamDeletionRequestId];
+        return
+            priceRequests[resolvedPriceRequestIds[index]].lastVotingRound !=
+            priceRequests[resolvedPriceRequestIds[index + 1]].lastVotingRound;
     }
 
     /****************************************
