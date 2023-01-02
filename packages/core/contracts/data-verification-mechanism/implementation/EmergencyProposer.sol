@@ -98,6 +98,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * @param _token the ERC20 token that the quorum is in.
      * @param _quorum the tokens needed to propose an emergency action.
      * @param _governor the governor contract that this contract makes proposals to.
+     * @param _executor the address that can execute an emergency proposal.
      */
     constructor(
         IERC20 _token,
@@ -254,6 +255,7 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
+     * @return the current block timestamp.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
