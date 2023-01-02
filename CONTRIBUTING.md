@@ -30,7 +30,7 @@ the process works smoothly and your contributions can be merged as quickly and e
   at the same time.
 - Once an issue is open and one or more maintainers have expressed corroborating opinions, the assigned person should
   feel comfortable beginning work on the issue.
-- If an issue is a major project, consider working the maintainers to break it down into sub-issues and creating a
+- If an issue is a major project, consider working with the maintainers to break it down into sub-issues and creating a
   milestone to track progress.
 
 ## PRs
