@@ -31,22 +31,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     // Identifies a unique price request. Tracks ongoing votes as well as the result of the vote.
     struct PriceRequest {
-        // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
-        // this is the voting round where this price will be voted on, but not necessarily resolved.
-        uint32 lastVotingRound;
-        // Denotes whether this is a governance request or not.
-        bool isGovernance;
-        // Timestamp that should be used when evaluating the request. This is a uint64 to allow better variable packing
-        // while still leaving more than ample room for timestamps to stretch far into the future.
-        uint64 time;
-        // The number of rounds that this price request has been rolled. Informs if a request should be deleted.
-        uint32 rollCount;
-        // Identifier that defines how the voters should resolve the request.
-        bytes32 identifier;
-        // A map containing all votes for this price in various rounds.
-        mapping(uint256 => VoteInstance) voteInstances;
-        // Additional data used to resolve the request.
-        bytes ancillaryData;
+        uint32 lastVotingRound; // Last round that this price request was voted on. Updated when a request is rolled.
+        bool isGovernance; // Denotes whether this is a governance request or not.
+        uint64 time; // Timestamp used when evaluating the request.
+        uint32 rollCount; // The number of rounds that this price request has been rolled. Informs if a request should be deleted.
+        bytes32 identifier; // Identifier that defines how the voters should resolve the request.
+        mapping(uint256 => VoteInstance) voteInstances; // A map containing all votes for this price in various rounds.
+        bytes ancillaryData; // Additional data used to resolve the request.
     }
 
     struct VoteInstance {
