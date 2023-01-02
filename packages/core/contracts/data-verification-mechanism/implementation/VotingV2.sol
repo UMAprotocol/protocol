@@ -258,7 +258,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override nonReentrant() onlyIfNotMigrated() onlyRegisteredContract() {
+    ) public override nonReentrant onlyIfNotMigrated onlyRegisteredContract {
         _requestPrice(identifier, time, ancillaryData, false);
     }
 
@@ -274,7 +274,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external override onlyOwner() onlyIfNotMigrated() {
+    ) external override onlyOwner onlyIfNotMigrated {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
@@ -337,7 +337,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (bool) {
+    ) public view override onlyRegisteredContract returns (bool) {
         (bool _hasPrice, , ) = _getPriceOrError(identifier, time, ancillaryData);
         return _hasPrice;
     }
@@ -359,7 +359,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (int256) {
+    ) public view override onlyRegisteredContract returns (int256) {
         (bool _hasPrice, int256 price, string memory message) = _getPriceOrError(identifier, time, ancillaryData);
 
         // If the price wasn't available, revert with the provided message.
@@ -420,7 +420,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 time,
         bytes memory ancillaryData,
         bytes32 hash
-    ) public override nonReentrant() onlyIfNotMigrated() {
+    ) public override nonReentrant onlyIfNotMigrated {
         uint256 currentRoundId = getCurrentRoundId();
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
@@ -455,7 +455,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         int256 price,
         bytes memory ancillaryData,
         int256 salt
-    ) public override nonReentrant() onlyIfNotMigrated() {
+    ) public override nonReentrant onlyIfNotMigrated {
         // Note: computing the current round is needed to disallow people from revealing an old commit after the round.
         uint256 currentRoundId = getCurrentRoundId();
         _freezeRoundVariables(currentRoundId);
@@ -948,48 +948,68 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // deleted (they have been rolled up to the maxRolls counter) then delete them. The caller can pass in maxTraversals
     // to limit the number of requests that are resolved in a single call to bound the total gas used by this function.
     function _resolveResolvablePriceRequests(uint256 maxTraversals) private {
+        // Get current round ID
         uint32 currentRoundId = uint32(getCurrentRoundId());
 
+        // Set variable for request traversal
         uint256 requestIndex = rounds[currentRoundId].resolvedIndex;
-        uint256 requestsTraversed = 0;
-        while (requestIndex < pendingPriceRequestsIds.length && requestsTraversed < maxTraversals) {
-            ++requestsTraversed;
 
+        // Traverse pending price requests
+        for (
+            uint256 requestsTraversed = 0;
+            requestIndex < pendingPriceRequestsIds.length && requestsTraversed < maxTraversals;
+            ++requestsTraversed
+        ) {
+            // Get request
             PriceRequest storage request = priceRequests[pendingPriceRequestsIds[requestIndex]];
+
+            // If request was already voted on in current round, skip it
             if (request.lastVotingRound >= currentRoundId) {
                 ++requestIndex;
                 continue;
             }
+
+            // Get vote instance for request
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
+
+            // Get results of vote instance
             (bool isResolvable, int256 resolvedPrice) =
                 voteInstance.results.getResolvedPrice(_computeGat(request.lastVotingRound));
-            if (!isResolvable) {
+
+            // If vote instance is resolvable, resolve request
+            if (isResolvable) {
+                resolvedPriceRequestIds.push(pendingPriceRequestsIds[requestIndex]);
+                _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
+                emit RequestResolved(
+                    request.lastVotingRound,
+                    resolvedPriceRequestIds.length - 1,
+                    request.identifier,
+                    request.time,
+                    request.ancillaryData,
+                    resolvedPrice
+                );
+            }
+            // Otherwise, roll or delete request
+            else {
+                // Increment roll count
                 request.rollCount += currentRoundId - request.lastVotingRound;
+
+                // If request has been rolled too many times, delete it
                 if (request.rollCount > maxRolls && !request.isGovernance) {
-                    emit RequestDeleted(request.identifier, request.time, request.ancillaryData, request.rollCount);
                     delete priceRequests[pendingPriceRequestsIds[requestIndex]];
                     _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
-                } else {
-                    request.lastVotingRound = currentRoundId;
-                    emit RequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
-                    ++requestIndex;
+                    emit RequestDeleted(request.identifier, request.time, request.ancillaryData, request.rollCount);
                 }
-
-                continue;
+                // Otherwise, roll request and move on to next request
+                else {
+                    request.lastVotingRound = currentRoundId;
+                    ++requestIndex;
+                    emit RequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
+                }
             }
-
-            resolvedPriceRequestIds.push(pendingPriceRequestsIds[requestIndex]);
-            _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
-
-            emit RequestResolved(
-                request.lastVotingRound,
-                resolvedPriceRequestIds.length - 1,
-                request.identifier,
-                request.time,
-                request.ancillaryData,
-                resolvedPrice
-            );
         }
+
+        // Update resolved index for current round
         rounds[currentRoundId].resolvedIndex = requestIndex;
     }
 
