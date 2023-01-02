@@ -53,7 +53,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     struct Round {
         uint256 gat; // GAT is the required number of tokens to vote to not roll the vote.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
-        uint256 resolvedIndex; // Index of pendingPriceRequestsIds that has been resolved in this round.
+        uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been resolved in this round.
     }
 
     // Represents the status a price request has.
@@ -694,16 +694,16 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param voterAddress address of the voter to update the trackers for.
      * @param maxTraversals last price request index to update the trackers for.
      */
-    function updateTrackersRange(address voterAddress, uint32 maxTraversals) external {
+    function updateTrackersRange(address voterAddress, uint64 maxTraversals) external {
         resolveResolvablePriceRequests();
         _updateAccountSlashingTrackers(voterAddress, maxTraversals);
     }
 
     function resolveResolvablePriceRequests() public {
-        _resolveResolvablePriceRequests(type(uint256).max);
+        _resolveResolvablePriceRequests(UINT64_MAX);
     }
 
-    function resolveResolvablePriceRequestsRange(uint256 maxTraversals) external {
+    function resolveResolvablePriceRequestsRange(uint64 maxTraversals) external {
         _resolveResolvablePriceRequests(maxTraversals);
     }
 
@@ -711,7 +711,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // very important due to the interplay between slashing and inactive/active liquidity.
     function _updateTrackers(address voterAddress) internal override {
         resolveResolvablePriceRequests();
-        _updateAccountSlashingTrackers(voterAddress, type(uint64).max);
+        _updateAccountSlashingTrackers(voterAddress, UINT64_MAX);
         super._updateTrackers(voterAddress);
     }
 
@@ -755,7 +755,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint64 requestIndex = voterStake.nextIndexToProcess; // Traverse all requests from the last considered request.
         uint64 requestsTraversed = 0; // Tracker to limit the number of requests to traverse in this call.
         while (requestIndex < resolvedPriceRequestIds.length && requestsTraversed < maxTraversals) {
-            ++requestsTraversed;
+            requestsTraversed = unsafe_inc_64(requestsTraversed);
 
             PriceRequest storage request = priceRequests[resolvedPriceRequestIds[requestIndex]];
             VoteInstance storage vote = request.voteInstances[request.lastVotingRound];
@@ -797,7 +797,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 _applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
             }
-            ++requestIndex; // Increment the request index to consider the next request on the next iteration.
+            requestIndex = unsafe_inc_64(requestIndex); // Increment the request index.
         }
 
         // Once we've traversed all requests, apply any remaining slash to the voter. This would be the case if the we
@@ -947,37 +947,53 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // resolve in the previous round and are to be voted in a subsequent round) then roll them. If requests can be
     // deleted (they have been rolled up to the maxRolls counter) then delete them. The caller can pass in maxTraversals
     // to limit the number of requests that are resolved in a single call to bound the total gas used by this function.
-    function _resolveResolvablePriceRequests(uint256 maxTraversals) private {
+    // Note that the resolved index is stores for each round. This means that only the first caller of this function
+    // per round needs to traverse the pending requests. After that subsequent calls to this are a no-op for that round.
+    function _resolveResolvablePriceRequests(uint64 maxTraversals) private {
         uint32 currentRoundId = uint32(getCurrentRoundId());
 
-        uint256 requestIndex = rounds[currentRoundId].resolvedIndex;
-        uint256 requestsTraversed = 0;
+        // Load in the last resolved index for this round. This means
+        uint64 requestIndex = rounds[currentRoundId].resolvedIndex;
+        uint64 requestsTraversed = 0;
+        // Traverse over all pending requests, bounded by maxTraversals.
         while (requestIndex < pendingPriceRequestsIds.length && requestsTraversed < maxTraversals) {
-            ++requestsTraversed;
+            requestsTraversed = unsafe_inc_64(requestsTraversed);
 
             PriceRequest storage request = priceRequests[pendingPriceRequestsIds[requestIndex]];
+            // If the last voting round is greater than or equal to the current round then this request is currently
+            // being voted on or is endued for the next round. In that case, skip it and increment the request index.
             if (request.lastVotingRound >= currentRoundId) {
-                ++requestIndex;
+                requestIndex = unsafe_inc_64(requestIndex);
                 continue;
             }
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
             (bool isResolvable, int256 resolvedPrice) =
                 voteInstance.results.getResolvedPrice(_computeGat(request.lastVotingRound));
+
+            // If a request is not resolvable, but the round has passed its voting round, then it is either rollable or
+            // deletable (if it has rolled enough times.)
             if (!isResolvable) {
+                // Increment the rollCount. Use the difference between the current round and the last voting round to
+                // accommodate the contract not being touched for a few rounds during the roll.
                 request.rollCount += currentRoundId - request.lastVotingRound;
+                // If the roll count exceeds the threshold and the request is not governance then it is deletable.
                 if (request.rollCount > maxRolls && !request.isGovernance) {
                     emit RequestDeleted(request.identifier, request.time, request.ancillaryData, request.rollCount);
                     delete priceRequests[pendingPriceRequestsIds[requestIndex]];
                     _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
                 } else {
+                    // Else, the request shouuld be rolled. This involves only moving forward the lastVotingRound.
                     request.lastVotingRound = currentRoundId;
                     emit RequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
-                    ++requestIndex;
+                    requestIndex = unsafe_inc_64(requestIndex);
                 }
-
-                continue;
+                continue; // Continue to the next request.
             }
 
+            // Else, if we got here then the request is resolvable. Resolve it. This involves removing the request Id
+            // from the pendingPriceRequestsIds array to the resolvedPriceRequestIds array and removing it from the
+            // pendingPriceRequestsIds. Note that we dont need to increment the requestIndex here because we are removing
+            // the element from the pendingPriceRequestsIds which amounts to decreasing the overall while loop bound.
             resolvedPriceRequestIds.push(pendingPriceRequestsIds[requestIndex]);
             _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
 
@@ -990,7 +1006,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 resolvedPrice
             );
         }
-        rounds[currentRoundId].resolvedIndex = requestIndex;
+        rounds[currentRoundId].resolvedIndex = requestIndex; // Store the index traversed up to for this round.
     }
 
     // Return the GAT: the minimum number of tokens needed to participate to resolve a vote.
