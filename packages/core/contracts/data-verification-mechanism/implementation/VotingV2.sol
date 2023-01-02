@@ -299,20 +299,16 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-
-        RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
+        uint32 currentRoundId = uint32(getCurrentRoundId());
 
         // Price has never been requested.
-        if (requestStatus == RequestStatus.NotRequested) {
-            uint256 roundIdToVoteOn = currentRoundId + 1; // Vote on request in the following round.
-            PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
-            newPriceRequest.identifier = identifier;
-            newPriceRequest.time = SafeCast.toUint64(time);
-            newPriceRequest.lastVotingRound = SafeCast.toUint32(roundIdToVoteOn);
-
-            newPriceRequest.ancillaryData = ancillaryData;
-            if (isGovernance) newPriceRequest.isGovernance = isGovernance;
+        if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.NotRequested) {
+            uint32 roundIdToVoteOn = currentRoundId + 1; // Vote on request in the following round.
+            priceRequests[priceRequestId].identifier = identifier;
+            priceRequests[priceRequestId].time = SafeCast.toUint64(time);
+            priceRequests[priceRequestId].ancillaryData = ancillaryData;
+            priceRequests[priceRequestId].lastVotingRound = roundIdToVoteOn;
+            if (isGovernance) priceRequests[priceRequestId].isGovernance = isGovernance;
 
             pendingPriceRequestsIds.push(priceRequestId);
 
