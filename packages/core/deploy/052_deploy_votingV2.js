@@ -21,8 +21,8 @@ const func = async function (hre) {
   // Set phase length to one day.
   const phaseLength = "86400";
 
-  // If a price request rolls 3 times then it is auto deleted.
-  const deleteAfterRollCount = 3;
+  // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
+  const maxRolls = 2;
 
   // Note: this is a bit hacky, but we must have _some_ tokens in existence to set a GAT.
   const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
@@ -38,7 +38,7 @@ const func = async function (hre) {
         emissionRate,
         unstakeCooldown,
         phaseLength,
-        deleteAfterRollCount,
+        maxRolls,
         gat.toString(),
         "0", // Starting request index of 0 (no offset).
         VotingToken.address,
@@ -56,7 +56,7 @@ const func = async function (hre) {
         emissionRate,
         unstakeCooldown,
         phaseLength,
-        deleteAfterRollCount,
+        maxRolls,
         gat.toString(),
         "0", // Starting request index of 0 (no offset).
         VotingToken.address,
