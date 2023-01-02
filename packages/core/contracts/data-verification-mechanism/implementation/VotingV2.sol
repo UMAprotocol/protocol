@@ -583,7 +583,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES }.
      */
     function getVotePhase() public view override returns (Phase) {
-        return VotingV2Interface.Phase(uint256(voteTiming.computeCurrentPhase(getCurrentTime())));
+        return Phase(uint256(voteTiming.computeCurrentPhase(getCurrentTime())));
     }
 
     /**
