@@ -999,14 +999,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(request.lastVotingRound));
             if (!isResolvable) {
                 request.rollCount += currentRoundId - request.lastVotingRound;
-                request.lastVotingRound = currentRoundId;
-                emit PriceRequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
                 if (request.rollCount > maxRolls && !request.isGovernance) {
                     emit PriceRequestDeleted(request.identifier, request.time, request.ancillaryData);
-
                     delete priceRequests[pendingPriceRequestsIds[requestIndex]];
                     _removeRequestFromPendingPriceRequestsIds(request.pendingRequestIndex);
-                } else ++requestIndex;
+                } else {
+                    request.lastVotingRound = currentRoundId;
+                    emit PriceRequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
+                    ++requestIndex;
+                }
 
                 continue;
             }
