@@ -835,7 +835,7 @@ describe("VotingV2", function () {
     assert(await didContractThrow(voting.methods.setSlashingLibrary(newSlashingLibrary).send({ from: accounts[1] })));
 
     // Check that the slashing library was set.
-    assert.equal(await voting.methods.slashingLib().call({ from: accounts[0] }), newSlashingLibrary);
+    assert.equal(await voting.methods.slashingLibrary().call({ from: accounts[0] }), newSlashingLibrary);
   });
 
   it("View methods", async function () {
@@ -1004,7 +1004,7 @@ describe("VotingV2", function () {
       return ev.newAddress == migratedVoting;
     });
 
-    const oldSlashingLibrary = await voting.methods.slashingLib().call();
+    const oldSlashingLibrary = await voting.methods.slashingLibrary().call();
     result = await voting.methods.setSlashingLibrary(oldSlashingLibrary).send({ from: accounts[0] });
     await assertEventEmitted(result, voting, "SlashingLibraryChanged");
   });
