@@ -1039,6 +1039,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         unchecked { return x + 1; }
     }
 
+    // Gas optimized uint64 decrement.
     function unsafe_dec_64(uint64 x) internal pure returns (uint64) {
         unchecked { return x - 1; }
     }
