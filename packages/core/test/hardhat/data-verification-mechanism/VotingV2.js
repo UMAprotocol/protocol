@@ -4523,7 +4523,7 @@ describe("VotingV2", function () {
     // with his 32M tokens so reaching the gat and then receiving the slashing rewards comming from account2.
     // We check that account2 is never slashed below 0.
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
       const newTime = Number(time) + i;
       await voting.methods.requestPrice(identifier, newTime).send({ from: registeredContract });
       await moveToNextRound(voting, accounts[0]);
