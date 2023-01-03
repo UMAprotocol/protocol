@@ -7,7 +7,7 @@ const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { toBN } = web3.utils;
 
 const Registry = getContract("Registry");
-const VotingV2 = getContract("VotingV2");
+const VotingV2 = getContract("VotingV2ControllableTiming");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
 
