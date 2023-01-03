@@ -9,7 +9,7 @@ contract PunitiveSlashingLibraryTest is SlashingLibraryInterface {
         uint256 totalVotes,
         uint256 totalCorrectVotes
     ) public pure returns (uint256) {
-        return 0.99e18;
+        return 0.0016e18;
     }
 
     function calcWrongVoteSlashPerTokenGovernance(
@@ -17,7 +17,7 @@ contract PunitiveSlashingLibraryTest is SlashingLibraryInterface {
         uint256 totalVotes,
         uint256 totalCorrectVotes
     ) public pure returns (uint256) {
-        return 0.99e18;
+        return 0.0016e18;
     }
 
     function calcNoVoteSlashPerToken(
@@ -25,7 +25,7 @@ contract PunitiveSlashingLibraryTest is SlashingLibraryInterface {
         uint256 totalVotes,
         uint256 totalCorrectVotes
     ) public pure returns (uint256) {
-        return 0.99e18;
+        return 0.0016e18;
     }
 
     function calcSlashing(
