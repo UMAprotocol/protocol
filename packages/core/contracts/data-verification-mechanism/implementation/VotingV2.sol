@@ -577,7 +577,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * total UMA slashed in the round and the total number of correct votes in the round.
      */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
-        uint256 currentRoundId = getCurrentRoundId();
         PriceRequest storage priceRequest = priceRequests[resolvedPriceRequestIds[requestIndex]];
 
         VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -592,7 +591,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 totalVotes,
                 totalCorrectVotes,
                 priceRequest.isGovernance,
-                priceRequestIds[requestIndex]
+                resolvedPriceRequestIds[requestIndex]
             );
 
         uint256 totalSlashed =
@@ -748,7 +747,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // Calculate aggregate metrics for this round. This informs how much slashing should be applied.
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
-                slashingLibrary.calcSlashing(totalStaked, totalVotes, totalCorrectVotes, request.isGovernance);
+                slashingLibrary.calcSlashing(
+                    totalStaked,
+                    totalVotes,
+                    totalCorrectVotes,
+                    request.isGovernance,
+                    resolvedPriceRequestIds[requestIndex]
+                );
 
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
