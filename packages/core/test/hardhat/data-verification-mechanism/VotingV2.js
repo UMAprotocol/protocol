@@ -107,12 +107,10 @@ describe("VotingV2", function () {
       await didContractThrow(
         VotingV2.new(
           "42069", // emissionRate
-
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
           2, // maxRolls
           invalidGat, // GAT
-          "0", // startingRequestIndex
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -1255,8 +1253,7 @@ describe("VotingV2", function () {
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       2, // maxRolls
-      web3.utils.toWei("5000000"), // GAT 5MM
-      "0", // startingRequestIndex
+      web3.utils.toWei("5000000"), // GAT 5
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -1418,8 +1415,7 @@ describe("VotingV2", function () {
       60 * 60 * 24 * 7, // Unstake cooldown
       86400, // PhaseLength
       2, // maxRolls
-      toWei("5000000"), // GAT 5MM
-      "0", // startingRequestIndex
+      toWei("5000000"), // GAT 5
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -1463,7 +1459,6 @@ describe("VotingV2", function () {
           86400, // PhaseLength
           2, // maxRolls
           toWei("5000000"), // GAT 5MM
-          "0", // startingRequestIndex
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -3055,71 +3050,6 @@ describe("VotingV2", function () {
     // move to the next round.
     await moveToNextRound(voting, accounts[0]);
   });
-  it("Can offset the starting index for requests during a migration", async function () {
-    const voting2 = await VotingV2Test.new(
-      "42069", // emissionRate
-      60 * 60 * 24 * 7, // Unstake cooldown
-      86400, // PhaseLength
-      2, // maxRolls
-      toWei("0.05"), // GatPct
-      10, // offset starting index for requests.
-      votingToken.options.address, // voting token
-      (await Finder.deployed()).options.address, // finder
-      (await SlashingLibrary.deployed()).options.address, // slashing library
-      ZERO_ADDRESS,
-      (await Timer.deployed()).options.address // timer
-    ).send({ from: accounts[0] });
-
-    // Unstake in the old contract and re-stake in the new contract from one voter.
-    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
-    await voting.methods.executeUnstake().send({ from: account1 });
-    await voting.methods.requestUnstake(toWei("4000000")).send({ from: account4 });
-    await voting.methods.executeUnstake().send({ from: account4 });
-    await votingToken.methods.approve(voting2.options.address, toWei("32000000")).send({ from: account1 });
-    await voting2.methods.stake(toWei("30000000")).send({ from: account1 });
-    await votingToken.methods.approve(voting2.options.address, toWei("4000000")).send({ from: account4 });
-    await voting2.methods.stake(toWei("4000000")).send({ from: account4 });
-
-    // The nextIndexToProcess for the new staker should be 10 (they get to skip all previous indices).
-    assert.equal((await voting2.methods.voterStakes(account1).call()).nextIndexToProcess, 10);
-
-    // If we do a request it should now start at index 11.  Execute a full voting cycle
-    const identifier = padRight(utf8ToHex("offset-test"), 64);
-    const time = "420";
-    const salt = getRandomSignedInt();
-    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
-
-    await voting2.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    assert.equal(await voting2.methods.getNumberOfResolvedPriceRequests().call(), 10);
-    assert.equal(await voting2.methods.getNumberOfPendingPriceRequests().call(), 1);
-
-    // Voting cycle still works as expected.
-    const price = "69696969";
-    await moveToNextRound(voting2, accounts[0]); // Move into the commit phase.
-
-    let baseRequest = { salt, roundId: (await voting2.methods.getCurrentRoundId().call()).toString(), identifier };
-    const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time });
-    await voting2.methods.commitVote(identifier, time, hash1).send({ from: account1 });
-    await moveToNextPhase(voting2, accounts[0]);
-    await voting2.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
-    await moveToNextRound(voting2, accounts[0]);
-
-    // Price should be accessible, as expected and indexed accordingly.
-    assert.equal(await voting2.methods.getPrice(identifier, time).call({ from: registeredContract }), price);
-
-    await voting2.methods.updateTrackers(account1).send({ from: account1 });
-    assert.equal(await voting2.methods.getNumberOfResolvedPriceRequests().call(), 11);
-    // The first 10 requests should be accessible but zero in slashing tracker size (they were offset.)
-    for (let i = 0; i < 10; i++) {
-      assert.equal((await voting2.methods.requestSlashingTrackers(0).call()).totalCorrectVotes, "0");
-    }
-    assert.equal((await voting2.methods.requestSlashingTrackers(10).call()).totalCorrectVotes, toWei("30000000"));
-
-    // Slashing should have been applied, as expected. Account 4 did not vote and so should have lost 4mm*0.0016 = 6400
-    // Which should be assigned to account1.
-    assert.equal((await voting2.methods.voterStakes(account1).call()).stake, toWei("30000000").add(toWei("6400")));
-  });
 
   it("Edge case when updating slashing tracker range intra round", async function () {
     // Slashing is meant to be applied linearly and independent within a round: each request within a round does not
@@ -4342,70 +4272,7 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 1);
   });
-  it("Can correctly handel non-zero starting request index plus account tracking update", async function () {
-    // A bug was found in the voting contract where a non-staked account is updated results in an empty request being
-    // added to the requests set IF the startingRequestIndex is set to a non-zero value. This causes subsequent requests
-    // to not settle correctly due to the empty request being unsealable.
-    const newVoting = await VotingV2.new(
-      "640000000000000000", // emission rate
-      60 * 60 * 24 * 30, // unstakeCooldown
-      "86400", // phase length
-      2, // maxRolls
-      web3.utils.toWei("5000000"), // GAT 5MM
-      10, // startingRequestIndex Set this to 10. This needs to be set to a non-zero value to break the DVM.
-      votingToken.options.address, // voting token
-      (await Finder.deployed()).options.address, // finder
-      (await SlashingLibrary.deployed()).options.address, // slashing library
-      voting.options.address, // pass in the old voting contract to the new voting contract.
-      (await Timer.deployed()).options.address // timer
-    ).send({ from: accounts[0] });
 
-    // Before any requests are sent this should equal the startingRequestIndex of 10.
-    assert.equal(await newVoting.methods.getNumberOfResolvedPriceRequests().call(), 10);
-    assert.equal(await newVoting.methods.getNumberOfPendingPriceRequests().call(), 0);
-
-    // With the bug present, simply updating a non-staking accounts trackers will break the contract. This is evedent
-    // by the increment of the number of price requests. Note that if this bug is fixed then there should be no increment.
-    await newVoting.methods.updateTrackers(account1).send({ from: account1 });
-
-    assert.equal(await newVoting.methods.getNumberOfResolvedPriceRequests().call(), 10); // Check that bug is fixed.
-    assert.equal(await newVoting.methods.getNumberOfPendingPriceRequests().call(), 0); // Check that bug is fixed.
-
-    // Now, requesting a price should increment the total again.
-    const identifier = padRight(utf8ToHex("test"), 64);
-    const time = "1000";
-    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
-
-    await newVoting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-
-    await moveToNextPhase(newVoting, accounts[0]);
-
-    // Move to next round and roll the first request over.
-    await moveToNextRound(newVoting, accounts[0]);
-
-    // Now that a request is sent the number of requests should be 11.
-    assert.equal(await newVoting.methods.getNumberOfResolvedPriceRequests().call(), 10);
-    assert.equal(await newVoting.methods.getNumberOfPendingPriceRequests().call(), 1);
-
-    // Updating the account tracker of a non-staking account, if broken, will increment this yet again.
-    await newVoting.methods.updateTrackers(account2).send({ from: account1 });
-
-    assert.equal(await newVoting.methods.getNumberOfResolvedPriceRequests().call(), 10); // Check that bug is fixed.
-    assert.equal(await newVoting.methods.getNumberOfPendingPriceRequests().call(), 1); // Check that bug is fixed.
-
-    // Verify that all price requests are correct
-    // Before the bug was fixed we introduced new price requests with bytes32(0) as the identifier in the request array.
-    for (
-      let priceRequestIndex = 10;
-      priceRequestIndex < Number(await newVoting.methods.getNumberOfResolvedPriceRequests().call());
-      priceRequestIndex++
-    ) {
-      assert(
-        (await newVoting.methods.priceRequestIds(priceRequestIndex).call()) !=
-          "0x0000000000000000000000000000000000000000000000000000000000000000"
-      );
-    }
-  });
   it("Staking during active reveal is dealt with correctly via pendingStakes", async function () {
     // An issue was found in the contract wherein a staked voter stakes again during the active reveal round, thereby
     // increasing their effective stake to a value higher than what they had at the variable freeze time (first commit or stake during active reveal phase).
@@ -4481,6 +4348,7 @@ describe("VotingV2", function () {
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
   });
+
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following
