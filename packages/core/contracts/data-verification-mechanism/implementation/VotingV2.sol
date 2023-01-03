@@ -51,9 +51,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct Round {
-        uint256 gat; // GAT is the required number of tokens to vote to not roll the vote.
+        uint256 gat; // GAT(governance activation threshold) is the required number of tokens to resolve a vote.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
-        uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been resolved in this round.
+        uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
     }
 
     // Represents the status a price request has.
@@ -82,46 +82,31 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      *            VOTING STATE              *
      ****************************************/
 
-    // Maps round numbers to the rounds.
-    mapping(uint256 => Round) public rounds;
+    mapping(uint256 => Round) public rounds; // Maps round numbers to the rounds.
 
-    // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) public priceRequests;
+    mapping(bytes32 => PriceRequest) public priceRequests; // Maps price request IDs to the PriceRequest struct.
 
-    // Maps skipped request indexes to the next request index.
+    bytes32[] public resolvedPriceRequestIds; // Array of resolved price requestIds. Used to track resolved requests.
 
-    // Array of resolved price requestIds. Used to track requests that are resolved.
-    bytes32[] public resolvedPriceRequestIds;
+    bytes32[] public pendingPriceRequestsIds; // Array of pending price requestIds. Can be resolved in the future.
 
-    // RequestIds for requests that are not resolved. May be for future rounds.
-    bytes32[] public pendingPriceRequestsIds;
+    uint32 public maxRolls; // The maximum number of times a request can roll before it is deleted automatically.
 
-    // A maximum number of times a request can roll before it is deleted automatically.
-    uint32 public maxRolls;
+    FinderInterface private immutable finder; // Reference to the UMA Finder contract, used to find other UMA contracts.
 
-    // Vote timing library used to compute round timing related logic.
-    VoteTiming.Data public voteTiming;
+    SlashingLibraryInterface public slashingLibrary; // Reference to Slashing Library, used to compute slashing amounts.
 
-    // Reference to the UMA Finder contract, used to find other UMA contracts.
-    FinderInterface private immutable finder;
+    VoteTiming.Data public voteTiming; // Vote timing library used to compute round timing related logic.
 
-    // Reference to Slashing Library, used to compute slashing amounts.
-    SlashingLibraryInterface public slashingLibrary;
+    OracleAncillaryInterface public immutable previousVotingContract; // Previous voting contract, if migrated.
 
-    // Address of the previous voting contract.
-    OracleAncillaryInterface public immutable previousVotingContract;
+    address public migratedAddress; // If non-zero, this contract has been migrated to this address.
 
-    // If non-zero, this contract has been migrated to this address.
-    address public migratedAddress;
+    uint256 public gat; // Number of tokens that must participate to resolve a vote.
 
-    // Number of tokens that must participate to resolve a vote.
-    uint256 public gat;
+    uint64 private constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
 
-    // Max value of an unsigned integer.
-    uint64 private constant UINT64_MAX = type(uint64).max;
-
-    // Max length in bytes of ancillary data.
-    uint256 public constant ANCILLARY_BYTES_LIMIT = 8192;
+    uint256 public constant ANCILLARY_BYTES_LIMIT = 8192; // Max length in bytes of ancillary data.
 
     /****************************************
      *                EVENTS                *
@@ -222,6 +207,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /***************************************
                     MODIFIERS
     ****************************************/
+
     modifier onlyRegisteredContract() {
         _requireRegisteredContract();
         _;
@@ -238,8 +224,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Enqueues a request (if a request isn't already present) for the identifier, time and ancillary data.
-     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
-     * is limited such that this method abides by the EVM transaction gas limit.
+     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data is limited.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
@@ -253,11 +238,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Enqueues a governance action request (if a request isn't already present) for identifier, time and
-     * ancillary data.
-     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
-     * is limited such that this method abides by the EVM transaction gas limit.
-     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
+     * @notice Enqueues a governance action request (if not already present) for identifier, time and ancillary data.
+     * @dev Only the owner of the Voting contract can call this. In normal operation this is the Governor contract.
+     * @param identifier uniquely identifies the price requested. E.g. Admin 0 (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      */
@@ -269,14 +252,20 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
-    // Enqueues a request (if a request isn't already present) for the given identifier, time and ancillary data. Time
-    // must be in the  past and the identifier must be supported. The length of the ancillary data is limited such that
-    // this method abides by the EVM transaction gas limit. Identifier uniquely identifies the requested (E.g. BTC/USD)
-    // as encoded as bytes32 & time unix timestamp for the request. ancillaryData arbitrary data appended to a request
-    // to give the voters more information. isGovernance indicates whether the request is for a governance action.
+    /**
+     * @notice Enqueues a request (if a request isn't already present) for the identifier, time pair.
+     * @dev Overloaded method to enable short term backwards compatibility when ancillary data is not included.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
+     * @param time unix timestamp for the price request.
+     */
+    function requestPrice(bytes32 identifier, uint256 time) external override {
+        requestPrice(identifier, time, "");
+    }
+
+    // Enqueues a request (if a request isn't already present) for the given identifier, time and ancillary data.
     function _requestPrice(
         bytes32 identifier,
-        uint256 time,
+        uint64 time,
         bytes memory ancillaryData,
         bool isGovernance
     ) internal {
@@ -293,7 +282,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.NotRequested) {
             uint32 roundIdToVoteOn = currentRoundId + 1; // Vote on request in the following round.
             priceRequests[priceRequestId].identifier = identifier;
-            priceRequests[priceRequestId].time = SafeCast.toUint64(time);
+            priceRequests[priceRequestId].time = time;
             priceRequests[priceRequestId].ancillaryData = ancillaryData;
             priceRequests[priceRequestId].lastVotingRound = roundIdToVoteOn;
             if (isGovernance) priceRequests[priceRequestId].isGovernance = isGovernance;
@@ -304,18 +293,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the identifier, time pair.
-     * @dev Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
-     * @param time unix timestamp for the price request.
-     */
-    function requestPrice(bytes32 identifier, uint256 time) external override {
-        requestPrice(identifier, time, "");
-    }
-
-    /**
-     * @notice Whether the price for identifier, time and ancillary data is available.
-     * @dev Time must be in the past and the identifier must be supported.
+     * @notice Returns whether the price for identifier, time and ancillary data is available.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
@@ -332,7 +310,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Whether the price for identifier and time is available.
-     * @dev Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+     * @dev Overloaded method to enable short term backwards compatibility when ancillary data is not included.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of the price request.
      * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
@@ -363,7 +341,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Gets the price for identifier and time if it has already been requested and resolved.
-     * @dev Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+     * @dev Overloaded method to enable short term backwards compatibility when ancillary data is not included.
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of the price request.
