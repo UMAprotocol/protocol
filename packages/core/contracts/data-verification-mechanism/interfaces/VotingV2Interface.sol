@@ -167,6 +167,12 @@ abstract contract VotingV2Interface {
     function setGat(uint256 newGat) external virtual;
 
     /**
+     * @notice Sets the minimum percentage of tokens that must participate in a round for it to be considered valid.
+     * @param newMinimumParticipationPercentage sets the next round's minimumParticipationPercentage.
+     */
+    function setMinimumParticipationPercentage(uint256 newMinimumParticipationPercentage) external virtual;
+
+    /**
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */

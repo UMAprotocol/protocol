@@ -52,6 +52,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     struct Round {
         uint256 gat; // GAT is the required number of tokens to vote to not roll the vote.
+        uint256 pat; // PAT is the required percentage of tokens to vote to not roll the vote.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been resolved in this round.
     }
@@ -116,6 +117,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     // Number of tokens that must participate to resolve a vote.
     uint256 public gat;
+
+    // Minimum percentage of tokens that must participate to resolve a vote.
+    uint256 public minimumParticipationPercentage;
 
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
@@ -182,6 +186,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event GatChanged(uint256 newGat);
 
+    event MinimumParticipationPercentageChanged(uint256 newMinimumParticipationPercentage);
+
     event SlashingLibraryChanged(address newAddress);
 
     event MaxRollsChanged(uint32 newMaxRolls);
@@ -207,6 +213,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint64 _phaseLength,
         uint32 _maxRolls,
         uint256 _gat,
+        uint256 _minimumParticipationPercentage,
         uint64 _startingRequestIndex,
         address _votingToken,
         address _finder,
@@ -217,6 +224,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         finder = FinderInterface(_finder);
         previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
         setGat(_gat);
+        setMinimumParticipationPercentage(_minimumParticipationPercentage);
         setSlashingLibrary(_slashingLibrary);
         setMaxRolls(_maxRolls);
 
@@ -258,7 +266,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override nonReentrant() onlyIfNotMigrated() onlyRegisteredContract() {
+    ) public override nonReentrant onlyIfNotMigrated onlyRegisteredContract {
         _requestPrice(identifier, time, ancillaryData, false);
     }
 
@@ -275,7 +283,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external override onlyOwner() onlyIfNotMigrated() {
+    ) external override onlyOwner onlyIfNotMigrated {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
@@ -339,7 +347,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (bool) {
+    ) public view override onlyRegisteredContract returns (bool) {
         (bool _hasPrice, , ) = _getPriceOrError(identifier, time, ancillaryData);
         return _hasPrice;
     }
@@ -367,7 +375,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (int256) {
+    ) public view override onlyRegisteredContract returns (int256) {
         (bool _hasPrice, int256 price, string memory message) = _getPriceOrError(identifier, time, ancillaryData);
 
         // If the price wasn't available, revert with the provided message.
@@ -435,7 +443,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 time,
         bytes memory ancillaryData,
         bytes32 hash
-    ) public override nonReentrant() onlyIfNotMigrated() {
+    ) public override nonReentrant onlyIfNotMigrated {
         uint256 currentRoundId = getCurrentRoundId();
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
@@ -466,7 +474,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         int256 price,
         bytes memory ancillaryData,
         int256 salt
-    ) public override nonReentrant() onlyIfNotMigrated() {
+    ) public override nonReentrant onlyIfNotMigrated {
         // Note: computing the current round is needed to disallow people from revealing an old commit after the round.
         uint256 currentRoundId = getCurrentRoundId();
         _freezeRoundVariables(currentRoundId);
@@ -667,6 +675,17 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         require(newGat < votingToken.totalSupply() && newGat > 0);
         gat = newGat;
         emit GatChanged(newGat);
+    }
+
+    /**
+     * @notice Sets the minimum percentage of tokens that must participate in a round for it to be considered valid.
+     * @dev Can only be called by the contract owner.
+     * @param newMinimumParticipationPercentage the new minimum percentage of tokens that must participate in a vote for
+     * it to be considered resolvable.
+     */
+    function setMinimumParticipationPercentage(uint256 newMinimumParticipationPercentage) public override onlyOwner {
+        minimumParticipationPercentage = newMinimumParticipationPercentage;
+        emit MinimumParticipationPercentageChanged(newMinimumParticipationPercentage);
     }
 
     /**
@@ -889,7 +908,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
         if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (, int256 resolvedPrice) = voteInstance.results.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+            (, int256 resolvedPrice) =
+                voteInstance.results.getResolvedPrice(_computeActivationThreshold(priceRequest.lastVotingRound));
             return (true, resolvedPrice, "");
         }
 
@@ -938,6 +958,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // Only freeze the round if this is the first request in the round.
         if (rounds[roundId].gat == 0) {
             rounds[roundId].gat = gat; // Set the round gat percentage to the current global gat rate.
+            rounds[roundId].pat = minimumParticipationPercentage * cumulativeStake; // Set the round pat.
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
         }
     }
@@ -966,7 +987,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             }
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
             (bool isResolvable, int256 resolvedPrice) =
-                voteInstance.results.getResolvedPrice(_computeGat(request.lastVotingRound));
+                voteInstance.results.getResolvedPrice(_computeActivationThreshold(request.lastVotingRound));
 
             // If a request is not resolvable, but the round has passed its voting round, then it is either rollable or
             // deletable (if it has rolled enough times.)
@@ -1007,9 +1028,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         rounds[currentRoundId].resolvedIndex = requestIndex; // Store the index traversed up to for this round.
     }
 
-    // Return the GAT: the minimum number of tokens needed to participate to resolve a vote.
-    function _computeGat(uint256 roundId) internal view returns (uint256) {
-        return rounds[roundId].gat;
+    // Return the activation threshold for a given round. This is the max of the gat and pat.
+    function _computeActivationThreshold(uint256 roundId) internal view returns (uint256) {
+        return rounds[roundId].gat > rounds[roundId].pat ? rounds[roundId].gat : rounds[roundId].pat;
     }
 
     // Returns a price request status. A request is either: NotRequested, Active, Resolved or Future.
@@ -1021,7 +1042,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
         else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (bool isResolved, ) = voteInstance.results.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+            (bool isResolved, ) =
+                voteInstance.results.getResolvedPrice(_computeActivationThreshold(priceRequest.lastVotingRound));
 
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
         } else if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;
