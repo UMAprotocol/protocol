@@ -265,27 +265,26 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Enqueues a request (if a request isn't already present) for the given identifier, time and ancillary data.
     function _requestPrice(
         bytes32 identifier,
-        uint64 time,
+        uint256 time,
         bytes memory ancillaryData,
         bool isGovernance
     ) internal {
-        uint256 blockTime = getCurrentTime();
-        require(time <= blockTime, "Can only request in past");
+        require(time <= getCurrentTime(), "Can only request in past");
         require(isGovernance || _getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(ancillaryData.length <= ANCILLARY_BYTES_LIMIT, "Invalid ancillary data");
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
-        uint32 currentRoundId = uint32(getCurrentRoundId());
 
         // Price has never been requested.
+        uint32 currentRoundId = uint32(getCurrentRoundId());
         if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.NotRequested) {
             uint32 roundIdToVoteOn = currentRoundId + 1; // Vote on request in the following round.
-            priceRequests[priceRequestId].identifier = identifier;
-            priceRequests[priceRequestId].time = time;
-            priceRequests[priceRequestId].ancillaryData = ancillaryData;
-            priceRequests[priceRequestId].lastVotingRound = roundIdToVoteOn;
-            if (isGovernance) priceRequests[priceRequestId].isGovernance = isGovernance;
+            priceRequest.identifier = identifier;
+            priceRequest.time = SafeCast.toUint64(time);
+            priceRequest.ancillaryData = ancillaryData;
+            priceRequest.lastVotingRound = roundIdToVoteOn;
+            if (isGovernance) priceRequest.isGovernance = isGovernance;
 
             pendingPriceRequestsIds.push(priceRequestId);
             emit RequestAdded(msg.sender, roundIdToVoteOn, identifier, time, ancillaryData, isGovernance);
@@ -406,7 +405,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         require(hash != bytes32(0), "Invalid commit hash");
         require(getVotePhase() == Phase.Commit, "Cannot commit in reveal phase");
-
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         require(_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active, "Request must be active");
 
@@ -582,10 +580,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 currentRoundId = getCurrentRoundId();
         PriceRequest storage priceRequest = priceRequests[resolvedPriceRequestIds[requestIndex]];
 
-        // If the request is not resolved return zeros for everything.
-        if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved)
-            return SlashingTracker(0, 0, 0, 0);
-
         VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
         uint256 totalVotes = voteInstance.results.totalVotes;
@@ -622,7 +616,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newMaxRolls the new number of rounds to roll a request before the DVM auto deletes it.
      */
     function setMaxRolls(uint32 newMaxRolls) public override onlyOwner {
-        require(newMaxRolls > 0, "Cannot set to 0");
         maxRolls = newMaxRolls;
         emit MaxRollsChanged(newMaxRolls);
     }
@@ -785,7 +778,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // had not traversed all settled requests in the above loop due to the maxTraversals parameter. If the following
         // request round is the same as the current round and we have an unapplied slash then store it within the voters
         // unappliedSlash tracker so that the next iteration of this method continues off from where we end now.
-        if (slash != 0 && !isNextRequestRoundDifferent(requestIndex - 1)) voterStake.unappliedSlash = slash;
+        if (slash != 0) voterStake.unappliedSlash = slash;
 
         // Set the account's next index to process to the next index so the next entry starts where we left off.
         voterStake.nextIndexToProcess = requestIndex;
