@@ -930,7 +930,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         //(i.e settle, roll or delete request). Bound iterations to the maxTraversals parameter to cap the gas used.
         while (requestIndex < pendingPriceRequestsIds.length && maxTraversals > 0) {
             maxTraversals = unsafe_dec_64(maxTraversals);
-
             PriceRequest storage request = priceRequests[pendingPriceRequestsIds[requestIndex]];
 
             // If the last voting round is greater than or equal to the current round then this request is currently
@@ -945,42 +944,40 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             (bool isResolvable, int256 resolvedPrice) =
                 voteInstance.results.getResolvedPrice(_computeGat(request.lastVotingRound));
 
-            // If not resolvable, but the round has passed its voting round, then it must be deleted or resolved.
-            if (!isResolvable) {
-                // Increment the rollCount. Use the difference between the current round and the last voting round to
-                // accommodate the contract not being touched for any number of rounds during the roll.
-                request.rollCount += currentRoundId - request.lastVotingRound;
-
-                // If the roll count exceeds the threshold and the request is not governance then it is deletable.
-                if (request.rollCount > maxRolls && !request.isGovernance) {
-                    emit RequestDeleted(request.identifier, request.time, request.ancillaryData, request.rollCount);
-                    delete priceRequests[pendingPriceRequestsIds[requestIndex]];
-                    _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
-                    continue;
-                }
-                // Else, the request should be rolled. This involves only moving forward the lastVotingRound.
-                request.lastVotingRound = currentRoundId;
-                emit RequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
-                requestIndex = unsafe_inc_64(requestIndex);
+            if (isResolvable) {
+                // If resolvable, resolve. This involves a) moving the requestId from pendingPriceRequestsIds array to
+                // resolvedPriceRequestIds array and b) removing requestId from pendingPriceRequestsIds. We dont need to
+                // increment requestIndex as from pendingPriceRequestsIds amounts to decreasing the while loop bound.
+                resolvedPriceRequestIds.push(pendingPriceRequestsIds[requestIndex]);
+                _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
+                emit RequestResolved(
+                    request.lastVotingRound,
+                    resolvedPriceRequestIds.length - 1,
+                    request.identifier,
+                    request.time,
+                    request.ancillaryData,
+                    resolvedPrice
+                );
                 continue; // Continue to the next request.
             }
+            // If not resolvable, but the round has passed its voting round, then it must be deleted or resolved. First,
+            // increment the rollCount. Use the difference between the current round and the last voting round to
+            // accommodate the contract not being touched for any number of rounds during the roll.
+            request.rollCount += currentRoundId - request.lastVotingRound;
 
-            // Else, if we got here then the request is resolvable. Resolve it. This involves a) moving the requestId
-            //from pendingPriceRequestsIds array to resolvedPriceRequestIds array and b) removing it from the
-            //pendingPriceRequestsIds. Note dont need to increment requestIndex as we are removing the element from
-            // pendingPriceRequestsIds which amounts to decreasing the while loop bound.
-            resolvedPriceRequestIds.push(pendingPriceRequestsIds[requestIndex]);
-            _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
-
-            emit RequestResolved(
-                request.lastVotingRound,
-                resolvedPriceRequestIds.length - 1,
-                request.identifier,
-                request.time,
-                request.ancillaryData,
-                resolvedPrice
-            );
+            // If the roll count exceeds the threshold and the request is not governance then it is deletable.
+            if (request.rollCount > maxRolls && !request.isGovernance) {
+                emit RequestDeleted(request.identifier, request.time, request.ancillaryData, request.rollCount);
+                delete priceRequests[pendingPriceRequestsIds[requestIndex]];
+                _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
+                continue;
+            }
+            // Else, the request should be rolled. This involves only moving forward the lastVotingRound.
+            request.lastVotingRound = currentRoundId;
+            emit RequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
+            requestIndex = unsafe_inc_64(requestIndex);
         }
+
         rounds[currentRoundId].resolvedIndex = requestIndex; // Store the index traversed up to for this round.
     }
 
@@ -1034,9 +1031,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Enforces that a calling contract is registered.
     function _requireRegisteredContract() private view {
         RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
-        require(
-            registry.isContractRegistered(msg.sender) || msg.sender == migratedAddress,
-            "Caller must be registered"
-        );
+        require(registry.isContractRegistered(msg.sender) || msg.sender == migratedAddress, "Caller not registered");
     }
 }
