@@ -30,6 +30,7 @@ const VotingToken = getContract("VotingToken");
 const Timer = getContract("Timer");
 const SlashingLibrary = getContract("SlashingLibrary");
 const ZeroedSlashingSlashingLibraryTest = getContract("ZeroedSlashingSlashingLibraryTest");
+const PunitiveSlashingLibraryTest = getContract("PunitiveSlashingLibraryTest");
 
 const { utf8ToHex, padRight } = web3.utils;
 
@@ -91,13 +92,29 @@ describe("VotingV2", function () {
   });
 
   afterEach(async function () {
-    for (const ac of [account1, account2, account3, account4, rand]) {
+    for (const ac of [account1, account2, account3, account4, rand])
       if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
-    }
+
     if (!voting.events["VoterSlashed"]) return;
     const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
-    const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
-    assert(Math.abs(sum) < 10e-10, `VoterSlashed events should sum to 0, but sum is ${sum}`);
+    const sum = events.map((e) => e.returnValues.slashedTokens).reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+
+    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
+
+    assert(sum.lte(toBN(10)), `VoterSlashed events should sum to <10 wei, but sum is ${sum.toString()}`);
+
+    if ((await voting.methods.getVotePhase().call()) == 1) await moveToNextRound(voting, accounts[0]);
+
+    // Withdraw all tokens from all accounts.
+    for (const ac of [account1, account2, account3, account4, rand]) {
+      if ((await voting.methods.voterStakes(ac).call()).pendingUnstake != 0)
+        await voting.methods.executeUnstake().send({ from: ac });
+      await voting.methods.requestUnstake(await voting.methods.getVoterStakePostUpdate(ac).call()).send({ from: ac });
+      await voting.methods.executeUnstake().send({ from: ac });
+    }
+
+    const votingBalance = await votingToken.methods.balanceOf(voting.options.address).call();
+    assert(toBN(votingBalance).lt(toBN(10)), `votingBalance after withdraws should be <10 wei but is ${votingBalance}`);
   });
 
   it("Constructor", async function () {
@@ -4480,6 +4497,104 @@ describe("VotingV2", function () {
 
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
+  });
+  it("Should never allow total stakes to exceed cumulative stake", async function () {
+    // This test proves how the total user stakes never exceed the cumulativeStake parameter. This is important because
+    // otherwise the VotingV2 contract could not pay the users stakes and also would issue more rewards than it should.
+    // To check this we will use a more punitive slashing library that slashes 99% of staked tokens of users who vote
+    // incorrectly or do not vote at all. Account1 and Account2 will be the only stakers to vote and therefore receive
+    // the tokens of the other users which should reach 0 staked balance.
+
+    // Set up contracts
+    const punitiveSlashingLibraryTest = await PunitiveSlashingLibraryTest.new().send({ from: accounts[0] });
+    await voting.methods.setSlashingLibrary(punitiveSlashingLibraryTest.options.address).send({ from: accounts[0] });
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    const accountsStartingBallance = toBN(await voting.methods.getVoterStakePostUpdate(account1).call()).add(
+      toBN(await voting.methods.getVoterStakePostUpdate(account2).call())
+    ); // 32M
+    const restOfStakedBalance = toBN(await votingToken.methods.balanceOf(voting.options.address).call()).sub(
+      toBN(accountsStartingBallance)
+    ); // 68M
+
+    // Number of active voting rounds to test with
+    const activeVotingRounds = 20;
+
+    // Account1 will vote with 32M tokens so reaching the gat and then receiving the slashing rewards comming from
+    // account2, account3 and account4
+    for (let i = 0; i < activeVotingRounds; i++) {
+      const newTime = Number(time) + i;
+      await voting.methods.requestPrice(identifier, newTime).send({ from: registeredContract });
+      await moveToNextRound(voting, accounts[0]);
+      assert.equal(await voting.methods.currentActiveRequests().call(), true);
+
+      let roundId = (await voting.methods.getCurrentRoundId().call()).toString(); // Cast vote
+      const salt = getRandomSignedInt();
+      const price = 0;
+      const hash1 = computeVoteHash({ salt, roundId, identifier, price, account: account1, time: newTime });
+      await voting.methods.commitVote(identifier, newTime, hash1).send({ from: account1 });
+      const hash2 = computeVoteHash({ salt, roundId, identifier, price, account: account2, time: newTime });
+      await voting.methods.commitVote(identifier, newTime, hash2).send({ from: account2 });
+
+      await moveToNextPhase(voting, accounts[0]); // Reveal vote
+      await voting.methods.revealVote(identifier, newTime, price, salt).send({ from: account1 });
+      await voting.methods.revealVote(identifier, newTime, price, salt).send({ from: account2 });
+    }
+
+    // Update the trackers of all accounts
+    for (const ac of [account1, account2, account3, account4, rand]) {
+      await voting.methods.updateTrackers(ac).send({ from: account1 });
+    }
+
+    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+
+    // Sum of all the positive slashed tokens received by account1
+    const sumPositive = events
+      .map((e) => e.returnValues.slashedTokens)
+      .filter((e) => toBN(e).gt(toBN(0)))
+      .reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+
+    // Sum of all the negative slashed tokens removed to the rest of accounts
+    const sumNegative = events
+      .map((e) => e.returnValues.slashedTokens)
+      .filter((e) => toBN(e).lt(toBN(0)))
+      .reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+
+    // Check that the sum of all the positive slashed tokens is equal to the total staked balance minus the account1
+    // starting balance. Due to rounding drifts, we allow 1 WEI of error per round.
+
+    assert(restOfStakedBalance.sub(sumPositive).lte(toBN(activeVotingRounds)));
+
+    // Check that the sum of all the negative slashed tokens is equal to the total staked balance minus the account1
+    // starting balance. Due to rounding drifts, we allow 1 WEI of error per round.
+    assert(restOfStakedBalance.add(sumNegative).lt(toBN(activeVotingRounds)));
+
+    // The sum of all the positive and negative slashed tokens should be equal ~ 0. Due to rounding drifts, we allow 1
+    // WEI of error per round.
+    assert(sumPositive.add(sumNegative).lt(toBN(activeVotingRounds)));
+
+    // Check that the total user stakes never excede the cumulativeStake
+    const cumulativeStake = await voting.methods.cumulativeStake().call();
+
+    const account1Stake = await voting.methods.getVoterStakePostUpdate(account1).call(); // ~ 100M
+    const account2Stake = await voting.methods.getVoterStakePostUpdate(account2).call(); // ~ 0
+    const account3Stake = await voting.methods.getVoterStakePostUpdate(account3).call(); // ~ 0
+    const account4Stake = await voting.methods.getVoterStakePostUpdate(account4).call(); // ~ 0
+
+    const totalUserStakes = toBN(account1Stake)
+      .add(toBN(account2Stake))
+      .add(toBN(account3Stake))
+      .add(toBN(account4Stake));
+
+    // Abs value of difference between totalUserStakes and cumulativeStake
+    const diff = toBN(totalUserStakes).gt(toBN(cumulativeStake))
+      ? toBN(totalUserStakes).sub(toBN(cumulativeStake))
+      : toBN(cumulativeStake).sub(toBN(totalUserStakes)); // ~ 0
+
+    // Due to rounding drifts, we allow 1 WEI of error per round.
+    assert(diff.lte(toBN(activeVotingRounds)));
   });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
