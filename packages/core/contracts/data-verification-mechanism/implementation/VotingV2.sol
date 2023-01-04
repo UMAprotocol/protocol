@@ -778,7 +778,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     // Applies a given slash to a given voter's stake. In the event the sum of the slash and the voter's stake is less
     // than 0, the voter's stake is set to 0 to prevent the voter's stake from going negative. unappliedSlash tracked
-    //all slashing the staker has received but not yet applied to their stake. Apply it then set it to zero.
+    // all slashing the staker has received but not yet applied to their stake. Apply it then set it to zero.
     function _applySlashToVoter(VoterStake storage voterStake, address voterAddress) internal {
         if (voterStake.unappliedSlash + int256(voterStake.stake) > 0)
             voterStake.stake = uint256(int256(voterStake.stake) + voterStake.unappliedSlash);
@@ -936,7 +936,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             if (isResolvable) {
                 // If resolvable, resolve. This involves a) moving the requestId from pendingPriceRequestsIds array to
-                // resolvedPriceRequestIds array and b) removing requestId from pendingPriceRequestsIds. We dont need to
+                // resolvedPriceRequestIds array and b) removing requestId from pendingPriceRequestsIds. Don't need to
                 // increment requestIndex as from pendingPriceRequestsIds amounts to decreasing the while loop bound.
                 resolvedPriceRequestIds.push(pendingPriceRequestsIds[requestIndex]);
                 _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
