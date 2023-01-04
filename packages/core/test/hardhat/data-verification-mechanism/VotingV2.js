@@ -2,7 +2,8 @@ const hre = require("hardhat");
 const { web3 } = hre;
 const { runVotingV2Fixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
-const {RegistryRolesEnum,
+const {
+  RegistryRolesEnum,
   VotePhasesEnum,
   didContractThrow,
   getRandomSignedInt,
@@ -12,7 +13,8 @@ const {RegistryRolesEnum,
   computeVoteHash,
   computeVoteHashAncillary,
   getKeyGenMessage,
-  signMessage,} = require("@uma/common");
+  signMessage,
+} = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { assert } = require("chai");
 const { toBN } = web3.utils;
@@ -101,7 +103,7 @@ describe("VotingV2", function () {
 
     assert(sum.lte(toBN(10)), `VoterSlashed events should sum to <10 wei, but sum is ${sum.toString()}`);
 
-    if ((await voting.methods.getVotePhase().call(), 1)) await moveToNextRound(voting, accounts[0]);
+    if ((await voting.methods.getVotePhase().call()) == 1) await moveToNextRound(voting, accounts[0]);
 
     // Withdraw all tokens from all accounts.
     for (const ac of [account1, account2, account3, account4, rand]) {
@@ -198,12 +200,14 @@ describe("VotingV2", function () {
     // Voters can alter their commits.
     const newPrice = getRandomSignedInt();
     const newSalt = getRandomSignedInt();
-    const newHash = computeVoteHash({price: newPrice,
+    const newHash = computeVoteHash({
+      price: newPrice,
       salt: newSalt,
       account: account1,
       time: time,
       roundId: currentRoundId,
-      identifier,});
+      identifier,
+    });
 
     // Can alter a committed hash.
     await voting.methods.commitVote(identifier, time, newHash).send({ from: accounts[0] });
@@ -286,21 +290,25 @@ describe("VotingV2", function () {
 
     const price1 = getRandomSignedInt();
     const salt1 = getRandomSignedInt();
-    const hash1 = computeVoteHash({price: price1,
+    const hash1 = computeVoteHash({
+      price: price1,
       salt: salt1,
       account: account1,
       time: time2,
       roundId,
-      identifier: identifier1,});
+      identifier: identifier1,
+    });
 
     const price2 = getRandomSignedInt();
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({price: price2,
+    const hash2 = computeVoteHash({
+      price: price2,
       salt: salt2,
       account: account1,
       time: time1,
       roundId,
-      identifier: identifier2,});
+      identifier: identifier2,
+    });
 
     await voting.methods.commitVote(identifier1, time2, hash1).send({ from: accounts[0] });
     await voting.methods.commitVote(identifier2, time1, hash2).send({ from: accounts[0] });
@@ -357,24 +365,28 @@ describe("VotingV2", function () {
     // Commit vote 1.
     const price1 = getRandomSignedInt();
     const salt1 = getRandomSignedInt();
-    const hash1 = computeVoteHash({price: price1,
+    const hash1 = computeVoteHash({
+      price: price1,
       salt: salt1,
       account: account1,
       time: time1,
       roundId,
-      identifier: identifier1,});
+      identifier: identifier1,
+    });
 
     await voting.methods.commitVote(identifier1, time1, hash1).send({ from: accounts[0] });
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({price: price2,
+    const hash2 = computeVoteHash({
+      price: price2,
       salt: salt2,
       account: account1,
       time: time2,
       roundId,
-      identifier: identifier2,});
+      identifier: identifier2,
+    });
     await voting.methods.commitVote(identifier2, time2, hash2).send({ from: accounts[0] });
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
@@ -437,12 +449,14 @@ describe("VotingV2", function () {
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({price: price,
+    const hash = computeVoteHash({
+      price: price,
       salt: salt,
       account: account1,
       time: timeSucceed,
       roundId,
-      identifier,});
+      identifier,
+    });
     await voting.methods.commitVote(identifier, timeSucceed, hash).send({ from: accounts[0] });
 
     // Move to reveal phase and reveal vote.
@@ -532,22 +546,26 @@ describe("VotingV2", function () {
     // Commit votes.
     const price1 = getRandomSignedInt();
     const salt1 = getRandomSignedInt();
-    const hash1 = computeVoteHash({price: price1,
+    const hash1 = computeVoteHash({
+      price: price1,
       salt: salt1,
       account: account1,
       time: time1,
       roundId,
-      identifier: identifier1,});
+      identifier: identifier1,
+    });
     await voting.methods.commitVote(identifier1, time1, hash1).send({ from: accounts[0] });
 
     const price2 = getRandomSignedInt();
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({price: price2,
+    const hash2 = computeVoteHash({
+      price: price2,
       salt: salt2,
       account: account1,
       time: time2,
       roundId,
-      identifier: identifier2,});
+      identifier: identifier2,
+    });
     await voting.methods.commitVote(identifier2, time2, hash2).send({ from: accounts[0] });
 
     // Pending requests should still have a single entry in the reveal phase.
@@ -594,12 +612,14 @@ describe("VotingV2", function () {
 
     const price = 123;
     const salt = getRandomSignedInt();
-    const invalidHash = computeVoteHash({price,
+    const invalidHash = computeVoteHash({
+      price,
       salt,
       account: account1,
       time,
       roundId: (await voting.methods.getCurrentRoundId().call()).toString(),
-      identifier,});
+      identifier,
+    });
     // Can't commit without advancing the round forward.
     assert(
       await didContractThrow(voting.methods.commitVote(identifier, time, invalidHash).send({ from: accounts[0] }))
@@ -1103,10 +1123,12 @@ describe("VotingV2", function () {
 
     for (let i = 0; i < numRequests; i++) {
       let identifier = padRight(utf8ToHex(`batch-request-${i}`), 64);
-      priceRequests.push({identifier,
+      priceRequests.push({
+        identifier,
         time: requestTime,
         hash: web3.utils.soliditySha3(getRandomSignedInt()),
-        encryptedVote: utf8ToHex(`some encrypted message ${i}`),});
+        encryptedVote: utf8ToHex(`some encrypted message ${i}`),
+      });
 
       await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
       await voting.methods.requestPrice(identifier, requestTime).send({ from: registeredContract });
@@ -1133,8 +1155,10 @@ describe("VotingV2", function () {
 
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
-      let events = await voting.getPastEvents("EncryptedVote", {fromBlock: 0,
-        filter: { identifier: priceRequest.identifier, time: priceRequest.time },});
+      let events = await voting.getPastEvents("EncryptedVote", {
+        fromBlock: 0,
+        filter: { identifier: priceRequest.identifier, time: priceRequest.time },
+      });
       let retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
     }
@@ -1155,8 +1179,10 @@ describe("VotingV2", function () {
     // Test that the encrypted messages are still correct
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
-      let events = await voting.getPastEvents("EncryptedVote", {fromBlock: 0,
-        filter: { identifier: priceRequest.identifier, time: priceRequest.time },});
+      let events = await voting.getPastEvents("EncryptedVote", {
+        fromBlock: 0,
+        filter: { identifier: priceRequest.identifier, time: priceRequest.time },
+      });
       let retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
     }
@@ -1588,26 +1614,30 @@ describe("VotingV2", function () {
     // Commit vote 1.
     const price1 = getRandomSignedInt();
     const salt1 = getRandomSignedInt();
-    const hash1 = computeVoteHashAncillary({price: price1,
+    const hash1 = computeVoteHashAncillary({
+      price: price1,
       salt: salt1,
       account: account1,
       time: time1,
       ancillaryData: ancillaryData1,
       roundId,
-      identifier: identifier1,});
+      identifier: identifier1,
+    });
 
     await voting.methods.commitVote(identifier1, time1, ancillaryData1, hash1).send({ from: accounts[0] });
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHashAncillary({price: price2,
+    const hash2 = computeVoteHashAncillary({
+      price: price2,
       salt: salt2,
       account: account1,
       time: time2,
       ancillaryData: ancillaryData2,
       roundId,
-      identifier: identifier2,});
+      identifier: identifier2,
+    });
     await voting.methods.commitVote(identifier2, time2, ancillaryData2, hash2).send({ from: accounts[0] });
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
@@ -1780,19 +1810,25 @@ describe("VotingV2", function () {
     const priceRequestLengthBefore = (await voting.methods.getPendingRequests().call()).length;
 
     // Requests should not be added to the current voting round.
-    await voting.methods["requestPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).send({from: registeredContract,});
+    await voting.methods["requestPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).send({
+      from: registeredContract,
+    });
     await voting.methods["requestPrice(bytes32,uint256)"](identifier2, time2).send({ from: registeredContract });
 
     // Since the round for these requests has not started, the price retrieval should fail.
     assert.isFalse(
-      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({from: registeredContract,})
+      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({
+        from: registeredContract,
+      })
     );
     assert.isFalse(
       await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2).call({ from: registeredContract })
     );
     assert(
       await didContractThrow(
-        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).send({from: registeredContract,})
+        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).send({
+          from: registeredContract,
+        })
       )
     );
     assert(
@@ -1829,37 +1865,47 @@ describe("VotingV2", function () {
     // Commit vote 1.
     const price1 = getRandomSignedInt();
     const salt1 = getRandomSignedInt();
-    const hash1 = computeVoteHashAncillary({price: price1,
+    const hash1 = computeVoteHashAncillary({
+      price: price1,
       salt: salt1,
       account: account1,
       time: time1,
       ancillaryData: ancillaryData1,
       roundId,
-      identifier: identifier1,});
+      identifier: identifier1,
+    });
 
-    await voting.methods["commitVote(bytes32,uint256,bytes,bytes32)"](identifier1, time1, ancillaryData1, hash1).send({from: accounts[0],});
+    await voting.methods["commitVote(bytes32,uint256,bytes,bytes32)"](identifier1, time1, ancillaryData1, hash1).send({
+      from: accounts[0],
+    });
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({price: price2,
+    const hash2 = computeVoteHash({
+      price: price2,
       salt: salt2,
       account: account1,
       time: time2,
       roundId,
-      identifier: identifier2,});
+      identifier: identifier2,
+    });
     await voting.methods["commitVote(bytes32,uint256,bytes32)"](identifier2, time2, hash2).send({ from: accounts[0] });
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
     assert.isFalse(
-      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({from: registeredContract,})
+      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({
+        from: registeredContract,
+      })
     );
     assert.isFalse(
       await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2).call({ from: registeredContract })
     );
     assert(
       await didContractThrow(
-        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({from: registeredContract,})
+        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({
+          from: registeredContract,
+        })
       )
     );
     assert(
@@ -1877,14 +1923,18 @@ describe("VotingV2", function () {
 
     // Prices cannot be provided until both commit and reveal for the current round have finished.
     assert.isFalse(
-      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({from: registeredContract,})
+      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({
+        from: registeredContract,
+      })
     );
     assert.isFalse(
       await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2).call({ from: registeredContract })
     );
     assert(
       await didContractThrow(
-        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({from: registeredContract,})
+        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({
+          from: registeredContract,
+        })
       )
     );
     assert(
@@ -1898,14 +1948,18 @@ describe("VotingV2", function () {
 
     // Note: all voting results are currently hardcoded to 1.
     assert.isTrue(
-      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({from: registeredContract,})
+      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({
+        from: registeredContract,
+      })
     );
     assert.isTrue(
       await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2).call({ from: registeredContract })
     );
     assert.equal(
       (
-        await voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({from: registeredContract,})
+        await voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1).call({
+          from: registeredContract,
+        })
       ).toString(),
       price1.toString()
     );
@@ -2236,27 +2290,33 @@ describe("VotingV2", function () {
     const losingPrice = 1;
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
     const baseRequest = { salt, roundId, identifier };
-    const hash1 = computeVoteHashAncillary({...baseRequest,
+    const hash1 = computeVoteHashAncillary({
+      ...baseRequest,
       price: losingPrice,
       account: account2,
       time: time1,
-      ancillaryData,});
+      ancillaryData,
+    });
 
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash1).send({ from: account2 });
 
     const winningPrice = 0;
-    const hash2 = computeVoteHashAncillary({...baseRequest,
+    const hash2 = computeVoteHashAncillary({
+      ...baseRequest,
       price: winningPrice,
       account: account1,
       time: time1,
-      ancillaryData,});
+      ancillaryData,
+    });
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash2).send({ from: account1 });
 
-    const hash3 = computeVoteHashAncillary({...baseRequest,
+    const hash3 = computeVoteHashAncillary({
+      ...baseRequest,
       price: winningPrice,
       account: account4,
       time: time1,
-      ancillaryData,});
+      ancillaryData,
+    });
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash3).send({ from: account4 });
 
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
@@ -2335,26 +2395,32 @@ describe("VotingV2", function () {
 
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
     const baseRequest = { salt, roundId, identifier };
-    const hash1 = computeVoteHashAncillary({...baseRequest,
+    const hash1 = computeVoteHashAncillary({
+      ...baseRequest,
       price: losingPrice,
       ancillaryData,
       account: account2,
-      time: time1,});
+      time: time1,
+    });
 
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash1).send({ from: account2 });
 
-    const hash2 = computeVoteHashAncillary({...baseRequest,
+    const hash2 = computeVoteHashAncillary({
+      ...baseRequest,
       price: winningPrice,
       ancillaryData,
       account: account1,
-      time: time1,});
+      time: time1,
+    });
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash2).send({ from: account1 });
 
-    const hash3 = computeVoteHashAncillary({...baseRequest,
+    const hash3 = computeVoteHashAncillary({
+      ...baseRequest,
       price: winningPrice,
       ancillaryData,
       account: account4,
-      time: time1,});
+      time: time1,
+    });
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash3).send({ from: account4 });
 
     // Non-governance request.
@@ -3376,18 +3442,22 @@ describe("VotingV2", function () {
     // Commit vote 1 and 4.
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
-    const hash4 = computeVoteHash({price: price,
+    const hash4 = computeVoteHash({
+      price: price,
       salt: salt,
       account: account1,
       time: time4,
       roundId,
-      identifier: identifier4,});
-    const hash1 = computeVoteHash({price: price,
+      identifier: identifier4,
+    });
+    const hash1 = computeVoteHash({
+      price: price,
       salt: salt,
       account: account1,
       time: time1,
       roundId,
-      identifier: identifier1,});
+      identifier: identifier1,
+    });
 
     await voting.methods.commitVote(identifier4, time4, hash4).send({ from: account1 });
     await voting.methods.commitVote(identifier1, time1, hash1).send({ from: account1 });
