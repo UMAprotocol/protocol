@@ -262,7 +262,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override nonReentrant onlyIfNotMigrated onlyRegisteredContract {
+    ) public override nonReentrant onlyIfNotMigrated() onlyRegisteredContract() {
         _requestPrice(identifier, time, ancillaryData, false);
     }
 
@@ -279,7 +279,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external override onlyOwner onlyIfNotMigrated {
+    ) external override onlyOwner() onlyIfNotMigrated() {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
@@ -343,7 +343,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override onlyRegisteredContract returns (bool) {
+    ) public view override onlyRegisteredContract() returns (bool) {
         (bool _hasPrice, , ) = _getPriceOrError(identifier, time, ancillaryData);
         return _hasPrice;
     }
@@ -371,7 +371,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override onlyRegisteredContract returns (int256) {
+    ) public view override onlyRegisteredContract() returns (int256) {
         (bool _hasPrice, int256 price, string memory message) = _getPriceOrError(identifier, time, ancillaryData);
 
         // If the price wasn't available, revert with the provided message.
@@ -439,7 +439,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 time,
         bytes memory ancillaryData,
         bytes32 hash
-    ) public override nonReentrant onlyIfNotMigrated {
+    ) public override nonReentrant onlyIfNotMigrated() {
         uint256 currentRoundId = getCurrentRoundId();
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
@@ -470,7 +470,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         int256 price,
         bytes memory ancillaryData,
         int256 salt
-    ) public override nonReentrant onlyIfNotMigrated {
+    ) public override nonReentrant onlyIfNotMigrated() {
         // Note: computing the current round is needed to disallow people from revealing an old commit after the round.
         uint256 currentRoundId = getCurrentRoundId();
         _freezeRoundVariables(currentRoundId);
@@ -647,7 +647,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @dev Can only be called by the contract owner.
      * @param newVotingAddress the newly migrated contract address.
      */
-    function setMigrated(address newVotingAddress) external override onlyOwner {
+    function setMigrated(address newVotingAddress) external override onlyOwner() {
         migratedAddress = newVotingAddress;
         emit VotingContractMigrated(newVotingAddress);
     }
@@ -657,7 +657,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @dev Can only be called by the contract owner.
      * @param newMaxRolls the new number of rounds to roll a request before the DVM auto deletes it.
      */
-    function setMaxRolls(uint32 newMaxRolls) public override onlyOwner {
+    function setMaxRolls(uint32 newMaxRolls) public override onlyOwner() {
         require(newMaxRolls > 0, "Cannot set to 0");
         maxRolls = newMaxRolls;
         emit MaxRollsChanged(newMaxRolls);
@@ -671,7 +671,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newGat sets the next round's GAT and going forward.
      * @param newPat sets the next round's PAT and going forward.
      */
-    function setGatAndPat(uint256 newGat, uint256 newPat) public override onlyOwner {
+    function setGatAndPat(uint256 newGat, uint256 newPat) public override onlyOwner() {
         require(newGat < votingToken.totalSupply() && newGat > 0);
         require(newPat > 0 && newPat < 1e18);
         gat = newGat;
@@ -684,7 +684,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
+    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner() {
         slashingLibrary = SlashingLibraryInterface(_newSlashingLibrary);
         emit SlashingLibraryChanged(_newSlashingLibrary);
     }
