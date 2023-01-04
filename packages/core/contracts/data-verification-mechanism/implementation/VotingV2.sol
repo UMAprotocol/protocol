@@ -262,7 +262,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override nonReentrant onlyIfNotMigrated() onlyRegisteredContract() {
+    ) public override nonReentrant() onlyIfNotMigrated() onlyRegisteredContract() {
         _requestPrice(identifier, time, ancillaryData, false);
     }
 
@@ -439,7 +439,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 time,
         bytes memory ancillaryData,
         bytes32 hash
-    ) public override nonReentrant onlyIfNotMigrated() {
+    ) public override nonReentrant() onlyIfNotMigrated() {
         uint256 currentRoundId = getCurrentRoundId();
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
@@ -470,7 +470,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         int256 price,
         bytes memory ancillaryData,
         int256 salt
-    ) public override nonReentrant onlyIfNotMigrated() {
+    ) public override nonReentrant() onlyIfNotMigrated() {
         // Note: computing the current round is needed to disallow people from revealing an old commit after the round.
         uint256 currentRoundId = getCurrentRoundId();
         _freezeRoundVariables(currentRoundId);
