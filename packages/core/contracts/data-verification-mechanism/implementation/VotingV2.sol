@@ -51,7 +51,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct Round {
-        uint256 gat; // GAT(governance activation threshold) is the required number of tokens to resolve a vote.
+        uint256 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a price in this round.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
     }
@@ -102,7 +102,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     address public migratedAddress; // If non-zero, this contract has been migrated to this address.
 
-    uint256 public gat; // Number of tokens that must participate to resolve a vote.
+    // Each round has a minParticipationRequirement that is found from the GAT and PAT and defines the minimum number of
+    // tokens that must participate in a given request for it to resolve. The value used is MAX(GAT, PAT * stakedTokens)
+    uint256 public gat; // A minimum number of tokens that must participate to resolve a vote.
+    uint256 public pat; // PAT: Minimum percentage of staked tokens that must participate to resolve a vote.
 
     uint64 private constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
 
@@ -165,7 +168,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event RequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
 
-    event GatChanged(uint256 newGat);
+    event GatAndPatChanged(uint256 newGat, uint256 newPat);
 
     event SlashingLibraryChanged(address newAddress);
 
@@ -180,6 +183,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param _phaseLength length of the voting phases in seconds.
      * @param _maxRolls number of times a vote must roll to be auto deleted by the DVM.
      * @param _gat number of tokens that must participate to resolve a vote.
+     * @param _pat percentage of staked tokens that must participate to resolve a vote.
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
@@ -191,6 +195,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint64 _phaseLength,
         uint32 _maxRolls,
         uint256 _gat,
+        uint256 _pat,
         address _votingToken,
         address _finder,
         address _slashingLibrary,
@@ -199,7 +204,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         voteTiming.init(_phaseLength);
         finder = FinderInterface(_finder);
         previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
-        setGat(_gat);
+        setGatAndPat(_gat, _pat);
         setSlashingLibrary(_slashingLibrary);
         setMaxRolls(_maxRolls);
     }
@@ -620,13 +625,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
-     * @param newGat sets the next round's Gat.
+     * @notice Resets the GAT number and PAT percentage. GAT is the minimum number of tokens that must participate in a
+     * vote for it to resolve (quorum number). PAT is the minimum percentage of tokens that must participate in a vote
+     *  for it to resolve (quorum percentage of staked tokens) This change only applies to subsequent rounds.
+     * @param newGat sets the next round's GAT and going forward.
+     * @param newPat sets the next round's PAT and going forward.
      */
-    function setGat(uint256 newGat) public override onlyOwner {
+    function setGatAndPat(uint256 newGat, uint256 newPat) public override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
+        require(newPat > 0 && newPat < 1e18);
         gat = newGat;
-        emit GatChanged(newGat);
+        pat = newPat;
+
+        emit GatAndPatChanged(newGat, newPat);
     }
 
     /**
@@ -852,7 +863,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
         if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (, int256 resolvedPrice) = voteInstance.results.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+            (, int256 resolvedPrice) =
+                voteInstance.results.getResolvedPrice(rounds[priceRequest.lastVotingRound].minParticipationRequirement);
             return (true, resolvedPrice, "");
         }
 
@@ -899,8 +911,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // a state change if and only if the this is the first reveal.
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
-        if (rounds[roundId].gat == 0) {
-            rounds[roundId].gat = gat; // Set the round gat percentage to the current global gat rate.
+        if (rounds[roundId].minParticipationRequirement == 0) {
+            // The minimum required participation for a vote to settle within this round is the greater of GAT (fixed
+            // number) and PAT * cumulativeStake (variable number that shifts with the number of staked tokens).
+            uint256 effectivePat = (pat * cumulativeStake) / 1e18;
+            rounds[roundId].minParticipationRequirement = gat > effectivePat ? gat : effectivePat;
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
         }
     }
@@ -932,7 +947,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Else, we are dealing with a request that can either be: a) deleted, b) rolled or c) resolved.
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
             (bool isResolvable, int256 resolvedPrice) =
-                voteInstance.results.getResolvedPrice(_computeGat(request.lastVotingRound));
+                voteInstance.results.getResolvedPrice(rounds[request.lastVotingRound].minParticipationRequirement);
 
             if (isResolvable) {
                 // If resolvable, resolve. This involves a) moving the requestId from pendingPriceRequestsIds array to
@@ -971,11 +986,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         rounds[currentRoundId].resolvedIndex = requestIndex; // Store the index traversed up to for this round.
     }
 
-    // Return the GAT: the minimum number of tokens needed to participate to resolve a vote.
-    function _computeGat(uint256 roundId) internal view returns (uint256) {
-        return rounds[roundId].gat;
-    }
-
     // Returns a price request status. A request is either: NotRequested, Active, Resolved or Future.
     function _getRequestStatus(PriceRequest storage priceRequest, uint256 currentRoundId)
         private
@@ -985,7 +995,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
         else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (bool isResolved, ) = voteInstance.results.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+            (bool isResolved, ) =
+                voteInstance.results.getResolvedPrice(rounds[priceRequest.lastVotingRound].minParticipationRequirement);
 
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
         } else if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;

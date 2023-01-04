@@ -11,8 +11,11 @@ const func = async function (hre) {
   const Finder = await deployments.get("Finder");
   const SlashingLibrary = await deployments.get("SlashingLibrary");
 
-  // Set the GAT to 5.5 million tokens.
+  // Set the GAT to 5.5 million tokens. This is the number of tokens that must participate to resolve a vote.
   const gat = web3.utils.toBN(web3.utils.toWei("5500000", "ether"));
+
+  // Set the PAT to 25%. This is the percentage of staked tokens that must participate to resolve a vote.
+  const pat = web3.utils.toBN(web3.utils.toWei("0.25", "ether"));
 
   const emissionRate = "640000000000000000"; // 0.64 UMA per second.
 
@@ -40,6 +43,7 @@ const func = async function (hre) {
         phaseLength,
         maxRolls,
         gat.toString(),
+        pat.toString(),
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,
@@ -57,6 +61,7 @@ const func = async function (hre) {
         phaseLength,
         maxRolls,
         gat.toString(),
+        pat.toString(),
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,
