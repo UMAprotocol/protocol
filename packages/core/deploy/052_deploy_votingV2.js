@@ -51,7 +51,7 @@ const func = async function (hre) {
         ZERO_ADDRESS,
       ],
       log: true,
-      skipIfAlreadyDeployed: false,
+      skipIfAlreadyDeployed: true,
     });
   } else {
     const submission = await deploy("VotingV2ControllableTiming", {
@@ -71,7 +71,7 @@ const func = async function (hre) {
         Timer.address,
       ],
       log: true,
-      skipIfAlreadyDeployed: false,
+      skipIfAlreadyDeployed: true,
     });
 
     // Save this under VotingV2 as well.
