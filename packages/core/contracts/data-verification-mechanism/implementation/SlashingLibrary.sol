@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "../interfaces/SlashingLibraryInterface.sol";
-import "./VotingV2.sol";
+import "hardhat/console.sol";
 
 /**
  * @title Slashing Library contract. Returns the how much a voter should be slashed per staked token as a function of
@@ -81,6 +81,7 @@ contract SlashingLibrary is SlashingLibraryInterface {
         bool isGovernance,
         bytes32 priceRequestId
     ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+        console.logBytes32(priceRequestId);
         return (
             isGovernance
                 ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)
