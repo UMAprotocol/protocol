@@ -439,7 +439,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         require(getVotePhase() == Phase.Reveal, "Reveal phase has not started yet"); // Can only reveal in reveal phase.
 
-        // 0 hashes are blocked in commit, so they indicate a different error: voter did not commit or already revealed.
+        // Zero hashes are blocked in commit, so they indicate a different error: voter did not commit or already revealed.
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
 
         // Check that the hash that was committed matches to the one that was revealed. Note that if the voter had
