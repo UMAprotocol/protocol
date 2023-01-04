@@ -113,7 +113,6 @@ describe("VotingV2", function () {
       await voting.methods.executeUnstake().send({ from: ac });
     }
 
-    // log voting v2 token balance
     const votingBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert(toBN(votingBalance).lt(toBN(10)), `votingBalance after withdraws should be <10 wei but is ${votingBalance}`);
   });
