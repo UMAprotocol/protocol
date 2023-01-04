@@ -578,21 +578,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
         PriceRequest storage priceRequest = priceRequests[resolvedPriceRequestIds[requestIndex]];
-
         VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
         uint256 totalVotes = voteInstance.results.totalVotes;
         uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
         uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound;
+        bool isGovernance = priceRequest.isGovernance;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            slashingLibrary.calcSlashing(
-                stakedAtRound,
-                totalVotes,
-                totalCorrectVotes,
-                requestIndex,
-                priceRequest.isGovernance
-            );
+            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, isGovernance);
 
         uint256 totalSlashed =
             ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
@@ -744,16 +738,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             uint256 totalStaked = rounds[request.lastVotingRound].cumulativeStakeAtRound;
             uint256 totalVotes = vote.results.totalVotes;
             uint256 totalCorrectVotes = vote.results.getTotalCorrectlyVotedTokens();
+            bool isGovernance = request.isGovernance;
 
             // Calculate aggregate metrics for this round. This informs how much slashing should be applied.
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
-                slashingLibrary.calcSlashing(
-                    totalStaked,
-                    totalVotes,
-                    totalCorrectVotes,
-                    requestIndex,
-                    request.isGovernance
-                );
+                slashingLibrary.calcSlashing(totalStaked, totalVotes, totalCorrectVotes, requestIndex, isGovernance);
 
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
