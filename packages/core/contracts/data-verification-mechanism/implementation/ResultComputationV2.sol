@@ -45,7 +45,7 @@ library ResultComputationV2 {
      * @notice Returns whether the result is resolved, and if so, what value it resolved to.
      * @dev `price` should be ignored if `isResolved` is false.
      * @param data contains information against which the `minVoteThreshold` is applied.
-     * @param minVoteThreshold min (exclusive) number of tokens that must have voted ()in any direction) for the result
+     * @param minVoteThreshold min (exclusive) number of tokens that must have voted (in any direction) for the result
      * to be valid. Used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      * @return isResolved indicates if the price has been resolved correctly.
      * @return price the price that the dvm resolved to.
