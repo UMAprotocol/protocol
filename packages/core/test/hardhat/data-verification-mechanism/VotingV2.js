@@ -31,6 +31,7 @@ const Timer = getContract("Timer");
 const SlashingLibrary = getContract("SlashingLibrary");
 const ZeroedSlashingSlashingLibraryTest = getContract("ZeroedSlashingSlashingLibraryTest");
 const PunitiveSlashingLibraryTest = getContract("PunitiveSlashingLibraryTest");
+const PriceIdentifierSlashingLibaryTest = getContract("PriceIdentifierSlashingLibaryTest");
 
 const { utf8ToHex, padRight } = web3.utils;
 
@@ -3540,7 +3541,7 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account2).call()).nextIndexToProcess, 2);
   });
 
-  it("Inactive user's should must slashed", async function () {
+  it("Inactive user's must be slashed", async function () {
     // In this test, a user stakes during an activeReveal phase, does not vote in several priceRequests
     // in successive rounds, and his stake remains inactive throughout, preventing him from being slashed.
     // The user receives the initial staked sum as well as the rewards for the constant emission rate at the end.
@@ -4585,6 +4586,114 @@ describe("VotingV2", function () {
     // Due to rounding drifts, we allow 1 WEI of error per round.
     assert(diff.lte(toBN(activeVotingRounds)));
   });
+
+  it("Slashing can be configured depending on price request identifier", async function () {
+    // The PriceIdentifierSlashingLibaryTest contract is used to test the ability to configure the slashing library
+    // depending on the price request identifier. The library has a hardcoded identifier "SAFE_NO_VOTE" that is
+    // whitelisted and will not slash no votes. All other identifiers will be slashed. The test uses this to ensure that
+    // the library is correctly configured and that the correct slashing is applied.
+
+    // Set up the contract and library.
+    const priceIdentifierSlashingLibaryTest = await PriceIdentifierSlashingLibaryTest.new(voting.options.address).send({
+      from: accounts[0],
+    });
+    await voting.methods
+      .setSlashingLibrary(priceIdentifierSlashingLibaryTest.options.address)
+      .send({ from: accounts[0] });
+
+    const whitelistedIdentifier = padRight(utf8ToHex("SAFE_NO_VOTE"), 64);
+    const identifier = padRight(utf8ToHex("slash"), 64);
+    const time = "10";
+
+    // Make the Oracle support these identifiers.
+    await supportedIdentifiers.methods.addSupportedIdentifier(whitelistedIdentifier).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    // Request two different price requests, one of the with the whitelistedIdentifier and move to the next round where
+    // they will be voted on.
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(whitelistedIdentifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Commit votes.
+    const price = 123;
+    const wrongPrice = 456;
+    const salt = getRandomSignedInt();
+
+    // Account1 vote correctly on both price requests.
+    // Account4 vote incorrectly on both price requests.
+
+    const hash1 = computeVoteHash({ price: price, salt: salt, account: account1, time, roundId, identifier });
+    const hash1Wrong = computeVoteHash({ price: wrongPrice, salt: salt, account: account4, time, roundId, identifier });
+    const hash2 = computeVoteHash({
+      price: price,
+      salt: salt,
+      account: account1,
+      time,
+      roundId,
+      identifier: whitelistedIdentifier,
+    });
+    const hash2Wrong = computeVoteHash({
+      price: wrongPrice,
+      salt: salt,
+      account: account4,
+      time,
+      roundId,
+      identifier: whitelistedIdentifier,
+    });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    await voting.methods.commitVote(identifier, time, hash1Wrong).send({ from: account4 });
+    await voting.methods.commitVote(whitelistedIdentifier, time, hash2).send({ from: account1 });
+    await voting.methods.commitVote(whitelistedIdentifier, time, hash2Wrong).send({ from: account4 });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: account4 });
+    await voting.methods.revealVote(whitelistedIdentifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(whitelistedIdentifier, time, wrongPrice, salt).send({ from: account4 });
+
+    // Price should resolve to the one that 2 and 3 voted for.
+    await moveToNextRound(voting, accounts[0]);
+
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 2);
+
+    // Check that the correct amount of tokens were slashed.
+    const slashingTracker = await voting.methods.requestSlashingTrackers(0).call();
+    const slashingTrackerWhitelisted = await voting.methods.requestSlashingTrackers(1).call();
+
+    // Non whitelisted identifier should slash 0.0016 per token for both no vote and wrong vote.
+    assert.equal(slashingTracker.wrongVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker.totalSlashed, toWei("108800")); // 64mm * 0.0016 + 4mm * 0.0016 = 108800
+    assert.equal(slashingTracker.totalCorrectVotes, toWei("32000000"));
+
+    // Whitelisted identifier should slash 0.0016 per token for wrong vote but not no vote.
+    assert.equal(slashingTrackerWhitelisted.wrongVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTrackerWhitelisted.noVoteSlashPerToken, toWei("0")); // No vote is not slashed.
+    assert.equal(slashingTrackerWhitelisted.totalSlashed, toWei("6400")); // 4mm * 0.0016 = 6400 (no vote is not slashed)
+    assert.equal(slashingTrackerWhitelisted.totalCorrectVotes, toWei("32000000"));
+
+    // Check that the correct amount of tokens were slashed.
+    assert.equal(
+      await voting.methods.getVoterStakePostUpdate(account1).call(),
+      toWei("32000000").add(toWei("108800")).add(toWei("6400"))
+    );
+
+    assert.equal(await voting.methods.getVoterStakePostUpdate(account2).call(), toWei("32000000").sub(toWei("51200")));
+
+    assert.equal(await voting.methods.getVoterStakePostUpdate(account3).call(), toWei("32000000").sub(toWei("51200")));
+
+    assert.equal(
+      await voting.methods.getVoterStakePostUpdate(account4).call(),
+      toWei("4000000").sub(toWei("6400")).sub(toWei("6400"))
+    );
+  });
+
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following

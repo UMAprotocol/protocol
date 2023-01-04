@@ -36,6 +36,7 @@ contract ZeroedSlashingSlashingLibraryTest is SlashingLibraryInterface {
         uint256 totalStaked,
         uint256 totalVotes,
         uint256 totalCorrectVotes,
+        uint256 priceRequestIndex,
         bool isGovernance
     ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         return (
