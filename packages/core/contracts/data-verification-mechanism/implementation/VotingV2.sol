@@ -590,8 +590,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 stakedAtRound,
                 totalVotes,
                 totalCorrectVotes,
-                priceRequest.isGovernance,
-                resolvedPriceRequestIds[requestIndex]
+                requestIndex,
+                priceRequest.isGovernance
             );
 
         uint256 totalSlashed =
@@ -751,8 +751,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                     totalStaked,
                     totalVotes,
                     totalCorrectVotes,
-                    request.isGovernance,
-                    resolvedPriceRequestIds[requestIndex]
+                    requestIndex,
+                    request.isGovernance
                 );
 
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
