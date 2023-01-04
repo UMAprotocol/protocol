@@ -950,7 +950,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 );
                 continue; // Continue to the next request.
             }
-            // If not resolvable, but the round has passed its voting round, then it must be deleted or resolved. First,
+            // If not resolvable, but the round has passed its voting round, then it must be deleted or rolled. First,
             // increment the rollCount. Use the difference between the current round and the last voting round to
             // accommodate the contract not being touched for any number of rounds during the roll.
             request.rollCount += currentRoundId - request.lastVotingRound;
