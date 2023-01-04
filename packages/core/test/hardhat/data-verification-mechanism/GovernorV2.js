@@ -817,7 +817,6 @@ describe("GovernorV2", function () {
       "3", // maxRolls
       web3.utils.toWei("5000000"), // 5% GAT
       web3.utils.toWei("0.25"), // 25% PAT
-      "0", // startingRequestIndex
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
