@@ -279,7 +279,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external override onlyOwner() onlyIfNotMigrated() {
+    ) external override onlyOwner onlyIfNotMigrated() {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
@@ -647,7 +647,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @dev Can only be called by the contract owner.
      * @param newVotingAddress the newly migrated contract address.
      */
-    function setMigrated(address newVotingAddress) external override onlyOwner() {
+    function setMigrated(address newVotingAddress) external override onlyOwner {
         migratedAddress = newVotingAddress;
         emit VotingContractMigrated(newVotingAddress);
     }
@@ -657,7 +657,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @dev Can only be called by the contract owner.
      * @param newMaxRolls the new number of rounds to roll a request before the DVM auto deletes it.
      */
-    function setMaxRolls(uint32 newMaxRolls) public override onlyOwner() {
+    function setMaxRolls(uint32 newMaxRolls) public override onlyOwner {
         require(newMaxRolls > 0, "Cannot set to 0");
         maxRolls = newMaxRolls;
         emit MaxRollsChanged(newMaxRolls);
@@ -671,7 +671,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newGat sets the next round's GAT and going forward.
      * @param newPat sets the next round's PAT and going forward.
      */
-    function setGatAndPat(uint256 newGat, uint256 newPat) public override onlyOwner() {
+    function setGatAndPat(uint256 newGat, uint256 newPat) public override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
         require(newPat > 0 && newPat < 1e18);
         gat = newGat;
@@ -684,7 +684,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner() {
+    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
         slashingLibrary = SlashingLibraryInterface(_newSlashingLibrary);
         emit SlashingLibraryChanged(_newSlashingLibrary);
     }
