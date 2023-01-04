@@ -149,6 +149,7 @@ describe("VotingV2", function () {
           2, // maxRolls
           validGat, // GAT
           invalidPat, // PAT
+          votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
           ZERO_ADDRESS,
