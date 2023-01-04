@@ -673,7 +673,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
     function setGatAndPat(uint256 newGat, uint256 newPat) public override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
-        require(pat > 0 && pat < 1e18);
+        require(newPat > 0 && newPat < 1e18);
         gat = newGat;
         pat = newPat;
 
@@ -951,7 +951,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (rounds[roundId].minParticipationRequirement == 0) {
             // The minimum required participation for a vote to settle within this round is the greater of GAT (fixed
             // number) and PAT * cumulativeStake (variable number that shifts with the number of staked tokens.).
-            rounds[roundId].minParticipationRequirement = gat > pat * cumulativeStake ? gat : pat * cumulativeStake;
+            uint256 effectivePat = (pat * cumulativeStake) / 1e18;
+            rounds[roundId].minParticipationRequirement = gat > effectivePat ? gat : effectivePat;
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
         }
     }
