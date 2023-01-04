@@ -723,7 +723,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // requests for each voter and for each request checks if the voter voted correctly or not. Based on the voters
     // voting activity the voters balance is updated accordingly. The caller can provide a maxTraversals parameter to
     // limit the number of resolved requests to traverse in this call to bound the gas used. Note that throughout this
-    //function we use the voters unappliedSlash to track any unapplied slashing still to be applied to the voter.
+    // function we use the voters unappliedSlash to track any unapplied slashing still to be applied to the voter.
     function _updateAccountSlashingTrackers(address voterAddress, uint64 maxTraversals) internal {
         VoterStake storage voterStake = voterStakes[voterAddress];
         uint64 requestIndex = voterStake.nextIndexToProcess; // Traverse all requests from the last considered request.
