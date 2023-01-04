@@ -358,7 +358,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     function _computePendingStakes(address voterAddress, uint256 amount) internal virtual;
 
     // Add a new stake amount to the voter's pending stake for a specific round id.
-    function _setPendingStake(
+    function _incrementPendingStake(
         address voterAddress,
         uint256 roundId,
         uint256 amount

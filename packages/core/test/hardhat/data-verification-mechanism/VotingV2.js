@@ -3791,22 +3791,22 @@ describe("VotingV2", function () {
     let statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
     assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 1);
 
-    // If we call resolveResolvablePriceRequests this should not change as it's for the next round.
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    // If we call processResolvablePriceRequests this should not change as it's for the next round.
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
     assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 1);
 
-    // Move to the next round so we can vote on this. Again, calling resolveResolvablePriceRequests should not change
+    // Move to the next round so we can vote on this. Again, calling processResolvablePriceRequests should not change
     // the lastVotingRound as we are currently in the voting round.
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
     assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 1);
 
     // Move to the next round without voting on this. This time, when we resolve resolvable price requests we should
     // see the lastVotingRound update to the current round.
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
     assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 2);
 
@@ -3820,20 +3820,20 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time, price2, salt).send({ from: account1 });
 
     // No changes made at this point.
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
     assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 2);
 
     // Move to the next round and resolve the price request. This should not change the lastVotingRound as we are settled.
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
     assert.equal(statuses[0].status.toString(), "2"); // status should be 2 for settled.
     assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 2);
 
-    // Equally, if we move to the next round and then call resolveResolvablePriceRequests, it should not change the value.
+    // Equally, if we move to the next round and then call processResolvablePriceRequests, it should not change the value.
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call();
     assert.equal(statuses[0].lastVotingRound.toString(), requestRound + 2);
   });
@@ -3872,7 +3872,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account1 });
 
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 2);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 2);
 
@@ -3899,7 +3899,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account1 });
 
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 4);
 
@@ -3931,19 +3931,19 @@ describe("VotingV2", function () {
 
     // Within the first active commit the roll counter should be 0.
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 0);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
 
     // Now, roll the votes by moving to the next round. We should see the roll count increment.
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 1);
 
     // Now, roll the votes up to the maxRolls. This is set to 3 by default
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 2);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 2);
 
@@ -3952,7 +3952,7 @@ describe("VotingV2", function () {
 
     // On the next roll these requests should be automatically removed from the pending array and become unresolvable.
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
 
     // Both requests should be deleted now. First, check events content and count. Then, check the state is purged.
     // Lastly, check the arrays were updated correctly.
@@ -3980,7 +3980,7 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
   });
   it("Handles calling settle during reveal", async function () {
-    // In the event that someone calls resolveResolvablePriceRequests() during the reveal phase, after a vote has reached
+    // In the event that someone calls processResolvablePriceRequests() during the reveal phase, after a vote has reached
     // the gat but before the end of the round.
     const identifier = padRight(utf8ToHex("slash-test"), 64);
     const time = 420;
@@ -4003,7 +4003,7 @@ describe("VotingV2", function () {
     // We are now in the reveal phase with the vote having met the gat. If someone tries to settle the request now
     // nothing should happen as the round is not over yet, even though the gat has been met.
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 1);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 1);
   });
   it("Handles multiple rolls with no contract interactions", async function () {
@@ -4025,18 +4025,18 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 0);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
 
-    // Now, roll two rounds forward. in neither round call resolveResolvablePriceRequests. The roll counter should still
+    // Now, roll two rounds forward. in neither round call processResolvablePriceRequests. The roll counter should still
     // be 0. Only after updating call it should we see both jump to 2.
 
     await moveToNextRound(voting, accounts[0]);
     await moveToNextRound(voting, accounts[0]);
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 0);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 2);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 2);
   });
-  it("Sequential interactions with resolveResolvablePriceRequests do not re-traverse pending requests", async function () {
+  it("Sequential interactions with processResolvablePriceRequests do not re-traverse pending requests", async function () {
     // Resolve resolvable price requests requires, in the worst case, to loop over all pending price requests. This is
     // an action that only needs to be done by the first account to interact with the voting contracts within a given
     // round. We can show this is the case by submitting a large number of requests (30) and then looking at the gas used
@@ -4048,15 +4048,15 @@ describe("VotingV2", function () {
 
     // look at the gas used to resolve the 30 requests. a second call should use a fraction of this gas.
 
-    let gasUsed1 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
-    let gasUsed2 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account2 })).gasUsed;
+    let gasUsed1 = (await voting.methods.processResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    let gasUsed2 = (await voting.methods.processResolvablePriceRequests().send({ from: account2 })).gasUsed;
     // The gas used on the first call should be at least 5x that of the second call.
     assert(gasUsed1 > gasUsed2 * 5);
 
     // Moving to the next round, we should need to re-spend the gas used on the first call and should see the same behavour.
     await moveToNextRound(voting, accounts[0]);
-    gasUsed1 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
-    gasUsed2 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account2 })).gasUsed;
+    gasUsed1 = (await voting.methods.processResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    gasUsed2 = (await voting.methods.processResolvablePriceRequests().send({ from: account2 })).gasUsed;
     assert(gasUsed1 > gasUsed2 * 5);
   });
 
@@ -4087,14 +4087,14 @@ describe("VotingV2", function () {
     );
 
     // Updating in range should update the resolvable index to 1.
-    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
     assert.equal(
       (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
       "1"
     );
 
-    // calling resolveResolvablePriceRequests should update to the end of the range.
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    // calling processResolvablePriceRequests should update to the end of the range.
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal(
       (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
       "4"
@@ -4110,20 +4110,20 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.priceRequests(request4Id).call()).rollCount, 0);
 
     // Now, update in range and we should see the number of indices update correspond to which requests are updated.
-    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
     assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 0);
     assert.equal((await voting.methods.priceRequests(request4Id).call()).rollCount, 0);
 
-    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 1);
     assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 0);
     assert.equal((await voting.methods.priceRequests(request4Id).call()).rollCount, 0);
 
     // Update the remaining.
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 1);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 1);
     assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 1);
@@ -4155,15 +4155,15 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 4);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
 
-    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 3);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 1);
 
-    await voting.methods.resolveResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 2);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 2);
 
-    await voting.methods.resolveResolvablePriceRequests().send({ from: accounts[0] });
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 4);
   });
@@ -4186,7 +4186,7 @@ describe("VotingV2", function () {
     // than ethereum mainnet but the same concept still applies).
     let didRunOutOfGas = false;
     try {
-      await voting.methods.resolveResolvablePriceRequests().send({ from: account1 });
+      await voting.methods.processResolvablePriceRequests().send({ from: account1 });
     } catch (error) {
       didRunOutOfGas = true;
       assert(error.data.stack.includes("Transaction ran out of gas"));
@@ -4194,14 +4194,14 @@ describe("VotingV2", function () {
     assert(didRunOutOfGas);
 
     // Now, show that we can still update by splitting this request into two goes. Let's do one of 315 and one of 310.
-    await voting.methods.resolveResolvablePriceRequestsRange(315).send({ from: account1 });
-    await voting.methods.resolveResolvablePriceRequestsRange(310).send({ from: account1 });
+    await voting.methods.processResolvablePriceRequestsRange(315).send({ from: account1 });
+    await voting.methods.processResolvablePriceRequestsRange(310).send({ from: account1 });
 
     // verify that we've traversed all the requests and that subsequent calls are very cheap.
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 625);
     const roundId = await voting.methods.getCurrentRoundId().call();
     assert.equal((await voting.methods.rounds(roundId).call()).resolvedIndex, 625);
-    const gasUsed1 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    const gasUsed1 = (await voting.methods.processResolvablePriceRequests().send({ from: account1 })).gasUsed;
     assert(gasUsed1 < 40000);
 
     // now, keep rolling until these requests are deletable.
@@ -4213,17 +4213,17 @@ describe("VotingV2", function () {
     // multiple transactions.
     didRunOutOfGas = false;
     try {
-      await voting.methods.resolveResolvablePriceRequests().send({ from: account1 });
+      await voting.methods.processResolvablePriceRequests().send({ from: account1 });
     } catch (error) {
       didRunOutOfGas = true;
       assert(error.data.stack.includes("Transaction ran out of gas"));
     }
     assert(didRunOutOfGas);
-    await voting.methods.resolveResolvablePriceRequestsRange(315).send({ from: account1 });
-    await voting.methods.resolveResolvablePriceRequestsRange(310).send({ from: account1 });
+    await voting.methods.processResolvablePriceRequestsRange(315).send({ from: account1 });
+    await voting.methods.processResolvablePriceRequestsRange(310).send({ from: account1 });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal((await voting.getPastEvents("RequestDeleted", { fromBlock: 0, toBlock: "latest" })).length, 625);
-    const gasUsed2 = (await voting.methods.resolveResolvablePriceRequests().send({ from: account1 })).gasUsed;
+    const gasUsed2 = (await voting.methods.processResolvablePriceRequests().send({ from: account1 })).gasUsed;
     assert(gasUsed2 < 40000);
   });
   it("Can successfully remove votes that need to be deleted, interspersed with valid votes", async function () {
@@ -4254,7 +4254,7 @@ describe("VotingV2", function () {
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequests().send({ from: account1 });
+    await voting.methods.processResolvablePriceRequests().send({ from: account1 });
 
     // There should now be 1 resolved request and 500 rolled requests.
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 500);
@@ -4267,8 +4267,8 @@ describe("VotingV2", function () {
     // Now, roll again and then update. this should delete these requests.
     await moveToNextRound(voting, accounts[0]);
     await moveToNextRound(voting, accounts[0]);
-    await voting.methods.resolveResolvablePriceRequestsRange(250).send({ from: account1 });
-    await voting.methods.resolveResolvablePriceRequestsRange(250).send({ from: account1 });
+    await voting.methods.processResolvablePriceRequestsRange(250).send({ from: account1 });
+    await voting.methods.processResolvablePriceRequestsRange(250).send({ from: account1 });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 1);
   });
