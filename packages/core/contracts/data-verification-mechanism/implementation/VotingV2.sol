@@ -664,10 +664,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Resets the GAT number and PAT percentage. The GAT is the minimum number of tokens that must participate
-     * in a vote for it to resolve (quorum number). The PAT is is the minimum percentage of tokens that must participate
-     * in a vote  for it to resolve (quorum percentage of staked tokens) Note: this change only applies to rounds that
-     * have not yet begun.
+     * @notice Resets the GAT number and PAT percentage. GAT is the minimum number of tokens that must participate in a
+     * vote for it to resolve (quorum number). PAT is the minimum percentage of tokens that must participate in a vote
+     *  for it to resolve (quorum percentage of staked tokens) This change only applies to subsequent rounds.
      * @param newGat sets the next round's GAT and going forward.
      * @param newPat sets the next round's PAT and going forward.
      */
@@ -950,7 +949,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // Only freeze the round if this is the first request in the round.
         if (rounds[roundId].minParticipationRequirement == 0) {
             // The minimum required participation for a vote to settle within this round is the greater of GAT (fixed
-            // number) and PAT * cumulativeStake (variable number that shifts with the number of staked tokens.).
+            // number) and PAT * cumulativeStake (variable number that shifts with the number of staked tokens).
             uint256 effectivePat = (pat * cumulativeStake) / 1e18;
             rounds[roundId].minParticipationRequirement = gat > effectivePat ? gat : effectivePat;
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
@@ -984,7 +983,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 voteInstance.results.getResolvedPrice(rounds[request.lastVotingRound].minParticipationRequirement);
 
             // If a request is not resolvable, but the round has passed its voting round, then it is either rollable or
-            // deletable (if it has rolled enough times.)
+            // deletable (if it has rolled enough times).
             if (!isResolvable) {
                 // Increment the rollCount. Use the difference between the current round and the last voting round to
                 // accommodate the contract not being touched for a few rounds during the roll.
