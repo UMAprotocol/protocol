@@ -590,10 +590,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 totalVotes = voteInstance.results.totalVotes;
         uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
         uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound;
-        bool isGovernance = priceRequest.isGovernance;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, isGovernance);
+            sl().calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, priceRequest.isGovernance);
 
         uint256 totalSlashed =
             ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
@@ -734,8 +733,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Updates the slashing trackers of a given account based on previous voting activity. This traverses all resolved
     // requests for each voter and for each request checks if the voter voted correctly or not. Based on the voters
     // voting activity the voters balance is updated accordingly. The caller can provide a maxTraversals parameter to
-    // limit the number of resolved requests to traverse in this call to bound the gas used. Note that throughout this
-    // function we use the voters unappliedSlash to track any unapplied slashing still to be applied to the voter.
+    // limit the number of resolved requests to traverse in this call to bound the gas used. Note each iteration of
+    // this function re-uses a fresh slash variable to produce useful logs on the amount a voter is slashed.
     function _updateAccountSlashingTrackers(address voterAddress, uint64 maxTraversals) internal {
         VoterStake storage voterStake = voterStakes[voterAddress];
         uint64 requestIndex = voterStake.nextIndexToProcess; // Traverse all requests from the last considered request.
@@ -791,10 +790,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // Set the account's nextIndexToProcess to the requestIndex so the next entry starts where we left off.
         voterStake.nextIndexToProcess = requestIndex;
-    }
-
-    function sl() internal returns (SlashingLibraryInterface) {
-        return slashingLibrary;
     }
 
     // Applies a given slash to a given voter's stake. In the event the sum of the slash and the voter's stake is less
@@ -1029,6 +1024,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Gas optimized uint64 decrement.
     function unsafe_dec_64(uint64 x) internal pure returns (uint64) {
         unchecked { return x - 1; }
+    }
+
+    function sl() internal view returns (SlashingLibraryInterface) {
+        return slashingLibrary;
     }
 
     // Returns the registered identifier whitelist, stored in the finder.
