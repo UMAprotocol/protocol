@@ -51,8 +51,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct Round {
-        uint256 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a price in this round.
-        uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a price in this round.
+        uint256 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
+        uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
     }
@@ -104,6 +104,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     address public migratedAddress; // If non-zero, this contract has been migrated to this address.
 
     uint256 public gat; // GAT: A minimum number of tokens that must participate to resolve a vote.
+
     uint256 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
 
     uint64 private constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
@@ -914,13 +915,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
         if (rounds[roundId].minParticipationRequirement == 0) {
-            // The minimum required participation for a vote to settle within this round is the GAT (fixed
-            // number).
+            // The minimum required participation for a vote to settle within this round is the GAT (fixed number).
             rounds[roundId].minParticipationRequirement = gat;
 
             // The minimum votes on the modal outcome for the vote to settle within this round is the SPAT (percentage).
-            uint256 effectiveSpat = (spat * cumulativeStake) / 1e18;
-            rounds[roundId].minAgreementRequirement = effectiveSpat;
+            rounds[roundId].minAgreementRequirement = (spat * cumulativeStake) / 1e18;
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
         }
     }
@@ -951,11 +950,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // Else, we are dealing with a request that can either be: a) deleted, b) rolled or c) resolved.
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
-            (bool isResolvable, int256 resolvedPrice) =
-                voteInstance.results.getResolvedPrice(
-                    rounds[request.lastVotingRound].minParticipationRequirement,
-                    rounds[request.lastVotingRound].minAgreementRequirement
-                );
+            (bool isResolvable, int256 resolvedPrice) = _getResolvedPrice(voteInstance, request.lastVotingRound);
+            // voteInstance.results.getResolvedPrice(
+            //     rounds[request.lastVotingRound].minParticipationRequirement,
+            //     rounds[request.lastVotingRound].minAgreementRequirement
+            // );
 
             if (isResolvable) {
                 // If resolvable, resolve. This involves a) moving the requestId from pendingPriceRequestsIds array to
@@ -1003,16 +1002,22 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
         else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (bool isResolved, ) =
-                voteInstance.results.getResolvedPrice(
-                    rounds[priceRequest.lastVotingRound].minParticipationRequirement,
-                    rounds[priceRequest.lastVotingRound].minAgreementRequirement
-                );
-
+            (bool isResolved, ) = _getResolvedPrice(voteInstance, priceRequest.lastVotingRound);
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
         } else if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;
-        // Means than priceRequest.lastVotingRound > currentRoundId
-        else return RequestStatus.Future;
+        else return RequestStatus.Future; // Means than priceRequest.lastVotingRound > currentRoundId
+    }
+
+    function _getResolvedPrice(VoteInstance storage voteInstance, uint256 lastVotingRound)
+        internal
+        view
+        returns (bool isResolved, int256 price)
+    {
+        return
+            voteInstance.results.getResolvedPrice(
+                rounds[lastVotingRound].minParticipationRequirement,
+                rounds[lastVotingRound].minAgreementRequirement
+            );
     }
 
     // Gas optimized uint256 increment.
