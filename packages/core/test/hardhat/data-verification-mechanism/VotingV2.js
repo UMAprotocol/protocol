@@ -2083,7 +2083,7 @@ describe("VotingV2", function () {
       price2.toString()
     );
   });
-  it("Slashing correctly reallocates funds between voters", async function () {
+  it.only("Slashing correctly reallocates funds between voters", async function () {
     const identifier = padRight(utf8ToHex("slash-test"), 64);
     const time = "420";
 

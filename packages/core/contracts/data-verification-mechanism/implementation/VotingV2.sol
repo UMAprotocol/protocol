@@ -754,26 +754,20 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // Calculate aggregate metrics for this round. This informs how much slashing should be applied.
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
-                slashingLibrary.calcSlashing(
-                    totalStaked,
-                    totalVotes,
-                    totalCorrectVotes,
-                    requestIndex,
-                    request.isGovernance
-                );
+                sl().calcSlashing(totalStaked, totalVotes, totalCorrectVotes, requestIndex, request.isGovernance);
 
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
             uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[request.lastVotingRound];
-            int256 slashAmount; // The amount to slash the voter by for this request.
+            int256 slash; // The amount to slash the voter by for this request. Reset on each entry to emit useful logs.
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (vote.voteSubmissions[voterAddress].revealHash == 0)
-                slashAmount = -int256((effectiveStake * noVoteSlashPerToken) / 1e18);
+                slash = -int256((effectiveStake * noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!vote.results.wasVoteCorrect(vote.voteSubmissions[voterAddress].revealHash))
-                slashAmount = -int256((effectiveStake * wrongVoteSlashPerToken) / 1e18);
+                slash = -int256((effectiveStake * wrongVoteSlashPerToken) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
@@ -782,15 +776,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 uint256 totalSlashed =
                     ((noVoteSlashPerToken * (totalStaked - totalVotes)) +
                         (wrongVoteSlashPerToken * (totalVotes - totalCorrectVotes))) / 1e18;
-                slashAmount = int256((effectiveStake * totalSlashed) / totalCorrectVotes);
+                slash = int256((effectiveStake * totalSlashed) / totalCorrectVotes);
             }
 
-            // Add the slash amount of the processed price request to the voter's unappliedSlash
-            voterStake.unappliedSlash += slashAmount;
-            emit VoterSlashed(voterAddress, requestIndex, slashAmount);
+            emit VoterSlashed(voterAddress, requestIndex, slash);
 
             // If the next round is different to the current considered round, apply the slash to the voter.
-            if (isNextRequestRoundDifferent(requestIndex)) _applySlashToVoter(voterStake, voterAddress);
+
+            if (isNextRequestRoundDifferent(requestIndex)) _applySlashToVoter(voterStake, slash, voterAddress);
+            else voterStake.unappliedSlash += slash; // Add slash of the processed price request to voter's unappliedSlash.
 
             requestIndex = unsafe_inc_64(requestIndex); // Increment the request index.
         }
@@ -799,15 +793,21 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         voterStake.nextIndexToProcess = requestIndex;
     }
 
+    function sl() internal returns (SlashingLibraryInterface) {
+        return slashingLibrary;
+    }
+
     // Applies a given slash to a given voter's stake. In the event the sum of the slash and the voter's stake is less
     // than 0, the voter's stake is set to 0 to prevent the voter's stake from going negative. unappliedSlash tracked
     // all slashing the staker has received but not yet applied to their stake. Apply it then set it to zero.
-    function _applySlashToVoter(VoterStake storage voterStake, address voterAddress) internal {
-        if (voterStake.unappliedSlash + int256(voterStake.stake) > 0)
-            voterStake.stake = uint256(int256(voterStake.stake) + voterStake.unappliedSlash);
+    function _applySlashToVoter(
+        VoterStake storage voterStake,
+        int256 slash,
+        address voterAddress
+    ) internal {
+        if (slash + int256(voterStake.stake) > 0) voterStake.stake = uint256(int256(voterStake.stake) + slash);
         else voterStake.stake = 0;
-        emit VoterSlashApplied(voterAddress, voterStake.unappliedSlash, voterStake.stake);
-        voterStake.unappliedSlash = 0;
+        emit VoterSlashApplied(voterAddress, slash, voterStake.stake);
     }
 
     // Checks if the next round (index+1) is different to the current round (index).
