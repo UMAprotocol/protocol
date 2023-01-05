@@ -782,9 +782,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // If the next round is different to the current considered round, apply the slash to the voter.
 
-            if (isNextRequestRoundDifferent(requestIndex))
+            if (isNextRequestRoundDifferent(requestIndex)) {
                 _applySlashToVoter(voterStake, voterStake.unappliedSlash + slash, voterAddress);
-            else voterStake.unappliedSlash += slash; // Add slash of the processed price request to voter's unappliedSlash.
+                voterStake.unappliedSlash = 0; // Reset the unapplied slash to zero.
+            } else voterStake.unappliedSlash += slash; // Add slash of the processed price request to voter's unappliedSlash.
 
             requestIndex = unsafe_inc_64(requestIndex); // Increment the request index.
         }
@@ -803,7 +804,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     ) internal {
         if (slash + int256(voterStake.stake) > 0) voterStake.stake = uint256(int256(voterStake.stake) + slash);
         else voterStake.stake = 0;
-        voterStake.unappliedSlash = 0;
         emit VoterSlashApplied(voterAddress, slash, voterStake.stake);
     }
 
