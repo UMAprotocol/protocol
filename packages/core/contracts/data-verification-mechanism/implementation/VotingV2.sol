@@ -174,7 +174,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event MaxRollsChanged(uint32 newMaxRolls);
 
-    event VoterSlashed(address indexed voter, int256 slashedTokens, uint256 postStake);
+    event VoterSlashApplied(address indexed voter, int256 slashedTokens, uint256 postStake);
+
+    event VoterSlashed(address indexed voter, uint256 requestIndex, int256 slashedTokens);
 
     /**
      * @notice Construct the VotingV2 contract.
@@ -758,14 +760,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
             uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[request.lastVotingRound];
+            int256 slashAmount; // The amount to slash the voter by for this request.
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (vote.voteSubmissions[voterAddress].revealHash == 0)
-                voterStake.unappliedSlash -= int256((effectiveStake * noVoteSlashPerToken) / 1e18);
+                slashAmount = -int256((effectiveStake * noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!vote.results.wasVoteCorrect(vote.voteSubmissions[voterAddress].revealHash))
-                voterStake.unappliedSlash -= int256((effectiveStake * wrongVoteSlashPerToken) / 1e18);
+                slashAmount = -int256((effectiveStake * wrongVoteSlashPerToken) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
@@ -774,8 +777,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 uint256 totalSlashed =
                     ((noVoteSlashPerToken * (totalStaked - totalVotes)) +
                         (wrongVoteSlashPerToken * (totalVotes - totalCorrectVotes))) / 1e18;
-                voterStake.unappliedSlash += int256((effectiveStake * totalSlashed) / totalCorrectVotes);
+                slashAmount = int256((effectiveStake * totalSlashed) / totalCorrectVotes);
             }
+
+            // Add the slash amount of the processed price request to the voter's unappliedSlash
+            voterStake.unappliedSlash += slashAmount;
+            emit VoterSlashed(voterAddress, requestIndex, slashAmount);
 
             // If the next round is different to the current considered round, apply the slash to the voter.
             if (isNextRequestRoundDifferent(requestIndex)) _applySlashToVoter(voterStake, voterAddress);
@@ -794,7 +801,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (voterStake.unappliedSlash + int256(voterStake.stake) > 0)
             voterStake.stake = uint256(int256(voterStake.stake) + voterStake.unappliedSlash);
         else voterStake.stake = 0;
-        emit VoterSlashed(voterAddress, voterStake.unappliedSlash, voterStake.stake);
+        emit VoterSlashApplied(voterAddress, voterStake.unappliedSlash, voterStake.stake);
         voterStake.unappliedSlash = 0;
     }
 
