@@ -97,12 +97,30 @@ describe("VotingV2", function () {
       if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
 
     if (!voting.events["VoterSlashApplied"]) return;
-    const events = await voting.getPastEvents("VoterSlashApplied", { fromBlock: 0, toBlock: "latest" });
-    const sum = events.map((e) => e.returnValues.slashedTokens).reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+    const voterSlashAppliedEvents = await voting.getPastEvents("VoterSlashApplied", {
+      fromBlock: 0,
+      toBlock: "latest",
+    });
+    const sumSlashApplied = voterSlashAppliedEvents
+      .map((e) => e.returnValues.slashedTokens)
+      .reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+
+    assert(
+      sumSlashApplied.lte(toBN(10)),
+      `VoterSlashApplied events should sum to <10 wei, but sum is ${sumSlashApplied.toString()}`
+    );
+
+    const voterSlashedEvents = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const sumVoterSlashed = voterSlashedEvents
+      .map((e) => e.returnValues.slashedTokens)
+      .reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+
+    assert(
+      sumVoterSlashed.lte(toBN(10)),
+      `VoterSlashed events should sum to <10 wei, but sum is ${sumVoterSlashed.toString()}`
+    );
 
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-
-    assert(sum.lte(toBN(10)), `VoterSlashApplied events should sum to <10 wei, but sum is ${sum.toString()}`);
 
     if ((await voting.methods.getVotePhase().call()) == 1) await moveToNextRound(voting, accounts[0]);
 
@@ -1130,6 +1148,10 @@ describe("VotingV2", function () {
       return ev.slashedTokens != "0" && ev.postStake != "0" && ev.voter != "";
     });
 
+    await assertEventEmitted(result, voting, "VoterSlashed", (ev) => {
+      return ev.slashedTokens != "0" && ev.requestIndex == "0" && ev.voter == account1;
+    });
+
     result = await voting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
     await assertEventEmitted(result, voting, "VotingContractMigrated", (ev) => {
       return ev.newAddress == migratedVoting;
@@ -2083,7 +2105,7 @@ describe("VotingV2", function () {
       price2.toString()
     );
   });
-  it.only("Slashing correctly reallocates funds between voters", async function () {
+  it("Slashing correctly reallocates funds between voters", async function () {
     const identifier = padRight(utf8ToHex("slash-test"), 64);
     const time = "420";
 
