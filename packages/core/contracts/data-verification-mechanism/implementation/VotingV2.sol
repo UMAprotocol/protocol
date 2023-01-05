@@ -52,7 +52,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     struct Round {
         uint256 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a price in this round.
-        uint256 minAgreementRequirment; // Minimum staked tokens that must agree on an outcome to resolve a price in this round.
+        uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a price in this round.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
     }
@@ -865,7 +865,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             (, int256 resolvedPrice) =
                 voteInstance.results.getResolvedPrice(
                     rounds[priceRequest.lastVotingRound].minParticipationRequirement,
-                    rounds[priceRequest.lastVotingRound].minAgreementRequirment
+                    rounds[priceRequest.lastVotingRound].minAgreementRequirement
                 );
             return (true, resolvedPrice, "");
         }
@@ -920,7 +920,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // The minimum votes on the modal outcome for the vote to settle within this round is the SPAT (percentage).
             uint256 effectiveSpat = (spat * cumulativeStake) / 1e18;
-            rounds[roundId].minAgreementRequirment = effectiveSpat;
+            rounds[roundId].minAgreementRequirement = effectiveSpat;
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
         }
     }
@@ -954,7 +954,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             (bool isResolvable, int256 resolvedPrice) =
                 voteInstance.results.getResolvedPrice(
                     rounds[request.lastVotingRound].minParticipationRequirement,
-                    rounds[request.lastVotingRound].minAgreementRequirment
+                    rounds[request.lastVotingRound].minAgreementRequirement
                 );
 
             if (isResolvable) {
@@ -1006,7 +1006,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             (bool isResolved, ) =
                 voteInstance.results.getResolvedPrice(
                     rounds[priceRequest.lastVotingRound].minParticipationRequirement,
-                    rounds[priceRequest.lastVotingRound].minAgreementRequirment
+                    rounds[priceRequest.lastVotingRound].minAgreementRequirement
                 );
 
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
