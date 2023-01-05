@@ -176,7 +176,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event VoterSlashApplied(address indexed voter, int256 slashedTokens, uint256 postStake);
 
-    event VoterSlashed(address indexed voter, uint256 requestIndex, int256 slashedTokens);
+    event VoterSlashed(address indexed voter, uint256 indexed requestIndex, int256 slashedTokens);
 
     /**
      * @notice Construct the VotingV2 contract.
