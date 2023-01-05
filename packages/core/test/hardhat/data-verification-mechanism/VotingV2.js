@@ -97,6 +97,8 @@ describe("VotingV2", function () {
       if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
 
     if (!voting.events["VoterSlashApplied"]) return;
+
+    // Check that the sum of all VoterSlashApplied events is ~0.
     const voterSlashAppliedEvents = await voting.getPastEvents("VoterSlashApplied", {
       fromBlock: 0,
       toBlock: "latest",
@@ -110,6 +112,7 @@ describe("VotingV2", function () {
       `VoterSlashApplied events should sum to <10 wei, but sum is ${sumSlashApplied.toString()}`
     );
 
+    // Check that the sum of all VoterSlashed events is ~0.
     const voterSlashedEvents = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
     const sumVoterSlashed = voterSlashedEvents
       .map((e) => e.returnValues.slashedTokens)
