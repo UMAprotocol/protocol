@@ -33,8 +33,9 @@ library ResultComputationV2 {
     ) internal {
         data.totalVotes += numberTokens;
         data.voteFrequency[votePrice] += numberTokens;
-        if (votePrice != data.currentMode && data.voteFrequency[votePrice] > data.voteFrequency[data.currentMode])
+        if (votePrice != data.currentMode && data.voteFrequency[votePrice] > data.voteFrequency[data.currentMode]) {
             data.currentMode = votePrice;
+        }
     }
 
     /****************************************

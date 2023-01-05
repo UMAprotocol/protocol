@@ -41,10 +41,6 @@ describe("VotingV2", function () {
   let voting, votingToken, registry, supportedIdentifiers, registeredContract, unregisteredContract, migratedVoting;
   let accounts, account1, account2, account3, account4, rand;
 
-  const setNewGatAndPat = async (gat, pat) => {
-    await voting.methods.setGatAndPat(gat, pat).send({ from: accounts[0] });
-  };
-
   beforeEach(async function () {
     accounts = await web3.eth.getAccounts();
     [account1, account2, account3, account4, rand, registeredContract, unregisteredContract, migratedVoting] = accounts;
@@ -120,10 +116,10 @@ describe("VotingV2", function () {
 
   it("Constructor", async function () {
     // GAT must be < total supply
-    const invalidGat = web3.utils.toWei("100000000");
-    const validGat = web3.utils.toWei("5500000");
-    const invalidPat = web3.utils.toWei("10");
-    const validPat = web3.utils.toWei("0.25");
+    const invalidGat = toWei("100000000");
+    const validGat = toWei("5500000");
+    const invalidSpat = toWei("10");
+    const validSpat = toWei("0.25");
     assert(
       await didContractThrow(
         VotingV2.new(
@@ -132,7 +128,7 @@ describe("VotingV2", function () {
           86400, // PhaseLength
           2, // maxRolls
           invalidGat, // GAT
-          validPat, // PAT
+          validSpat, // SPAT
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -149,7 +145,7 @@ describe("VotingV2", function () {
           86400, // PhaseLength
           2, // maxRolls
           validGat, // GAT
-          invalidPat, // PAT
+          invalidSpat, // SPAT
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -666,6 +662,8 @@ describe("VotingV2", function () {
   });
 
   it("Equally split vote", async function () {
+    // We need to set a SPAT of 50% for this test due to the sizes of each of the stakers.
+    await voting.methods.setGatAndSpat(toWei("5500000", "ether"), toWei("0.5", "ether")).send({ from: accounts[0] });
     const identifier = padRight(utf8ToHex("equal-split"), 64);
     const time = "1000";
 
@@ -685,7 +683,7 @@ describe("VotingV2", function () {
 
     const price2 = 456;
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({ price: price2, salt: salt2, account: account2, time, roundId, identifier });
+    let hash2 = computeVoteHash({ price: price2, salt: salt2, account: account2, time, roundId, identifier });
     await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
 
     // Reveal the votes.
@@ -697,14 +695,24 @@ describe("VotingV2", function () {
     // Should not have the price since the vote was equally split.
     await moveToNextRound(voting, accounts[0]);
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    // console.log(
+    //   "await voting.methods.getPrice(identifier, time).call({ from: registeredContract })",
+    //   await voting.methods.getPrice(identifier, time).call({ from: registeredContract })
+    // );
     assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
 
     // Cleanup: resolve the vote this round.
     hash1 = computeVoteHash({ price: price1, salt: salt1, account: account1, time, roundId, identifier });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    hash2 = computeVoteHash({ price: price1, salt: salt1, account: account2, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
     await moveToNextPhase(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price1, salt1).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price1, salt1).send({ from: account2 });
+
+    await moveToNextRound(voting, accounts[0]);
+    assert.isTrue(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
   });
 
   it("Two thirds majority", async function () {
@@ -755,8 +763,8 @@ describe("VotingV2", function () {
     const identifier = padRight(utf8ToHex("gat"), 64);
     let time = "1000";
 
-    // Set GAT to 5.5M and PAT to ~0 so that the GAT is the limiting factor.
-    await setNewGatAndPat(web3.utils.toWei("5500000", "ether"), "1");
+    // Set GAT to 5.5M and SPAT to ~0 so that the GAT is the limiting factor.
+    await voting.methods.setGatAndSpat(toWei("5500000", "ether"), "1").send({ from: accounts[0] });
 
     // Make the Oracle support this identifier.
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
@@ -783,16 +791,16 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
 
-    // Setting GAT and PAT should revert if GAT is larger than total supply.
+    // Setting GAT and SPAT should revert if GAT is larger than total supply.
     assert(
       await didContractThrow(
-        voting.methods.setGatAndPat(toWei("110000000").toString(), "1").send({ from: accounts[0] })
+        voting.methods.setGatAndSpat(toWei("110000000").toString(), "1").send({ from: accounts[0] })
       )
     );
 
     // With a smaller GAT value of 3%, account4 can pass the vote on their own with 4% of all tokens.
-    // Again set PAT to ~0 so that the GAT is the limiting factor.
-    await setNewGatAndPat(web3.utils.toWei("3000000", "ether"), "1");
+    // Again set SPAT to ~0 so that the GAT is the limiting factor.
+    await voting.methods.setGatAndSpat(toWei("3000000", "ether"), "1").send({ from: accounts[0] });
 
     // Create new vote hashes with the new round ID and commit votes.
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -809,7 +817,7 @@ describe("VotingV2", function () {
     );
     // Set GAT back to 5% and test a larger vote. With more votes the GAT should be hit
     // and the price should resolve.
-    await setNewGatAndPat(web3.utils.toWei("5000000", "ether"), "1");
+    await voting.methods.setGatAndSpat(toWei("5000000", "ether"), "1").send({ from: accounts[0] });
 
     // As the previous request has been filled, we need to progress time such that we
     // can vote on the same identifier and request a new price to vote on.
@@ -839,12 +847,12 @@ describe("VotingV2", function () {
     );
   });
 
-  it("PAT", async function () {
+  it("SPAT", async function () {
     const identifier = padRight(utf8ToHex("gat"), 64);
     let time = "1000";
 
-    // Set GAT to ~0 and PAT to 33% so that the PAT is the limiting factor and a voter with 32M tokens cannot pass a vote.
-    await setNewGatAndPat("1", web3.utils.toWei("0.33", "ether"));
+    // Set GAT to ~0 and SPAT to 33% so that the SPAT is the limiting factor and a voter with 32M tokens cannot pass a vote.
+    await voting.methods.setGatAndSpat("1", toWei("0.33", "ether")).send({ from: accounts[0] });
 
     // Make the Oracle support this identifier.
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
@@ -865,17 +873,17 @@ describe("VotingV2", function () {
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
 
-    // Since the PAT was not hit, the price should not resolve.
+    // Since the SPAT was not hit, the price should not resolve.
     await moveToNextRound(voting, accounts[0]);
     assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
 
-    // Setting PAT should revert if larger than 1.
+    // Setting SPAT should revert if larger than 1.
     assert(
-      await didContractThrow(voting.methods.setGatAndPat("1", toWei("1.1").toString()).send({ from: accounts[0] }))
+      await didContractThrow(voting.methods.setGatAndSpat("1", toWei("1.1").toString()).send({ from: accounts[0] }))
     );
 
-    // With a smaller PAT value of 30%, account1 can pass the vote on their own with 32% of all staked tokens.
-    await setNewGatAndPat("1", web3.utils.toWei("0.30", "ether"));
+    // With a smaller SPAT value of 30%, account1 can pass the vote on their own with 32% of all staked tokens.
+    await voting.methods.setGatAndSpat("1", toWei("0.30", "ether")).send({ from: accounts[0] });
 
     // Create new vote hashes with the new round ID and commit votes.
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -891,12 +899,12 @@ describe("VotingV2", function () {
       price.toString()
     );
 
-    // Set PAT back to 33% and test a larger vote. With more votes the PAT should be hit
+    // Set SPAT back to 33% and test a larger vote. With more votes the SPAT should be hit
     // and the price should resolve.
-    await setNewGatAndPat("1", web3.utils.toWei("0.33", "ether"));
+    await voting.methods.setGatAndSpat("1", toWei("0.33", "ether")).send({ from: accounts[0] });
 
-    // As the previous request has been filled, we need to progress time such that we
-    // can vote on the same identifier and request a new price to vote on.
+    // As the previous request has been filled, we need to progress time such that we can vote on the same identifier
+    // and request a new price to vote on.
     time += 10;
 
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
@@ -904,17 +912,67 @@ describe("VotingV2", function () {
 
     // Commit votes.
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-    const hash4 = computeVoteHash({ price, salt, account: account4, time, roundId, identifier });
     hash1 = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
-    await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    let hash2 = computeVoteHash({ price, salt, account: account4, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account4 });
 
     // Reveal votes.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
 
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+
+    // Finally, show how the SPAT can be used to force votes to roll without a given amount of participation. Set SPAT
+    // to 50%.
+    await voting.methods.setGatAndSpat(toWei("5500000", "ether"), toWei("0.5", "ether")).send({ from: accounts[0] });
+    time += 11;
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    // Commit votes from account1 (32mm) and account4 (4mm). This is enough to meet the gat but not the spat. This should
+    // cause the vote to roll.
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    hash1 = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    hash2 = computeVoteHash({ price, salt, account: account4, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account4 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal votes.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
+
+    // The price request should have rolled.
+    const request3Id = await voting.methods.pendingPriceRequestsIds(0).call();
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 1);
+
+    // Now, commit and reveal, meet the GAT and the SPAT and this time it should resolve. have account1 and account2
+    // vote on the same price and account4 vote on a different price. This way there is both enough participation and
+    // the gat is met.
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    hash1 = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    hash2 = computeVoteHash({ price, salt, account: account2, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
+    let hash3 = computeVoteHash({ price: price + 1, salt, account: account4, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash3).send({ from: account4 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal votes.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
+
+    await voting.methods.revealVote(identifier, time, price + 1, salt).send({ from: account4 });
     await moveToNextRound(voting, accounts[0]);
 
     assert.equal(
@@ -1062,13 +1120,11 @@ describe("VotingV2", function () {
     });
 
     await assertEventEmitted(
-      await voting.methods
-        .setGatAndPat(web3.utils.toWei("6000000", "ether"), web3.utils.toWei("0.25", "ether"))
-        .send({ from: accounts[0] }),
+      await voting.methods.setGatAndSpat(toWei("6000000", "ether"), toWei("0.25", "ether")).send({ from: accounts[0] }),
       voting,
-      "GatAndPatChanged",
+      "GatAndSpatChanged",
       (ev) => {
-        return ev.newGat == web3.utils.toWei("6000000", "ether") && ev.newPat == web3.utils.toWei("0.25", "ether");
+        return ev.newGat == toWei("6000000", "ether") && ev.newSpat == toWei("0.25", "ether");
       }
     );
 
@@ -1386,8 +1442,8 @@ describe("VotingV2", function () {
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       2, // maxRolls
-      web3.utils.toWei("5000000"), // GAT 5MM
-      web3.utils.toWei("0.25"), // PAT 25%
+      toWei("5000000"), // GAT 5MM
+      toWei("0.25"), // PAT 25%
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -3682,9 +3738,9 @@ describe("VotingV2", function () {
 
     await voting.methods.stake(toWei("32000000")).send({ from: rand });
 
-    // This raises the cumulative stake to 132M so we need to lower the PAT to 20% to allow a voter with 32M to reach
+    // This raises the cumulative stake to 132M so we need to lower the SPAT to 20% to allow a voter with 32M to reach
     // the threshold.
-    await voting.methods.setGatAndPat(toWei("5"), toWei("0.2")).send({ from: accounts[0] });
+    await voting.methods.setGatAndSpat(toWei("5"), toWei("0.2")).send({ from: accounts[0] });
 
     await moveToNextRound(voting, accounts[0]);
 

@@ -863,11 +863,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
         if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (, int256 resolvedPrice) =
-                voteInstance.results.getResolvedPrice(
-                    rounds[priceRequest.lastVotingRound].minParticipationRequirement,
-                    rounds[priceRequest.lastVotingRound].minAgreementRequirement
-                );
+            (, int256 resolvedPrice) = _getResolvedPrice(voteInstance, priceRequest.lastVotingRound);
             return (true, resolvedPrice, "");
         }
 
@@ -951,10 +947,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Else, we are dealing with a request that can either be: a) deleted, b) rolled or c) resolved.
             VoteInstance storage voteInstance = request.voteInstances[request.lastVotingRound];
             (bool isResolvable, int256 resolvedPrice) = _getResolvedPrice(voteInstance, request.lastVotingRound);
-            // voteInstance.results.getResolvedPrice(
-            //     rounds[request.lastVotingRound].minParticipationRequirement,
-            //     rounds[request.lastVotingRound].minAgreementRequirement
-            // );
 
             if (isResolvable) {
                 // If resolvable, resolve. This involves a) moving the requestId from pendingPriceRequestsIds array to
