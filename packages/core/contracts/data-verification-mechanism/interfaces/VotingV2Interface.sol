@@ -161,14 +161,14 @@ abstract contract VotingV2Interface {
     function setMaxRolls(uint32 newMaxRolls) external virtual;
 
     /**
-     * @notice Resets the GAT number and PAT percentage. The GAT is the minimum number of tokens that must participate
-     * in a vote for it to resolve (quorum number). The PAT is is the minimum percentage of tokens that must participate
-     * in a vote  for it to resolve (quorum percentage of staked tokens) Note: this change only applies to rounds that
+     * @notice Resets the GAT number and SPAT percentage. The GAT is the minimum number of tokens that must participate
+     * in a vote for it to resolve (quorum number). The SPAT is is the minimum percentage of tokens that must agree
+     * in a vote for it to resolve (percentage of staked tokens) Note: this change only applies to rounds that
      * have not yet begun.
      * @param newGat sets the next round's GAT and going forward.
-     * @param newPat sets the next round's PAT and going forward.
+     * @param newSpat sets the next round's SPAT and going forward.
      */
-    function setGatAndPat(uint256 newGat, uint256 newPat) external virtual;
+    function setGatAndSpat(uint256 newGat, uint256 newSpat) external virtual;
 
     /**
      * @notice Changes the slashing library used by this contract.
