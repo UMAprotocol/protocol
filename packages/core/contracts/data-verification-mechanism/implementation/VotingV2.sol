@@ -592,7 +592,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            sl().calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, priceRequest.isGovernance);
+            slashingLibrary.calcSlashing(
+                stakedAtRound,
+                totalVotes,
+                totalCorrectVotes,
+                requestIndex,
+                priceRequest.isGovernance
+            );
 
         uint256 totalSlashed =
             ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
@@ -753,7 +759,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // Calculate aggregate metrics for this round. This informs how much slashing should be applied.
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
-                sl().calcSlashing(totalStaked, totalVotes, totalCorrectVotes, requestIndex, request.isGovernance);
+                slashingLibrary.calcSlashing(
+                    totalStaked,
+                    totalVotes,
+                    totalCorrectVotes,
+                    requestIndex,
+                    request.isGovernance
+                );
 
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
@@ -779,13 +791,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             }
 
             emit VoterSlashed(voterAddress, requestIndex, slash);
+            voterStake.unappliedSlash += slash;
 
             // If the next round is different to the current considered round, apply the slash to the voter.
-
-            if (isNextRequestRoundDifferent(requestIndex)) {
-                _applySlashToVoter(voterStake, voterStake.unappliedSlash + slash, voterAddress);
-                voterStake.unappliedSlash = 0; // Reset the unapplied slash to zero.
-            } else voterStake.unappliedSlash += slash; // Add slash of the processed price request to voter's unappliedSlash.
+            if (isNextRequestRoundDifferent(requestIndex)) _applySlashToVoter(voterStake, voterAddress);
 
             requestIndex = unsafe_inc_64(requestIndex); // Increment the request index.
         }
@@ -797,14 +806,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Applies a given slash to a given voter's stake. In the event the sum of the slash and the voter's stake is less
     // than 0, the voter's stake is set to 0 to prevent the voter's stake from going negative. unappliedSlash tracked
     // all slashing the staker has received but not yet applied to their stake. Apply it then set it to zero.
-    function _applySlashToVoter(
-        VoterStake storage voterStake,
-        int256 slash,
-        address voterAddress
-    ) internal {
-        if (slash + int256(voterStake.stake) > 0) voterStake.stake = uint256(int256(voterStake.stake) + slash);
+    function _applySlashToVoter(VoterStake storage voterStake, address voterAddress) internal {
+        if (voterStake.unappliedSlash + int256(voterStake.stake) > 0)
+            voterStake.stake = uint256(int256(voterStake.stake) + voterStake.unappliedSlash);
         else voterStake.stake = 0;
-        emit VoterSlashApplied(voterAddress, slash, voterStake.stake);
+        emit VoterSlashApplied(voterAddress, voterStake.unappliedSlash, voterStake.stake);
+        voterStake.unappliedSlash = 0;
     }
 
     // Checks if the next round (index+1) is different to the current round (index).
@@ -1026,10 +1033,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Gas optimized uint64 decrement.
     function unsafe_dec_64(uint64 x) internal pure returns (uint64) {
         unchecked { return x - 1; }
-    }
-
-    function sl() internal view returns (SlashingLibraryInterface) {
-        return slashingLibrary;
     }
 
     // Returns the registered identifier whitelist, stored in the finder.
