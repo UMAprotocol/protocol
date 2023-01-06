@@ -45,7 +45,7 @@
   },
   {
     "contractName": "VotingV2",
-    "address": "0xF71cdF8A34c56933A8871354A2570a301364e95F"
+    "address": "0xBc3683DEf184ad64f6162024BD401e8D49d0E517"
   },
   {
     "contractName": "VotingToken",
@@ -53,7 +53,7 @@
   },
   {
     "contractName": "SlashingLibrary",
-    "address": "0xfEc116140B4BdC8a62858594aa430b95DF18d51f"
+    "address": "0xe8711717a8a010BeB257fb90898BB20eA5Ebf55F"
   },
   {
     "contractName": "Registry",
