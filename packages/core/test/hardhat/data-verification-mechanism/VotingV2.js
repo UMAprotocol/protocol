@@ -92,13 +92,34 @@ describe("VotingV2", function () {
     for (const ac of [account1, account2, account3, account4, rand])
       if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
 
-    if (!voting.events["VoterSlashed"]) return;
-    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
-    const sum = events.map((e) => e.returnValues.slashedTokens).reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+    if (!voting.events["VoterSlashApplied"]) return;
+
+    // Check that the sum of all VoterSlashApplied events is ~0.
+    const voterSlashAppliedEvents = await voting.getPastEvents("VoterSlashApplied", {
+      fromBlock: 0,
+      toBlock: "latest",
+    });
+    const sumSlashApplied = voterSlashAppliedEvents
+      .map((e) => e.returnValues.slashedTokens)
+      .reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+
+    assert(
+      sumSlashApplied.lte(toBN(10)),
+      `VoterSlashApplied events should sum to <10 wei, but sum is ${sumSlashApplied.toString()}`
+    );
+
+    // Check that the sum of all VoterSlashed events is ~0.
+    const voterSlashedEvents = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const sumVoterSlashed = voterSlashedEvents
+      .map((e) => e.returnValues.slashedTokens)
+      .reduce((a, b) => toBN(a).add(toBN(b)), toBN(0));
+
+    assert(
+      sumVoterSlashed.lte(toBN(10)),
+      `VoterSlashed events should sum to <10 wei, but sum is ${sumVoterSlashed.toString()}`
+    );
 
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-
-    assert(sum.lte(toBN(10)), `VoterSlashed events should sum to <10 wei, but sum is ${sum.toString()}`);
 
     if ((await voting.methods.getVotePhase().call()) == 1) await moveToNextRound(voting, accounts[0]);
 
@@ -1182,8 +1203,12 @@ describe("VotingV2", function () {
 
     result = await voting.methods.updateTrackers(account1).send({ from: account1 });
 
-    await assertEventEmitted(result, voting, "VoterSlashed", (ev) => {
+    await assertEventEmitted(result, voting, "VoterSlashApplied", (ev) => {
       return ev.slashedTokens != "0" && ev.postStake != "0" && ev.voter != "";
+    });
+
+    await assertEventEmitted(result, voting, "VoterSlashed", (ev) => {
+      return ev.slashedTokens != "0" && ev.requestIndex == "0" && ev.voter == account1;
     });
 
     result = await voting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
@@ -3678,7 +3703,7 @@ describe("VotingV2", function () {
       price.toString()
     );
 
-    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const events = await voting.getPastEvents("VoterSlashApplied", { fromBlock: 0, toBlock: "latest" });
 
     const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
 
@@ -3807,7 +3832,7 @@ describe("VotingV2", function () {
     assert.equal(await votingToken.methods.balanceOf(voting.options.address).call(), "0");
 
     // Lastly, sum of all slashing events should add to zero (positive slashing summed should equal negative slash).
-    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const events = await voting.getPastEvents("VoterSlashApplied", { fromBlock: 0, toBlock: "latest" });
     const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
     assert.equal(sum, 0);
   });
@@ -3881,7 +3906,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(rand).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(rand).call()).stake, toWei("3993600")); // 4mm*(1-0.0016)=3993600
 
-    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const events = await voting.getPastEvents("VoterSlashApplied", { fromBlock: 0, toBlock: "latest" });
     const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
     assert.equal(sum, 0);
 
@@ -3946,7 +3971,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account4).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account4).call()).stake, toWei("3993600")); // 4mm*(1-0.0016)=3993600
 
-    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const events = await voting.getPastEvents("VoterSlashApplied", { fromBlock: 0, toBlock: "latest" });
     const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
     assert.equal(sum, 0);
 
@@ -4515,7 +4540,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account3).send({ from: account1 });
     await voting.methods.updateTrackers(account4).send({ from: account1 });
 
-    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const events = await voting.getPastEvents("VoterSlashApplied", { fromBlock: 0, toBlock: "latest" });
 
     const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
     assert.equal(sum, 0);
@@ -4594,7 +4619,7 @@ describe("VotingV2", function () {
       await voting.methods.updateTrackers(ac).send({ from: account1 });
     }
 
-    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const events = await voting.getPastEvents("VoterSlashApplied", { fromBlock: 0, toBlock: "latest" });
 
     // Sum of all the positive slashed tokens received by account1
     const sumPositive = events
