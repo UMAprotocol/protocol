@@ -1,9 +1,8 @@
 const hre = require("hardhat");
 const { getContract, assertEventEmitted } = hre;
-const { MerkleTree } = require("@uma/merkle-distributor");
 const SamplePayouts = require("./SamplePayout.json");
 const { toBN, toWei, utf8ToHex, padRight } = web3.utils;
-const { MAX_UINT_VAL, didContractThrow } = require("@uma/common");
+const { MAX_UINT_VAL, didContractThrow, MerkleTree } = require("@uma/common");
 const { assert } = require("chai");
 const Promise = require("bluebird");
 
@@ -25,6 +24,7 @@ let windowIndex;
 
 const sampleIpfsHash = "QmfVMHgoWpTSZqovo7vhM7Wcmz6EeX4QBYbCk4DZTNM8u3";
 
+const hashFn = (buffer) => buffer.toString("hex");
 // For a recipient object, create the leaf to be part of the merkle tree. The leaf is simply a hash of the packed
 // account and the amount.
 const createLeaf = (recipient) => {
@@ -93,7 +93,10 @@ describe("MerkleDistributor.js", function () {
       rewardLeafs = rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) }));
 
       // Build the merkle tree from an array of hashes from each recipient.
-      merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
+      merkleTree = new MerkleTree(
+        rewardLeafs.map((item) => item.leaf),
+        hashFn
+      );
 
       // Expect this merkle root to be at the first index.
       windowIndex = 0;
@@ -208,7 +211,10 @@ describe("MerkleDistributor.js", function () {
 
         // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
         rewardLeafs = rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) }));
-        merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
+        merkleTree = new MerkleTree(
+          rewardLeafs.map((item) => item.leaf),
+          hashFn
+        );
 
         // Seed the merkleDistributor with the root of the tree and additional information.
         await merkleDistributor.methods
@@ -326,7 +332,10 @@ describe("MerkleDistributor.js", function () {
         // increment the index for this new root.
         rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
         let otherRewardLeafs = rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) }));
-        let otherMerkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
+        let otherMerkleTree = new MerkleTree(
+          rewardLeafs.map((item) => item.leaf),
+          hashFn
+        );
         await merkleDistributor.methods
           .setWindow(
             SamplePayouts.totalRewardsDistributed,
@@ -519,7 +528,12 @@ describe("MerkleDistributor.js", function () {
           rewardLeafs.push(_rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) })));
         });
         rewardLeafs.forEach((_rewardLeafs) => {
-          merkleTrees.push(new MerkleTree(_rewardLeafs.map((item) => item.leaf)));
+          merkleTrees.push(
+            new MerkleTree(
+              _rewardLeafs.map((item) => item.leaf),
+              hashFn
+            )
+          );
         });
 
         // Seed the merkleDistributor with the root of the tree and additional information.
@@ -614,12 +628,18 @@ describe("MerkleDistributor.js", function () {
         // Set two windows with trivial one leaf trees.
         const reward1Recipients = [{ account: accounts[3], amount: window1RewardAmount.toString(), accountIndex: 1 }];
         const reward2Recipients = [{ account: accounts[3], amount: window2RewardAmount.toString(), accountIndex: 1 }];
-        const merkleTree1 = new MerkleTree(reward1Recipients.map((item) => createLeaf(item)));
+        const merkleTree1 = new MerkleTree(
+          reward1Recipients.map((item) => createLeaf(item)),
+          hashFn
+        );
         const nextWindowIndex = (await merkleDistributor.methods.nextCreatedIndex().call()).toString();
         await merkleDistributor.methods
           .setWindow(window1RewardAmount, rewardToken.options.address, merkleTree1.getRoot(), "")
           .send({ from: accounts[0] });
-        const merkleTree2 = new MerkleTree(reward2Recipients.map((item) => createLeaf(item)));
+        const merkleTree2 = new MerkleTree(
+          reward2Recipients.map((item) => createLeaf(item)),
+          hashFn
+        );
         await merkleDistributor.methods
           .setWindow(window2RewardAmount, rewardToken.options.address, merkleTree2.getRoot(), "")
           .send({ from: accounts[0] });
@@ -704,7 +724,12 @@ describe("MerkleDistributor.js", function () {
 
         // Generate leafs for each recipient for the underfunded reward set.
         rewardLeafs.push(rewardRecipients[underfundedWindowIndex].map((item) => ({ ...item, leaf: createLeaf(item) })));
-        merkleTrees.push(new MerkleTree(rewardLeafs[underfundedWindowIndex].map((item) => item.leaf)));
+        merkleTrees.push(
+          new MerkleTree(
+            rewardLeafs[underfundedWindowIndex].map((item) => item.leaf),
+            hashFn
+          )
+        );
 
         // Fund rewards window with the same Merkle tree, but insufficient funding.
         const insufficientTotalRewards = toBN(SamplePayouts.totalRewardsDistributed).sub(toBN("1"));
@@ -770,7 +795,10 @@ describe("MerkleDistributor.js", function () {
         const _claimData = { ...claimData, accountIndex: i, account: _claimAccount };
         rewardLeafs.push({ ..._claimData, leaf: createLeaf(_claimData) });
       }
-      merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
+      merkleTree = new MerkleTree(
+        rewardLeafs.map((item) => item.leaf),
+        hashFn
+      );
     });
 
     beforeEach(async function () {
@@ -1035,7 +1063,10 @@ describe("MerkleDistributor.js", function () {
 
       // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
       rewardLeafs = rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) }));
-      merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
+      merkleTree = new MerkleTree(
+        rewardLeafs.map((item) => item.leaf),
+        hashFn
+      );
     });
     it("Only owner can call", async function () {
       assert(
@@ -1109,7 +1140,10 @@ describe("MerkleDistributor.js", function () {
       rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
       rewardLeafs = rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) }));
 
-      merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
+      merkleTree = new MerkleTree(
+        rewardLeafs.map((item) => item.leaf),
+        hashFn
+      );
 
       await merkleDistributor.methods
         .setWindow(
