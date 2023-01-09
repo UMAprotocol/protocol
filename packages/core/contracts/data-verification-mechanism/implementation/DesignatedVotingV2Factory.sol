@@ -2,12 +2,13 @@
 pragma solidity 0.8.16;
 
 import "./DesignatedVotingV2.sol";
+import "../../common/implementation/MultiCaller.sol";
 
 /**
  * @title Factory to deploy new instances of DesignatedVotingV2 and look up previously deployed instances.
  * @dev Allows off-chain infrastructure to look up a hot wallet's deployed DesignatedVoting contract.
  */
-contract DesignatedVotingV2Factory {
+contract DesignatedVotingV2Factory is MultiCaller {
     address private finder;
     mapping(address => DesignatedVotingV2) public designatedVotingContracts;
 
