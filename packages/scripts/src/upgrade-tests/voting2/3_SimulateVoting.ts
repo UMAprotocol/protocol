@@ -470,7 +470,17 @@ async function main() {
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  console.log(" 13. Adding the second data request...");
+  console.log(" 13. Adding the second and third data request...");
+
+  console.log(" 13.1. At this point the first request should have been deleted because of rolling too many times.");
+  // Update trackers to process the price requests
+  await votingV2.connect(requesterSigner).updateTrackers(requesterSigner.address);
+  assert.equal(
+    (await votingV2.getPriceRequestStatuses([firstRequestData.priceRequest]))[0].status.toString(),
+    PriceRequestStatusEnum.NOT_REQUESTED
+  );
+  console.log(" ✅ First request was deleted after rolling too many times.");
+
   const secondRequestData: PriceRequestData = {
     originalAncillaryData: toUtf8Bytes(`q:"How much is 60 times two?"`),
     proposedPrice: "120",
