@@ -503,7 +503,7 @@ async function main() {
     PriceRequestStatusEnum.FUTURE
   );
 
-  console.log(" ✅ Verified the second data request enqueued for future voting round.");
+  console.log(" ✅ Verified the second and third data request enqueued for future voting round.");
 
   console.log(" 14. Waiting till the start of the next voting cycle...");
   await increaseEvmTime(
