@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.46.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.45.0...@uma/core@2.46.0) (2023-01-09)
+
+### Bug Fixes
+
+- [DVM2.0-audit-code-clean]: Address additional formatting and syling issues from code reading session ([#4360](https://github.com/UMAprotocol/protocol/issues/4360)) ([ae4b3aa](https://github.com/UMAprotocol/protocol/commit/ae4b3aab01cf653b13785aa80b72acd30bd32a69))
+- [DVM2.0-audit-incentive-fix] add participation activation threshold ([#4364](https://github.com/UMAprotocol/protocol/issues/4364)) ([50a520d](https://github.com/UMAprotocol/protocol/commit/50a520ded47745328a387c97aec00ba1975119c2))
+- [DVM2.0-audit-small-refinement] slashing library price request id reference ([#4363](https://github.com/UMAprotocol/protocol/issues/4363)) ([5726cd1](https://github.com/UMAprotocol/protocol/commit/5726cd16cd74b96aab82d6f99c9683e3d72b6723))
+- [DVM2.0-gas-golf]: Decrease gas cost through small optimisations ([#4359](https://github.com/UMAprotocol/protocol/issues/4359)) ([6cf4909](https://github.com/UMAprotocol/protocol/commit/6cf49091cec0295d8beee013f3ebaa72107e23db))
+- Fix MerkleDistributor unit tests ([#4328](https://github.com/UMAprotocol/protocol/issues/4328)) ([6300730](https://github.com/UMAprotocol/protocol/commit/63007309ee3d484ffa610ea2270ff0daac9ea72f))
+
+### Features
+
+- add partial voter slashed event ([#4367](https://github.com/UMAprotocol/protocol/issues/4367)) ([20794ec](https://github.com/UMAprotocol/protocol/commit/20794eca565906ca4c2c89c5a7b1c1683d86aa65))
+- Change PAT -> SPAT ([#4366](https://github.com/UMAprotocol/protocol/issues/4366)) ([3306b5d](https://github.com/UMAprotocol/protocol/commit/3306b5d402a69b02b41e30bd70dec8d323511685))
+- deploy new votingv2 and slashing library goerli ([#4368](https://github.com/UMAprotocol/protocol/issues/4368)) ([b5c9412](https://github.com/UMAprotocol/protocol/commit/b5c9412bfe019fd93cb8d78704d7b053fd0c32b5))
+
 # [2.45.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.44.0...@uma/core@2.45.0) (2022-12-28)
 
 ### Bug Fixes
