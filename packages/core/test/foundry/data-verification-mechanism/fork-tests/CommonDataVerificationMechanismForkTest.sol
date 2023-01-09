@@ -43,8 +43,7 @@ contract CommonDataVerificationMechanismForkTest is CommonTestBase {
     }
 
     function moveToNextPhase() public {
-        (uint256 phaseLength, ) = voting.voteTiming();
-        vm.warp(voting.getRoundEndTime(voting.getCurrentRoundId()) - phaseLength);
+        vm.warp(voting.getRoundEndTime(voting.getCurrentRoundId()) - voting.voteTiming());
     }
 
     function moveToNextRound() public {

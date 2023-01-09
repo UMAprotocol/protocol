@@ -45,24 +45,20 @@ library ResultComputationV2 {
      * @notice Returns whether the result is resolved, and if so, what value it resolved to.
      * @dev `price` should be ignored if `isResolved` is false.
      * @param data contains information against which the `minVoteThreshold` is applied.
-     * @param minVoteThreshold min (exclusive) number of tokens that must have voted for the result to be valid. Can be
-     * used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
+     * @param minTotalVotes min (exclusive) number of tokens that must have voted (in any direction) for the result
+     * to be valid. Used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
+     * @param minModalVotes min (exclusive) number of tokens that must have voted for the modal outcome for it to result
+     * in a resolution. This is used to avoid cases where the mode is a very small plurality.
      * @return isResolved indicates if the price has been resolved correctly.
      * @return price the price that the dvm resolved to.
      */
-    function getResolvedPrice(Data storage data, uint256 minVoteThreshold)
-        internal
-        view
-        returns (bool isResolved, int256 price)
-    {
-        uint256 modeThreshold = 5e17 + 1;
-
-        if (
-            data.totalVotes > minVoteThreshold &&
-            (data.voteFrequency[data.currentMode] * 1e18) / data.totalVotes > modeThreshold
-        ) {
-            // `modeThreshold` and `minVoteThreshold` are exceeded, so the current mode is the resolved price.
-            isResolved = true;
+    function getResolvedPrice(
+        Data storage data,
+        uint256 minTotalVotes,
+        uint256 minModalVotes
+    ) internal view returns (bool isResolved, int256 price) {
+        if (data.totalVotes > minTotalVotes && data.voteFrequency[data.currentMode] > minModalVotes) {
+            isResolved = true; // modeThreshold and minVoteThreshold are exceeded, so the resolved price is the mode.
             price = data.currentMode;
         } else isResolved = false;
     }

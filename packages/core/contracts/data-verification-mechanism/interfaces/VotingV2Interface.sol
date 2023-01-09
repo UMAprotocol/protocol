@@ -22,7 +22,6 @@ abstract contract VotingV2Interface {
         bytes32 identifier;
         uint256 time;
         bytes ancillaryData;
-        uint64 priceRequestIndex;
     }
 
     // Captures the necessary data for making a commitment.
@@ -155,17 +154,21 @@ abstract contract VotingV2Interface {
     function setMigrated(address newVotingAddress) external virtual;
 
     /**
-     * @notice Resets the Gat. Note: this change only applies to rounds that have not yet begun.
-     * @param newGat sets the next round's Gat.
+     * @notice Sets the maximum number of rounds to roll a request can have before the DVM auto deletes it.
+     * @dev Can only be called by the contract owner.
+     * @param newMaxRolls the new number of rounds to roll a request before the DVM auto deletes it.
      */
-    function setGat(uint256 newGat) external virtual;
+    function setMaxRolls(uint32 newMaxRolls) external virtual;
 
     /**
-     * @notice Resets the rewards expiration timeout.
-     * @dev This change only applies to rounds that have not yet begun.
-     * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
+     * @notice Resets the GAT number and SPAT percentage. The GAT is the minimum number of tokens that must participate
+     * in a vote for it to resolve (quorum number). The SPAT is is the minimum percentage of tokens that must agree
+     * in a vote for it to resolve (percentage of staked tokens) Note: this change only applies to rounds that
+     * have not yet begun.
+     * @param newGat sets the next round's GAT and going forward.
+     * @param newSpat sets the next round's SPAT and going forward.
      */
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) external virtual;
+    function setGatAndSpat(uint256 newGat, uint256 newSpat) external virtual;
 
     /**
      * @notice Changes the slashing library used by this contract.

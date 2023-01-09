@@ -11,20 +11,21 @@ const func = async function (hre) {
   const Finder = await deployments.get("Finder");
   const SlashingLibrary = await deployments.get("SlashingLibrary");
 
-  // Set the GAT to 5.5 million tokens.
+  // Set the GAT to 5.5 million tokens. This is the number of tokens that must participate to resolve a vote.
   const gat = web3.utils.toBN(web3.utils.toWei("5500000", "ether"));
 
-  const emissionRate = "640000000000000000"; // 0.64 UMA per second.
+  // Set the SPAT to 25%. This is the percentage of staked tokens that must participate to resolve a vote.
+  const spat = web3.utils.toBN(web3.utils.toWei("0.25", "ether"));
 
-  const spamDeletionProposalBond = hre.web3.utils.toWei("10000", "ether"); // 10k UMA to propose to delete spam.
+  const emissionRate = "640000000000000000"; // 0.64 UMA per second.
 
   const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
 
   // Set phase length to one day.
   const phaseLength = "86400";
 
-  // If a price request falls in the last 2 hours of the previous reveal phase then auto roll it to the next round.
-  const minRollToNextRoundLength = "7200";
+  // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
+  const maxRolls = 2;
 
   // Note: this is a bit hacky, but we must have _some_ tokens in existence to set a GAT.
   const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
@@ -38,12 +39,11 @@ const func = async function (hre) {
       from: deployer,
       args: [
         emissionRate,
-        spamDeletionProposalBond,
         unstakeCooldown,
         phaseLength,
-        minRollToNextRoundLength,
+        maxRolls,
         gat.toString(),
-        "0", // Starting request index of 0 (no offset).
+        spat.toString(),
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,
@@ -57,12 +57,11 @@ const func = async function (hre) {
       from: deployer,
       args: [
         emissionRate,
-        spamDeletionProposalBond,
         unstakeCooldown,
         phaseLength,
-        minRollToNextRoundLength,
+        maxRolls,
         gat.toString(),
-        "0", // Starting request index of 0 (no offset).
+        spat.toString(),
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,

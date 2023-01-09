@@ -812,12 +812,11 @@ describe("GovernorV2", function () {
 
     const newVoting = await VotingV2.new(
       toWei("0.64"), // emission rate
-      toWei("10000"), // spamDeletionProposalBond
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
-      "7200", // minRollToNextRoundLength
+      "3", // maxRolls
       web3.utils.toWei("5000000"), // 5% GAT
-      "0", // startingRequestIndex
+      web3.utils.toWei("0.25"), // 25% PAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library

@@ -8,12 +8,11 @@ import "../../../common/implementation/Testable.sol";
 contract VotingV2ControllableTiming is VotingV2, Testable {
     constructor(
         uint256 _emissionRate,
-        uint256 _spamDeletionProposalBond,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
-        uint64 _minRollToNextRoundLength,
+        uint32 _deleteAfterRollCount,
         uint256 _gat,
-        uint64 _startingRequestIndex,
+        uint256 _pat,
         address _votingToken,
         address _finder,
         address _slashingLibrary,
@@ -22,12 +21,11 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
     )
         VotingV2(
             _emissionRate,
-            _spamDeletionProposalBond,
             _unstakeCoolDown,
             _phaseLength,
-            _minRollToNextRoundLength,
+            _deleteAfterRollCount,
             _gat,
-            _startingRequestIndex,
+            _pat,
             _votingToken,
             _finder,
             _slashingLibrary,
@@ -67,7 +65,7 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
     }
 
     function getPendingPriceRequestsArray() external view returns (bytes32[] memory) {
-        return pendingPriceRequests;
+        return pendingPriceRequestsIds;
     }
 
     function getPriceRequestStatuses(PendingRequest[] memory requests) external view returns (RequestState[] memory) {
@@ -86,12 +84,11 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
 contract VotingV2Test is VotingV2ControllableTiming {
     constructor(
         uint256 _emissionRate,
-        uint256 _spamDeletionProposalBond,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
-        uint64 _minRollToNextRoundLength,
+        uint32 _deleteAfterRollCount,
         uint256 _gat,
-        uint64 _startingRequestIndex,
+        uint256 _pat,
         address _votingToken,
         address _finder,
         address _slashingLibrary,
@@ -100,12 +97,11 @@ contract VotingV2Test is VotingV2ControllableTiming {
     )
         VotingV2ControllableTiming(
             _emissionRate,
-            _spamDeletionProposalBond,
             _unstakeCoolDown,
             _phaseLength,
-            _minRollToNextRoundLength,
+            _deleteAfterRollCount,
             _gat,
-            _startingRequestIndex,
+            _pat,
             _votingToken,
             _finder,
             _slashingLibrary,

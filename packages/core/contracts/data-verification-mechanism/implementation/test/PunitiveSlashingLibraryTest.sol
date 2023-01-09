@@ -3,17 +3,13 @@ pragma solidity 0.8.16;
 
 import "../../interfaces/SlashingLibraryInterface.sol";
 
-/**
- * @title Slashing Library contract that executes no slashing for any actions. Used in tests.
- */
-
-contract ZeroedSlashingSlashingLibraryTest is SlashingLibraryInterface {
+contract PunitiveSlashingLibraryTest is SlashingLibraryInterface {
     function calcWrongVoteSlashPerToken(
         uint256 totalStaked,
         uint256 totalVotes,
         uint256 totalCorrectVotes
     ) public pure returns (uint256) {
-        return 0;
+        return 0.99e18;
     }
 
     function calcWrongVoteSlashPerTokenGovernance(
@@ -21,7 +17,7 @@ contract ZeroedSlashingSlashingLibraryTest is SlashingLibraryInterface {
         uint256 totalVotes,
         uint256 totalCorrectVotes
     ) public pure returns (uint256) {
-        return 0;
+        return 0.99e18;
     }
 
     function calcNoVoteSlashPerToken(
@@ -29,7 +25,7 @@ contract ZeroedSlashingSlashingLibraryTest is SlashingLibraryInterface {
         uint256 totalVotes,
         uint256 totalCorrectVotes
     ) public pure returns (uint256) {
-        return 0;
+        return 0.99e18;
     }
 
     function calcSlashing(

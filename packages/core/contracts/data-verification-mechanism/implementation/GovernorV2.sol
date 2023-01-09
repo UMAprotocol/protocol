@@ -177,6 +177,7 @@ contract GovernorV2 is MultiRole, Lockable {
     /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
+     * @return the current block timestamp.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
@@ -233,6 +234,7 @@ contract GovernorV2 is MultiRole, Lockable {
         return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
+    // Returns the IdentifierWhitelist contract address, named "IdentifierWhitelist" in the finder.
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }

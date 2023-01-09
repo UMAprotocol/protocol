@@ -24,10 +24,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint256 stake; // UMA staked by the staker.
         uint256 pendingUnstake; // UMA in unstake cooldown period, waiting to be unstaked.
         mapping(uint256 => uint256) pendingStakes; // If a voter stakes during an active reveal, stake is pending.
-        uint256 rewardsPaidPerToken; // Internal tracker used in the calculation of pro-rate share of rewards.
+        uint256 rewardsPaidPerToken; // Internal tracker used in the calculation of pro-rata share of rewards.
         uint256 outstandingRewards; // Accumulated rewards that have not yet been claimed.
         int256 unappliedSlash; // Used to track unapplied slashing in the case of bisected rounds.
-        uint64 nextIndexToProcess; // The next request index that a staker is suspectable to be slashed on.
+        uint64 nextIndexToProcess; // The next request index that a staker is susceptible to be slashed on.
         uint64 unstakeRequestTime; // Time that a staker requested to unstake. Used to determine if cooldown has passed.
         address delegate; // Address a staker has delegated to. The delegate can commit/reveal/claimRestake rewards.
     }
@@ -50,7 +50,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     // Delay, in seconds, a staker must wait when trying to unstake their UMA.
     uint64 public unstakeCoolDown;
 
-    // Tracks the last time the reward rate was updated, used in pro-rate allocation of rewards to stakers.
+    // Tracks the last time the reward rate was updated, used in pro-rata allocation of rewards to stakers.
     uint64 public lastUpdateTime;
 
     // An instance of the UMA voting token. This contract needs mint permissions on the token to allocate rewards.
@@ -106,7 +106,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
-     * @notice Pulls tokens from the senders's wallet and stakes them on his behalf.
+     * @notice Pulls tokens from the sender's wallet and stakes them on his behalf.
      * @param amount the amount of tokens to stake.
      */
     function stake(uint256 amount) public {
@@ -114,7 +114,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     /**
-     * @notice Pulls tokens from the senders's wallet and stakes them for the recipient.
+     * @notice Pulls tokens from the sender's wallet and stakes them for the recipient.
      * @param recipient the recipient address.
      * @param amount the amount of tokens to stake.
      */
@@ -144,8 +144,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         voterStake.stake += amount;
         cumulativeStake += amount;
 
-        // Tokens are pulled from the "from" address and sent to this contract.
-        // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
+        // Tokens are pulled from the from address and sent to this contract.
+        // During withdrawAndRestake, from is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
         emit Staked(recipient, from, amount, voterStake.stake, voterStake.pendingUnstake, cumulativeStake);
     }
@@ -343,6 +343,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
+     * @return the current block timestamp.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
@@ -353,11 +354,11 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     // This function must be called before any tokens are staked. Update the voter's pending stakes when necessary.
-    // The contract that inherits from Staker (eg VotingV2) must implement this logic by overriding this function.
+    // The contract that inherits from Staker (e.g. VotingV2) must implement this logic by overriding this function.
     function _computePendingStakes(address voterAddress, uint256 amount) internal virtual;
 
     // Add a new stake amount to the voter's pending stake for a specific round id.
-    function _setPendingStake(
+    function _incrementPendingStake(
         address voterAddress,
         uint256 roundId,
         uint256 amount
@@ -371,7 +372,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     // Returns the starting index for a staker. This function should be overridden by the implementing contract.
-    function _getStartingIndexForStaker() internal view virtual returns (uint64) {
+    function _getStartingIndexForStaker() internal virtual returns (uint64) {
         return 0;
     }
 

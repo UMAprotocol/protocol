@@ -49,7 +49,7 @@ contract EmergencyProposer is Ownable, Lockable {
 
     // The only address that can execute an emergency proposal. Will be set to a multisig. Acts to guardrail the
     // emergency recovery mechanism and ensure that only valid proposals can be executed. Note that while this address
-    // is somewhat privileged, it cant unilaterally push through proposals as a proposal must pass the minimum wait
+    // is somewhat privileged, it can't unilaterally push through proposals as a proposal must pass the minimum wait
     // time without the DVM voters voting to slash the proposal.
     address public executor;
 
@@ -98,6 +98,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * @param _token the ERC20 token that the quorum is in.
      * @param _quorum the tokens needed to propose an emergency action.
      * @param _governor the governor contract that this contract makes proposals to.
+     * @param _executor the address that can execute an emergency proposal.
      */
     constructor(
         IERC20 _token,
@@ -124,6 +125,7 @@ contract EmergencyProposer is Ownable, Lockable {
      */
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
         require(msg.sender != address(governor), "Governor can't propose"); // The governor should never be the proposer.
+        require(transactions.length > 0, "No transactions to propose");
         token.safeTransferFrom(msg.sender, address(this), quorum);
         uint256 id = emergencyProposals.length;
         EmergencyProposal storage proposal = emergencyProposals.push();
@@ -149,7 +151,7 @@ contract EmergencyProposer is Ownable, Lockable {
     function removeProposal(uint256 id) external nonReentrant() {
         EmergencyProposal storage proposal = emergencyProposals[id];
         require(proposal.expiryTime <= getCurrentTime(), "must be expired to remove");
-        require(msg.sender == proposal.sender || msg.sender == executor, "proposer or executor");
+        require(msg.sender == owner() || msg.sender == executor, "proposer or executor");
         require(proposal.lockedTokens != 0, "invalid proposal");
         token.safeTransfer(proposal.sender, proposal.lockedTokens);
         emit EmergencyProposalRemoved(
@@ -253,6 +255,7 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
+     * @return the current block timestamp.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
