@@ -63,39 +63,23 @@ async function main() {
   console.log("2. DEPLOYING VOTING V2");
   const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
   const emissionRate = "0"; // Initially set the emission rate to 0.
-  const spamDeletionProposalBond = hre.web3.utils.toWei("10000", "ether");
   const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
   const phaseLength = "86400";
-  const minRollToNextRoundLength = "7200";
-  const gat = hre.web3.utils.toBN(hre.web3.utils.toWei("5500000", "ether")); // Set the GAT to 5.5 million tokens.
+  const gat = hre.ethers.utils.parseUnits("5500000", "ether"); // Set the GAT to 5.5 million tokens.
 
-  // Get old voting contract events to set the starting index for the new voting contract.
-  const oldVoting1 = await getContractInstance<VotingEthers>("Voting", "0xFe3C4F1ec9f5df918D42Ef7Ed3fBA81CC0086c5F");
-  const oldVoting2 = await getContractInstance<VotingEthers>("Voting", "0x9921810C710E7c3f7A7C6831e30929f19537a545");
-  const oldVoting3 = await getContractInstance<VotingEthers>("Voting", "0x1d847fB6e04437151736a53F09b6E49713A52aad");
+  // Set the SPAT to 25%. This is the percentage of staked tokens that must participate to resolve a vote.
+  const spat = hre.ethers.utils.parseUnits("0.25", "ether");
 
-  // Get all PriceRequestAdded events from the old voting contracts.
-  const oldVoting1Events = await oldVoting1.queryFilter(oldVoting1.filters.PriceRequestAdded(null, null, null));
-  const oldVoting2Events = await oldVoting2.queryFilter(oldVoting2.filters.PriceRequestAdded(null, null, null));
-  const oldVoting3Events = await oldVoting3.queryFilter(oldVoting3.filters.PriceRequestAdded(null, null, null));
-
-  const totalEventsLength = oldVoting1Events.length + oldVoting2Events.length + oldVoting3Events.length;
-
-  const existingVotingEvents = await existingVoting.queryFilter(
-    existingVoting.filters.PriceRequestAdded(null, null, null)
-  );
-  const startingIndex = totalEventsLength + existingVotingEvents.length + 1; // Existing PriceRequestAdded events plus the new one.
-
-  console.log("Starting index for new Voting2 contract: ", startingIndex);
+  // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
+  const maxRolls = 2;
 
   const votingV2 = await votingV2Factory.deploy(
     emissionRate,
-    spamDeletionProposalBond,
     unstakeCooldown,
     phaseLength,
-    minRollToNextRoundLength,
-    gat.toString(),
-    startingIndex,
+    maxRolls,
+    gat,
+    spat,
     votingToken.address,
     finder.address,
     slashingLibrary.address,
