@@ -104,7 +104,7 @@ export const unstakeFromStakedAccount = async (votingV2: VotingV2Ethers, voter: 
     // Move time to the next commit phase if in active reveal phase.
     const inActiveRevealPhase = (await votingV2.currentActiveRequests()) && (await votingV2.getVotePhase()) == 1;
     if (inActiveRevealPhase) {
-      const phaseLength = (await votingV2.voteTiming()).phaseLength;
+      const phaseLength = await votingV2.voteTiming();
       const currentTime = await votingV2.getCurrentTime();
       let newTime = currentTime;
       const isCommitPhase = newTime.div(phaseLength).mod(2).eq(0);
