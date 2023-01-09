@@ -1,25 +1,21 @@
 import { Logger } from "@uma/financial-templates-lib";
 import { VotingV2Ethers } from "@uma/contracts-node";
-import { logDeletionProposed } from "./MonitorLogger";
+import { logDeleted } from "./MonitorLogger";
 import { getContractInstanceByUrl } from "../utils/contracts";
 import type { MonitoringParams } from "./common";
 
 export async function monitorDeletion(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const votingV2 = await getContractInstanceByUrl<VotingV2Ethers>("VotingV2", params.jsonRpcUrl);
 
-  const deletionProposals = (
-    await votingV2.queryFilter(
-      votingV2.filters.SignaledRequestsAsSpamForDeletion(),
-      params.blockRange.start,
-      params.blockRange.end
-    )
+  const deletedRequests = (
+    await votingV2.queryFilter(votingV2.filters.RequestDeleted(), params.blockRange.start, params.blockRange.end)
   ).map((event) => ({
     tx: event.transactionHash,
-    proposalId: event.args.proposalId.toString(),
-    sender: event.args.sender,
-    spamRequestIndices: event.args.spamRequestIndices,
+    identifier: event.args.identifier,
+    time: event.args.time,
+    ancillaryData: event.args.ancillaryData,
   }));
-  deletionProposals.forEach((proposal) => {
-    logDeletionProposed(logger, proposal, params.chainId);
+  deletedRequests.forEach((request) => {
+    logDeleted(logger, request, params.chainId);
   });
 }

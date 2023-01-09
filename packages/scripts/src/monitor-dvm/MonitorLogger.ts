@@ -1,6 +1,7 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
 import { Logger } from "@uma/financial-templates-lib";
 import { utils } from "ethers";
+import { tryHexToUtf8String } from "./common";
 import type { BigNumber } from "ethers";
 
 export const logLargeUnstake = (
@@ -81,53 +82,53 @@ export const logEmergencyProposal = (
   });
 };
 
-export const logDeletionProposed = (
+export const logDeleted = (
   logger: typeof Logger,
-  proposal: {
+  request: {
     tx: string;
-    proposalId: string;
-    sender: string;
-    spamRequestIndices: [BigNumber, BigNumber][];
+    identifier: string;
+    time: BigNumber;
+    ancillaryData: string;
   },
   chainId: number
 ): void => {
-  const identifiers = proposal.spamRequestIndices
-    .map((range) => (range[0].eq(range[1]) ? range[0].toString() : `${range[0]}-${range[1]}`))
-    .join(", ");
   logger.error({
     at: "DVMMonitor",
-    message: "New spam deletion proposal created 🔇",
+    message: "Request deleted as spam 🔇",
     mrkdwn:
-      createEtherscanLinkMarkdown(proposal.sender, chainId) +
-      " proposed deletion of requests with following indices: " +
-      identifiers +
+      "Request for identifier " +
+      utils.parseBytes32String(request.identifier) +
       " at " +
-      createEtherscanLinkMarkdown(proposal.tx, chainId),
+      new Date(Number(request.time) * 1000).toUTCString() +
+      " was deleted as spam at " +
+      createEtherscanLinkMarkdown(request.tx, chainId) +
+      ". Ancillary data: " +
+      tryHexToUtf8String(request.ancillaryData),
   });
 };
 
 export const logRolled = (
   logger: typeof Logger,
   request: {
+    tx: string;
     identifier: string;
     time: BigNumber;
     ancillaryData: string;
-    priceRequestIndex: BigNumber;
   },
-  roundId: BigNumber
+  chainId: number
 ): void => {
   logger.error({
     at: "DVMMonitor",
-    message: "Rolled vote 🎲",
+    message: "Rolled request 🎲",
     mrkdwn:
-      "Vote #" +
-      request.priceRequestIndex.toString() +
-      " for identifier " +
+      "Request for identifier " +
       utils.parseBytes32String(request.identifier) +
       " at " +
       new Date(Number(request.time) * 1000).toUTCString() +
-      " is rolled to round #" +
-      roundId.toString(),
+      " was rolled at " +
+      createEtherscanLinkMarkdown(request.tx, chainId) +
+      ". Ancillary data: " +
+      tryHexToUtf8String(request.ancillaryData),
   });
 };
 

@@ -1,5 +1,4 @@
 import { getChainIdByUrl, getLatestBlockNumberByUrl } from "../utils/utils";
-import { VotingV2Ethers } from "@uma/contracts-node";
 import { delay } from "@uma/financial-templates-lib";
 import { BigNumber, utils } from "ethers";
 
@@ -90,31 +89,14 @@ export const waitNextBlockRange = async (params: MonitoringParams): Promise<Bloc
   return { start: params.blockRange.end + 1, end: latestBlockNumber };
 };
 
-export const checkEndBlockVotingRound = async (
-  blockRange: BlockRange,
-  votingV2: VotingV2Ethers
-): Promise<{ isNew: boolean; roundId: BigNumber }> => {
-  // Compute end block round id.
-  const endTime = BigNumber.from((await votingV2.provider.getBlock(blockRange.end)).timestamp);
-  const roundLength = (await votingV2.voteTiming()).phaseLength.mul(2);
-  const roundId = endTime.div(roundLength);
-
-  // Compute previous checked round id only if there is a previous block.
-  if (blockRange.start === 0) return { isNew: true, roundId };
-
-  // Compute previous round id.
-  const previousTime = BigNumber.from((await votingV2.provider.getBlock(blockRange.start - 1)).timestamp);
-  const previousRoundId = previousTime.div(roundLength);
-
-  return { isNew: !roundId.eq(previousRoundId), roundId };
-};
-
-export const getRequestId = (identifier: string, time: BigNumber, ancillaryData: string): string => {
-  return utils.keccak256(
-    utils.defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData])
-  );
-};
-
 export const startupLogLevel = (params: MonitoringParams): "debug" | "info" => {
   return params.pollingDelay === 0 ? "debug" : "info";
+};
+
+export const tryHexToUtf8String = (ancillaryData: string): string => {
+  try {
+    return utils.toUtf8String(ancillaryData);
+  } catch (err) {
+    return ancillaryData;
+  }
 };
