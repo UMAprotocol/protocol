@@ -463,7 +463,7 @@ async function main() {
   await (await votingV2.connect(voter3Signer).stake(voter3Balance)).wait();
   console.log(" ✅ Voters have restaked original balances.");
 
-  console.log(" 12. Waiting untill the start of the next voting cycle...");
+  console.log(" 12. Waiting until the start of the next voting cycle...");
   await increaseEvmTime(
     Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
