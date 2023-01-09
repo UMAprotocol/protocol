@@ -261,13 +261,13 @@ async function main() {
   console.log(` 1. Foundation has ${formatEther(foundationBalance)} UMA, funding requester and voters...`);
 
   // There will be 3 voters with initial balances set relative to GAT, and for two disputed price
-  // price requests 8 * finalFee amount will be needed (Optimistic Oracle bond defaults to finalFee).
+  // price requests 12 * finalFee amount will be needed (Optimistic Oracle bond defaults to finalFee).
   if (
     foundationBalance.lt(
       gat
         .mul(voter1RelativeGatFunding.add(voter2RelativeGatFunding.add(voter3RelativeGatFunding)))
         .div(parseEther("1"))
-        .add(finalFee.mul(8))
+        .add(finalFee.mul(12))
     )
   )
     throw new Error("Foundation balance too low for simulation!");
@@ -289,7 +289,9 @@ async function main() {
   // Transfering required balances. This assumes recipient accounts did not have more than target amounts before
   // simulation.
   await (
-    await votingToken.connect(foundationSigner).transfer(requesterSigner.address, finalFee.mul(8).sub(requesterBalance))
+    await votingToken
+      .connect(foundationSigner)
+      .transfer(requesterSigner.address, finalFee.mul(12).sub(requesterBalance))
   ).wait();
   await (
     await votingToken
@@ -367,7 +369,7 @@ async function main() {
 
   console.log(" 6. Not reaching quorum on the first data request...");
   // Only the Voter 1 participates, below GAT.
-  let voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
+  const voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
   await _commitVote(voter1Signer, voter1FirstRequestVote);
   console.log(" ✅ Voter 1 committed.");
 
@@ -461,7 +463,7 @@ async function main() {
   await (await votingV2.connect(voter3Signer).stake(voter3Balance)).wait();
   console.log(" ✅ Voters have restaked original balances.");
 
-  console.log(" 12. Waiting till the start of the next voting cycle...");
+  console.log(" 12. Waiting untill the start of the next voting cycle...");
   await increaseEvmTime(
     Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
@@ -479,6 +481,18 @@ async function main() {
     (await votingV2.getPriceRequestStatuses([secondRequestData.priceRequest]))[0].status.toString(),
     PriceRequestStatusEnum.FUTURE
   );
+
+  const thirdRequestData: PriceRequestData = {
+    originalAncillaryData: toUtf8Bytes(`q:"Really hard question, maybe 120, maybe 90?"`),
+    proposedPrice: "120",
+    priceRequest: { identifier: priceIdentifier, time: currentTime } as VotingPriceRequest,
+  };
+  thirdRequestData.priceRequest.ancillaryData = await _requestProposeDispute(thirdRequestData);
+  assert.equal(
+    (await votingV2.getPriceRequestStatuses([thirdRequestData.priceRequest]))[0].status.toString(),
+    PriceRequestStatusEnum.FUTURE
+  );
+
   console.log(" ✅ Verified the second data request enqueued for future voting round.");
 
   console.log(" 14. Waiting till the start of the next voting cycle...");
@@ -489,29 +503,31 @@ async function main() {
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
   assert.equal(
-    (await votingV2.getPriceRequestStatuses([secondRequestData.priceRequest]))[0].status.toString(),
-    PriceRequestStatusEnum.ACTIVE
+    (await votingV2.getPriceRequestStatuses([secondRequestData.priceRequest, thirdRequestData.priceRequest]))
+      .map((status) => status.status.toString())
+      .join(","),
+    [PriceRequestStatusEnum.ACTIVE, PriceRequestStatusEnum.ACTIVE].join(",")
   );
-  console.log(" ✅ Verified the second data request can be voted in the current round.");
+  console.log(" ✅ Verified the second and third data request can be voted in the current round.");
 
   console.log(" 15. Resolving both data requests...");
-  voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
+  const voter1ThirdRequestVote = await _createVote(thirdRequestData.priceRequest, voter1Signer.address, "90");
   const voter1SecondRequestVote = await _createVote(
     secondRequestData.priceRequest,
     voter1Signer.address,
     secondRequestData.proposedPrice.toString()
   );
-  await _commitVote(voter1Signer, voter1FirstRequestVote);
+  await _commitVote(voter1Signer, voter1ThirdRequestVote);
   await _commitVote(voter1Signer, voter1SecondRequestVote);
   console.log(" ✅ Voter 1 committed on both requests.");
 
-  const voter2FirstRequestVote = await _createVote(
-    firstRequestData.priceRequest,
+  const voter2ThirdRequestVote = await _createVote(
+    thirdRequestData.priceRequest,
     voter2Signer.address,
-    firstRequestData.proposedPrice.toString()
+    thirdRequestData.proposedPrice.toString()
   );
-  await _commitVote(voter2Signer, voter2FirstRequestVote);
-  console.log(" ✅ Voter 2 committed on the first request.");
+  await _commitVote(voter2Signer, voter2ThirdRequestVote);
+  console.log(" ✅ Voter 2 committed on the third request.");
 
   const voter3SecondRequestVote = await _createVote(
     secondRequestData.priceRequest,
@@ -525,9 +541,9 @@ async function main() {
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  await _revealVote(voter1Signer, voter1FirstRequestVote);
+  await _revealVote(voter1Signer, voter1ThirdRequestVote);
   await _revealVote(voter1Signer, voter1SecondRequestVote);
-  await _revealVote(voter2Signer, voter2FirstRequestVote);
+  await _revealVote(voter2Signer, voter2ThirdRequestVote);
   await _revealVote(voter3Signer, voter3SecondRequestVote);
   console.log(" ✅ Voters revealed.");
 
@@ -536,7 +552,7 @@ async function main() {
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
   assert.equal(
-    (await _getOptimisticOracleState(firstRequestData)).toString(),
+    (await _getOptimisticOracleState(thirdRequestData)).toString(),
     OptimisticOracleRequestStatesEnum.RESOLVED
   );
   assert.equal(
@@ -548,20 +564,20 @@ async function main() {
   console.log(" 16. Settling requests...");
   // Voter 1 voted on both requests and since it has the largest stake its voted price should be the right one as only
   // two voters participated in each vote.
-  const correctFirstPrice = voter1FirstRequestVote.price.toString();
+  const correctThirdPrice = voter1ThirdRequestVote.price.toString();
   const correctSecondPrice = voter1SecondRequestVote.price.toString();
-  assert.equal((await _settleAndGetPrice(firstRequestData)).toString(), correctFirstPrice);
+  assert.equal((await _settleAndGetPrice(thirdRequestData)).toString(), correctThirdPrice);
   assert.equal((await _settleAndGetPrice(secondRequestData)).toString(), correctSecondPrice);
   console.log(" ✅ Verified that correct prices are available to the requester.");
 
   console.log(" 17. Verifying slashing...");
-  // Voter 2 voted wrong and Voter 3 missed the first request.
-  const expectedVoter2FirstSlash = voter2Balance.mul(wrongVoteSlashPerToken).div(parseEther("1"));
-  const expectedVoter3FirstSlash = voter3Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
+  // Voter 2 voted wrong and Voter 3 missed the third request.
+  const expectedVoter2ThirdSlash = voter2Balance.mul(wrongVoteSlashPerToken).div(parseEther("1"));
+  const expectedVoter3ThirdSlash = voter3Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
   // Voter 2 missed the second request.
   const expectedVoter2SecondSlash = voter2Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
-  // Voter 1 gets all the slashing from other stakers in the first request.
-  const expectedVoter1FirstSlash = expectedVoter2FirstSlash.add(expectedVoter3FirstSlash).mul("-1");
+  // Voter 1 gets all the slashing from other stakers in the third request.
+  const expectedVoter1ThirdSlash = expectedVoter2ThirdSlash.add(expectedVoter3ThirdSlash).mul("-1");
   // Voter 1 and 3 shares slashing from Voter 2 in the second request.
   const expectedVoter1SecondSlash = expectedVoter2SecondSlash
     .mul(voter1Balance)
@@ -572,9 +588,9 @@ async function main() {
   const voter1Slash = voter1Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter1Signer.address));
   const voter2Slash = voter2Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter2Signer.address));
   const voter3Slash = voter3Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter3Signer.address));
-  assert.equal(voter1Slash.toString(), expectedVoter1FirstSlash.add(expectedVoter1SecondSlash).toString());
-  assert.equal(voter2Slash.toString(), expectedVoter2FirstSlash.add(expectedVoter2SecondSlash).toString());
-  assert.equal(voter3Slash.toString(), expectedVoter3FirstSlash.add(expectedVoter3SecondSlash).toString());
+  assert.equal(voter1Slash.toString(), expectedVoter1ThirdSlash.add(expectedVoter1SecondSlash).toString());
+  assert.equal(voter2Slash.toString(), expectedVoter2ThirdSlash.add(expectedVoter2SecondSlash).toString());
+  assert.equal(voter3Slash.toString(), expectedVoter3ThirdSlash.add(expectedVoter3SecondSlash).toString());
   console.log(` ✅ Verified the slashing amounts are correct.`);
   console.log(` ✅ Voter 1 was slashed by ${formatEther(voter1Slash)} UMA.`);
   console.log(` ✅ Voter 2 was slashed by ${formatEther(voter2Slash)} UMA.`);
