@@ -288,9 +288,9 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Gets the pending stake for a voter for a given round.
      * @param voterAddress the voter address.
      * @param roundId round id.
-     * @return uint256 amount of the pending stake.
+     * @return uint32 amount of the pending stake.
      */
-    function getVoterPendingStake(address voterAddress, uint256 roundId) external view returns (uint256) {
+    function getVoterPendingStake(address voterAddress, uint32 roundId) external view returns (uint256) {
         return voterStakes[voterAddress].pendingStakes[roundId];
     }
 
@@ -360,7 +360,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     // Add a new stake amount to the voter's pending stake for a specific round id.
     function _incrementPendingStake(
         address voterAddress,
-        uint256 roundId,
+        uint32 roundId,
         uint256 amount
     ) internal {
         voterStakes[voterAddress].pendingStakes[roundId] += amount;

@@ -142,7 +142,7 @@ abstract contract VotingV2Interface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external view virtual returns (uint256);
+    function getCurrentRoundId() external view virtual returns (uint32);
 
     // Voting Owner functions.
 
