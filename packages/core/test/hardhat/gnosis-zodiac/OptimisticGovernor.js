@@ -319,6 +319,13 @@ describe("OptimisticGovernor", () => {
       (await testToken2.methods.balanceOf(proposer).call()).toString(),
       startingBalance3.add(toBN(toWei("2"))).toString()
     );
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "ProposalExecuted",
+      (event) => event.proposalHash == proposalHash && event.proposalTime == proposalTime
+    );
   });
 
   it("Proposals can not be executed twice", async function () {});
