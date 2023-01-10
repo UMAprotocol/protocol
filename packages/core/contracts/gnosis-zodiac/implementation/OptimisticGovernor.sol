@@ -34,6 +34,8 @@ contract OptimisticGovernor is Module, Lockable {
 
     event TransactionExecuted(bytes32 indexed proposalHash, uint256 indexed transactionIndex);
 
+    event ProposalExecuted(bytes32 indexed proposalHash, uint256 indexed proposalTime);
+
     event ProposalDeleted(bytes32 indexed proposalHash, address indexed sender, bytes32 indexed status);
 
     event SetBond(IERC20 indexed collateral, uint256 indexed bondAmount);
@@ -273,7 +275,7 @@ contract OptimisticGovernor is Module, Lockable {
             "Must call deleteDisputedProposal instead"
         );
 
-        // Remove proposal hash so transactions can not be executed again.
+        // Remove proposal hash mapping so transactions can not be executed again.
         delete proposalHashes[_proposalHash];
 
         // This will revert if the price has not been settled and can not currently be settled.
@@ -289,6 +291,8 @@ contract OptimisticGovernor is Module, Lockable {
             );
             emit TransactionExecuted(_proposalHash, i);
         }
+
+        emit ProposalExecuted(_proposalHash, _originalTime);
     }
 
     /**
