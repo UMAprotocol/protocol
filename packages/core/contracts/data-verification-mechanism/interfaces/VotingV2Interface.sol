@@ -19,8 +19,11 @@ abstract contract VotingV2Interface {
     }
 
     struct PendingRequestAncillaryAugmented {
+        uint32 lastVotingRound;
+        bool isGovernance;
+        uint64 time;
+        uint32 rollCount;
         bytes32 identifier;
-        uint256 time;
         bytes ancillaryData;
     }
 

@@ -24,7 +24,6 @@ const Registry = getContract("Registry");
 const VotingV2 = getContract("VotingV2ControllableTiming");
 const VotingV2Test = getContract("VotingV2Test");
 const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
-const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
 const Timer = getContract("Timer");
@@ -1749,9 +1748,6 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
 
-    // Instantiate a voting interface that supports ancillary data.
-    voting = await VotingAncillaryInterfaceTesting.at(voting.options.address);
-
     // Store the number of price requests to verify the right number are enqued.
     const priceRequestLengthBefore = (await voting.methods.getPendingRequests().call()).length;
 
@@ -1899,9 +1895,6 @@ describe("VotingV2", function () {
     let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
 
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
-
-    // Instantiate a voting interface that supports ancillary data.
-    voting = await VotingAncillaryInterfaceTesting.at(voting.options.address);
 
     // Store the number of price requests to verify the right number are enqued.
     const priceRequestLengthBefore = (await voting.methods.getPendingRequests().call()).length;

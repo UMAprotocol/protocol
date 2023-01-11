@@ -493,10 +493,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      ****************************************/
 
     /**
-     * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests array containing identifiers of type PendingRequestAncillary.
+     * @notice Gets the requests that are being voted on this round.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
-    function getPendingRequests() external view override returns (PendingRequestAncillaryAugmented[] memory) {
+    function getPendingRequests() public view override returns (PendingRequestAncillaryAugmented[] memory) {
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequestsIds only to those requests that have an Active RequestStatus.
         PendingRequestAncillaryAugmented[] memory unresolved =
@@ -508,8 +508,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             if (_getRequestStatus(priceRequest, getCurrentRoundId()) == RequestStatus.Active) {
                 unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
-                    identifier: priceRequest.identifier,
+                    lastVotingRound: priceRequest.lastVotingRound,
+                    isGovernance: priceRequest.isGovernance,
                     time: priceRequest.time,
+                    rollCount: priceRequest.rollCount,
+                    identifier: priceRequest.identifier,
                     ancillaryData: priceRequest.ancillaryData
                 });
                 numUnresolved++;
@@ -521,6 +524,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         for (uint256 i = 0; i < numUnresolved; i = unsafe_inc(i)) pendingRequests[i] = unresolved[i];
 
         return pendingRequests;
+    }
+
+    /**
+     * @notice Processes pending price requests and returns the requests that are being voted on this round.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
+     */
+    function getProcessedPendingRequests() external returns (PendingRequestAncillaryAugmented[] memory) {
+        processResolvablePriceRequests();
+        return getPendingRequests();
     }
 
     /**
