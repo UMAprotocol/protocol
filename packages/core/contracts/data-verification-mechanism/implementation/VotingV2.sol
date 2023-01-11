@@ -89,6 +89,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      *            VOTING STATE              *
      ****************************************/
 
+    FinderInterface private immutable finder; // Reference to the UMA Finder contract, used to find other UMA contracts.
+
+    SlashingLibraryInterface public slashingLibrary; // Reference to Slashing Library, used to compute slashing amounts.
+
+    VoteTiming.Data public voteTiming; // Vote timing library used to compute round timing related logic.
+
+    OracleAncillaryInterface public immutable previousVotingContract; // Previous voting contract, if migrated.
+
     mapping(uint256 => Round) public rounds; // Maps round numbers to the rounds.
 
     mapping(bytes32 => PriceRequest) public priceRequests; // Maps price request IDs to the PriceRequest struct.
@@ -98,14 +106,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     bytes32[] public pendingPriceRequestsIds; // Array of pending price requestIds. Can be resolved in the future.
 
     uint32 public maxRolls; // The maximum number of times a request can roll before it is deleted automatically.
-
-    FinderInterface private immutable finder; // Reference to the UMA Finder contract, used to find other UMA contracts.
-
-    SlashingLibraryInterface public slashingLibrary; // Reference to Slashing Library, used to compute slashing amounts.
-
-    VoteTiming.Data public voteTiming; // Vote timing library used to compute round timing related logic.
-
-    OracleAncillaryInterface public immutable previousVotingContract; // Previous voting contract, if migrated.
 
     address public migratedAddress; // If non-zero, this contract has been migrated to this address.
 
