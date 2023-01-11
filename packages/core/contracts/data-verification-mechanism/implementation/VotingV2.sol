@@ -456,10 +456,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
 
         // Check that the hash that was committed matches to the one that was revealed. Note that if the voter had
-        // delegated this means that they must reveal with the same account they had committed with.
+        // then they must reveal with the same account they had committed with.
         require(
-            keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, currentRoundId, identifier)) ==
-                voteSubmission.commit,
+            keccak256(
+                abi.encodePacked(price, salt, msg.sender, time, ancillaryData, uint256(currentRoundId), identifier)
+            ) == voteSubmission.commit,
             "Revealed data != commit hash"
         );
 
@@ -765,7 +766,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         while (requestIndex < resolvedPriceRequestIds.length && maxTraversals > 0) {
             maxTraversals = unsafe_dec_64(maxTraversals); // reduce the number of traversals left & re-use the prop.
 
-            // Get the slashing for this request. This comes from the slashing library and informs to slash the voter.
+            // Get the slashing for this request. This comes from the slashing library and informs to the voter slash.
             SlashingTracker memory trackers = requestSlashingTrackers(requestIndex);
 
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
@@ -773,6 +774,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[trackers.lastVotingRound];
             int256 slash; // The amount to slash the voter by for this request. Reset on each entry to emit useful logs.
 
+            // Get the voter participation for this request. This informs if the voter voted correctly or not.
             VoteParticipation participation = getVoterParticipation(requestIndex, trackers.lastVotingRound, voter);
 
             // The voter did not reveal or did not commit. Slash at noVote rate.

@@ -288,7 +288,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Gets the pending stake for a voter for a given round.
      * @param voter the voter address.
      * @param roundId round id.
-     * @return uint32 amount of the pending stake.
+     * @return uint256 amount of the pending stake.
      */
     function getVoterPendingStake(address voter, uint32 roundId) external view returns (uint256) {
         return voterStakes[voter].pendingStakes[roundId];
