@@ -41,7 +41,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct VoteInstance {
-        mapping(address => VoteSubmission) voteSubmissions; // Maps (voterAddress) to their submission.
+        mapping(address => VoteSubmission) voteSubmissions; // Maps (voter) to their submission.
         ResultComputationV2.Data results; // The data structure containing the computed voting results.
     }
 
@@ -55,6 +55,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
+    }
+
+    struct SlashingTracker {
+        uint256 wrongVoteSlashPerToken; // The amount of tokens slashed per token staked for a wrong vote.
+        uint256 noVoteSlashPerToken; // The amount of tokens slashed per token staked for a no vote.
+        uint256 totalSlashed; // The total amount of tokens slashed for a given request.
+        uint256 totalCorrectVotes; // The total number of correct votes for a given request.
+        uint256 lastVotingRound; // The last round that this request was voted on (when it resolved).
     }
 
     // Represents the status a price request has.
@@ -74,15 +82,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Only used as a return value in view methods -- never stored in the contract.
     struct RequestState {
         RequestStatus status;
-        uint256 lastVotingRound;
-    }
-
-    // Only used as a return value in view methods -- never stored in the contract.
-    struct SlashingTracker {
-        uint256 wrongVoteSlashPerToken;
-        uint256 noVoteSlashPerToken;
-        uint256 totalSlashed;
-        uint256 totalCorrectVotes;
         uint256 lastVotingRound;
     }
 
@@ -678,30 +677,30 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Updates the voter's trackers for staking and slashing. Applies all unapplied slashing to given staker.
      * @dev Can be called by anyone, but it is not necessary for the contract to function is run the other functions.
-     * @param voterAddress address of the voter to update the trackers for.
+     * @param voter address of the voter to update the trackers for.
      */
-    function updateTrackers(address voterAddress) external {
-        _updateTrackers(voterAddress);
+    function updateTrackers(address voter) external {
+        _updateTrackers(voter);
     }
 
     /**
      * @notice Updates the voter's trackers for staking and voting, specifying a maximum number of resolved requests to
      * traverse. This function can be used in place of updateTrackers to process the trackers in batches, hence avoiding
      * potential issues if the number of elements to be processed is large and the associated gas cost is too high.
-     * @param voterAddress address of the voter to update the trackers for.
+     * @param voter address of the voter to update the trackers for.
      * @param maxTraversals maximum number of resolved requests to traverse in this call.
      */
-    function updateTrackersRange(address voterAddress, uint64 maxTraversals) external {
+    function updateTrackersRange(address voter, uint64 maxTraversals) external {
         processResolvablePriceRequests();
-        _updateAccountSlashingTrackers(voterAddress, maxTraversals);
+        _updateAccountSlashingTrackers(voter, maxTraversals);
     }
 
     // Updates the global and selected wallet's trackers for staking and voting. Note that the order of these calls is
     // very important due to the interplay between slashing and inactive/active liquidity.
-    function _updateTrackers(address voterAddress) internal override {
+    function _updateTrackers(address voter) internal override {
         processResolvablePriceRequests();
-        _updateAccountSlashingTrackers(voterAddress, UINT64_MAX);
-        super._updateTrackers(voterAddress);
+        _updateAccountSlashingTrackers(voter, UINT64_MAX);
+        super._updateTrackers(voter);
     }
 
     /**
@@ -740,7 +739,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // This function must be called before any tokens are staked. It updates the voter's pending stakes to reflect the
     // new amount to stake. These updates are only made if we are in an active reveal. This is required to appropriately
     // calculate a voter's trackers and avoid slashing them for amounts staked during an active reveal phase.
-    function _computePendingStakes(address voterAddress, uint256 amount) internal override {
+    function _computePendingStakes(address voter, uint256 amount) internal override {
         if (_inActiveReveal()) {
             uint32 currentRoundId = getCurrentRoundId();
             // Freeze round variables to prevent cumulativeActiveStakeAtRound from changing based on the stakes during
@@ -748,7 +747,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             _freezeRoundVariables(currentRoundId);
             // Increment pending stake for voter by amount. With the omission of stake from cumulativeActiveStakeAtRound
             // for this round, ensure that the pending stakes is not included in the slashing calculation for this round.
-            _incrementPendingStake(voterAddress, currentRoundId, amount);
+            _incrementPendingStake(voter, currentRoundId, amount);
         }
     }
 
@@ -757,8 +756,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // voting activity the voters balance is updated accordingly. The caller can provide a maxTraversals parameter to
     // limit the number of resolved requests to traverse in this call to bound the gas used. Note each iteration of
     // this function re-uses a fresh slash variable to produce useful logs on the amount a voter is slashed.
-    function _updateAccountSlashingTrackers(address voterAddress, uint64 maxTraversals) internal {
-        VoterStake storage voterStake = voterStakes[voterAddress];
+    function _updateAccountSlashingTrackers(address voter, uint64 maxTraversals) internal {
+        VoterStake storage voterStake = voterStakes[voter];
         uint64 requestIndex = voterStake.nextIndexToProcess; // Traverse all requests from the last considered request.
 
         // Traverse all elements within the resolvedPriceRequestIds array and update the voter's trackers according to
@@ -767,32 +766,31 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             maxTraversals = unsafe_dec_64(maxTraversals); // reduce the number of traversals left & re-use the prop.
 
             // Get the slashing for this request. This comes from the slashing library and informs to slash the voter.
-            SlashingTracker memory slashingTracker = requestSlashingTrackers(requestIndex);
+            SlashingTracker memory trackers = requestSlashingTrackers(requestIndex);
 
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
-            uint256 requestSettlementRound = slashingTracker.lastVotingRound;
-            uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[requestSettlementRound];
+            uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[trackers.lastVotingRound];
             int256 slash; // The amount to slash the voter by for this request. Reset on each entry to emit useful logs.
 
-            VoteParticipation participation = getVoterParticipation(requestIndex, requestSettlementRound, voterAddress);
+            VoteParticipation participation = getVoterParticipation(requestIndex, trackers.lastVotingRound, voter);
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (participation == VoteParticipation.DidNotVote)
-                slash = -int256((effectiveStake * slashingTracker.noVoteSlashPerToken) / 1e18);
+                slash = -int256((effectiveStake * trackers.noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (participation == VoteParticipation.WrongVote)
-                slash = -int256((effectiveStake * slashingTracker.wrongVoteSlashPerToken) / 1e18);
+                slash = -int256((effectiveStake * trackers.wrongVoteSlashPerToken) / 1e18);
 
                 // Else, the voter voted correctly. Receive a pro-rate share of the other voters slash.
-            else slash = int256((effectiveStake * slashingTracker.totalSlashed) / slashingTracker.totalCorrectVotes);
+            else slash = int256((effectiveStake * trackers.totalSlashed) / trackers.totalCorrectVotes);
 
-            emit VoterSlashed(voterAddress, requestIndex, slash);
+            emit VoterSlashed(voter, requestIndex, slash);
             voterStake.unappliedSlash += slash;
 
             // If the next round is different to the current considered round, apply the slash to the voter.
-            if (isNextRequestRoundDifferent(requestIndex)) _applySlashToVoter(voterStake, voterAddress);
+            if (isNextRequestRoundDifferent(requestIndex)) _applySlashToVoter(voterStake, voter);
 
             requestIndex = unsafe_inc_64(requestIndex); // Increment the request index.
         }
@@ -804,11 +802,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Applies a given slash to a given voter's stake. In the event the sum of the slash and the voter's stake is less
     // than 0, the voter's stake is set to 0 to prevent the voter's stake from going negative. unappliedSlash tracked
     // all slashing the staker has received but not yet applied to their stake. Apply it then set it to zero.
-    function _applySlashToVoter(VoterStake storage voterStake, address voterAddress) internal {
+    function _applySlashToVoter(VoterStake storage voterStake, address voter) internal {
         if (voterStake.unappliedSlash + int256(voterStake.stake) > 0)
             voterStake.stake = uint256(int256(voterStake.stake) + voterStake.unappliedSlash);
         else voterStake.stake = 0;
-        emit VoterSlashApplied(voterAddress, voterStake.unappliedSlash, voterStake.stake);
+        emit VoterSlashApplied(voter, voterStake.unappliedSlash, voterStake.stake);
         voterStake.unappliedSlash = 0;
     }
 
@@ -828,19 +826,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Enable retrieval of rewards on a previously migrated away from voting contract. This function is intended
      * on being removed from future versions of the Voting contract and aims to solve a short term migration pain point.
-     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
+     * @param voter voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
      * @return uint256 the amount of rewards.
      */
     function retrieveRewardsOnMigratedVotingContract(
-        address voterAddress,
+        address voter,
         uint256 roundId,
         MinimumVotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
     ) public returns (uint256) {
         uint256 rewards =
             MinimumVotingAncillaryInterface(address(previousVotingContract))
-                .retrieveRewards(voterAddress, roundId, toRetrieve)
+                .retrieveRewards(voter, roundId, toRetrieve)
                 .rawValue;
         return rewards;
     }
@@ -896,7 +894,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes memory ancillaryData
     ) private view returns (bool, int256) {
         if (address(previousVotingContract) == address(0)) return (false, 0);
-
         if (previousVotingContract.hasPrice(identifier, time, ancillaryData))
             return (true, previousVotingContract.getPrice(identifier, time, ancillaryData));
         return (false, 0);
