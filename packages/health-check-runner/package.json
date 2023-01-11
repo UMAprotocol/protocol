@@ -1,6 +1,6 @@
 {
   "name": "health-check-runner",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Simple node package enabling the execution of a set of health checks with wrapped logger",
   "main": "dist/index.js",
   "author": "UMA Team",
@@ -10,7 +10,7 @@
     "build": "tsc --build"
   },
   "dependencies": {
-    "@uma/financial-templates-lib": "^2.32.2",
+    "@uma/financial-templates-lib": "^2.32.3",
     "minimist": "^1.2.6",
     "winston": "^3.8.1"
   }

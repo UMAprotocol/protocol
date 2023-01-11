@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.20.2...@uma/scripts@1.21.0) (2023-01-11)
+
+### Features
+
+- dvm v2 monitor bots ([#4317](https://github.com/UMAprotocol/protocol/issues/4317)) ([5a6602e](https://github.com/UMAprotocol/protocol/commit/5a6602e60130e20edca56d4ae40d595c899a2ed8)), closes [#4304](https://github.com/UMAprotocol/protocol/issues/4304) [#4315](https://github.com/UMAprotocol/protocol/issues/4315) [#4301](https://github.com/UMAprotocol/protocol/issues/4301) [#4214](https://github.com/UMAprotocol/protocol/issues/4214) [#4311](https://github.com/UMAprotocol/protocol/issues/4311) [#4318](https://github.com/UMAprotocol/protocol/issues/4318) [#4322](https://github.com/UMAprotocol/protocol/issues/4322) [#4306](https://github.com/UMAprotocol/protocol/issues/4306) [#4320](https://github.com/UMAprotocol/protocol/issues/4320) [#4323](https://github.com/UMAprotocol/protocol/issues/4323) [#4324](https://github.com/UMAprotocol/protocol/issues/4324) [#4325](https://github.com/UMAprotocol/protocol/issues/4325) [#4326](https://github.com/UMAprotocol/protocol/issues/4326) [#4327](https://github.com/UMAprotocol/protocol/issues/4327) [#4336](https://github.com/UMAprotocol/protocol/issues/4336) [#4337](https://github.com/UMAprotocol/protocol/issues/4337) [#4338](https://github.com/UMAprotocol/protocol/issues/4338) [#4341](https://github.com/UMAprotocol/protocol/issues/4341) [#4335](https://github.com/UMAprotocol/protocol/issues/4335) [#4339](https://github.com/UMAprotocol/protocol/issues/4339) [#4319](https://github.com/UMAprotocol/protocol/issues/4319) [#4334](https://github.com/UMAprotocol/protocol/issues/4334) [#4340](https://github.com/UMAprotocol/protocol/issues/4340) [#4342](https://github.com/UMAprotocol/protocol/issues/4342) [#4343](https://github.com/UMAprotocol/protocol/issues/4343)
+- update upgrade scripts ([#4371](https://github.com/UMAprotocol/protocol/issues/4371)) ([278d12c](https://github.com/UMAprotocol/protocol/commit/278d12c6a71733f71e12ae52a8f12a3f9cecd87b))
+- voting v2 monitoring scripts ([#4312](https://github.com/UMAprotocol/protocol/issues/4312)) ([1582a8a](https://github.com/UMAprotocol/protocol/commit/1582a8a5623e1e76f026ff7ff487792a5cae5fe6))
+
 ## [1.20.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.20.1...@uma/scripts@1.20.2) (2023-01-09)
 
 **Note:** Version bump only for package @uma/scripts
