@@ -1727,6 +1727,13 @@ describe("VotingV2", function () {
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound(votingTest, accounts[0]);
 
+    // Check that getProcessedPendingRequests already returns the correct number of elements.
+    assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 1);
+    assert.equal(
+      (await VotingV2.at(votingTest.options.address).methods.getProcessedPendingRequests().call()).length,
+      0
+    );
+
     // Updating the account tracker should remove the request from the pending array as it is now resolved.
     await VotingV2.at(votingTest.options.address).methods.updateTrackers(account1).send({ from: account1 });
 
@@ -2961,6 +2968,17 @@ describe("VotingV2", function () {
       (await voting.methods.voterStakes(account1).call()).stake,
       toWei("32000000").add(toWei("217600")) // Their original stake amount of 32mm  plus the positive slash of 217600.
     );
+
+    const pendingRequests = await voting.methods.getPendingRequests().call();
+    assert.equal(pendingRequests.length, 2); // There should be 2 pending requests. The rolled one and the new one.
+
+    // The new request should have a roll count of 0.
+    assert.equal(pendingRequests[0].time, time + 4);
+    assert.equal(pendingRequests[0].rollCount, 0);
+
+    // The rolled request should have a roll count of 1.
+    assert.equal(pendingRequests[1].time, time + 2);
+    assert.equal(pendingRequests[1].rollCount, 1);
 
     // Now, we can vote on the requests: rolled request and "new" request.
     baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
