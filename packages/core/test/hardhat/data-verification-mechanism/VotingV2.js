@@ -4301,25 +4301,19 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 4);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
 
-    // Before doing anything the resolvableIndex should be 0.
-    assert.equal(
-      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
-      "0"
-    );
+    // Before doing anything the pendingResolvedIndex should be 0.
+    assert.equal((await voting.methods.pendingProcessed().call()).pendingResolvedIndex, "0");
 
-    // Updating in range should update the resolvable index to 1.
+    // Updating in range should update to current roundId and the resolvable index to 1.
     await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
-    assert.equal(
-      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
-      "1"
-    );
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    assert.equal((await voting.methods.pendingProcessed().call()).roundId, roundId);
+    assert.equal((await voting.methods.pendingProcessed().call()).pendingResolvedIndex, "1");
 
     // calling processResolvablePriceRequests should update to the end of the range.
     await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
-    assert.equal(
-      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
-      "4"
-    );
+    assert.equal((await voting.methods.pendingProcessed().call()).roundId, roundId);
+    assert.equal((await voting.methods.pendingProcessed().call()).pendingResolvedIndex, "4");
 
     // Equally, we can show the same behavior works when rolling and updating the rolling trackers.
     await moveToNextRound(voting, accounts[0]);
@@ -4353,7 +4347,7 @@ describe("VotingV2", function () {
     // Same behavour occurs when settling requests.
     const price = 123;
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
-    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     let baseRequest = { salt, roundId, identifier };
     const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
@@ -4421,7 +4415,8 @@ describe("VotingV2", function () {
     // verify that we've traversed all the requests and that subsequent calls are very cheap.
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 625);
     const roundId = await voting.methods.getCurrentRoundId().call();
-    assert.equal((await voting.methods.rounds(roundId).call()).resolvedIndex, 625);
+    assert.equal((await voting.methods.pendingProcessed().call()).roundId, roundId);
+    assert.equal((await voting.methods.pendingProcessed().call()).pendingResolvedIndex, 625);
     const gasUsed1 = (await voting.methods.processResolvablePriceRequests().send({ from: account1 })).gasUsed;
     assert(gasUsed1 < 40000);
 
