@@ -55,6 +55,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
+        uint32 requestToVoteOnInThisRound; // The number of requests that have been voted on in this round.
     }
 
     struct SlashingTracker {
@@ -112,6 +113,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     uint256 public gat; // GAT: A minimum number of tokens that must participate to resolve a vote.
 
     uint256 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
+
+    uint64 public maxRequestsPerRound = 1000; // The maximum number of requests that can be enqueued in a single round.
 
     uint64 private constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
 
@@ -292,7 +295,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // Price has never been requested.
         uint32 currentRoundId = getCurrentRoundId();
         if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.NotRequested) {
-            uint32 roundIdToVoteOn = currentRoundId + 1; // Vote on request in the following round.
+            uint32 roundIdToVoteOn = getRoundIdToVoteOnRequest(currentRoundId + 1);
+            ++rounds[roundIdToVoteOn].requestToVoteOnInThisRound;
             priceRequest.identifier = identifier;
             priceRequest.time = SafeCast.toUint64(time);
             priceRequest.ancillaryData = ancillaryData;
@@ -302,6 +306,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             pendingPriceRequestsIds.push(priceRequestId);
             emit RequestAdded(msg.sender, roundIdToVoteOn, identifier, time, ancillaryData, isGovernance);
         }
+    }
+
+    function getRoundIdToVoteOnRequest(uint32 targetRoundId) public view returns (uint32) {
+        while (rounds[targetRoundId].requestToVoteOnInThisRound > maxRequestsPerRound) targetRoundId++;
+        return targetRoundId;
     }
 
     /**
@@ -990,7 +999,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 continue;
             }
             // Else, the request should be rolled. This involves only moving forward the lastVotingRound.
-            request.lastVotingRound = currentRoundId;
+            request.lastVotingRound = getRoundIdToVoteOnRequest(currentRoundId);
+            ++rounds[request.lastVotingRound].requestToVoteOnInThisRound;
             emit RequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
             requestIndex = unsafe_inc_64(requestIndex);
         }
