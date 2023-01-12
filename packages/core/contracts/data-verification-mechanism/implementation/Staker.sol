@@ -23,7 +23,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     struct VoterStake {
         uint256 stake; // UMA staked by the staker.
         uint256 pendingUnstake; // UMA in unstake cooldown period, waiting to be unstaked.
-        mapping(uint256 => uint256) pendingStakes; // If a voter stakes during an active reveal, stake is pending.
+        mapping(uint32 => uint256) pendingStakes; // If a voter stakes during an active reveal, stake is pending.
         uint256 rewardsPaidPerToken; // Internal tracker used in the calculation of pro-rata share of rewards.
         uint256 outstandingRewards; // Accumulated rewards that have not yet been claimed.
         int256 unappliedSlash; // Used to track unapplied slashing in the case of bisected rounds.
