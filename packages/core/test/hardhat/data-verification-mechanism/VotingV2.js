@@ -1727,12 +1727,9 @@ describe("VotingV2", function () {
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound(votingTest, accounts[0]);
 
-    // Check that getProcessedPendingRequests already returns the correct number of elements.
+    // Check that getPendingRequests already returns the correct number of elements.
     assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 1);
-    assert.equal(
-      (await VotingV2.at(votingTest.options.address).methods.getProcessedPendingRequests().call()).length,
-      0
-    );
+    assert.equal((await VotingV2.at(votingTest.options.address).methods.getPendingRequests().call()).length, 0);
 
     // Updating the account tracker should remove the request from the pending array as it is now resolved.
     await VotingV2.at(votingTest.options.address).methods.updateTrackers(account1).send({ from: account1 });
