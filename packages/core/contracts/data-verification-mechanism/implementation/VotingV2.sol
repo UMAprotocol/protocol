@@ -290,6 +290,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 currentRoundId = uint32(getCurrentRoundId());
         if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.NotRequested) {
             uint32 roundIdToVoteOn = getRoundIdToVoteOnRequest(currentRoundId + 1);
+            ++rounds[request.lastVotingRound].requestToVoteOnInThisRound;
             priceRequest.identifier = identifier;
             priceRequest.time = SafeCast.toUint64(time);
             priceRequest.ancillaryData = ancillaryData;
@@ -302,7 +303,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     function getRoundIdToVoteOnRequest(uint32 targetRoundId) public view returns (uint32) {
-        while (rounds[targetRoundId].requestToVoteOnInThisRound > maxRequestsPerRound) targetRoundId++;
+        while (rounds[targetRoundId].requestToVoteOnInThisRound > maxRequestsPerRound) ++targetRoundId;
         return targetRoundId;
     }
 
