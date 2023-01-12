@@ -4789,20 +4789,113 @@ describe("VotingV2", function () {
 
     // Request0 and request 1 should be voted on in the next round (requestRoundId + 1) and the 3rd request should be
     // voted on in the round after that (requestRoundId + 2).
-    assert.equal(
-      (await voting.methods.priceRequests(await voting.methods.pendingPriceRequestsIds(0).call()).call())
-        .lastVotingRound,
-      requestRoundId + 1
+    const request1Id = await voting.methods.pendingPriceRequestsIds(0).call();
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).lastVotingRound, requestRoundId + 1);
+
+    const request2Id = await voting.methods.pendingPriceRequestsIds(1).call();
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).lastVotingRound, requestRoundId + 1);
+
+    const request3Id = await voting.methods.pendingPriceRequestsIds(2).call();
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).lastVotingRound, requestRoundId + 2);
+
+    // Submit another 2 price requests. the next should be in the next round and the last should be in the round after that.
+    await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 4).send({ from: registeredContract });
+
+    const request4Id = await voting.methods.pendingPriceRequestsIds(3).call();
+    assert.equal((await voting.methods.priceRequests(request4Id).call()).lastVotingRound, requestRoundId + 2);
+
+    const request5Id = await voting.methods.pendingPriceRequestsIds(4).call();
+    assert.equal((await voting.methods.priceRequests(request5Id).call()).lastVotingRound, requestRoundId + 3);
+
+    // Verify that voting respects what round a request is meant to be voted on. We should be able to vote on request1
+    // and request2 at the same time, but not 3,4,5.
+    await moveToNextRound(voting, accounts[0]);
+
+    await voting.methods.processResolvablePriceRequests().send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 5);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
+
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    const hash2 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 1 });
+    let hash3 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 2 });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    await voting.methods.commitVote(identifier, time + 1, hash2).send({ from: account1 });
+
+    // Voting on request 3 should revert as it's not active in this round.
+    assert(await didContractThrow(voting.methods.commitVote(identifier, time + 2, hash3).send({ from: account1 })));
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account1 }))
     );
-    assert.equal(
-      (await voting.methods.priceRequests(await voting.methods.pendingPriceRequestsIds(1).call()).call())
-        .lastVotingRound,
-      requestRoundId + 1
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.processResolvablePriceRequests().send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 3);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 2);
+
+    // Now, we should expect none of the requests to have rolled as they were enqued for this round, not the previous
+    // round and so should not have rolled. Equally, we should now be able to vote on 3 and 4 but not 5.
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).lastVotingRound, requestRoundId + 1);
+    assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).lastVotingRound, requestRoundId + 1);
+    assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).lastVotingRound, requestRoundId + 2);
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 0);
+
+    // We should now be able to vote on requests 3, 4 but not 5.
+    baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    hash3 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 2 });
+    const hash4 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 3 });
+    let hash5 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 4 });
+    await voting.methods.commitVote(identifier, time + 2, hash3).send({ from: account1 });
+    await voting.methods.commitVote(identifier, time + 3, hash4).send({ from: account1 });
+    assert(await didContractThrow(voting.methods.commitVote(identifier, time + 4, hash5).send({ from: account1 })));
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account1 });
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time + 4, price, salt).send({ from: account1 }))
     );
+
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.processResolvablePriceRequests().send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 1);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 4);
+
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).lastVotingRound, requestRoundId + 2);
+    assert.equal((await voting.methods.priceRequests(request3Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request4Id).call()).lastVotingRound, requestRoundId + 2);
+    assert.equal((await voting.methods.priceRequests(request4Id).call()).rollCount, 0);
+    assert.equal((await voting.methods.priceRequests(request5Id).call()).lastVotingRound, requestRoundId + 3);
+    assert.equal((await voting.methods.priceRequests(request5Id).call()).rollCount, 0);
+
+    // Finally, we can vote on the last request.
+    baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    hash5 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 4 });
+    await voting.methods.commitVote(identifier, time + 4, hash5).send({ from: account1 });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time + 4, price, salt).send({ from: account1 });
+    await moveToNextRound(voting, accounts[0]);
+    await voting.methods.processResolvablePriceRequests().send({ from: account1 });
+    assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
+    assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 5);
+
+    // All prices are resolvable.
     assert.equal(
-      (await voting.methods.priceRequests(await voting.methods.pendingPriceRequestsIds(2).call()).call())
-        .lastVotingRound,
-      requestRoundId + 2
+      price.toString(),
+      await voting.methods.getPrice(identifier, time).call({ from: registeredContract }),
+      await voting.methods.getPrice(identifier, time + 1).call({ from: registeredContract }),
+      await voting.methods.getPrice(identifier, time + 2).call({ from: registeredContract }),
+      await voting.methods.getPrice(identifier, time + 3).call({ from: registeredContract }),
+      await voting.methods.getPrice(identifier, time + 4).call({ from: registeredContract })
     );
   });
 
