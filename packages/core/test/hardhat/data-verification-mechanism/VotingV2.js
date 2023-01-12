@@ -4303,21 +4303,21 @@ describe("VotingV2", function () {
 
     // Before doing anything the resolvableIndex should be 0.
     assert.equal(
-      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).pendingResolvedIndex,
       "0"
     );
 
     // Updating in range should update the resolvable index to 1.
     await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
     assert.equal(
-      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).pendingResolvedIndex,
       "1"
     );
 
     // calling processResolvablePriceRequests should update to the end of the range.
     await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal(
-      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).resolvedIndex,
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).pendingResolvedIndex,
       "4"
     );
 
@@ -4421,7 +4421,7 @@ describe("VotingV2", function () {
     // verify that we've traversed all the requests and that subsequent calls are very cheap.
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 625);
     const roundId = await voting.methods.getCurrentRoundId().call();
-    assert.equal((await voting.methods.rounds(roundId).call()).resolvedIndex, 625);
+    assert.equal((await voting.methods.rounds(roundId).call()).pendingResolvedIndex, 625);
     const gasUsed1 = (await voting.methods.processResolvablePriceRequests().send({ from: account1 })).gasUsed;
     assert(gasUsed1 < 40000);
 
