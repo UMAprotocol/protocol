@@ -94,6 +94,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     uint32 public maxRolls; // The maximum number of times a request can roll before it is deleted automatically.
 
+    uint32 public maxRequestsPerRound; // The maximum number of requests that can be enqueued in a single round.
+
     FinderInterface private immutable finder; // Reference to the UMA Finder contract, used to find other UMA contracts.
 
     SlashingLibraryInterface public slashingLibrary; // Reference to Slashing Library, used to compute slashing amounts.
@@ -107,8 +109,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     uint256 public gat; // GAT: A minimum number of tokens that must participate to resolve a vote.
 
     uint256 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
-
-    uint32 public maxRequestsPerRound = 1000; // The maximum number of requests that can be enqueued in a single round.
 
     uint64 private constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
 
