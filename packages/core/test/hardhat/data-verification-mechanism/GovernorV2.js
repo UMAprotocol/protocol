@@ -16,7 +16,7 @@ const GovernorTest = getContract("GovernorTest");
 const Timer = getContract("Timer");
 const Registry = getContract("Registry");
 const Finder = getContract("Finder");
-const SlashingLibrary = getContract("SlashingLibrary");
+const SlashingLibrary = getContract("FixedSlashSlashingLibrary");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
