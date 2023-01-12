@@ -4128,14 +4128,6 @@ describe("VotingV2", function () {
     await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 0);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 4);
-
-    // Check slot 2 in the resolved array is the second request (based on time of the request).
-    // const resolvedRequest3Id = await voting.methods.resolvedPriceRequestIds(2).call();
-    // // assert.equal((await voting.methods.priceRequests(resolvedRequest3Id).call()).time, time + 1);
-
-    // // Check slot 3 in the resolved array is the third request (based on time of the request).
-    // const resolvedRequest4Id = await voting.methods.resolvedPriceRequestIds(3).call();
-    // assert.equal((await voting.methods.priceRequests(resolvedRequest4Id).call()).time, time + 2);
   });
   it("Requests are automatically removed after a fixed number of rolls", async function () {
     // Verify that if a request rolls enough times (to hit maxRolls) it is automatically removed from the
@@ -4709,7 +4701,6 @@ describe("VotingV2", function () {
 
     // Account1 vote correctly on both price requests.
     // Account4 vote incorrectly on both price requests.
-
     const hash1 = computeVoteHash({ price: price, salt: salt, account: account1, time, roundId, identifier });
     const hash1Wrong = computeVoteHash({ price: wrongPrice, salt: salt, account: account4, time, roundId, identifier });
     const hash2 = computeVoteHash({

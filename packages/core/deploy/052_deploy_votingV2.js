@@ -24,8 +24,8 @@ const func = async function (hre) {
   // Set phase length to one day.
   const phaseLength = "86400";
 
-  // A price request can roll, at maximum, 4 times before it is auto deleted (i.e on the 5rd roll it is auto deleted).
-  const maxRolls = 4;
+  // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
+  const maxRolls = 2;
 
   // Bound how many requests can be made in a single round. After this maximum requests auto roll.
   const maxRequestsPerRound = 1000;
