@@ -493,10 +493,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      ****************************************/
 
     /**
-     * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests array containing identifiers of type PendingRequestAncillary.
+     * @notice Gets the requests that are being voted on this round after resolving them when possible.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
-    function getPendingRequests() external view override returns (PendingRequestAncillaryAugmented[] memory) {
+    function getPendingRequests() external override returns (PendingRequestAncillaryAugmented[] memory) {
+        // First, resolve any pending requests that can be resolved.
+        processResolvablePriceRequests();
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequestsIds only to those requests that have an Active RequestStatus.
         PendingRequestAncillaryAugmented[] memory unresolved =
@@ -508,8 +510,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             if (_getRequestStatus(priceRequest, getCurrentRoundId()) == RequestStatus.Active) {
                 unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
-                    identifier: priceRequest.identifier,
+                    lastVotingRound: priceRequest.lastVotingRound,
+                    isGovernance: priceRequest.isGovernance,
                     time: priceRequest.time,
+                    rollCount: priceRequest.rollCount,
+                    identifier: priceRequest.identifier,
                     ancillaryData: priceRequest.ancillaryData
                 });
                 numUnresolved++;

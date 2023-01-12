@@ -182,6 +182,10 @@ describe("GovernorV2", function () {
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
 
+    // Both pending requests should be governance requests
+    assert.equal(pendingRequests[0].isGovernance, true);
+    assert.equal(pendingRequests[1].isGovernance, true);
+
     // Check that the proposals shows up and that the identifiers are constructed correctly.
     assert.equal(pendingRequests.length, 2);
     const request1 = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
