@@ -148,6 +148,7 @@ describe("VotingV2", function () {
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
           2, // maxRolls
+          1000, // maxRequestsPerRound
           invalidGat, // GAT
           validSpat, // SPAT
           votingToken.options.address, // voting token
@@ -165,6 +166,7 @@ describe("VotingV2", function () {
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
           2, // maxRolls
+          1000, // maxRequestsPerRound
           validGat, // GAT
           invalidSpat, // SPAT
           votingToken.options.address, // voting token
@@ -1467,6 +1469,7 @@ describe("VotingV2", function () {
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       2, // maxRolls
+      1000, // maxRequestsPerRound
       toWei("5000000"), // GAT 5MM
       toWei("0.25"), // PAT 25%
       votingToken.options.address, // voting token
@@ -1630,6 +1633,7 @@ describe("VotingV2", function () {
       60 * 60 * 24 * 7, // Unstake cooldown
       86400, // PhaseLength
       2, // maxRolls
+      1000, // maxRequestsPerRound
       toWei("5000000"), // GAT 5MM
       toWei("0.25"), // PAT 25%
       votingToken.options.address, // voting token
@@ -1674,6 +1678,7 @@ describe("VotingV2", function () {
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
           2, // maxRolls
+          1000, // maxRequestsPerRound
           toWei("5000000"), // GAT 5MM
           toWei("0.25"), // PAT 25%
           votingToken.options.address, // voting token

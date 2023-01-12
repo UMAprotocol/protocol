@@ -73,11 +73,15 @@ async function main() {
   // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
   const maxRolls = 2;
 
+  // The maximum number of requests that can be placed within a single round. If exceeded, the request will auto roll.
+  const maxRequestsPerRound = 1000;
+
   const votingV2 = await votingV2Factory.deploy(
     emissionRate,
     unstakeCooldown,
     phaseLength,
     maxRolls,
+    maxRequestsPerRound,
     gat,
     spat,
     votingToken.address,

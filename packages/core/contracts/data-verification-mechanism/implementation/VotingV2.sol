@@ -177,6 +177,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event MaxRollsChanged(uint32 newMaxRolls);
 
+    event MaxRequestsPerRoundChanged(uint32 newMaxRequestsPerRound);
+
     event VoterSlashApplied(address indexed voter, int256 slashedTokens, uint256 postStake);
 
     event VoterSlashed(address indexed voter, uint256 indexed requestIndex, int256 slashedTokens);
@@ -187,6 +189,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
      * @param _phaseLength length of the voting phases in seconds.
      * @param _maxRolls number of times a vote must roll to be auto deleted by the DVM.
+     * @param _maxRequestsPerRound maximum number of requests that can be enqueued in a single round.
      * @param _gat number of tokens that must participate to resolve a vote.
      * @param _spat percentage of staked tokens that must agree on the result to resolve a vote.
      * @param _votingToken address of the UMA token contract used to commit votes.
@@ -199,6 +202,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
         uint32 _maxRolls,
+        uint32 _maxRequestsPerRound,
         uint256 _gat,
         uint256 _spat,
         address _votingToken,
@@ -211,6 +215,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
         setGatAndSpat(_gat, _spat);
         setSlashingLibrary(_slashingLibrary);
+        setMaxRequestPerRound(_maxRequestsPerRound);
         setMaxRolls(_maxRolls);
     }
 
@@ -290,7 +295,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 currentRoundId = uint32(getCurrentRoundId());
         if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.NotRequested) {
             uint32 roundIdToVoteOn = getRoundIdToVoteOnRequest(currentRoundId + 1);
-            ++rounds[request.lastVotingRound].requestToVoteOnInThisRound;
+            ++rounds[roundIdToVoteOn].requestToVoteOnInThisRound;
             priceRequest.identifier = identifier;
             priceRequest.time = SafeCast.toUint64(time);
             priceRequest.ancillaryData = ancillaryData;
@@ -632,6 +637,17 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function setMaxRolls(uint32 newMaxRolls) public override onlyOwner {
         maxRolls = newMaxRolls;
         emit MaxRollsChanged(newMaxRolls);
+    }
+
+    /**
+     * @notice Sets the maximum number of requests that can be made in a single round. Used to bound the maximum
+     * sequential slashing that can be applied within a single round.
+     * @dev Can only be called by the contract owner.
+     * @param newMaxRequestsPerRound the new maximum number of requests that can be made in a single round.
+     */
+    function setMaxRequestPerRound(uint32 newMaxRequestsPerRound) public override onlyOwner {
+        maxRequestsPerRound = newMaxRequestsPerRound;
+        emit MaxRequestsPerRoundChanged(newMaxRequestsPerRound);
     }
 
     /**
