@@ -496,7 +496,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Gets the requests that are being voted on this round after resolving them when possible.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
-    function getPendingRequests() public override returns (PendingRequestAncillaryAugmented[] memory) {
+    function getPendingRequests() external override returns (PendingRequestAncillaryAugmented[] memory) {
         // First, resolve any pending requests that can be resolved.
         processResolvablePriceRequests();
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
