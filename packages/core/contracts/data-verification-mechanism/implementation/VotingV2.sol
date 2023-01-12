@@ -62,7 +62,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 noVoteSlashPerToken; // The amount of tokens slashed per token staked for a no vote.
         uint256 totalSlashed; // The total amount of tokens slashed for a given request.
         uint256 totalCorrectVotes; // The total number of correct votes for a given request.
-        uint256 lastVotingRound; // The last round that this request was voted on (when it resolved).
+        uint32 lastVotingRound; // The last round that this request was voted on (when it resolved).
     }
 
     // Represents the status a price request has.
@@ -592,7 +592,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
         PriceRequest storage priceRequest = priceRequests[resolvedPriceRequestIds[requestIndex]];
-        uint256 lastVotingRound = priceRequest.lastVotingRound;
+        uint32 lastVotingRound = priceRequest.lastVotingRound;
         VoteInstance storage voteInstance = priceRequest.voteInstances[lastVotingRound];
 
         uint256 totalVotes = voteInstance.results.totalVotes;
@@ -611,7 +611,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     function getVoterParticipation(
         uint256 requestIndex,
-        uint256 lastVotingRound,
+        uint32 lastVotingRound,
         address voter
     ) public view returns (VoteParticipation) {
         VoteInstance storage voteInstance =
