@@ -82,7 +82,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Only used as a return value in view methods -- never stored in the contract.
     struct RequestState {
         RequestStatus status;
-        uint256 lastVotingRound;
+        uint32 lastVotingRound;
     }
 
     /****************************************
@@ -618,8 +618,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             priceRequests[resolvedPriceRequestIds[requestIndex]].voteInstances[lastVotingRound];
         bytes32 revealHash = voteInstance.voteSubmissions[voter].revealHash;
         if (revealHash == bytes32(0)) return VoteParticipation.DidNotVote;
-        else if (voteInstance.results.wasVoteCorrect(revealHash)) return VoteParticipation.CorrectVote;
-        else return VoteParticipation.WrongVote;
+        if (voteInstance.results.wasVoteCorrect(revealHash)) return VoteParticipation.CorrectVote;
+        return VoteParticipation.WrongVote;
     }
 
     /****************************************
