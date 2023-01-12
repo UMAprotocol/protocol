@@ -308,7 +308,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     function getRoundIdToVoteOnRequest(uint32 targetRoundId) public view returns (uint32) {
-        while (rounds[targetRoundId].requestToVoteOnInThisRound > maxRequestsPerRound) ++targetRoundId;
+        while (rounds[targetRoundId].requestToVoteOnInThisRound >= maxRequestsPerRound) ++targetRoundId;
         return targetRoundId;
     }
 

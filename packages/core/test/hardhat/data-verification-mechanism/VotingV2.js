@@ -4770,6 +4770,41 @@ describe("VotingV2", function () {
       toWei("4000000").sub(toWei("6400")).sub(toWei("6400"))
     );
   });
+  it("Requests are auto rolled if a given round hits the limit of number of requests it can handel", async function () {
+    // The contract is meant to bound how many requests can be placed in a given round to limit the upper bound of slashing
+    // that can be applied linearly within one round if a voter was to not participate. Set maxRequestersPerRound to 2.
+    // If we request 3 it should auto roll the 3rd into the next round. If we request 5 it should place 2 in the first
+    // 2 in the second and 1 in the third.
+    await voting.methods.setMaxRequestPerRound(2).send({ from: accounts[0] });
+
+    // Request 3 price requests.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
+
+    const requestRoundId = Number(await voting.methods.getCurrentRoundId().call());
+
+    // Request0 and request 1 should be voted on in the next round (requestRoundId + 1) and the 3rd request should be
+    // voted on in the round after that (requestRoundId + 2).
+    assert.equal(
+      (await voting.methods.priceRequests(await voting.methods.pendingPriceRequestsIds(0).call()).call())
+        .lastVotingRound,
+      requestRoundId + 1
+    );
+    assert.equal(
+      (await voting.methods.priceRequests(await voting.methods.pendingPriceRequestsIds(1).call()).call())
+        .lastVotingRound,
+      requestRoundId + 1
+    );
+    assert.equal(
+      (await voting.methods.priceRequests(await voting.methods.pendingPriceRequestsIds(2).call()).call())
+        .lastVotingRound,
+      requestRoundId + 2
+    );
+  });
 
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
