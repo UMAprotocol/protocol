@@ -55,7 +55,9 @@ async function main() {
   if (emergencyQuorum.gt(tenMillion) || emergencyQuorum.lt(fiveMillion)) throw new Error("Invalid emergency quorum");
 
   console.log("1. DEPLOYING SLASHING LIBRARY");
-  const slashingLibraryFactory: FixedSlashSlashingLibraryEthers__factory = await getContractFactory("SlashingLibrary");
+  const slashingLibraryFactory: FixedSlashSlashingLibraryEthers__factory = await getContractFactory(
+    "FixedSlashSlashingLibrary"
+  );
   // baseSlashAmount: amount slashed for missing a vote or voting wrong.
   const baseSlashAmount = hre.ethers.utils.parseUnits("0.001", "ether");
   // governanceSlashAmount: amount slashed for voting wrong in a governance vote.
