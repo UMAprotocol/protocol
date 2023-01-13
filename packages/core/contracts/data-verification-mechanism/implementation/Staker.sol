@@ -301,23 +301,30 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /**
      * @notice  Determine the number of outstanding token rewards that can be withdrawn by a voter.
      * @param voter the address of the voter.
-     * @return uint256 the outstanding rewards.
+     * @return uint128 the outstanding rewards.
      */
-    function outstandingRewards(address voter) public view returns (uint256) {
+    function outstandingRewards(address voter) public view returns (uint128) {
         VoterStake storage voterStake = voterStakes[voter];
 
         return
-            ((voterStake.stake * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
-            voterStake.outstandingRewards;
+            uint128(
+                ((uint256(voterStake.stake) * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
+                    voterStake.outstandingRewards
+            );
     }
 
     /**
      * @notice  Calculate the reward per token based on the last time the reward was updated.
-     * @return uint256 the reward per token.
+     * @return uint128 the reward per token.
      */
-    function rewardPerToken() public view returns (uint256) {
+    function rewardPerToken() public view returns (uint128) {
         if (cumulativeStake == 0) return rewardPerTokenStored;
-        return rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / cumulativeStake;
+        return
+            uint128(
+                rewardPerTokenStored +
+                    ((getCurrentTime() - lastUpdateTime) * uint256(emissionRate) * 1e18) /
+                    cumulativeStake
+            );
     }
 
     /**
