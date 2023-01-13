@@ -46,7 +46,7 @@ async function simulateVoteV2() {
   async function _getAndDisplayVotingRoundStats() {
     const numProposals = Number(await governorV2.numProposals());
     assert(numProposals >= 1, "Must be at least 1 pending proposal");
-    const pendingRequests = await votingV2.getPendingRequests();
+    const pendingRequests = await votingV2.callStatic.getPendingRequests();
     const currentTime = Number(await votingV2.getCurrentTime());
     const votingPhase = Number(await votingV2.getVotePhase());
     const roundId = Number(await votingV2.getCurrentRoundId());

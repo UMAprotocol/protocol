@@ -9,24 +9,30 @@ import "../interfaces/SlashingLibraryInterface.sol";
  elaborate slashing algorithms via UMA governance.
  */
 
-contract SlashingLibrary is SlashingLibraryInterface {
+contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
+    uint256 public immutable baseSlashAmount;
+    uint256 public immutable governanceSlashAmount;
+
+    constructor(uint256 _baseSlashAmount, uint256 _governanceSlashAmount) {
+        baseSlashAmount = _baseSlashAmount;
+        governanceSlashAmount = _governanceSlashAmount;
+    }
+
     /**
      * @notice Calculates the wrong vote slash per token.
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
+     * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
      * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcWrongVoteSlashPerToken(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
-    ) public pure returns (uint256) {
-        // This number is equal to the slash amount needed to cancel an APY of 20%
-        // if 10 votes are cast each month for a year.  1 - (1 / 1.2)**(1/120) = ~0.0016
-        // When changing this value, make sure that:
-        // (1 + APY) * ( 1 - calcWrongVoteSlashPerToken() )**expected_yearly_votes < 1
-        return 0.0016e18;
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
+    ) public view returns (uint256) {
+        return baseSlashAmount;
     }
 
     /**
@@ -34,14 +40,16 @@ contract SlashingLibrary is SlashingLibraryInterface {
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
+     * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
      * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcWrongVoteSlashPerTokenGovernance(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
-    ) public pure returns (uint256) {
-        return 0;
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
+    ) public view returns (uint256) {
+        return governanceSlashAmount;
     }
 
     /**
@@ -49,18 +57,16 @@ contract SlashingLibrary is SlashingLibraryInterface {
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
+     * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
      * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcNoVoteSlashPerToken(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
-    ) public pure returns (uint256) {
-        // This number is equal to the slash amount needed to cancel an APY of 20%
-        // if 10 votes are cast each month for a year. 1 - (1 / 1.2)**(1/120) = ~0.0016
-        // When changing this value, make sure that:
-        // (1 + APY) * ( 1 - calcNoVoteSlashPerToken() )**expected_yearly_votes < 1
-        return 0.0016e18;
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
+    ) public view returns (uint256) {
+        return baseSlashAmount;
     }
 
     /**
@@ -79,12 +85,12 @@ contract SlashingLibrary is SlashingLibraryInterface {
         uint256 totalCorrectVotes,
         uint256 priceRequestIndex,
         bool isGovernance
-    ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+    ) external view returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         return (
             isGovernance
-                ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)
-                : calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes),
-            calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes)
+                ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex)
+                : calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex),
+            calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex)
         );
     }
 }

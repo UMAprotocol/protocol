@@ -22,19 +22,22 @@ contract PriceIdentifierSlashingLibaryTest is SlashingLibraryInterface {
     function calcWrongVoteSlashPerToken(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
     ) public pure returns (uint256) {}
 
     function calcWrongVoteSlashPerTokenGovernance(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
     ) public pure returns (uint256) {}
 
     function calcNoVoteSlashPerToken(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
     ) public pure returns (uint256) {}
 
     function calcSlashing(

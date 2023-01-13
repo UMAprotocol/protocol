@@ -24,11 +24,10 @@ const Registry = getContract("Registry");
 const VotingV2 = getContract("VotingV2ControllableTiming");
 const VotingV2Test = getContract("VotingV2Test");
 const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
-const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
 const Timer = getContract("Timer");
-const SlashingLibrary = getContract("SlashingLibrary");
+const SlashingLibrary = getContract("FixedSlashSlashingLibrary");
 const ZeroedSlashingSlashingLibraryTest = getContract("ZeroedSlashingSlashingLibraryTest");
 const PunitiveSlashingLibraryTest = getContract("PunitiveSlashingLibraryTest");
 const PriceIdentifierSlashingLibaryTest = getContract("PriceIdentifierSlashingLibaryTest");
@@ -1728,6 +1727,10 @@ describe("VotingV2", function () {
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound(votingTest, accounts[0]);
 
+    // Check that getPendingRequests already returns the correct number of elements.
+    assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 1);
+    assert.equal((await VotingV2.at(votingTest.options.address).methods.getPendingRequests().call()).length, 0);
+
     // Updating the account tracker should remove the request from the pending array as it is now resolved.
     await VotingV2.at(votingTest.options.address).methods.updateTrackers(account1).send({ from: account1 });
 
@@ -1748,9 +1751,6 @@ describe("VotingV2", function () {
     // Make the Oracle support these two identifiers.
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
-
-    // Instantiate a voting interface that supports ancillary data.
-    voting = await VotingAncillaryInterfaceTesting.at(voting.options.address);
 
     // Store the number of price requests to verify the right number are enqued.
     const priceRequestLengthBefore = (await voting.methods.getPendingRequests().call()).length;
@@ -1899,9 +1899,6 @@ describe("VotingV2", function () {
     let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
 
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
-
-    // Instantiate a voting interface that supports ancillary data.
-    voting = await VotingAncillaryInterfaceTesting.at(voting.options.address);
 
     // Store the number of price requests to verify the right number are enqued.
     const priceRequestLengthBefore = (await voting.methods.getPendingRequests().call()).length;
@@ -2968,6 +2965,17 @@ describe("VotingV2", function () {
       (await voting.methods.voterStakes(account1).call()).stake,
       toWei("32000000").add(toWei("217600")) // Their original stake amount of 32mm  plus the positive slash of 217600.
     );
+
+    const pendingRequests = await voting.methods.getPendingRequests().call();
+    assert.equal(pendingRequests.length, 2); // There should be 2 pending requests. The rolled one and the new one.
+
+    // The new request should have a roll count of 0.
+    assert.equal(pendingRequests[0].time, time + 4);
+    assert.equal(pendingRequests[0].rollCount, 0);
+
+    // The rolled request should have a roll count of 1.
+    assert.equal(pendingRequests[1].time, time + 2);
+    assert.equal(pendingRequests[1].rollCount, 1);
 
     // Now, we can vote on the requests: rolled request and "new" request.
     baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
