@@ -8,14 +8,14 @@ interface SlashingLibraryInterface {
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
      * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
-     * @return uint256 The amount of tokens to slash per token staked.
+     * @return uint128 The amount of tokens to slash per token staked.
      */
     function calcWrongVoteSlashPerToken(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes,
+        uint128 totalStaked,
+        uint128 totalVotes,
+        uint128 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) external view returns (uint256);
+    ) external view returns (uint128);
 
     /**
      * @notice Calculates the wrong vote slash per token for governance requests.
@@ -26,11 +26,11 @@ interface SlashingLibraryInterface {
      * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcWrongVoteSlashPerTokenGovernance(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes,
+        uint128 totalStaked,
+        uint128 totalVotes,
+        uint128 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) external view returns (uint256);
+    ) external view returns (uint128);
 
     /**
      * @notice Calculates the no vote slash per token.
@@ -38,14 +38,14 @@ interface SlashingLibraryInterface {
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
      * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
-     * @return uint256 The amount of tokens to slash per token staked.
+     * @return uint128 The amount of tokens to slash per token staked.
      */
     function calcNoVoteSlashPerToken(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes,
+        uint128 totalStaked,
+        uint128 totalVotes,
+        uint128 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) external view returns (uint256);
+    ) external view returns (uint128);
 
     /**
      * @notice Calculates all slashing trackers in one go to decrease cross-contract calls needed.
@@ -58,10 +58,10 @@ interface SlashingLibraryInterface {
      * @return noVoteSlashPerToken The amount of tokens to slash for not voting.
      */
     function calcSlashing(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes,
+        uint128 totalStaked,
+        uint128 totalVotes,
+        uint128 totalCorrectVotes,
         uint256 priceRequestIndex,
         bool isGovernance
-    ) external view returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken);
+    ) external view returns (uint128 wrongVoteSlashPerToken, uint128 noVoteSlashPerToken);
 }

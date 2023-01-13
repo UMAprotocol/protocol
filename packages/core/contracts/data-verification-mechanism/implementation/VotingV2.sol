@@ -53,15 +53,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     struct Round {
         uint128 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
         uint128 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
-        uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
+        uint128 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 pendingResolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
     }
 
     struct SlashingTracker {
-        uint256 wrongVoteSlashPerToken; // The amount of tokens slashed per token staked for a wrong vote.
-        uint256 noVoteSlashPerToken; // The amount of tokens slashed per token staked for a no vote.
-        uint256 totalSlashed; // The total amount of tokens slashed for a given request.
-        uint256 totalCorrectVotes; // The total number of correct votes for a given request.
+        uint128 wrongVoteSlashPerToken; // The amount of tokens slashed per token staked for a wrong vote.
+        uint128 noVoteSlashPerToken; // The amount of tokens slashed per token staked for a no vote.
+        uint128 totalSlashed; // The total amount of tokens slashed for a given request.
+        uint128 totalCorrectVotes; // The total number of correct votes for a given request.
         uint32 lastVotingRound; // The last round that this request was voted on (when it resolved).
     }
 
@@ -147,7 +147,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 time,
         bytes ancillaryData,
         int256 price,
-        uint256 numTokens
+        uint128 numTokens
     );
 
     event RequestAdded(
@@ -180,9 +180,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event MaxRollsChanged(uint32 newMaxRolls);
 
-    event VoterSlashApplied(address indexed voter, int256 slashedTokens, uint256 postStake);
+    event VoterSlashApplied(address indexed voter, int128 slashedTokens, uint128 postStake);
 
-    event VoterSlashed(address indexed voter, uint256 indexed requestIndex, int256 slashedTokens);
+    event VoterSlashed(address indexed voter, uint256 indexed requestIndex, int128 slashedTokens);
 
     /**
      * @notice Construct the VotingV2 contract.
@@ -198,7 +198,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param _previousVotingContract previous voting contract address.
      */
     constructor(
-        uint256 _emissionRate,
+        uint128 _emissionRate,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
         uint32 _maxRolls,
@@ -469,7 +469,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // Calculate the voters effective stake for this round as the difference between their stake and pending stake.
         // This allows for the voter to have staked during this reveal phase and not consider their pending stake.
-        uint256 effectiveStake = voterStakes[voter].stake - voterStakes[voter].pendingStakes[currentRoundId];
+        uint128 effectiveStake = voterStakes[voter].stake - voterStakes[voter].pendingStakes[currentRoundId];
         voteInstance.results.addVote(price, effectiveStake); // Add vote to the results.
         emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, ancillaryData, price, effectiveStake);
     }
@@ -600,16 +600,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 lastVotingRound = priceRequest.lastVotingRound;
         VoteInstance storage voteInstance = priceRequest.voteInstances[lastVotingRound];
 
-        uint256 totalVotes = voteInstance.results.totalVotes;
-        uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
-        uint256 stakedAtRound = rounds[lastVotingRound].cumulativeStakeAtRound;
+        uint128 totalVotes = voteInstance.results.totalVotes;
+        uint128 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
+        uint128 stakedAtRound = rounds[lastVotingRound].cumulativeStakeAtRound;
         bool isGovernance = priceRequest.isGovernance;
 
-        (uint256 wrongVoteSlash, uint256 noVoteSlash) =
+        (uint128 wrongVoteSlash, uint128 noVoteSlash) =
             slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, isGovernance);
 
-        uint256 totalSlashed =
-            ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
+        uint128 totalSlashed =
+            uint128(
+                ((noVoteSlash * (uint256(stakedAtRound) - totalVotes)) +
+                    (wrongVoteSlash * (uint256(totalVotes) - totalCorrectVotes))) / 1e18
+            );
 
         return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes, lastVotingRound);
     }
@@ -745,7 +748,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // This function must be called before any tokens are staked. It updates the voter's pending stakes to reflect the
     // new amount to stake. These updates are only made if we are in an active reveal. This is required to appropriately
     // calculate a voter's trackers and avoid slashing them for amounts staked during an active reveal phase.
-    function _computePendingStakes(address voter, uint256 amount) internal override {
+    function _computePendingStakes(address voter, uint128 amount) internal override {
         if (_inActiveReveal()) {
             uint32 currentRoundId = getCurrentRoundId();
             // Freeze round variables to prevent cumulativeActiveStakeAtRound from changing based on the stakes during
@@ -777,21 +780,21 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
             uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[trackers.lastVotingRound];
-            int256 slash; // The amount to slash the voter by for this request. Reset on each entry to emit useful logs.
+            int128 slash; // The amount to slash the voter by for this request. Reset on each entry to emit useful logs.
 
             // Get the voter participation for this request. This informs if the voter voted correctly or not.
             VoteParticipation participation = getVoterParticipation(requestIndex, trackers.lastVotingRound, voter);
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (participation == VoteParticipation.DidNotVote)
-                slash = -int256((effectiveStake * trackers.noVoteSlashPerToken) / 1e18);
+                slash = -int128(uint128((effectiveStake * trackers.noVoteSlashPerToken) / 1e18));
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (participation == VoteParticipation.WrongVote)
-                slash = -int256((effectiveStake * trackers.wrongVoteSlashPerToken) / 1e18);
+                slash = -int128(uint128((effectiveStake * trackers.wrongVoteSlashPerToken) / 1e18));
 
                 // Else, the voter voted correctly. Receive a pro-rate share of the other voters slash.
-            else slash = int256((effectiveStake * trackers.totalSlashed) / trackers.totalCorrectVotes);
+            else slash = int128(uint128((effectiveStake * trackers.totalSlashed) / trackers.totalCorrectVotes));
 
             emit VoterSlashed(voter, requestIndex, slash);
             voterStake.unappliedSlash += slash;
@@ -810,8 +813,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // than 0, the voter's stake is set to 0 to prevent the voter's stake from going negative. unappliedSlash tracked
     // all slashing the staker has received but not yet applied to their stake. Apply it then set it to zero.
     function _applySlashToVoter(VoterStake storage voterStake, address voter) internal {
-        if (voterStake.unappliedSlash + int256(voterStake.stake) > 0)
-            voterStake.stake = uint256(int256(voterStake.stake) + voterStake.unappliedSlash);
+        if (voterStake.unappliedSlash + int128(voterStake.stake) > 0)
+            voterStake.stake = uint128(int128(voterStake.stake) + voterStake.unappliedSlash);
         else voterStake.stake = 0;
         emit VoterSlashApplied(voter, voterStake.unappliedSlash, voterStake.stake);
         voterStake.unappliedSlash = 0;
@@ -933,7 +936,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             rounds[roundId].minParticipationRequirement = gat;
 
             // The minimum votes on the modal outcome for the vote to settle within this round is the SPAT (percentage).
-            rounds[roundId].minAgreementRequirement = uint128((spat * cumulativeStake) / 1e18);
+            rounds[roundId].minAgreementRequirement = uint128((spat * uint256(cumulativeStake)) / 1e18);
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
         }
     }

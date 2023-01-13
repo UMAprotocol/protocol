@@ -11,8 +11,8 @@ library ResultComputationV2 {
      ****************************************/
 
     struct Data {
-        mapping(int256 => uint256) voteFrequency; // Maps price to number of tokens that voted for that price.
-        uint256 totalVotes; // The total votes that have been added.
+        mapping(int256 => uint128) voteFrequency; // Maps price to number of tokens that voted for that price.
+        uint128 totalVotes; // The total votes that have been added.
         int256 currentMode; // The price that is the current mode, i.e., the price with the highest frequency.
     }
 
@@ -29,7 +29,7 @@ library ResultComputationV2 {
     function addVote(
         Data storage data,
         int256 votePrice,
-        uint256 numberTokens
+        uint128 numberTokens
     ) internal {
         data.totalVotes += numberTokens;
         data.voteFrequency[votePrice] += numberTokens;
@@ -80,7 +80,7 @@ library ResultComputationV2 {
      * @param data contains all votes against which the correctly voted tokens are counted.
      * @return FixedPoint.Unsigned which indicates the frequency of the correctly voted tokens.
      */
-    function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (uint256) {
+    function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (uint128) {
         return data.voteFrequency[data.currentMode];
     }
 }

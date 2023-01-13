@@ -5,39 +5,39 @@ import "../../interfaces/SlashingLibraryInterface.sol";
 
 contract PunitiveSlashingLibraryTest is SlashingLibraryInterface {
     function calcWrongVoteSlashPerToken(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes,
+        uint128 totalStaked,
+        uint128 totalVotes,
+        uint128 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public pure returns (uint256) {
+    ) public pure returns (uint128) {
         return 0.99e18;
     }
 
     function calcWrongVoteSlashPerTokenGovernance(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes,
+        uint128 totalStaked,
+        uint128 totalVotes,
+        uint128 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public pure returns (uint256) {
+    ) public pure returns (uint128) {
         return 0.99e18;
     }
 
     function calcNoVoteSlashPerToken(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes,
+        uint128 totalStaked,
+        uint128 totalVotes,
+        uint128 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public pure returns (uint256) {
+    ) public pure returns (uint128) {
         return 0.99e18;
     }
 
     function calcSlashing(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes,
+        uint128 totalStaked,
+        uint128 totalVotes,
+        uint128 totalCorrectVotes,
         uint256 priceRequestIndex,
         bool isGovernance
-    ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+    ) external pure returns (uint128 wrongVoteSlashPerToken, uint128 noVoteSlashPerToken) {
         return (
             isGovernance
                 ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex)
