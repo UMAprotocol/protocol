@@ -672,6 +672,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newMaxRequestsPerRound the new maximum number of requests that can be made in a single round.
      */
     function setMaxRequestPerRound(uint32 newMaxRequestsPerRound) public override onlyOwner {
+        require(newMaxRequestsPerRound > 0);
         maxRequestsPerRound = newMaxRequestsPerRound;
         emit MaxRequestsPerRoundChanged(newMaxRequestsPerRound);
     }
