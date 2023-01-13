@@ -4309,19 +4309,19 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 4);
     assert.equal(await voting.methods.getNumberOfResolvedPriceRequests().call(), 0);
 
-    // Before doing anything the pendingResolvedIndex should be 0.
-    assert.equal((await voting.methods.pendingProcessed().call()).pendingResolvedIndex, "0");
+    // Before doing anything the nextPendingIndexToProcess should be 0.
+    assert.equal(await voting.methods.nextPendingIndexToProcess().call(), "0");
 
     // Updating in range should update to current roundId and the resolvable index to 1.
     await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-    assert.equal((await voting.methods.pendingProcessed().call()).roundId, roundId);
-    assert.equal((await voting.methods.pendingProcessed().call()).pendingResolvedIndex, "1");
+    assert.equal(await voting.methods.lastRoundIdProcessed().call(), roundId);
+    assert.equal(await voting.methods.nextPendingIndexToProcess().call(), "1");
 
     // calling processResolvablePriceRequests should update to the end of the range.
     await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
-    assert.equal((await voting.methods.pendingProcessed().call()).roundId, roundId);
-    assert.equal((await voting.methods.pendingProcessed().call()).pendingResolvedIndex, "4");
+    assert.equal(await voting.methods.lastRoundIdProcessed().call(), roundId);
+    assert.equal(await voting.methods.nextPendingIndexToProcess().call(), "4");
 
     // Equally, we can show the same behavior works when rolling and updating the rolling trackers.
     await moveToNextRound(voting, accounts[0]);
@@ -4423,8 +4423,8 @@ describe("VotingV2", function () {
     // verify that we've traversed all the requests and that subsequent calls are very cheap.
     assert.equal(await voting.methods.getNumberOfPendingPriceRequests().call(), 625);
     const roundId = await voting.methods.getCurrentRoundId().call();
-    assert.equal((await voting.methods.pendingProcessed().call()).roundId, roundId);
-    assert.equal((await voting.methods.pendingProcessed().call()).pendingResolvedIndex, 625);
+    assert.equal(await voting.methods.lastRoundIdProcessed().call(), roundId);
+    assert.equal(await voting.methods.nextPendingIndexToProcess().call(), 625);
     const gasUsed1 = (await voting.methods.processResolvablePriceRequests().send({ from: account1 })).gasUsed;
     assert(gasUsed1 < 40000);
 

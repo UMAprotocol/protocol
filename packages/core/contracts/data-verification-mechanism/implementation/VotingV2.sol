@@ -56,11 +56,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
     }
 
-    struct PendingProcessed {
-        uint32 roundId; // The last round pendingPriceRequestsIds were traversed in.
-        uint64 pendingResolvedIndex; // Index of pendingPriceRequestsIds that has been traversed in roundId.
-    }
-
     struct SlashingTracker {
         uint256 wrongVoteSlashPerToken; // The amount of tokens slashed per token staked for a wrong vote.
         uint256 noVoteSlashPerToken; // The amount of tokens slashed per token staked for a no vote.
@@ -101,9 +96,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     OracleAncillaryInterface public immutable previousVotingContract; // Previous voting contract, if migrated.
 
-    mapping(uint256 => Round) public rounds; // Maps round numbers to the rounds.
+    uint32 public lastRoundIdProcessed; // The last round pendingPriceRequestsIds were traversed in.
 
-    PendingProcessed public pendingProcessed; // Tracks traversed pendingPriceRequestsIds.
+    uint64 public nextPendingIndexToProcess; // Index of pendingPriceRequestsIds that has been traversed in roundId.
+
+    mapping(uint256 => Round) public rounds; // Maps round numbers to the rounds.
 
     mapping(bytes32 => PriceRequest) public priceRequests; // Maps price request IDs to the PriceRequest struct.
 
@@ -954,7 +951,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 currentRoundId = getCurrentRoundId();
 
         // Load in the last resolved index for this round to continue off from where the last caller left.
-        uint64 requestIndex = pendingProcessed.roundId == currentRoundId ? pendingProcessed.pendingResolvedIndex : 0;
+        uint64 requestIndex = lastRoundIdProcessed == currentRoundId ? nextPendingIndexToProcess : 0;
         // Traverse pendingPriceRequestsIds array and update the requests status according to the state of the request
         //(i.e settle, roll or delete request). Bound iterations to the maxTraversals parameter to cap the gas used.
         while (requestIndex < pendingPriceRequestsIds.length && maxTraversals > 0) {
@@ -1006,8 +1003,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             requestIndex = unsafe_inc_64(requestIndex);
         }
 
-        pendingProcessed.roundId = currentRoundId; // Store the roundId that was processed.
-        pendingProcessed.pendingResolvedIndex = requestIndex; // Store the index traversed up to for this round.
+        lastRoundIdProcessed = currentRoundId; // Store the roundId that was processed.
+        nextPendingIndexToProcess = requestIndex; // Store the index traversed up to for this round.
     }
 
     // Returns a price request status. A request is either: NotRequested, Active, Resolved or Future.
