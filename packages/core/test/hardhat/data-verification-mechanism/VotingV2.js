@@ -4778,7 +4778,7 @@ describe("VotingV2", function () {
       toWei("4000000").sub(toWei("6400")).sub(toWei("6400"))
     );
   });
-  it("Requests are auto rolled if a given round hits the limit of number of requests it can handel", async function () {
+  it("Requests are auto rolled if a given round hits the limit of number of requests it can handle", async function () {
     // The contract is meant to bound how many requests can be placed in a given round to limit the upper bound of slashing
     // that can be applied linearly within one round if a voter was to not participate. Set maxRequestersPerRound to 2.
     // If we request 3 it should auto roll the 3rd into the next round. If we request 5 it should place 2 in the first
