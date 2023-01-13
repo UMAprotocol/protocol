@@ -32,29 +32,21 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         address delegate; // Address a staker has delegated to. The delegate can commit/reveal/claimRestake rewards.
     }
 
-    // Each voter address is mapped to one staker struct representing their position in the stake contract.
-    mapping(address => VoterStake) public voterStakes;
+    mapping(address => VoterStake) public voterStakes; // Each voter is mapped to staker struct for their position.
 
-    // Mapping of delegates to their delegators (staker). Reverse mapping from voterStakes.delegate.
-    mapping(address => address) public delegateToStaker;
+    mapping(address => address) public delegateToStaker; // Mapping of delegates to their delegators (staker).
 
-    // Number of UMA emitted per second to incentivize stakers.
-    uint128 public emissionRate;
+    uint128 public emissionRate; // Number of UMA emitted per second to incentivize stakers.
 
-    // Total number of UMA staked within the system.
-    uint128 public cumulativeStake;
+    uint128 public cumulativeStake; // Total number of UMA staked within the system.
 
-    // Tracker used to allocate pro-rata share of rewards to stakers.
-    uint128 public rewardPerTokenStored;
+    uint128 public rewardPerTokenStored; // Tracker used to allocate pro-rata share of rewards to stakers.
 
-    // Delay, in seconds, a staker must wait when trying to unstake their UMA.
-    uint64 public unstakeCoolDown;
+    uint64 public unstakeCoolDown; // Delay, in seconds, a staker must wait when trying to unstake their UMA.
 
-    // Tracks the last time the reward rate was updated, used in pro-rata allocation of rewards to stakers.
-    uint64 public lastUpdateTime;
+    uint64 public lastUpdateTime; // Tracks the last time the reward rate was updated, used in reward allocation.
 
-    // An instance of the UMA voting token. This contract needs mint permissions on the token to allocate rewards.
-    ExpandedIERC20 public votingToken;
+    ExpandedIERC20 public votingToken; // An instance of the UMA voting token to mint rewards for stakers
 
     /****************************************
      *                EVENTS                *
@@ -256,8 +248,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
-     * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second per staked token,
-     * split pro rata to stakers.
+     * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second per staked token.
      * @param newEmissionRate the new amount of voting tokens that are emitted per second, split pro rata to stakers.
      */
     function setEmissionRate(uint128 newEmissionRate) external onlyOwner {
