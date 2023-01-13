@@ -4906,7 +4906,7 @@ describe("VotingV2", function () {
       await voting.methods.getPrice(identifier, time + 4).call({ from: registeredContract })
     );
   });
-  it("Auto roll from max request limit interplays correctly with rolls due to no quarum", async function () {
+  it("Auto roll from max request limit interplays correctly with rolls due to no quorum", async function () {
     // Consider a situation where we are rolling votes due to the limit per round being hit, but votes are also rolling
     // due to not having enough votes to pass. In this case, the rolled votes from missed quarum should auto roll past
     // where they can be enqued from the auto roll from max request limit. To test this we will set the max requests per
