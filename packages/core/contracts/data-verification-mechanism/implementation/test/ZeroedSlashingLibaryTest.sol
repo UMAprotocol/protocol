@@ -11,7 +11,8 @@ contract ZeroedSlashingSlashingLibraryTest is SlashingLibraryInterface {
     function calcWrongVoteSlashPerToken(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
     ) public pure returns (uint256) {
         return 0;
     }
@@ -19,7 +20,8 @@ contract ZeroedSlashingSlashingLibraryTest is SlashingLibraryInterface {
     function calcWrongVoteSlashPerTokenGovernance(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
     ) public pure returns (uint256) {
         return 0;
     }
@@ -27,7 +29,8 @@ contract ZeroedSlashingSlashingLibraryTest is SlashingLibraryInterface {
     function calcNoVoteSlashPerToken(
         uint256 totalStaked,
         uint256 totalVotes,
-        uint256 totalCorrectVotes
+        uint256 totalCorrectVotes,
+        uint256 priceRequestIndex
     ) public pure returns (uint256) {
         return 0;
     }
@@ -41,9 +44,9 @@ contract ZeroedSlashingSlashingLibraryTest is SlashingLibraryInterface {
     ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         return (
             isGovernance
-                ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)
-                : calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes),
-            calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes)
+                ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex)
+                : calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex),
+            calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex)
         );
     }
 }

@@ -9,7 +9,7 @@ const func = async function (hre) {
   const Timer = (await deployments.getOrNull("Timer")) || { address: ZERO_ADDRESS };
   const VotingToken = await deployments.get("VotingToken");
   const Finder = await deployments.get("Finder");
-  const SlashingLibrary = await deployments.get("SlashingLibrary");
+  const SlashingLibrary = await deployments.get("FixedSlashSlashingLibrary");
 
   // Set the GAT to 5.5 million tokens. This is the number of tokens that must participate to resolve a vote.
   const gat = web3.utils.toBN(web3.utils.toWei("5500000", "ether"));
@@ -88,4 +88,4 @@ const func = async function (hre) {
 };
 module.exports = func;
 func.tags = ["dvmv2"];
-func.dependencies = ["VotingToken", "Finder", "Timer", "SlashingLibrary"];
+func.dependencies = ["VotingToken", "Finder", "Timer", "FixedSlashSlashingLibrary"];
