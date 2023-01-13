@@ -55,7 +55,7 @@ library ResultComputationV2 {
     function getResolvedPrice(
         Data storage data,
         uint128 minTotalVotes,
-        uint256 minModalVotes
+        uint128 minModalVotes
     ) internal view returns (bool isResolved, int256 price) {
         if (data.totalVotes > minTotalVotes && data.voteFrequency[data.currentMode] > minModalVotes) {
             isResolved = true; // modeThreshold and minVoteThreshold are exceeded, so the resolved price is the mode.

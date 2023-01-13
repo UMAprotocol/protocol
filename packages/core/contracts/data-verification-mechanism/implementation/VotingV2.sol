@@ -52,7 +52,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     struct Round {
         uint128 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
-        uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
+        uint128 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 pendingResolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
     }
@@ -933,7 +933,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             rounds[roundId].minParticipationRequirement = gat;
 
             // The minimum votes on the modal outcome for the vote to settle within this round is the SPAT (percentage).
-            rounds[roundId].minAgreementRequirement = (spat * cumulativeStake) / 1e18;
+            rounds[roundId].minAgreementRequirement = uint128((spat * cumulativeStake) / 1e18);
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
         }
     }
