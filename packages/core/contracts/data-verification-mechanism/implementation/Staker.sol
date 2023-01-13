@@ -69,17 +69,17 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint128 cumulativeStake
     );
 
-    event RequestedUnstake(address indexed voter, uint128 amount, uint256 unstakeTime, uint128 voterStake);
+    event RequestedUnstake(address indexed voter, uint128 amount, uint64 unstakeTime, uint128 voterStake);
 
     event ExecutedUnstake(address indexed voter, uint128 tokensSent, uint128 voterStake);
 
     event WithdrawnRewards(address indexed voter, address indexed delegate, uint128 tokensWithdrawn);
 
-    event UpdatedReward(address indexed voter, uint128 newReward, uint256 lastUpdateTime);
+    event UpdatedReward(address indexed voter, uint128 newReward, uint64 lastUpdateTime);
 
     event SetNewEmissionRate(uint128 newEmissionRate);
 
-    event SetNewUnstakeCoolDown(uint256 newUnstakeCoolDown);
+    event SetNewUnstakeCoolDown(uint64 newUnstakeCoolDown);
 
     event DelegateSet(address indexed delegator, address indexed delegate);
 

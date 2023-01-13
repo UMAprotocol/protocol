@@ -124,7 +124,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     event VoteCommitted(
         address indexed voter,
         address indexed caller,
-        uint256 roundId,
+        uint32 roundId,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData
@@ -142,7 +142,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     event VoteRevealed(
         address indexed voter,
         address indexed caller,
-        uint256 roundId,
+        uint32 roundId,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData,
@@ -170,9 +170,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event VotingContractMigrated(address newAddress);
 
-    event RequestDeleted(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
+    event RequestDeleted(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint32 rollCount);
 
-    event RequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
+    event RequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint32 rollCount);
 
     event GatAndSpatChanged(uint128 newGat, uint64 newSpat);
 
