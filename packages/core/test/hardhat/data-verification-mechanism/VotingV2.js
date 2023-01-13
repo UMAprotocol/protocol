@@ -571,7 +571,7 @@ describe("VotingV2", function () {
 
     // Move to next round and roll the first request over.
     await moveToNextRound(voting, accounts[0]);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
 
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
@@ -1785,12 +1785,12 @@ describe("VotingV2", function () {
     );
 
     // Check that getNumberOfPriceRequestsPostUpdate return the correct number of price requests.
-    assert.equal((await voting.methods.getNumberOfPriceRequestsPostUpdate().call()).numPendingPriceRequests, 1);
-    assert.equal((await voting.methods.getNumberOfPriceRequestsPostUpdate().call()).numResolvedPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequestsPostUpdate().call()).numberPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequestsPostUpdate().call()).numberResolvedPriceRequests, 1);
 
     // Check that getPendingRequests returns the pending price requests without updating.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 2);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     // Check that getPendingRequestsPostUpdate returns the pending price requests updated.
     assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 0);
@@ -2270,8 +2270,8 @@ describe("VotingV2", function () {
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
     // the slash per wrong vote and slash per no vote set correctly.
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 0);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
 
     // The test configuration has a wrong vote and no vote slash per token set to 0.0016. This works out to ~ equal to
     // the emission rate of the contract assuming 10 votes per month over a year. At this rate we should see two groups
@@ -3125,7 +3125,7 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]); // Move into the reveal phase
 
     // We should have a total number of priceRequestIds (instances where prices are requested) of 3.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 3);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 3);
 
     // Consider the slashing. There were a total of 4 requests that actually settled. Account2 and account3 were
     // slashed every time as they did not participate in any votes. Account4 only participated in the last vote.
@@ -3226,7 +3226,7 @@ describe("VotingV2", function () {
 
     // As we've updated the trackers all requests should be resolved. Resolution of price requests is independent of
     // slashing tracker updates. there should be 6 requests, 1 before the loop then 5 in the loop.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 6);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 6);
 
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 1);
 
@@ -3302,7 +3302,7 @@ describe("VotingV2", function () {
 
     // Now, the number of requests should be 1.
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, "1");
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, "1");
 
     // Now, stake from another account. we are in the reveal phase of an active request and so the starting index should
     // be 1 as this voter should not be susceptible to slashing for this request.
@@ -3320,8 +3320,8 @@ describe("VotingV2", function () {
     // is now 2 with one in the resolved phase and one still in the pending phase. However, if someone was to stake now
     // they can still vote on this request and so their nextIndexToProcess should still be set to 1.
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, "1");
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, "1");
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, "1");
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, "1");
     await voting.methods.stake(toWei("32000000")).send({ from: account3 });
     assert.equal((await voting.methods.voterStakes(account3).call()).nextIndexToProcess, 1);
 
@@ -3419,7 +3419,7 @@ describe("VotingV2", function () {
     await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
 
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -3446,8 +3446,8 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account4 });
 
     // There should be a total of 4 requests, still.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 4);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     await moveToNextRound(voting, accounts[0]); // Move to the next round.
 
@@ -3457,8 +3457,8 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account4).call()).stake, toWei("4000000").sub(toWei("6400")));
 
     // There should now show up as being 4 resolved requests and 3 pending requests.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 1);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 3);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 3);
 
     // Now, re-commit and reveal on 2 of the rolled requests, this time from account1 so they dont roll. Re-commit and
     // reveal on the last vote with an account that does not meet the gat. this should push 3/4 votes to settled.
@@ -3480,8 +3480,8 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account4).send({ from: account1 });
 
     // We should now expect to see 3 settled requests and one remaining pending request.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 3);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 3);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 1);
 
     // Account4 should loose two equal slots of (4mm-6400)*0.0016 as they were both within the same voting
     // round and they did not vote on them after the roll.
@@ -3552,7 +3552,7 @@ describe("VotingV2", function () {
     await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
 
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -3579,7 +3579,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account1 });
 
     // There should be a total of 4  pending requests, still.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
 
     await moveToNextRound(voting, accounts[0]); // Move to the next round.
 
@@ -3609,8 +3609,8 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("0"));
 
     // There are still 2 pending requests and two settled requests after these 2 requests settle.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 2);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 2);
   });
 
   it("Duplicate Request Rewards", async function () {
@@ -4142,8 +4142,8 @@ describe("VotingV2", function () {
     await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 4);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     // Roll request 2 and 3. Settle request 1 and 4. We should see the order respected when settled.
     await moveToNextRound(voting, accounts[0]);
@@ -4169,8 +4169,8 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
     await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 2);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 2);
 
     // Check slot 0 in the resolved array is the first request (based on time of the request).
     const resolvedRequest1Id = await voting.methods.resolvedPriceRequestIds(0).call();
@@ -4196,8 +4196,8 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
     await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 0);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 4);
   });
   it("Requests are automatically removed after a fixed number of rolls", async function () {
     // Verify that if a request rolls enough times (to hit maxRolls) it is automatically removed from the
@@ -4209,8 +4209,8 @@ describe("VotingV2", function () {
 
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 2);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     const request1Id = await voting.methods.pendingPriceRequestsIds(0).call();
     const request2Id = await voting.methods.pendingPriceRequestsIds(1).call();
@@ -4235,8 +4235,8 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.priceRequests(request1Id).call()).rollCount, 2);
     assert.equal((await voting.methods.priceRequests(request2Id).call()).rollCount, 2);
 
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 2);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     // On the next roll these requests should be automatically removed from the pending array and become unresolvable.
     await moveToNextRound(voting, accounts[0]);
@@ -4264,8 +4264,8 @@ describe("VotingV2", function () {
     assert.equal(spamRequest2.identifier, padRight(utf8ToHex(""), 64));
     assert.isNull(spamRequest2.ancillaryData);
 
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 0);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
   });
   it("Handles calling settle during reveal", async function () {
     // In the event that someone calls processResolvablePriceRequests() during the reveal phase, after a vote has reached
@@ -4276,7 +4276,7 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
 
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 1);
 
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -4290,9 +4290,9 @@ describe("VotingV2", function () {
 
     // We are now in the reveal phase with the vote having met the gat. If someone tries to settle the request now
     // nothing should happen as the round is not over yet, even though the gat has been met.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 1);
     await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 1);
   });
   it("Handles multiple rolls with no contract interactions", async function () {
     // Consider the case where a vote rolls for a number of rounds with no voter interaction with the voting contract to
@@ -4302,8 +4302,8 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 2);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     const request1Id = await voting.methods.pendingPriceRequestsIds(0).call();
     const request2Id = await voting.methods.pendingPriceRequestsIds(1).call();
@@ -4365,8 +4365,8 @@ describe("VotingV2", function () {
     const request3Id = await voting.methods.pendingPriceRequestsIds(2).call();
     const request4Id = await voting.methods.pendingPriceRequestsIds(3).call();
 
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 4);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     // Before doing anything the nextPendingIndexToProcess should be 0.
     assert.equal(await voting.methods.nextPendingIndexToProcess().call(), "0");
@@ -4434,28 +4434,28 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
 
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 4);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 3);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 3);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
 
     await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 2);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 2);
 
     await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 0);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 4);
   });
   it("Can successfully remove large amounts of spam piecewise", async function () {
     // Request so many requests in one go that we cant resolve them all in one transaction. Rather, we need to update
     // them piecewise. The same goes for deleting the requests once we've rolled enough times. This checks that in the
     // event the DVM is spammed we can recover gracefully.
     await submitManyRequests(5, 125); // send 625 requests, split over 5 multicalls of size 125.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 625);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 625);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     // Move to the active round and then a following round. This will force these requests to need to be rolled.
     // When resolving we will now need to roll 625 requests in one go.
@@ -4480,7 +4480,7 @@ describe("VotingV2", function () {
     await voting.methods.processResolvablePriceRequestsRange(310).send({ from: account1 });
 
     // verify that we've traversed all the requests and that subsequent calls are very cheap.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 625);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 625);
     const roundId = await voting.methods.getCurrentRoundId().call();
     assert.equal(await voting.methods.lastRoundIdProcessed().call(), roundId);
     assert.equal(await voting.methods.nextPendingIndexToProcess().call(), 625);
@@ -4504,7 +4504,7 @@ describe("VotingV2", function () {
     assert(didRunOutOfGas);
     await voting.methods.processResolvablePriceRequestsRange(315).send({ from: account1 });
     await voting.methods.processResolvablePriceRequestsRange(310).send({ from: account1 });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
     assert.equal((await voting.getPastEvents("RequestDeleted", { fromBlock: 0, toBlock: "latest" })).length, 625);
     const gasUsed2 = (await voting.methods.processResolvablePriceRequests().send({ from: account1 })).gasUsed;
     assert(gasUsed2 < 40000);
@@ -4518,8 +4518,8 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await submitManyRequests(2, 125, 500); // send 250 spam requests.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 501);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 501);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     // Move to the active round and then a following round. This will force these requests to need to be rolled.
     // When resolving we will now need to roll 501 requests in one go.
@@ -4540,8 +4540,8 @@ describe("VotingV2", function () {
     await voting.methods.processResolvablePriceRequests().send({ from: account1 });
 
     // There should now be 1 resolved request and 500 rolled requests.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 500);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 500);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
     assert.equal(
       (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       price.toString()
@@ -4552,8 +4552,8 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     await voting.methods.processResolvablePriceRequestsRange(250).send({ from: account1 });
     await voting.methods.processResolvablePriceRequestsRange(250).send({ from: account1 });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 0);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
   });
 
   it("Staking during active reveal is dealt with correctly via pendingStakes", async function () {
@@ -4801,8 +4801,8 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
 
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numPendingPriceRequests, 0);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numResolvedPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 2);
 
     // Check that the correct amount of tokens were slashed.
     const slashingTracker = await voting.methods.requestSlashingTrackers(0).call();

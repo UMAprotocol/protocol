@@ -600,12 +600,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Returns the number of current pending price requests to be voted and the number of resolved price
        requests over all time.
-     * @return numPendingPriceRequests the total number of pending prices requests.
-     * @return numResolvedPriceRequests the total number of prices resolved over all time.
+     * @return numberPendingPriceRequests the total number of pending prices requests.
+     * @return numberResolvedPriceRequests the total number of prices resolved over all time.
      */
     function getNumberOfPriceRequests()
         public
-        returns (uint256 numPendingPriceRequests, uint256 numResolvedPriceRequests)
+        returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
     {
         return (pendingPriceRequestsIds.length, resolvedPriceRequestIds.length);
     }
@@ -613,12 +613,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Returns the number of current pending price requests to be voted and the number of resolved price
        requests over all time after processing any resolvable price requests.
-     * @return numPendingPriceRequests the total number of pending prices requests.
-     * @return numResolvedPriceRequests the total number of prices resolved over all time.
+     * @return numberPendingPriceRequests the total number of pending prices requests.
+     * @return numberResolvedPriceRequests the total number of prices resolved over all time.
      */
     function getNumberOfPriceRequestsPostUpdate()
         external
-        returns (uint256 numPendingPriceRequests, uint256 numResolvedPriceRequests)
+        returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
     {
         processResolvablePriceRequests();
         return getNumberOfPriceRequests();
