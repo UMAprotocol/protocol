@@ -111,7 +111,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     uint128 public gat; // GAT: A minimum number of tokens that must participate to resolve a vote.
 
-    uint256 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
+    uint64 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
 
     uint64 private constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
 
@@ -174,7 +174,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event RequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
 
-    event GatAndSpatChanged(uint128 newGat, uint256 newSpat);
+    event GatAndSpatChanged(uint128 newGat, uint64 newSpat);
 
     event SlashingLibraryChanged(address newAddress);
 
@@ -203,7 +203,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint64 _phaseLength,
         uint32 _maxRolls,
         uint128 _gat,
-        uint256 _spat,
+        uint64 _spat,
         address _votingToken,
         address _finder,
         address _slashingLibrary,
@@ -658,7 +658,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newGat sets the next round's GAT and going forward.
      * @param newSpat sets the next round's SPAT and going forward.
      */
-    function setGatAndSpat(uint128 newGat, uint256 newSpat) public override onlyOwner {
+    function setGatAndSpat(uint128 newGat, uint64 newSpat) public override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
         require(newSpat > 0 && newSpat < 1e18);
         gat = newGat;

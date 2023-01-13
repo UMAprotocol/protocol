@@ -171,7 +171,7 @@ abstract contract VotingV2Interface {
      * @param newGat sets the next round's GAT and going forward.
      * @param newSpat sets the next round's SPAT and going forward.
      */
-    function setGatAndSpat(uint128 newGat, uint256 newSpat) external virtual;
+    function setGatAndSpat(uint128 newGat, uint64 newSpat) external virtual;
 
     /**
      * @notice Changes the slashing library used by this contract.
