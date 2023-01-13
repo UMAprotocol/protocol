@@ -129,11 +129,16 @@ abstract contract VotingV2Interface {
     ) public virtual;
 
     /**
-     * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests `PendingRequest` array containing identifiers
-     * and timestamps for all pending requests.
+     * @notice Gets the requests that are being voted on this round.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
     function getPendingRequests() external virtual returns (PendingRequestAncillaryAugmented[] memory);
+
+    /**
+     * @notice Gets the requests that are being voted on this round after processing any resolvable price requests.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
+     */
+    function getPendingRequestsPostUpdate() external virtual returns (PendingRequestAncillaryAugmented[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
