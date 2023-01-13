@@ -51,7 +51,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct Round {
-        uint256 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
+        uint128 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
         uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint64 pendingResolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
@@ -109,7 +109,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     address public migratedAddress; // If non-zero, this contract has been migrated to this address.
 
-    uint256 public gat; // GAT: A minimum number of tokens that must participate to resolve a vote.
+    uint128 public gat; // GAT: A minimum number of tokens that must participate to resolve a vote.
 
     uint256 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
 
@@ -174,7 +174,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event RequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
 
-    event GatAndSpatChanged(uint256 newGat, uint256 newSpat);
+    event GatAndSpatChanged(uint128 newGat, uint256 newSpat);
 
     event SlashingLibraryChanged(address newAddress);
 
@@ -202,7 +202,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
         uint32 _maxRolls,
-        uint256 _gat,
+        uint128 _gat,
         uint256 _spat,
         address _votingToken,
         address _finder,
@@ -658,7 +658,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newGat sets the next round's GAT and going forward.
      * @param newSpat sets the next round's SPAT and going forward.
      */
-    function setGatAndSpat(uint256 newGat, uint256 newSpat) public override onlyOwner {
+    function setGatAndSpat(uint128 newGat, uint256 newSpat) public override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
         require(newSpat > 0 && newSpat < 1e18);
         gat = newGat;
