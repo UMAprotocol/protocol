@@ -54,7 +54,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
         uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
-        uint64 resolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
         uint32 numberOfRequestsToVoteOnInThisRound; // The number of requests that have been voted on in this round.
         uint64 pendingResolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
     }
