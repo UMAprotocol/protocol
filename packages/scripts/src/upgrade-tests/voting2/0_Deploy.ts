@@ -15,7 +15,7 @@ import {
   GovernorV2Ethers__factory,
   ProposerEthers,
   ProposerV2Ethers__factory,
-  SlashingLibraryEthers__factory,
+  FixedSlashSlashingLibraryEthers__factory,
   VotingEthers,
   VotingTokenEthers,
   VotingUpgraderV2Ethers__factory,
@@ -55,8 +55,14 @@ async function main() {
   if (emergencyQuorum.gt(tenMillion) || emergencyQuorum.lt(fiveMillion)) throw new Error("Invalid emergency quorum");
 
   console.log("1. DEPLOYING SLASHING LIBRARY");
-  const slashingLibraryFactory: SlashingLibraryEthers__factory = await getContractFactory("SlashingLibrary");
-  const slashingLibrary = await slashingLibraryFactory.deploy();
+  const slashingLibraryFactory: FixedSlashSlashingLibraryEthers__factory = await getContractFactory(
+    "FixedSlashSlashingLibrary"
+  );
+  // baseSlashAmount: amount slashed for missing a vote or voting wrong.
+  const baseSlashAmount = hre.ethers.utils.parseUnits("0.001", "ether");
+  // governanceSlashAmount: amount slashed for voting wrong in a governance vote.
+  const governanceSlashAmount = hre.ethers.utils.parseUnits("0", "ether");
+  const slashingLibrary = await slashingLibraryFactory.deploy(baseSlashAmount, governanceSlashAmount);
 
   console.log("Deployed SlashingLibrary: ", slashingLibrary.address);
 

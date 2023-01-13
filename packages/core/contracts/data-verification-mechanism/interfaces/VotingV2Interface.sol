@@ -19,8 +19,11 @@ abstract contract VotingV2Interface {
     }
 
     struct PendingRequestAncillaryAugmented {
+        uint32 lastVotingRound;
+        bool isGovernance;
+        uint64 time;
+        uint32 rollCount;
         bytes32 identifier;
-        uint256 time;
         bytes ancillaryData;
     }
 
@@ -130,7 +133,7 @@ abstract contract VotingV2Interface {
      * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external view virtual returns (PendingRequestAncillaryAugmented[] memory);
+    function getPendingRequests() external virtual returns (PendingRequestAncillaryAugmented[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
@@ -142,7 +145,7 @@ abstract contract VotingV2Interface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external view virtual returns (uint256);
+    function getCurrentRoundId() external view virtual returns (uint32);
 
     // Voting Owner functions.
 

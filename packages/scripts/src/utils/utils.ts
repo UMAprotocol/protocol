@@ -32,3 +32,13 @@ export const getForkChainId = async (jsonRpcUrl: string): Promise<number> => {
 export const bigNumberAbsDiff = (a: BigNumber, b: BigNumber): BigNumber => {
   return a.gt(b) ? a.sub(b) : b.sub(a);
 };
+
+export const getChainIdByUrl = async (jsonRpcUrl: string): Promise<number> => {
+  const provider = new ethers.providers.JsonRpcProvider(jsonRpcUrl);
+  return (await provider.getNetwork()).chainId;
+};
+
+export const getLatestBlockNumberByUrl = async (jsonRpcUrl: string): Promise<number> => {
+  const provider = new ethers.providers.JsonRpcProvider(jsonRpcUrl);
+  return await provider.getBlockNumber();
+};
