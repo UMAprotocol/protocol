@@ -55,7 +55,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint32 numberOfRequestsToVoteOnInThisRound; // The number of requests that have been voted on in this round.
-        uint64 pendingResolvedIndex; // Index of pendingPriceRequestsIds that has been traversed this round.
     }
 
     struct SlashingTracker {
@@ -97,6 +96,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     VoteTiming.Data public voteTiming; // Vote timing library used to compute round timing related logic.
 
     OracleAncillaryInterface public immutable previousVotingContract; // Previous voting contract, if migrated.
+
+    uint32 public lastRoundIdProcessed; // The last round pendingPriceRequestsIds were traversed in.
+
+    uint64 public nextPendingIndexToProcess; // Index of pendingPriceRequestsIds that has been traversed in roundId.
 
     mapping(uint256 => Round) public rounds; // Maps round numbers to the rounds.
 
@@ -974,7 +977,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 currentRoundId = getCurrentRoundId();
 
         // Load in the last resolved index for this round to continue off from where the last caller left.
-        uint64 requestIndex = rounds[currentRoundId].pendingResolvedIndex;
+        uint64 requestIndex = lastRoundIdProcessed == currentRoundId ? nextPendingIndexToProcess : 0;
         // Traverse pendingPriceRequestsIds array and update the requests status according to the state of the request
         //(i.e settle, roll or delete request). Bound iterations to the maxTraversals parameter to cap the gas used.
         while (requestIndex < pendingPriceRequestsIds.length && maxTraversals > 0) {
@@ -1027,7 +1030,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             requestIndex = unsafe_inc_64(requestIndex);
         }
 
-        rounds[currentRoundId].pendingResolvedIndex = requestIndex; // Store the index traversed up to for this round.
+        lastRoundIdProcessed = currentRoundId; // Store the roundId that was processed.
+        nextPendingIndexToProcess = requestIndex; // Store the index traversed up to for this round.
     }
 
     // Returns a price request status. A request is either: NotRequested, Active, Resolved or Future.
