@@ -10,10 +10,10 @@ import "../interfaces/SlashingLibraryInterface.sol";
  */
 
 contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
-    uint128 public immutable baseSlashAmount;
-    uint128 public immutable governanceSlashAmount;
+    uint256 public immutable baseSlashAmount;
+    uint256 public immutable governanceSlashAmount;
 
-    constructor(uint128 _baseSlashAmount, uint128 _governanceSlashAmount) {
+    constructor(uint256 _baseSlashAmount, uint256 _governanceSlashAmount) {
         baseSlashAmount = _baseSlashAmount;
         governanceSlashAmount = _governanceSlashAmount;
     }
@@ -24,14 +24,14 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
      * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
-     * @return uint128 The amount of tokens to slash per token staked.
+     * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcWrongVoteSlashPerToken(
-        uint128 totalStaked,
-        uint128 totalVotes,
-        uint128 totalCorrectVotes,
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public view returns (uint128) {
+    ) public view returns (uint256) {
         return baseSlashAmount;
     }
 
@@ -41,14 +41,14 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
      * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
-     * @return uint128 The amount of tokens to slash per token staked.
+     * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcWrongVoteSlashPerTokenGovernance(
-        uint128 totalStaked,
-        uint128 totalVotes,
-        uint128 totalCorrectVotes,
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public view returns (uint128) {
+    ) public view returns (uint256) {
         return governanceSlashAmount;
     }
 
@@ -58,14 +58,14 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
      * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
-     * @return uint128 The amount of tokens to slash per token staked.
+     * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcNoVoteSlashPerToken(
-        uint128 totalStaked,
-        uint128 totalVotes,
-        uint128 totalCorrectVotes,
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public view returns (uint128) {
+    ) public view returns (uint256) {
         return baseSlashAmount;
     }
 
@@ -80,12 +80,12 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
      * @return noVoteSlashPerToken The amount of tokens to slash for not voting.
      */
     function calcSlashing(
-        uint128 totalStaked,
-        uint128 totalVotes,
-        uint128 totalCorrectVotes,
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
         uint256 priceRequestIndex,
         bool isGovernance
-    ) external view returns (uint128 wrongVoteSlashPerToken, uint128 noVoteSlashPerToken) {
+    ) external view returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         return (
             isGovernance
                 ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex)

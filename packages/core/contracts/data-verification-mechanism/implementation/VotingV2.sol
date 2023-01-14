@@ -58,10 +58,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct SlashingTracker {
-        uint128 wrongVoteSlashPerToken; // The amount of tokens slashed per token staked for a wrong vote.
-        uint128 noVoteSlashPerToken; // The amount of tokens slashed per token staked for a no vote.
-        uint128 totalSlashed; // The total amount of tokens slashed for a given request.
-        uint128 totalCorrectVotes; // The total number of correct votes for a given request.
+        uint256 wrongVoteSlashPerToken; // The amount of tokens slashed per token staked for a wrong vote.
+        uint256 noVoteSlashPerToken; // The amount of tokens slashed per token staked for a no vote.
+        uint256 totalSlashed; // The total amount of tokens slashed for a given request.
+        uint256 totalCorrectVotes; // The total number of correct votes for a given request.
         uint32 lastVotingRound; // The last round that this request was voted on (when it resolved).
     }
 
@@ -600,19 +600,16 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 lastVotingRound = priceRequest.lastVotingRound;
         VoteInstance storage voteInstance = priceRequest.voteInstances[lastVotingRound];
 
-        uint128 totalVotes = voteInstance.results.totalVotes;
-        uint128 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
-        uint128 stakedAtRound = rounds[lastVotingRound].cumulativeStakeAtRound;
+        uint256 totalVotes = voteInstance.results.totalVotes;
+        uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
+        uint256 stakedAtRound = rounds[lastVotingRound].cumulativeStakeAtRound;
         bool isGovernance = priceRequest.isGovernance;
 
-        (uint128 wrongVoteSlash, uint128 noVoteSlash) =
+        (uint256 wrongVoteSlash, uint256 noVoteSlash) =
             slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, isGovernance);
 
-        uint128 totalSlashed =
-            uint128(
-                ((noVoteSlash * (uint256(stakedAtRound) - totalVotes)) +
-                    (wrongVoteSlash * (uint256(totalVotes) - totalCorrectVotes))) / 1e18
-            );
+        uint256 totalSlashed =
+            ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
 
         return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes, lastVotingRound);
     }
@@ -780,24 +777,24 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
             uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[trackers.lastVotingRound];
-            int128 slash; // The amount to slash the voter by for this request. Reset on each entry to emit useful logs.
+            int256 slash; // The amount to slash the voter by for this request. Reset on each entry to emit useful logs.
 
             // Get the voter participation for this request. This informs if the voter voted correctly or not.
             VoteParticipation participation = getVoterParticipation(requestIndex, trackers.lastVotingRound, voter);
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (participation == VoteParticipation.DidNotVote)
-                slash = -int128(uint128((effectiveStake * trackers.noVoteSlashPerToken) / 1e18));
+                slash = -int256((effectiveStake * trackers.noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (participation == VoteParticipation.WrongVote)
-                slash = -int128(uint128((effectiveStake * trackers.wrongVoteSlashPerToken) / 1e18));
+                slash = -int256((effectiveStake * trackers.wrongVoteSlashPerToken) / 1e18);
 
                 // Else, the voter voted correctly. Receive a pro-rate share of the other voters slash.
-            else slash = int128(uint128((effectiveStake * trackers.totalSlashed) / trackers.totalCorrectVotes));
+            else slash = int256((effectiveStake * trackers.totalSlashed) / trackers.totalCorrectVotes);
 
-            emit VoterSlashed(voter, requestIndex, slash);
-            voterStake.unappliedSlash += slash;
+            emit VoterSlashed(voter, requestIndex, int128(slash));
+            voterStake.unappliedSlash += int128(slash);
 
             // If the next round is different to the current considered round, apply the slash to the voter.
             if (isNextRequestRoundDifferent(requestIndex)) _applySlashToVoter(voterStake, voter);
