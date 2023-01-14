@@ -61,8 +61,8 @@ contract FakeLifeCycle is CommonDataVerificationMechanismForkTest {
         assertEq(voting.getPrice(identifier, requestTime, ancillaryData), price);
 
         // Finally, considering we were the only voter, we should be able to work out the slashing amount precisely.
-        uint128 totalStakedAtVote = voting.cumulativeStake(); // Has not changed from when we staked.
-        uint128 slashPerTokenPerNoVote =
+        uint256 totalStakedAtVote = voting.cumulativeStake(); // Has not changed from when we staked.
+        uint256 slashPerTokenPerNoVote =
             voting.slashingLibrary().calcNoVoteSlashPerToken(
                 totalStakedAtVote,
                 stakedNumOfTokens,

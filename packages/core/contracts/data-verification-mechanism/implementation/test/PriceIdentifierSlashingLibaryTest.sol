@@ -13,48 +13,48 @@ contract PriceIdentifierSlashingLibaryTest is SlashingLibraryInterface {
 
     bytes32 public constant whiteListedIdentifier = "SAFE_NO_VOTE";
 
-    uint128 public constant slashPerToken = 0.0016e18;
+    uint256 public constant slashPerToken = 0.0016e18;
 
     constructor(address _votingV2Address) {
         voting = VotingV2(_votingV2Address);
     }
 
     function calcWrongVoteSlashPerToken(
-        uint128 totalStaked,
-        uint128 totalVotes,
-        uint128 totalCorrectVotes,
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public pure returns (uint128) {}
+    ) public pure returns (uint256) {}
 
     function calcWrongVoteSlashPerTokenGovernance(
-        uint128 totalStaked,
-        uint128 totalVotes,
-        uint128 totalCorrectVotes,
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public pure returns (uint128) {}
+    ) public pure returns (uint256) {}
 
     function calcNoVoteSlashPerToken(
-        uint128 totalStaked,
-        uint128 totalVotes,
-        uint128 totalCorrectVotes,
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
         uint256 priceRequestIndex
-    ) public pure returns (uint128) {}
+    ) public pure returns (uint256) {}
 
     function calcSlashing(
-        uint128 totalStaked,
-        uint128 totalVotes,
-        uint128 totalCorrectVotes,
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
         uint256 priceRequestIndex,
         bool isGovernance
-    ) external view returns (uint128 wrongVoteSlashPerToken, uint128 noVoteSlashPerToken) {
+    ) external view returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         bytes32 priceRequestIdentifier = voting.resolvedPriceRequestIds(priceRequestIndex);
         (, , , , bytes32 identifier, ) = voting.priceRequests(priceRequestIdentifier);
 
         // If the identifier is whiteListedIdentifier, then no tokens are slashed for no vote.
-        uint128 noVoteSlashPerToken = identifier == whiteListedIdentifier ? 0 : slashPerToken;
+        uint256 noVoteSlashPerToken = identifier == whiteListedIdentifier ? 0 : slashPerToken;
 
         // If it's a governance price request, then no tokens are slashed for wrong vote.
-        uint128 wrongVoteSlashPerToken = isGovernance ? 0 : slashPerToken;
+        uint256 wrongVoteSlashPerToken = isGovernance ? 0 : slashPerToken;
 
         return (isGovernance ? 0 : slashPerToken, noVoteSlashPerToken);
     }
