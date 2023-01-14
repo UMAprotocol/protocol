@@ -164,6 +164,14 @@ abstract contract VotingV2Interface {
     function setMaxRolls(uint32 newMaxRolls) external virtual;
 
     /**
+     * @notice Sets the maximum number of requests that can be made in a single round. Used to bound the maximum
+     * sequential slashing that can be applied within a single round.
+     * @dev Can only be called by the contract owner.
+     * @param newMaxRequestsPerRound the new maximum number of requests that can be made in a single round.
+     */
+    function setMaxRequestPerRound(uint32 newMaxRequestsPerRound) external virtual;
+
+    /**
      * @notice Resets the GAT number and SPAT percentage. The GAT is the minimum number of tokens that must participate
      * in a vote for it to resolve (quorum number). The SPAT is is the minimum percentage of tokens that must agree
      * in a vote for it to resolve (percentage of staked tokens) Note: this change only applies to rounds that

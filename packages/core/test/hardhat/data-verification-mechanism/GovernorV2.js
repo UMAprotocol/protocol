@@ -819,6 +819,7 @@ describe("GovernorV2", function () {
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       "3", // maxRolls
+      "1000", // maxRequestsPerRound
       web3.utils.toWei("5000000"), // 5% GAT
       web3.utils.toWei("0.25"), // 25% PAT
       votingToken.options.address, // voting token
