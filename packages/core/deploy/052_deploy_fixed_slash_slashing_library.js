@@ -1,5 +1,5 @@
 const func = async function (hre) {
-  const { deployments, getNamedAccounts } = hre;
+  const { deployments, getNamedAccounts, web3 } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();

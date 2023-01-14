@@ -27,6 +27,9 @@ const func = async function (hre) {
   // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
   const maxRolls = 2;
 
+  // Bound how many requests can be made in a single round. After this maximum requests auto roll.
+  const maxRequestsPerRound = 1000;
+
   // Note: this is a bit hacky, but we must have _some_ tokens in existence to set a GAT.
   const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
   await votingToken.methods.addMember(1, deployer).send({ from: deployer });
@@ -42,6 +45,7 @@ const func = async function (hre) {
         unstakeCooldown,
         phaseLength,
         maxRolls,
+        maxRequestsPerRound,
         gat.toString(),
         spat.toString(),
         VotingToken.address,
@@ -60,6 +64,7 @@ const func = async function (hre) {
         unstakeCooldown,
         phaseLength,
         maxRolls,
+        maxRequestsPerRound,
         gat.toString(),
         spat.toString(),
         VotingToken.address,
