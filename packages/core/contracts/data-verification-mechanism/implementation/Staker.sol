@@ -301,30 +301,23 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /**
      * @notice  Determine the number of outstanding token rewards that can be withdrawn by a voter.
      * @param voter the address of the voter.
-     * @return uint128 the outstanding rewards.
+     * @return uint256 the outstanding rewards.
      */
-    function outstandingRewards(address voter) public view returns (uint128) {
+    function outstandingRewards(address voter) public view returns (uint256) {
         VoterStake storage voterStake = voterStakes[voter];
 
         return
-            uint128(
-                ((uint256(voterStake.stake) * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
-                    voterStake.outstandingRewards
-            );
+            ((voterStake.stake * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
+            voterStake.outstandingRewards;
     }
 
     /**
      * @notice  Calculate the reward per token based on the last time the reward was updated.
-     * @return uint128 the reward per token.
+     * @return uint256 the reward per token.
      */
-    function rewardPerToken() public view returns (uint128) {
+    function rewardPerToken() public view returns (uint256) {
         if (cumulativeStake == 0) return rewardPerTokenStored;
-        return
-            uint128(
-                rewardPerTokenStored +
-                    ((getCurrentTime() - lastUpdateTime) * uint256(emissionRate) * 1e18) /
-                    cumulativeStake
-            );
+        return rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / cumulativeStake;
     }
 
     /**
@@ -376,12 +369,12 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
 
     // Calculate the reward per token based on last time the reward was updated.
     function _updateReward(address voter) internal {
-        uint128 newRewardPerToken = rewardPerToken();
+        uint128 newRewardPerToken = uint128(rewardPerToken());
         rewardPerTokenStored = newRewardPerToken;
         lastUpdateTime = uint64(getCurrentTime());
         if (voter != address(0)) {
             VoterStake storage voterStake = voterStakes[voter];
-            voterStake.outstandingRewards = outstandingRewards(voter);
+            voterStake.outstandingRewards = uint128(outstandingRewards(voter));
             voterStake.rewardsPaidPerToken = newRewardPerToken;
         }
         emit UpdatedReward(voter, newRewardPerToken, lastUpdateTime);
