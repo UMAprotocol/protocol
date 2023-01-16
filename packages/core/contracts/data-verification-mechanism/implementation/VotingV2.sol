@@ -36,7 +36,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint64 time; // Timestamp used when evaluating the request.
         uint32 rollCount; // The number of rounds that a price request has rolled. Informs if a request can be deleted.
         bytes32 identifier; // Identifier that defines how the voters should resolve the request.
-        mapping(uint256 => VoteInstance) voteInstances; // A map containing all votes for this price in various rounds.
+        mapping(uint32 => VoteInstance) voteInstances; // A map containing all votes for this price in various rounds.
         bytes ancillaryData; // Additional data used to resolve the request.
     }
 
@@ -54,7 +54,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint128 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
         uint128 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint128 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
-        uint32 numberOfRequestsToVoteOnInThisRound; // The number of requests that have been voted on in this round.
+        uint32 numberOfRequestsToVote; // The number of requests to vote in this round.
     }
 
     struct SlashingTracker {
@@ -91,7 +91,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     uint32 public lastRoundIdProcessed; // The last round pendingPriceRequestsIds were traversed in.
 
-    uint64 public nextPendingIndexToProcess; // Index of pendingPriceRequestsIds that has been traversed in roundId.
+    uint64 public nextPendingIndexToProcess; // Next pendingPriceRequestsIds index to process in lastRoundIdProcessed.
 
     FinderInterface private immutable finder; // Reference to the UMA Finder contract, used to find other UMA contracts.
 
@@ -304,7 +304,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 currentRoundId = getCurrentRoundId();
         if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.NotRequested) {
             uint32 roundIdToVoteOn = getRoundIdToVoteOnRequest(currentRoundId + 1);
-            ++rounds[roundIdToVoteOn].numberOfRequestsToVoteOnInThisRound;
+            ++rounds[roundIdToVoteOn].numberOfRequestsToVote;
             priceRequest.identifier = identifier;
             priceRequest.time = SafeCast.toUint64(time);
             priceRequest.ancillaryData = ancillaryData;
@@ -317,7 +317,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     function getRoundIdToVoteOnRequest(uint32 targetRoundId) public view returns (uint32) {
-        while (rounds[targetRoundId].numberOfRequestsToVoteOnInThisRound >= maxRequestsPerRound) ++targetRoundId;
+        while (rounds[targetRoundId].numberOfRequestsToVote >= maxRequestsPerRound) ++targetRoundId;
         return targetRoundId;
     }
 
@@ -649,6 +649,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes, lastVotingRound);
     }
 
+    /**
+     * @notice Returns the voter's participation in the vote for a given request index.
+     * @param requestIndex requestIndex the index of the request to fetch slashing trackers for.
+     * @param lastVotingRound the round to get voter participation for.
+     * @param voter the voter to get participation for.
+     * @return VoteParticipation enum representing the voter's participation in the vote.
+     */
     function getVoterParticipation(
         uint256 requestIndex,
         uint32 lastVotingRound,
@@ -1043,7 +1050,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             }
             // Else, the request should be rolled. This involves only moving forward the lastVotingRound.
             request.lastVotingRound = getRoundIdToVoteOnRequest(currentRoundId);
-            ++rounds[request.lastVotingRound].numberOfRequestsToVoteOnInThisRound;
+            ++rounds[request.lastVotingRound].numberOfRequestsToVote;
             emit RequestRolled(request.identifier, request.time, request.ancillaryData, request.rollCount);
             requestIndex = unsafe_inc_64(requestIndex);
         }
