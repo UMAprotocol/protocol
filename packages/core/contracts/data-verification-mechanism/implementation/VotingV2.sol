@@ -517,12 +517,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      ****************************************/
 
     /**
-     * @notice Gets the requests that are being voted on this round after resolving them when possible.
+     * @notice Gets the requests that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
-    function getPendingRequests() external override returns (PendingRequestAncillaryAugmented[] memory) {
-        // First, resolve any pending requests that can be resolved.
-        processResolvablePriceRequests();
+    function getPendingRequests() public override returns (PendingRequestAncillaryAugmented[] memory) {
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequestsIds only to those requests that have an Active RequestStatus.
         PendingRequestAncillaryAugmented[] memory unresolved =
@@ -550,6 +548,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         for (uint256 i = 0; i < numUnresolved; i = unsafe_inc(i)) pendingRequests[i] = unresolved[i];
 
         return pendingRequests;
+    }
+
+    /**
+     * @notice Gets the requests that are being voted on this round after processing any resolvable price requests.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
+     */
+    function getPendingRequestsPostUpdate() external override returns (PendingRequestAncillaryAugmented[] memory) {
+        processResolvablePriceRequests();
+        return getPendingRequests();
     }
 
     /**
@@ -591,19 +598,30 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Returns the number of resolved price requests over all time.
-     * @return uint256 the total number of prices resolved over all time.
+     * @notice Returns the number of current pending price requests to be voted and the number of resolved price
+       requests over all time.
+     * @return numberPendingPriceRequests the total number of pending prices requests.
+     * @return numberResolvedPriceRequests the total number of prices resolved over all time.
      */
-    function getNumberOfResolvedPriceRequests() external view returns (uint256) {
-        return resolvedPriceRequestIds.length;
+    function getNumberOfPriceRequests()
+        public
+        returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
+    {
+        return (pendingPriceRequestsIds.length, resolvedPriceRequestIds.length);
     }
 
     /**
-     * @notice Returns the number of current pending price requests to be voted.
-     * @return uint256 the total number of pending prices requests.
+     * @notice Returns the number of current pending price requests to be voted and the number of resolved price
+       requests over all time after processing any resolvable price requests.
+     * @return numberPendingPriceRequests the total number of pending prices requests.
+     * @return numberResolvedPriceRequests the total number of prices resolved over all time.
      */
-    function getNumberOfPendingPriceRequests() external view returns (uint256) {
-        return pendingPriceRequestsIds.length;
+    function getNumberOfPriceRequestsPostUpdate()
+        external
+        returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
+    {
+        processResolvablePriceRequests();
+        return getNumberOfPriceRequests();
     }
 
     /**

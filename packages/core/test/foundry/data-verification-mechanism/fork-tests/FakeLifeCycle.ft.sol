@@ -15,10 +15,11 @@ contract FakeLifeCycle is CommonDataVerificationMechanismForkTest {
         // Ensure we are at the start of a voting round so we can stake and vote without the stake being disabled.
         if (voting.getVotePhase() == VotingV2Interface.Phase.Reveal) moveToNextRound();
 
-        uint256 numberRequestsPreRequest = voting.getNumberOfPendingPriceRequests();
+        (uint256 numberRequestsPreRequest, ) = voting.getNumberOfPriceRequests();
         vm.prank(registeredRequester);
         voting.requestPrice(identifier, requestTime, ancillaryData);
-        assert(voting.getNumberOfPendingPriceRequests() == numberRequestsPreRequest + 1);
+        (uint256 numberRequestsPostRequest, ) = voting.getNumberOfPriceRequests();
+        assert(numberRequestsPostRequest == numberRequestsPreRequest + 1);
 
         // Mint fresh UMA and stake them.
         vm.prank(address(voting));
