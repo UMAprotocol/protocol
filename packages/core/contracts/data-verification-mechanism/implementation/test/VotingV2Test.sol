@@ -7,13 +7,13 @@ import "../../../common/implementation/Testable.sol";
 // Test contract used to manage the time for the contract in tests.
 contract VotingV2ControllableTiming is VotingV2, Testable {
     constructor(
-        uint256 _emissionRate,
+        uint128 _emissionRate,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
         uint32 _maxRolls,
         uint32 _maxRequestsPerRound,
-        uint256 _gat,
-        uint256 _pat,
+        uint128 _gat,
+        uint64 _spat,
         address _votingToken,
         address _finder,
         address _slashingLibrary,
@@ -27,7 +27,7 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
             _maxRolls,
             _maxRequestsPerRound,
             _gat,
-            _pat,
+            _spat,
             _votingToken,
             _finder,
             _slashingLibrary,
@@ -85,13 +85,13 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
 // Test contract used to access internal variables in the Voting contract.
 contract VotingV2Test is VotingV2ControllableTiming {
     constructor(
-        uint256 _emissionRate,
+        uint128 _emissionRate,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
         uint32 _maxRolls,
         uint32 _maxRequestsPerRound,
-        uint256 _gat,
-        uint256 _pat,
+        uint128 _gat,
+        uint64 _spat,
         address _votingToken,
         address _finder,
         address _slashingLibrary,
@@ -105,7 +105,7 @@ contract VotingV2Test is VotingV2ControllableTiming {
             _maxRolls,
             _maxRequestsPerRound,
             _gat,
-            _pat,
+            _spat,
             _votingToken,
             _finder,
             _slashingLibrary,

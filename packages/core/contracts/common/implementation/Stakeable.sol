@@ -22,7 +22,7 @@ abstract contract Stakeable is Withdrawable {
      * @param amount amount of tokens to stake.
      * @param votingContract Address of the voting contract to stake into.
      */
-    function stake(uint256 amount, address votingContract) external onlyRoleHolder(roleId) {
+    function stake(uint128 amount, address votingContract) external onlyRoleHolder(roleId) {
         StakerInterface voting = StakerInterface(votingContract);
         IERC20 votingToken = IERC20(voting.votingToken());
         votingToken.approve(votingContract, amount);
@@ -34,7 +34,7 @@ abstract contract Stakeable is Withdrawable {
      * @param amount amount of tokens to unstake.
      * @param votingContract Address of the voting contract to unstake from.
      */
-    function requestUnstake(uint256 amount, address votingContract) external onlyRoleHolder(roleId) {
+    function requestUnstake(uint128 amount, address votingContract) external onlyRoleHolder(roleId) {
         StakerInterface voting = StakerInterface(votingContract);
         voting.requestUnstake(amount);
     }

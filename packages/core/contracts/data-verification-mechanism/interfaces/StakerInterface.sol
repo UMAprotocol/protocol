@@ -7,17 +7,17 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 interface StakerInterface {
     function votingToken() external returns (ExpandedIERC20);
 
-    function stake(uint256 amount) external;
+    function stake(uint128 amount) external;
 
-    function requestUnstake(uint256 amount) external;
+    function requestUnstake(uint128 amount) external;
 
     function executeUnstake() external;
 
-    function withdrawRewards() external returns (uint256);
+    function withdrawRewards() external returns (uint128);
 
-    function withdrawAndRestake() external returns (uint256);
+    function withdrawAndRestake() external returns (uint128);
 
-    function setEmissionRate(uint256 emissionRate) external;
+    function setEmissionRate(uint128 emissionRate) external;
 
     function setUnstakeCoolDown(uint64 unstakeCoolDown) external;
 

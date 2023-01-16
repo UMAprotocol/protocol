@@ -51,9 +51,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct Round {
-        uint256 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
-        uint256 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
-        uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
+        uint128 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
+        uint128 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
+        uint128 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
         uint32 numberOfRequestsToVoteOnInThisRound; // The number of requests that have been voted on in this round.
     }
 
@@ -89,6 +89,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      *            VOTING STATE              *
      ****************************************/
 
+    uint32 public lastRoundIdProcessed; // The last round pendingPriceRequestsIds were traversed in.
+
+    uint64 public nextPendingIndexToProcess; // Index of pendingPriceRequestsIds that has been traversed in roundId.
+
     FinderInterface private immutable finder; // Reference to the UMA Finder contract, used to find other UMA contracts.
 
     SlashingLibraryInterface public slashingLibrary; // Reference to Slashing Library, used to compute slashing amounts.
@@ -96,10 +100,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     VoteTiming.Data public voteTiming; // Vote timing library used to compute round timing related logic.
 
     OracleAncillaryInterface public immutable previousVotingContract; // Previous voting contract, if migrated.
-
-    uint32 public lastRoundIdProcessed; // The last round pendingPriceRequestsIds were traversed in.
-
-    uint64 public nextPendingIndexToProcess; // Index of pendingPriceRequestsIds that has been traversed in roundId.
 
     mapping(uint256 => Round) public rounds; // Maps round numbers to the rounds.
 
@@ -115,9 +115,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     address public migratedAddress; // If non-zero, this contract has been migrated to this address.
 
-    uint256 public gat; // GAT: A minimum number of tokens that must participate to resolve a vote.
+    uint128 public gat; // GAT: A minimum number of tokens that must participate to resolve a vote.
 
-    uint256 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
+    uint64 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
 
     uint64 private constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
 
@@ -130,7 +130,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     event VoteCommitted(
         address indexed voter,
         address indexed caller,
-        uint256 roundId,
+        uint32 roundId,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData
@@ -148,12 +148,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     event VoteRevealed(
         address indexed voter,
         address indexed caller,
-        uint256 roundId,
+        uint32 roundId,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData,
         int256 price,
-        uint256 numTokens
+        uint128 numTokens
     );
 
     event RequestAdded(
@@ -176,11 +176,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event VotingContractMigrated(address newAddress);
 
-    event RequestDeleted(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
+    event RequestDeleted(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint32 rollCount);
 
-    event RequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint256 rollCount);
+    event RequestRolled(bytes32 indexed identifier, uint256 indexed time, bytes ancillaryData, uint32 rollCount);
 
-    event GatAndSpatChanged(uint256 newGat, uint256 newSpat);
+    event GatAndSpatChanged(uint128 newGat, uint64 newSpat);
 
     event SlashingLibraryChanged(address newAddress);
 
@@ -188,9 +188,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event MaxRequestsPerRoundChanged(uint32 newMaxRequestsPerRound);
 
-    event VoterSlashApplied(address indexed voter, int256 slashedTokens, uint256 postStake);
+    event VoterSlashApplied(address indexed voter, int128 slashedTokens, uint128 postStake);
 
-    event VoterSlashed(address indexed voter, uint256 indexed requestIndex, int256 slashedTokens);
+    event VoterSlashed(address indexed voter, uint256 indexed requestIndex, int128 slashedTokens);
 
     /**
      * @notice Construct the VotingV2 contract.
@@ -207,13 +207,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param _previousVotingContract previous voting contract address.
      */
     constructor(
-        uint256 _emissionRate,
+        uint128 _emissionRate,
         uint64 _unstakeCoolDown,
         uint64 _phaseLength,
         uint32 _maxRolls,
         uint32 _maxRequestsPerRound,
-        uint256 _gat,
-        uint256 _spat,
+        uint128 _gat,
+        uint64 _spat,
         address _votingToken,
         address _finder,
         address _slashingLibrary,
@@ -486,7 +486,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // Calculate the voters effective stake for this round as the difference between their stake and pending stake.
         // This allows for the voter to have staked during this reveal phase and not consider their pending stake.
-        uint256 effectiveStake = voterStakes[voter].stake - voterStakes[voter].pendingStakes[currentRoundId];
+        uint128 effectiveStake = voterStakes[voter].stake - voterStakes[voter].pendingStakes[currentRoundId];
         voteInstance.results.addVote(price, effectiveStake); // Add vote to the results.
         emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, ancillaryData, price, effectiveStake);
     }
@@ -705,7 +705,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newGat sets the next round's GAT and going forward.
      * @param newSpat sets the next round's SPAT and going forward.
      */
-    function setGatAndSpat(uint256 newGat, uint256 newSpat) public override onlyOwner {
+    function setGatAndSpat(uint128 newGat, uint64 newSpat) public override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
         require(newSpat > 0 && newSpat < 1e18);
         gat = newGat;
@@ -792,7 +792,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // This function must be called before any tokens are staked. It updates the voter's pending stakes to reflect the
     // new amount to stake. These updates are only made if we are in an active reveal. This is required to appropriately
     // calculate a voter's trackers and avoid slashing them for amounts staked during an active reveal phase.
-    function _computePendingStakes(address voter, uint256 amount) internal override {
+    function _computePendingStakes(address voter, uint128 amount) internal override {
         if (_inActiveReveal()) {
             uint32 currentRoundId = getCurrentRoundId();
             // Freeze round variables to prevent cumulativeActiveStakeAtRound from changing based on the stakes during
@@ -840,8 +840,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 // Else, the voter voted correctly. Receive a pro-rate share of the other voters slash.
             else slash = int256((effectiveStake * trackers.totalSlashed) / trackers.totalCorrectVotes);
 
-            emit VoterSlashed(voter, requestIndex, slash);
-            voterStake.unappliedSlash += slash;
+            emit VoterSlashed(voter, requestIndex, int128(slash));
+            voterStake.unappliedSlash += int128(slash);
 
             // If the next round is different to the current considered round, apply the slash to the voter.
             if (isNextRequestRoundDifferent(requestIndex)) _applySlashToVoter(voterStake, voter);
@@ -857,8 +857,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // than 0, the voter's stake is set to 0 to prevent the voter's stake from going negative. unappliedSlash tracked
     // all slashing the staker has received but not yet applied to their stake. Apply it then set it to zero.
     function _applySlashToVoter(VoterStake storage voterStake, address voter) internal {
-        if (voterStake.unappliedSlash + int256(voterStake.stake) > 0)
-            voterStake.stake = uint256(int256(voterStake.stake) + voterStake.unappliedSlash);
+        if (voterStake.unappliedSlash + int128(voterStake.stake) > 0)
+            voterStake.stake = uint128(int128(voterStake.stake) + voterStake.unappliedSlash);
         else voterStake.stake = 0;
         emit VoterSlashApplied(voter, voterStake.unappliedSlash, voterStake.stake);
         voterStake.unappliedSlash = 0;
@@ -980,7 +980,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             rounds[roundId].minParticipationRequirement = gat;
 
             // The minimum votes on the modal outcome for the vote to settle within this round is the SPAT (percentage).
-            rounds[roundId].minAgreementRequirement = (spat * cumulativeStake) / 1e18;
+            rounds[roundId].minAgreementRequirement = uint128((spat * uint256(cumulativeStake)) / 1e18);
             rounds[roundId].cumulativeStakeAtRound = cumulativeStake; // Store the cumulativeStake to work slashing.
         }
     }

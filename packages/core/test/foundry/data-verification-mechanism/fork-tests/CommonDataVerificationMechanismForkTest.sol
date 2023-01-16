@@ -18,7 +18,7 @@ contract CommonDataVerificationMechanismForkTest is CommonTestBase {
 
     bytes32 identifier = bytes32("YES_OR_NO_QUERY");
     bytes ancillaryData = bytes("Some data");
-    uint256 gatMeetingNumOfTokens = 6e24;
+    uint128 gatMeetingNumOfTokens = 6e24;
     uint256 requestTime = 420;
 
     function _commonSetup() public {

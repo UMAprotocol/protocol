@@ -23,7 +23,7 @@ contract FakeLifeCycle is CommonDataVerificationMechanismForkTest {
 
         // Mint fresh UMA and stake them.
         vm.prank(address(voting));
-        uint256 stakedNumOfTokens = gatMeetingNumOfTokens;
+        uint128 stakedNumOfTokens = gatMeetingNumOfTokens;
         votingToken.mint(TestAddress.account1, stakedNumOfTokens);
         vm.startPrank(TestAddress.account1);
         votingToken.approve(address(voting), stakedNumOfTokens);
