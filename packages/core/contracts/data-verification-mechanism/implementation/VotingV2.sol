@@ -650,7 +650,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Returns the voter's participation in the vote for a given request index
+     * @notice Returns the voter's participation in the vote for a given request index.
      * @param requestIndex requestIndex the index of the request to fetch slashing trackers for.
      * @param lastVotingRound the round to get voter participation for.
      * @param voter the voter to get participation for.
