@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.21.0...@uma/scripts@1.22.0) (2023-01-17)
+
+### Features
+
+- add getProcessedPendingRequests ([#4376](https://github.com/UMAprotocol/protocol/issues/4376)) ([69a497b](https://github.com/UMAprotocol/protocol/commit/69a497b7829c63ac832a1518ce3a0cb04634aa6f))
+- Address unbounded intra round slashing ([#4380](https://github.com/UMAprotocol/protocol/issues/4380)) ([324f309](https://github.com/UMAprotocol/protocol/commit/324f309364c27896e950f23f8325ce8f636abcd3))
+
 # [1.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.20.2...@uma/scripts@1.21.0) (2023-01-11)
 
 ### Features

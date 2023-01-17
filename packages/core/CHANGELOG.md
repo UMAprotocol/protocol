@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.48.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.47.0...@uma/core@2.48.0) (2023-01-17)
+
+### Bug Fixes
+
+- optimize dvm-v2 variable types ([#4384](https://github.com/UMAprotocol/protocol/issues/4384)) ([661c394](https://github.com/UMAprotocol/protocol/commit/661c394acfd6606882e1d1483a739eea4e5a2a04))
+- reuse storage slots for tracking processed requests ([#4381](https://github.com/UMAprotocol/protocol/issues/4381)) ([d4246c0](https://github.com/UMAprotocol/protocol/commit/d4246c039983ebc8e64f9996d1e2a755401d6a27))
+
+### Features
+
+- add getProcessedPendingRequests ([#4376](https://github.com/UMAprotocol/protocol/issues/4376)) ([69a497b](https://github.com/UMAprotocol/protocol/commit/69a497b7829c63ac832a1518ce3a0cb04634aa6f))
+- add new voting v2 goerli address ([#4386](https://github.com/UMAprotocol/protocol/issues/4386)) ([cdb0679](https://github.com/UMAprotocol/protocol/commit/cdb0679347d752e8c200ee30310b589da21ed240))
+- add post update functions ([#4383](https://github.com/UMAprotocol/protocol/issues/4383)) ([861dc62](https://github.com/UMAprotocol/protocol/commit/861dc623f4ba711caf363b457d2915444b1513b6))
+- Address unbounded intra round slashing ([#4380](https://github.com/UMAprotocol/protocol/issues/4380)) ([324f309](https://github.com/UMAprotocol/protocol/commit/324f309364c27896e950f23f8325ce8f636abcd3))
+- small commenting change to be as consistant as posible ([#4382](https://github.com/UMAprotocol/protocol/issues/4382)) ([9c55f01](https://github.com/UMAprotocol/protocol/commit/9c55f013d23dc04780c0222788b2fa347ec29a17))
+- voting v2 minor refactoring ([#4385](https://github.com/UMAprotocol/protocol/issues/4385)) ([824615e](https://github.com/UMAprotocol/protocol/commit/824615e15a588628e822f5985432a481fede14da))
+
 # [2.47.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.46.0...@uma/core@2.47.0) (2023-01-11)
 
 ### Features
