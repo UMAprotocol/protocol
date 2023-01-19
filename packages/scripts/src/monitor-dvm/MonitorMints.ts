@@ -2,11 +2,11 @@ import { Logger } from "@uma/financial-templates-lib";
 import { ZERO_ADDRESS } from "@uma/common";
 import { VotingTokenEthers } from "@uma/contracts-node";
 import { logMint } from "./MonitorLogger";
-import { getContractInstanceByUrl } from "../utils/contracts";
+import { getContractInstanceWithProvider } from "../utils/contracts";
 import type { MonitoringParams } from "./common";
 
 export async function monitorMints(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const votingToken = await getContractInstanceByUrl<VotingTokenEthers>("VotingToken", params.jsonRpcUrl);
+  const votingToken = await getContractInstanceWithProvider<VotingTokenEthers>("VotingToken", params.provider);
 
   const largeMints = (
     await votingToken.queryFilter(

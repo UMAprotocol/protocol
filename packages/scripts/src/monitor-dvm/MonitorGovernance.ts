@@ -1,11 +1,11 @@
 import { Logger } from "@uma/financial-templates-lib";
 import { GovernorV2Ethers } from "@uma/contracts-node";
 import { logGovernanceProposal } from "./MonitorLogger";
-import { getContractInstanceByUrl } from "../utils/contracts";
+import { getContractInstanceWithProvider } from "../utils/contracts";
 import type { MonitoringParams } from "./common";
 
 export async function monitorGovernance(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const governorV2 = await getContractInstanceByUrl<GovernorV2Ethers>("GovernorV2", params.jsonRpcUrl);
+  const governorV2 = await getContractInstanceWithProvider<GovernorV2Ethers>("GovernorV2", params.provider);
 
   const governanceProposals = (
     await governorV2.queryFilter(governorV2.filters.NewProposal(), params.blockRange.start, params.blockRange.end)

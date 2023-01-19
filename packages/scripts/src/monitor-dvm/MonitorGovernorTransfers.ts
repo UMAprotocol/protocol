@@ -1,11 +1,11 @@
 import { Logger } from "@uma/financial-templates-lib";
 import { VotingTokenEthers, getAddress } from "@uma/contracts-node";
 import { logGovernorTransfer } from "./MonitorLogger";
-import { getContractInstanceByUrl } from "../utils/contracts";
+import { getContractInstanceWithProvider } from "../utils/contracts";
 import type { MonitoringParams } from "./common";
 
 export async function monitorGovernorTransfers(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const votingToken = await getContractInstanceByUrl<VotingTokenEthers>("VotingToken", params.jsonRpcUrl);
+  const votingToken = await getContractInstanceWithProvider<VotingTokenEthers>("VotingToken", params.provider);
   const governorV2Address = await getAddress("GovernorV2", params.chainId);
 
   const largeGovernorTransfers = (
