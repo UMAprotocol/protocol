@@ -12,12 +12,12 @@ node ./packages/scripts/dist/monitor-dvm/index.js
 
 All the configuration should be provided with following environment variables:
 
-- `CHAIN_ID` is L1 network number (`"1"` for Ethereum mainnet or `"5"` for goerli).
+- `CHAIN_ID` is L1 network number (`1` for Ethereum mainnet or `5` for goerli).
 - `NODE_URLS_1` or `NODE_URLS_5` is an array of L1 node URLs.
 - `NODE_URL_1` or `NODE_URL_5` is a single L1 node URL. This is considered only if `NODE_URLS_1` or `NODE_URLS_5` is not provided.
-- `NODE_RETRIES` is the number of retries to make when a node request fails (defaults to `"2"`).
-- `NODE_RETRY_DELAY` is the delay in seconds between retries (defaults to `"1"`).
-- `NODE_TIMEOUT` is the timeout in seconds for node requests (defaults to `"60"`).
+- `NODE_RETRIES` is the number of retries to make when a node request fails (defaults to `2`).
+- `NODE_RETRY_DELAY` is the delay in seconds between retries (defaults to `1`).
+- `NODE_TIMEOUT` is the timeout in seconds for node requests (defaults to `60`).
 - `POLLING_DELAY` is value in seconds for delay between consecutive runs, defaults to 1 minute. If set to 0 then running in serverless mode will exit after the loop.
 - `STARTING_BLOCK_NUMBER` and `ENDING_BLOCK_NUMBER` defines block range to look for events on L1 network. These are mandatory when `POLLING_DELAY=0`.
 - `UNSTAKES_ENABLED` is boolean enabling/disabling monitoring large unstake attempts (disabled by default).
