@@ -20,7 +20,7 @@ const func = async function (hre) {
   const defaultLiveness = 7200; // 2 hours.
   const chainId = await getChainId();
   const Finder = await deployments.get("Finder");
-  const defaultCurrency = process.env.OA_DEFAULT_CURRENCY || ADDRESSES_FOR_NETWORK[chainId].defaultCurrency;
+  const defaultCurrency = process.env.OA_DEFAULT_CURRENCY || ADDRESSES_FOR_NETWORK[chainId]?.defaultCurrency;
   if (!defaultCurrency) {
     throw new Error("No default currency found for this network. Please set the OA_DEFAULT_CURRENCY env variable.");
   }
