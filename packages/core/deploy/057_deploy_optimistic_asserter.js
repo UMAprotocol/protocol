@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 // Use USDC as the default currency for all networks that have it whitelisted.
 const ADDRESSES_FOR_NETWORK = {
   1: { defaultCurrency: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
@@ -37,5 +39,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["OptimisticAsserter", "dvm"];
+func.tags = ["OptimisticAsserter"];
 func.dependencies = ["Finder", "AddressWhitelist"];
