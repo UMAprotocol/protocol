@@ -18,7 +18,6 @@ certoraRun ./certora/optimistic-asserter/harness/OptimisticAsserter.sol:Optimist
 --path . \
 --solc solc8.16 \
 --send_only \
---staging \
 --settings -mediumTimeout=200,-byteMapHashingPrecision=10 \
 --loop_iter 2 \
 --optimistic_loop \

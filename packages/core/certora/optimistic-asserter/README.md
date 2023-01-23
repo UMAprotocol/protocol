@@ -41,5 +41,5 @@ To run a verification job:
 
 2. Run the script you'd like to get results for:
    ```
-   sh certora/scripts/verifyAsserter.sh
+   sh certora/optimistic-asserter/scripts/verifyAsserter.sh
    ```
