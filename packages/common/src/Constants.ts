@@ -17,6 +17,7 @@ export const interfaceName = {
   ChildMessenger: "ChildMessenger",
   OracleSpoke: "OracleSpoke",
   OracleHub: "OracleHub",
+  OptimisticAsserter: "OptimisticAsserter",
 };
 
 // Updated multicall deployments can be found here: https://github.com/makerdao/multicall
