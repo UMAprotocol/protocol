@@ -1,6 +1,8 @@
-import { getChainIdByUrl, getLatestBlockNumberByUrl } from "../utils/utils";
+import { getRetryProvider } from "@uma/common";
 import { delay } from "@uma/financial-templates-lib";
 import { BigNumber, utils } from "ethers";
+
+import type { Provider } from "@ethersproject/abstract-provider";
 
 export interface BotModes {
   unstakesEnabled: boolean;
@@ -19,7 +21,7 @@ export interface BlockRange {
 }
 
 export interface MonitoringParams {
-  jsonRpcUrl: string;
+  provider: Provider;
   chainId: number;
   blockRange: BlockRange;
   pollingDelay: number;
@@ -31,12 +33,13 @@ export interface MonitoringParams {
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
-  if (!env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
-  const jsonRpcUrl = env.CUSTOM_NODE_URL;
-
-  const chainId = await getChainIdByUrl(jsonRpcUrl);
+  if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
+  const chainId = Number(env.CHAIN_ID);
 
   if (!chainId || (chainId != 1 && chainId != 5)) throw new Error("This script should be run on mainnet or goerli");
+
+  // Creating provider will check for other chainId specific env variables.
+  const provider = getRetryProvider(chainId) as Provider;
 
   // Default to 1 minute polling delay.
   const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
@@ -46,7 +49,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   }
 
   // If no block numbers are provided, default to the latest block.
-  const latestBlockNumber = await getLatestBlockNumberByUrl(jsonRpcUrl);
+  const latestBlockNumber: number = await provider.getBlockNumber();
   const startingBlock = env.STARTING_BLOCK_NUMBER ? Number(env.STARTING_BLOCK_NUMBER) : latestBlockNumber;
   const endingBlock = env.ENDING_BLOCK_NUMBER ? Number(env.ENDING_BLOCK_NUMBER) : latestBlockNumber;
   if (startingBlock > endingBlock) {
@@ -71,7 +74,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const mintsThreshold = utils.parseEther(process.env.MINTS_THRESHOLD || "0");
 
   return {
-    jsonRpcUrl,
+    provider,
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
@@ -85,7 +88,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
 export const waitNextBlockRange = async (params: MonitoringParams): Promise<BlockRange> => {
   await delay(Number(params.pollingDelay));
-  const latestBlockNumber = await getLatestBlockNumberByUrl(params.jsonRpcUrl);
+  const latestBlockNumber: number = await params.provider.getBlockNumber();
   return { start: params.blockRange.end + 1, end: latestBlockNumber };
 };
 

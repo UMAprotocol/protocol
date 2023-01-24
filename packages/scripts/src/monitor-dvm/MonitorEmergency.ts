@@ -1,13 +1,13 @@
 import { Logger } from "@uma/financial-templates-lib";
 import { EmergencyProposerEthers } from "@uma/contracts-node";
 import { logEmergencyProposal } from "./MonitorLogger";
-import { getContractInstanceByUrl } from "../utils/contracts";
+import { getContractInstanceWithProvider } from "../utils/contracts";
 import type { MonitoringParams } from "./common";
 
 export async function monitorEmergency(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const emergencyProposer = await getContractInstanceByUrl<EmergencyProposerEthers>(
+  const emergencyProposer = await getContractInstanceWithProvider<EmergencyProposerEthers>(
     "EmergencyProposer",
-    params.jsonRpcUrl
+    params.provider
   );
 
   const emergencyProposals = (
