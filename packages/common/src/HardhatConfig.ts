@@ -178,6 +178,16 @@ export function getHardhatConfig(
       // Your API key for Etherscan
       // Obtain one at https://etherscan.io/
       apiKey: process.env.ETHERSCAN_API_KEY,
+      customChains: [
+        {
+          network: "boba",
+          chainId: 288,
+          urls: {
+            apiURL: "https://api.bobascan.com/api",
+            browserURL: "https://bobascan.com",
+          },
+        },
+      ],
     },
     namedAccounts: { deployer: 0 },
   } as unknown) as HardhatConfig; // Cast to allow extra properties.
