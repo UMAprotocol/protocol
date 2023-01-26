@@ -13,6 +13,7 @@ export async function monitorSettlements(logger: typeof Logger, params: Monitori
   ).map(async (event) => ({
     tx: event.transactionHash,
     assertionId: event.args.assertionId,
+    claim: (await oa.queryFilter(oa.filters.AssertionMade(event.args.assertionId))).map((event) => event.args.claim)[0],
     assertionData: await oa.getAssertion(event.args.assertionId),
   }));
   for (const settlement of await Promise.all(settlements)) {

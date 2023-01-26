@@ -47,6 +47,7 @@ export async function logDispute(
   dispute: {
     tx: string;
     assertionId: string;
+    claim: string;
     assertionData: Awaited<ReturnType<typeof OptimisticAsserterEthers.prototype.getAssertion>>;
   },
   params: MonitoringParams
@@ -60,6 +61,8 @@ export async function logDispute(
       dispute.assertionId +
       " in transaction " +
       createEtherscanLinkMarkdown(dispute.tx, params.chainId) +
+      ". Claim: " +
+      tryHexToUtf8String(dispute.claim) +
       ". Identifier: " +
       utils.parseBytes32String(dispute.assertionData.identifier),
   });
@@ -70,6 +73,7 @@ export async function logSettlement(
   settlement: {
     tx: string;
     assertionId: string;
+    claim: string;
     assertionData: Awaited<ReturnType<typeof OptimisticAsserterEthers.prototype.getAssertion>>;
   },
   params: MonitoringParams
@@ -82,6 +86,8 @@ export async function logSettlement(
       settlement.assertionId +
       " was settled in transaction " +
       createEtherscanLinkMarkdown(settlement.tx, params.chainId) +
+      ". Claim: " +
+      tryHexToUtf8String(settlement.claim) +
       ". Identifier: " +
       utils.parseBytes32String(settlement.assertionData.identifier) +
       ". Result: assertion was " +
