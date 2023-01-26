@@ -12,6 +12,7 @@ const ADDRESSES_FOR_NETWORK = {
   9001: { defaultCurrency: "0x51e44FfaD5C2B122C8b635671FCC8139dc636E82" },
   42161: { defaultCurrency: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8" },
   43114: { defaultCurrency: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E" },
+  80001: { defaultCurrency: "0x0FA8781a83E46826621b3BC094Ea2A0212e71B23" },
 };
 const func = async function (hre) {
   const { deployments, getNamedAccounts, getChainId } = hre;

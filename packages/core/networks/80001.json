@@ -98,5 +98,9 @@
   {
     "contractName": "GovernorSpoke",
     "address": "0xAd5AA9F37d5BBfceE45BD9f43CbE0018ceEc7A4e"
+  },
+  {
+    "contractName": "OptimisticAsserter",
+    "address": "0xFA8487fE6A3715c7D550Fbe00e404D046D126F1C"
   }
 ]
