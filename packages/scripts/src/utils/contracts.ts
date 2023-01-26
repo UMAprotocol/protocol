@@ -28,10 +28,11 @@ export const getContractInstanceByUrl = async <T extends Contract>(
 
 export const getContractInstanceWithProvider = async <T extends Contract>(
   contractName: string,
-  provider: Provider
+  provider: Provider,
+  address?: string
 ): Promise<T> => {
   const networkId = (await provider.getNetwork()).chainId;
-  const contractAddress = await getAddress(contractName, networkId);
+  const contractAddress = address || (await getAddress(contractName, networkId));
   const contractAbi = getAbi(contractName);
   return new Contract(contractAddress, contractAbi, provider) as T;
 };
