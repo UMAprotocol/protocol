@@ -1,8 +1,8 @@
-// This script verify that the upgrade was executed correctly. It can be
-// run on a local hardhat node fork of the mainnet or can be run directly on the mainnet to execute the upgrade
-// transactions. To run this on the localhost first fork mainnet into a local hardhat node by running:
+// This script verify that the new contract has been added correctly to the Registry and Finder in mainnet and that
+// the relay transactions have been sent. It can be run on a local hardhat node fork of the mainnet or can be run
+// directly on the mainnet to verify. To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
-// Then execute the script from core with the PROPOSAL_DATA logged by ./src/upgrade-tests/162/1_Propose.ts:
+// Then execute the script from core with the PROPOSAL_DATA logged by  ./src/upgrade-tests/register-new-contract/1_Propose.ts:
 // PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/register-new-contract/2_Verify.ts --network localhost
 
 const hre = require("hardhat");

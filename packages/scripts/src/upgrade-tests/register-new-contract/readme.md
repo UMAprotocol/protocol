@@ -1,8 +1,6 @@
-## UMIP 162 admin proposals
+## Register new contract proposals
 
-This script generates and submits an upgrade transaction to add/upgrade the optimistic oracle in the DVM in
-the mainnet and layer 2 blockchains. It can be run on a local hardhat node fork of the mainnet or can be run
-directly on the mainnet to execute the upgrade transactions.
+This script generates and submits the transaction to register in the Registry and add to the Finder an arbitrary new contract in mainnet and layer 2 blockchains. It can be run on a local hardhat node fork of the mainnet or can be run directly on the mainnet to execute the upgrade transactions.
 
 1.Run a local forked node:
 
@@ -28,21 +26,15 @@ cd packages/scripts/
 Then run:
 
 ```
-OPTIMISTIC_ORACLE_V2_10=<OPTIMISM-OOV2-ADDRESS> \
 NODE_URL_10=<OPTIMISM-NODE-URL> \
 \
-OPTIMISTIC_ORACLE_V2_288=<BOBA-OOV2-ADDRESS> \
 NODE_URL_288=<OPTIMISM-NODE-URL> \
 \
-OPTIMISTIC_ORACLE_V2_137=<POLYGON-OOV2-ADDRESS> \
 NODE_URL_137=<OPTIMISM-NODE-URL> \
 \
-OPTIMISTIC_ORACLE_V2_42161=<ARBITRUM-OOV2-ADDRESS> \
 NODE_URL_42161=<OPTIMISM-NODE-URL> \
 \
-OPTIMISTC_ORACLE_V2=<MAINNET-OOV2-ADDRESS> \
-\
-yarn hardhat run ./src/upgrade-tests/162/1_Propose.ts  --network localhost
+yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts --network localhost
 ```
 
 2.2 Simulate votes and execute proposals:
@@ -54,5 +46,5 @@ NODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --n
 2.3 Verify the result:
 
 ```
-PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/162/2_Verify.ts --network localhost
+PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/register-new-contract/2_Verify.ts --network localhost
 ```

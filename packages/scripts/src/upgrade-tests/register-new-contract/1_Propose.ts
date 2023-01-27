@@ -1,5 +1,5 @@
-// This script generates and submits an upgrade transaction to add/upgrade the optimistic oracle in the DVM in
-// the mainnet and layer 2 blockchains. It can be run on a local hardhat node fork of the mainnet or can be run
+// This script generates and submits the transaction to register in the Registry and add to the Finder an arbitrary new
+// contract in mainnet and layer 2 blockchains. It can be run on a local hardhat node fork of the mainnet or can be run
 // directly on the mainnet to execute the upgrade transactions.
 // To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
@@ -12,7 +12,7 @@
 // \
 // NODE_URL_42161=<OPTIMISM-NODE-URL> \
 // \
-// yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts  --network localhost
+// yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts --network localhost
 
 const hre = require("hardhat");
 
@@ -202,7 +202,7 @@ async function main() {
     console.log(`Registering ${l2NewContractAddress} on ${networkName}`);
 
     // Fund Arbitrum if needed for next 4 transactions
-    if (isArbitrum) await fundArbitrumParentMessengerForRelays(arbitrumParentMessenger, proposerSigner, 10);
+    if (isArbitrum) await fundArbitrumParentMessengerForRelays(arbitrumParentMessenger, proposerSigner, 5);
 
     // 1. Temporarily add the GovernorChildTunnel/GovernorSpoke  as a contract creator.
     const addMemberDataTx = await l2Registry.populateTransaction.addMember(
