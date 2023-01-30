@@ -30,123 +30,16 @@ import {
   Proposer,
   Registry,
 } from "@uma/contracts-node/typechain/core/ethers";
-import { BaseContract, PopulatedTransaction, Signer } from "ethers";
+import { BaseContract, PopulatedTransaction } from "ethers";
 import { getContractInstance, getContractInstanceByUrl } from "../../utils/contracts";
+import { fundArbitrumParentMessengerForRelays, relayGovernanceMessages } from "../../utils/relay";
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const newContractName = interfaceName.OptimisticAsserter;
 
-// CONSTANTS
-const POLYGON_CHAIN_ID = 137;
-const ARBITRUM_CHAIN_ID = 42161;
-
 // Env vars
 const NODE_URL_ENV = "NODE_URL_";
-
-export interface RelayProposal {
-  to: string;
-  value: BigNumberish;
-  data: BytesLike;
-  chainId: BigNumberish;
-}
-export interface RelayRecords {
-  block: number;
-  governorRootTunnel: RelayProposal[];
-  governorHub: RelayProposal[];
-}
-
-const relayGovernanceRootTunnelMessage = async (
-  targetAddress: string,
-  tx: PopulatedTransaction,
-  governorRootTunnel: GovernorRootTunnel
-): Promise<{
-  to: string;
-  value: BigNumberish;
-  data: BytesLike;
-}> => {
-  if (!tx.data) throw new Error("Transaction has no data");
-  const relayGovernanceData = await governorRootTunnel.populateTransaction.relayGovernance(targetAddress, tx.data);
-  console.log("RelayGovernanceData", relayGovernanceData);
-  const relay = await governorRootTunnel.populateTransaction.relayGovernance(targetAddress, tx.data);
-  const relayMessage = relay.data;
-  if (!relayMessage) throw new Error("Relay message is empty");
-  return { to: governorRootTunnel.address, value: 0, data: relayMessage };
-};
-
-const relayGovernanceHubMessage = async (
-  targetAddress: string,
-  tx: PopulatedTransaction,
-  governorHub: GovernorHub,
-  chainId: BigNumberish
-): Promise<{
-  to: string;
-  value: BigNumberish;
-  data: BytesLike;
-}> => {
-  if (!tx.data) throw new Error("Transaction has no data");
-  // TODO We should group the GovernorHub relays by chain id instead of running a relayGovernance per
-  // function call.
-  const calls = [{ to: targetAddress, data: tx.data }];
-  const relayGovernanceData = await governorHub.populateTransaction.relayGovernance(chainId, calls);
-  const relayMessage = relayGovernanceData.data;
-  if (!relayMessage) throw new Error("Relay message is empty");
-  return { to: governorHub.address, value: 0, data: relayMessage };
-};
-
-const relayGovernanceMessage = async (
-  targetAddress: string,
-  tx: PopulatedTransaction,
-  l1Governor: GovernorHub | GovernorRootTunnel,
-  chainId: number,
-  relayRecords: RelayRecords
-): Promise<{
-  to: string;
-  value: BigNumberish;
-  data: BytesLike;
-}> => {
-  // The l1 governor for polygon is the GovernorRootTunnel and the l1 governor for the rest of l2's is the GovernorHub
-  const isPolygon = chainId === POLYGON_CHAIN_ID;
-  let proposal;
-  if (isPolygon) {
-    proposal = await relayGovernanceRootTunnelMessage(targetAddress, tx, l1Governor as GovernorRootTunnel);
-    relayRecords.governorRootTunnel.push({ to: targetAddress, value: 0, data: tx.data || "", chainId });
-  } else {
-    proposal = await relayGovernanceHubMessage(targetAddress, tx, l1Governor as GovernorHub, chainId);
-    relayRecords.governorHub.push({ to: targetAddress, value: 0, data: tx.data || "", chainId });
-  }
-  return proposal;
-};
-
-const fundArbitrumParentMessengerForRelays = async (
-  arbitrumParentMessenger: ArbitrumParentMessenger,
-  from: Signer,
-  totalNumberOfTransactions: BigNumberish
-) => {
-  // Sending a xchain transaction to Arbitrum will fail unless Arbitrum messenger has enough ETH to pay for message:
-  const l1CallValue = await arbitrumParentMessenger.getL1CallValue();
-  console.log(
-    `Arbitrum xchain messages require that the Arbitrum_ParentMessenger has at least a ${hre.ethers.utils.formatEther(
-      l1CallValue.mul(totalNumberOfTransactions)
-    )} ETH balance.`
-  );
-
-  const apmBalance = await arbitrumParentMessenger.provider.getBalance(arbitrumParentMessenger.address);
-
-  if (apmBalance.lt(l1CallValue.mul(totalNumberOfTransactions))) {
-    const amoutToSend = l1CallValue.mul(totalNumberOfTransactions).sub(apmBalance);
-    console.log(`Sending ${hre.ethers.utils.formatEther(amoutToSend)} ETH to Arbitrum_ParentMessenger`);
-
-    const sendEthTxn = await from.sendTransaction({
-      to: arbitrumParentMessenger.address,
-      value: amoutToSend,
-    });
-
-    console.log(`Sent ETH txn: ${sendEthTxn.hash}`);
-  } else {
-    console.log("Arbitrum messenger has enough ETH");
-  }
-};
 
 async function main() {
   const proposerSigner = await hre.ethers.getSigner(proposerWallet);
@@ -170,23 +63,18 @@ async function main() {
     data: BytesLike;
   }[] = [];
 
-  const relayRecords: RelayRecords = {
-    block: await finder.provider.getBlockNumber(),
-    governorHub: [],
-    governorRootTunnel: [],
-  };
-
   if (!newContractAddressMainnet) throw new Error(`No ${newContractName} address found in mainnet deployment`);
 
   for (const networkName in l2Networks) {
+    const governanceMessages: { targetAddress: string; tx: PopulatedTransaction }[] = [];
     const l2ChainId = l2Networks[networkName as keyof typeof l2Networks];
     const l2NodeUrl = process.env[String(NODE_URL_ENV + l2ChainId)];
     const l2NewContractAddress = await getAddress(newContractName, l2ChainId);
 
     if (!l2NodeUrl || !l2NewContractAddress) throw new Error(`Missing ${networkName} network config`);
 
-    const isPolygon = l2ChainId === POLYGON_CHAIN_ID;
-    const isArbitrum = l2ChainId === ARBITRUM_CHAIN_ID;
+    const isPolygon = l2ChainId === 137;
+    const isArbitrum = l2ChainId === 42161;
 
     const l2Registry = await getContractInstanceByUrl<Registry>("Registry", l2NodeUrl);
 
@@ -209,30 +97,15 @@ async function main() {
       RegistryRolesEnum.CONTRACT_CREATOR,
       l2Governor.address
     );
-    adminProposalTransactions.push(
-      await relayGovernanceMessage(
-        l2Registry.address,
-        addMemberDataTx,
-        isPolygon ? governorRootTunnel : governorHub,
-        l2ChainId,
-        relayRecords
-      )
-    );
+
+    governanceMessages.push({ targetAddress: l2Registry.address, tx: addMemberDataTx });
 
     console.log("AddMemberData", addMemberDataTx);
 
     // 2. Register the new contract as a verified contract.
     const registerNewContractData = await l2Registry.populateTransaction.registerContract([], l2NewContractAddress);
 
-    adminProposalTransactions.push(
-      await relayGovernanceMessage(
-        l2Registry.address,
-        registerNewContractData,
-        isPolygon ? governorRootTunnel : governorHub,
-        l2ChainId,
-        relayRecords
-      )
-    );
+    governanceMessages.push({ targetAddress: l2Registry.address, tx: registerNewContractData });
 
     console.log("RegisterNewContractData", registerNewContractData);
 
@@ -242,15 +115,7 @@ async function main() {
       l2Governor.address
     );
 
-    adminProposalTransactions.push(
-      await relayGovernanceMessage(
-        l2Registry.address,
-        removeMemberData,
-        isPolygon ? governorRootTunnel : governorHub,
-        l2ChainId,
-        relayRecords
-      )
-    );
+    governanceMessages.push({ targetAddress: l2Registry.address, tx: removeMemberData });
 
     console.log("RemoveMemberData", removeMemberData);
 
@@ -260,17 +125,17 @@ async function main() {
       l2NewContractAddress
     );
 
-    adminProposalTransactions.push(
-      await relayGovernanceMessage(
-        l2Finder.address,
-        setFinderData,
-        isPolygon ? governorRootTunnel : governorHub,
-        l2ChainId,
-        relayRecords
-      )
+    governanceMessages.push({ targetAddress: l2Finder.address, tx: setFinderData });
+
+    const relayedMessages = await relayGovernanceMessages(
+      governanceMessages,
+      isPolygon ? governorRootTunnel : governorHub,
+      l2ChainId
     );
 
     console.log("ChangeImplementationAddressData", setFinderData);
+
+    adminProposalTransactions.push(...relayedMessages);
   }
 
   if (!(await registry.isContractRegistered(newContractAddressMainnet))) {
