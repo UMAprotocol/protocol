@@ -1,8 +1,6 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
-import { OptimisticAsserterEthers } from "@uma/contracts-node";
-import { Logger } from "@uma/financial-templates-lib";
 import { utils } from "ethers";
-import { getCurrencyDecimals, getCurrencySymbol, tryHexToUtf8String } from "./common";
+import { getCurrencyDecimals, getCurrencySymbol, Logger, OptimisticAsserterEthers, tryHexToUtf8String } from "./common";
 
 import type { MonitoringParams } from "./common";
 

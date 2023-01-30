@@ -1,10 +1,8 @@
-import { delay, Logger } from "@uma/financial-templates-lib";
-import { initMonitoringParams, startupLogLevel, waitNextBlockRange } from "./common";
+import { delay } from "@uma/financial-templates-lib";
+import { BotModes, initMonitoringParams, Logger, startupLogLevel, waitNextBlockRange } from "./common";
 import { monitorAssertions } from "./MonitorAssertions";
 import { monitorDisputes } from "./MonitorDisputes";
 import { monitorSettlements } from "./MonitorSettlements";
-
-import type { BotModes } from "./common";
 
 const logger = Logger;
 

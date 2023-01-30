@@ -1,9 +1,5 @@
-import { Logger } from "@uma/financial-templates-lib";
-import { OptimisticAsserterEthers } from "@uma/contracts-node";
+import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticAsserterEthers } from "./common";
 import { logDispute } from "./MonitorLogger";
-import { getContractInstanceWithProvider } from "../utils/contracts";
-
-import type { MonitoringParams } from "./common";
 
 export async function monitorDisputes(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oa = await getContractInstanceWithProvider<OptimisticAsserterEthers>("OptimisticAsserter", params.provider);
