@@ -86,7 +86,7 @@ async function main() {
     console.log(`Registering ${l2NewContractAddress} on ${networkName}`);
 
     // Fund Arbitrum if needed for next 4 transactions
-    if (isArbitrum) await fundArbitrumParentMessengerForRelays(arbitrumParentMessenger, proposerSigner, 5);
+    if (isArbitrum) await fundArbitrumParentMessengerForRelays(arbitrumParentMessenger, proposerSigner, 4);
 
     // 1. Temporarily add the GovernorChildTunnel/GovernorSpoke  as a contract creator.
     const addMemberDataTx = await l2Registry.populateTransaction.addMember(

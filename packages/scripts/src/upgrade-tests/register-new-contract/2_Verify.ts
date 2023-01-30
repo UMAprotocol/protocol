@@ -13,8 +13,9 @@ const { TransactionDataDecoder } = require("@uma/financial-templates-lib");
 const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
-import { Finder, Governor, GovernorHub, GovernorRootTunnel, Registry } from "@uma/contracts-node/typechain/core/ethers";
+import { FinderEthers, GovernorEthers, GovernorHubEthers, RegistryEthers } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
+import { ProposedTransaction, RelayTransaction } from "../../utils/relay";
 
 // CONSTANTS
 const newContractName = interfaceName.OptimisticAsserter;
@@ -24,7 +25,7 @@ function decodeData(data: string) {
 }
 
 const verifyGovernanceHubMessage = async (
-  governorHub: GovernorHub,
+  governorHub: GovernorHubEthers,
   relayProposal: RelayTransaction,
   fromBlock: number
 ) => {
@@ -46,7 +47,7 @@ const verifyGovernanceHubMessage = async (
 };
 
 const verifyGovernanceRootTunnelMessage = async (
-  governorRootTunnel: GovernorRootTunnel,
+  governorRootTunnel: GovernorRootTunnelEthers,
   relayProposal: RelayTransaction,
   fromBlock: number
 ) => {
@@ -62,25 +63,6 @@ const verifyGovernanceRootTunnelMessage = async (
   );
 };
 
-interface ProposedTransaction {
-  to: string;
-  data: string;
-  value: string;
-}
-
-interface RelayTransaction {
-  to: string;
-  transaction: {
-    name: string;
-    params: {
-      to: string;
-      data?: string;
-      chainId?: string;
-      calls: { to: string; data: string }[];
-    };
-  };
-}
-
 async function main() {
   const callData = process.env["PROPOSAL_DATA"];
   if (!callData) throw new Error("PROPOSAL_DATA environment variable not set");
@@ -88,9 +70,9 @@ async function main() {
   const decodedData = decodeData(callData);
 
   const networkId = await hre.getChainId();
-  const finder = await getContractInstance<Finder>("Finder");
-  const governor = await getContractInstance<Governor>("Governor");
-  const registry = await getContractInstance<Registry>("Registry");
+  const finder = await getContractInstance<FinderEthers>("Finder");
+  const governor = await getContractInstance<GovernorEthers>("Governor");
+  const registry = await getContractInstance<RegistryEthers>("Registry");
 
   const startLookupBlock = (await await registry.provider.getBlockNumber()) - 250; // ~ 1hour ago
 
@@ -129,16 +111,16 @@ async function main() {
   console.log("Verifying that new contract address is correct...");
   assert.equal(newContractAddressMainnet, newContractAddressCheck);
 
-  const governorRootTunnel = await getContractInstance<GovernorRootTunnel>("GovernorRootTunnel"); // for polygon
-  const governorHub = await getContractInstance<GovernorHub>("GovernorHub"); // rest of l2
+  const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnelEthers"); // for polygon
+  const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHubEthers"); // rest of l2
 
-  console.log("Verifying GovernorHub relays...");
+  console.log("Verifying GovernorHubEthers relays...");
   for (const relay of governorHubRelays) {
     await verifyGovernanceHubMessage(governorHub, relay, startLookupBlock);
   }
   console.log("Verified!");
 
-  console.log("Verifying GovernorRootTunnel relays...");
+  console.log("Verifying GovernorRootTunnelEthers relays...");
   for (const relay of governorRootRelays) {
     await verifyGovernanceRootTunnelMessage(governorRootTunnel, relay, startLookupBlock);
   }

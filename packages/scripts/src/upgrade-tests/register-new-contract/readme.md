@@ -41,6 +41,19 @@ NODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --n
 
 2.3 Verify the result:
 
+2.3.1 Verify the result in mainnet:
+
 ```
 PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/register-new-contract/2_Verify.ts --network localhost
+```
+
+2.3.2 Verify the result in layer 2 chains:
+
+```
+FORK_NETWORK=true \ => optional
+NODE_URL_10=<OPTIMISM-NODE-URL> \
+NODE_URL_288=<BOBA-NODE-URL> \
+NODE_URL_137=<POLYGON-NODE-URL> \
+NODE_URL_42161=<ARBITRUM-NODE-URL> \
+PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/register-new-contract/3_VerifyRelays.ts --network localhost
 ```

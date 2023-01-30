@@ -4,6 +4,25 @@ import { ArbitrumParentMessenger, GovernorHub, GovernorRootTunnel } from "@uma/c
 import { PopulatedTransaction, Signer } from "ethers";
 const hre = require("hardhat");
 
+export interface ProposedTransaction {
+  to: string;
+  data: string;
+  value: string;
+}
+
+export interface RelayTransaction {
+  to: string;
+  transaction: {
+    name: string;
+    params: {
+      to: string;
+      data?: string;
+      chainId?: string;
+      calls: { to: string; data: string }[];
+    };
+  };
+}
+
 export interface GovernanceMessage {
   targetAddress: string;
   tx: PopulatedTransaction;
