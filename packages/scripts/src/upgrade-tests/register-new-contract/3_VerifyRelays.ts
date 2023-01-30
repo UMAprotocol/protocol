@@ -23,47 +23,23 @@ import {
   RegistryEthers,
 } from "@uma/contracts-node";
 
-const { TransactionDataDecoder } = require("@uma/financial-templates-lib");
-
 const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
 import { ethers } from "ethers";
 import { getContractInstance } from "../../utils/contracts";
-import { ProposedTransaction, RelayTransaction } from "../../utils/relay";
+import { decodeRelayMessages } from "../../utils/relay";
 import { forkNetwork } from "../../utils/utils";
 
 // CONSTANTS
 const newContractName = interfaceName.OptimisticAsserter;
-
-function decodeData(data: string) {
-  return TransactionDataDecoder.getInstance().decodeTransaction(data);
-}
 
 async function main() {
   const shouldForkNetwork = process.env.FORK_NETWORK === "true";
   const callData = process.env["PROPOSAL_DATA"];
   if (!callData) throw new Error("PROPOSAL_DATA environment variable not set");
 
-  const decodedData = decodeData(callData);
-
-  const decodedSubTransactions = decodedData.params.transactions.map((transaction: ProposedTransaction) => ({
-    to: transaction.to,
-    transaction: decodeData(transaction.data),
-  }));
-
-  const governorRootRelays: RelayTransaction[] = [];
-  const governorHubRelays: RelayTransaction[] = [];
-
-  decodedSubTransactions.forEach((relayTransaction: RelayTransaction) => {
-    if (relayTransaction.transaction.name === "relayGovernance") {
-      if (relayTransaction.transaction.params.calls) {
-        governorHubRelays.push(relayTransaction);
-      } else {
-        governorRootRelays.push(relayTransaction);
-      }
-    }
-  });
+  const { governorRootRelays, governorHubRelays } = decodeRelayMessages(callData);
 
   const l2Networks = { Boba: 288, Matic: 137, Optimism: 10, Arbitrum: 42161 };
 

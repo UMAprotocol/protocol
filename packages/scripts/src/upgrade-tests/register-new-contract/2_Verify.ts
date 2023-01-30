@@ -8,8 +8,6 @@
 const hre = require("hardhat");
 const assert = require("assert").strict;
 
-const { TransactionDataDecoder } = require("@uma/financial-templates-lib");
-
 const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
@@ -21,14 +19,10 @@ import {
   RegistryEthers,
 } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
-import { ProposedTransaction, RelayTransaction } from "../../utils/relay";
+import { decodeData, decodeRelayMessages, ProposedTransaction, RelayTransaction } from "../../utils/relay";
 
 // CONSTANTS
 const newContractName = interfaceName.OptimisticAsserter;
-
-function decodeData(data: string) {
-  return TransactionDataDecoder.getInstance().decodeTransaction(data);
-}
 
 const verifyGovernanceHubMessage = async (
   governorHub: GovernorHubEthers,
@@ -73,8 +67,6 @@ async function main() {
   const callData = process.env["PROPOSAL_DATA"];
   if (!callData) throw new Error("PROPOSAL_DATA environment variable not set");
 
-  const decodedData = decodeData(callData);
-
   const networkId = await hre.getChainId();
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
@@ -82,25 +74,9 @@ async function main() {
 
   const startLookupBlock = (await await registry.provider.getBlockNumber()) - 250; // ~ 1hour ago
 
-  const decodedSubTransactions = decodedData.params.transactions.map((transaction: ProposedTransaction) => ({
-    to: transaction.to,
-    transaction: decodeData(transaction.data),
-  }));
+  const { governorRootRelays, governorHubRelays } = decodeRelayMessages(callData);
 
-  const governorRootRelays: RelayTransaction[] = [];
-  const governorHubRelays: RelayTransaction[] = [];
-
-  decodedSubTransactions.forEach((relayTransaction: RelayTransaction) => {
-    if (relayTransaction.transaction.name === "relayGovernance") {
-      if (relayTransaction.transaction.params.calls) {
-        governorHubRelays.push(relayTransaction);
-      } else {
-        governorRootRelays.push(relayTransaction);
-      }
-    }
-  });
-
-  const registryL1Calls = decodedData.params.transactions.filter(
+  const registryL1Calls = decodeData(callData).params.transactions.filter(
     (transaction: ProposedTransaction) => transaction.to === registry.address
   );
 

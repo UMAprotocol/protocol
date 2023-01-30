@@ -1,6 +1,7 @@
 import { BigNumberish } from "@ethersproject/bignumber";
 import { BytesLike } from "@ethersproject/bytes";
 import { ArbitrumParentMessenger, GovernorHub, GovernorRootTunnel } from "@uma/contracts-node/typechain/core/ethers";
+import { TransactionDataDecoder } from "@uma/financial-templates-lib";
 import { PopulatedTransaction, Signer } from "ethers";
 const hre = require("hardhat");
 
@@ -123,4 +124,39 @@ export const fundArbitrumParentMessengerForRelays = async (
   } else {
     console.log("Arbitrum messenger has enough ETH");
   }
+};
+
+export const decodeData = (
+  data: string
+): {
+  name: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  params: any;
+} => {
+  return TransactionDataDecoder.getInstance().decodeTransaction(data);
+};
+
+export const decodeRelayMessages = (
+  callData: string
+): { governorRootRelays: RelayTransaction[]; governorHubRelays: RelayTransaction[] } => {
+  const decodedData = decodeData(callData);
+  const decodedSubTransactions = decodedData.params.transactions.map((transaction: ProposedTransaction) => ({
+    to: transaction.to,
+    transaction: decodeData(transaction.data),
+  }));
+
+  const governorRootRelays: RelayTransaction[] = [];
+  const governorHubRelays: RelayTransaction[] = [];
+
+  decodedSubTransactions.forEach((relayTransaction: RelayTransaction) => {
+    if (relayTransaction.transaction.name === "relayGovernance") {
+      if (relayTransaction.transaction.params.calls) {
+        governorHubRelays.push(relayTransaction);
+      } else {
+        governorRootRelays.push(relayTransaction);
+      }
+    }
+  });
+
+  return { governorRootRelays, governorHubRelays };
 };
