@@ -27,13 +27,9 @@ Then run:
 
 ```
 NODE_URL_10=<OPTIMISM-NODE-URL> \
-\
-NODE_URL_288=<OPTIMISM-NODE-URL> \
-\
-NODE_URL_137=<OPTIMISM-NODE-URL> \
-\
-NODE_URL_42161=<OPTIMISM-NODE-URL> \
-\
+NODE_URL_288=<BOBA-NODE-URL> \
+NODE_URL_137=<POLYGON-NODE-URL> \
+NODE_URL_42161=<ARBITRUM-NODE-URL> \
 yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts --network localhost
 ```
 

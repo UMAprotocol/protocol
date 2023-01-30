@@ -5,13 +5,9 @@
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script:
 // NODE_URL_10=<OPTIMISM-NODE-URL> \
-// \
-// NODE_URL_288=<OPTIMISM-NODE-URL> \
-// \
-// NODE_URL_137=<OPTIMISM-NODE-URL> \
-// \
-// NODE_URL_42161=<OPTIMISM-NODE-URL> \
-// \
+// NODE_URL_288=<BOBA-NODE-URL> \
+// NODE_URL_137=<POLYGON-NODE-URL> \
+// NODE_URL_42161=<ARBITRUM-NODE-URL> \
 // yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts --network localhost
 
 const hre = require("hardhat");
