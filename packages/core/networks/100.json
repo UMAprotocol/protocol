@@ -34,5 +34,9 @@
   {
     "contractName": "Store",
     "address": "0xD29C85F15DF544bA632C9E25829fd29d767d7978"
+  },
+  {
+    "contractName": "OptimisticAsserter",
+    "address": "0x21331016f2020B77528B690986ca0b7C6BE012e4"
   }
 ]
