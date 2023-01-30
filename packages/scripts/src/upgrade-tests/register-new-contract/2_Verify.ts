@@ -13,7 +13,13 @@ const { TransactionDataDecoder } = require("@uma/financial-templates-lib");
 const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
-import { FinderEthers, GovernorEthers, GovernorHubEthers, RegistryEthers } from "@uma/contracts-node";
+import {
+  FinderEthers,
+  GovernorEthers,
+  GovernorHubEthers,
+  GovernorRootTunnelEthers,
+  RegistryEthers,
+} from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
 import { ProposedTransaction, RelayTransaction } from "../../utils/relay";
 
@@ -111,16 +117,16 @@ async function main() {
   console.log("Verifying that new contract address is correct...");
   assert.equal(newContractAddressMainnet, newContractAddressCheck);
 
-  const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnelEthers"); // for polygon
-  const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHubEthers"); // rest of l2
+  const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnel"); // for polygon
+  const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHub"); // rest of l2
 
-  console.log("Verifying GovernorHubEthers relays...");
+  console.log("Verifying GovernorHub relays...");
   for (const relay of governorHubRelays) {
     await verifyGovernanceHubMessage(governorHub, relay, startLookupBlock);
   }
   console.log("Verified!");
 
-  console.log("Verifying GovernorRootTunnelEthers relays...");
+  console.log("Verifying GovernorRootTunnel relays...");
   for (const relay of governorRootRelays) {
     await verifyGovernanceRootTunnelMessage(governorRootTunnel, relay, startLookupBlock);
   }
