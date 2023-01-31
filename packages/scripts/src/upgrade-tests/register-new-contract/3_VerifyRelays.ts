@@ -2,7 +2,7 @@
 // It can be run on forks directly on the mainnets to verify.
 // This script needs the PROPOSAL_DATA logged by  ./src/upgrade-tests/register-new-contract/1_Propose.ts
 // Additionally, this script needs the NODE_URLs for each layer 2 chain to verify the relays.
-// Finally se FORK_NETWORK to true to fork each network and simulate the relays.
+// Finally set FORK_NETWORK to true to fork each network and simulate the relays.
 // Then execute the script:
 // FORK_NETWORK=true \ => optional
 // NODE_URL_10=<OPTIMISM-NODE-URL> \
