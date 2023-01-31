@@ -46,7 +46,7 @@
     "eslint-plugin-react": "^7.19.0",
     "eslint-plugin-react-hooks": "^3.0.0",
     "ganache-cli": "^6.12.2",
-    "hardhat": "^2.9.0",
+    "hardhat": "^2.12.6",
     "husky": "^4.2.3",
     "lerna": "^3.22.1",
     "lint-staged": "^10.1.3",
