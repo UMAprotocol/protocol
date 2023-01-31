@@ -55,6 +55,8 @@ async function run({
   optimisticOracleProposerConfig,
   oracleType = OracleType.Voting,
   optimisticOracleType = OptimisticOracleType.OptimisticOracle,
+  ignoredIdentifiersPostExpiry,
+  ignoredIdentifiers,
 }) {
   if (!Object.keys(OracleType).includes(oracleType)) throw new Error("Unexpected OracleType");
   try {
@@ -102,6 +104,8 @@ async function run({
       account: accounts[0],
       commonPriceFeedConfig,
       optimisticOracleProposerConfig,
+      ignoredIdentifiersPostExpiry,
+      ignoredIdentifiers,
     });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
@@ -186,6 +190,24 @@ async function Poll(callback) {
       optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
         ? process.env.OPTIMISTIC_ORACLE_TYPE
         : OptimisticOracleType.OptimisticOracle,
+
+      // The optimistic oracle proposer should skip proposing prices for some identifiers, for expired EMP contracts,
+      // because they map to self-referential pricefeeds pre-expiry, but have different price resolution ogic post-expiry.
+      // For example, please see [UMIP47](https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-47.md):
+      // - "The type of price that the DVM will return is dependent on the timestamp the price request is made at. This
+      //   timestamp is the expiry timestamp of the contract that is intended to use this price identifier, so the TWAP
+      //   calculation is used pre-expiry and the closing index value of uSTONKS calculation is used at expiry."
+      // A sample of identifiers that should be avoided for these reasons is here:
+      // https://github.com/UMAprotocol/protocol/blob/4806b51d830466c445560f83196d5918af820a98/packages/common/src/PriceIdentifierUtils.ts#L38-L47
+      ignoredIdentifiersPostExpiry: process.env.OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY
+        ? JSON.parse(process.env.OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY)
+        : [],
+
+      // The bot will error on any request/proposal that it cannot verify. This means the operator should
+      // add any identifiers to their environment that the bot does not have the capability to verify or if they wish
+      // to ignore the identifiers for some other reason. See a sample list here:
+      // https://github.com/UMAprotocol/protocol/blob/4806b51d830466c445560f83196d5918af820a98/packages/common/src/PriceIdentifierUtils.ts#L50-L68
+      ignoredIdentifiers: process.env.OPTIMISTIC_ORACLE_IGNORE ? JSON.parse(process.env.OPTIMISTIC_ORACLE_IGNORE) : [],
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
