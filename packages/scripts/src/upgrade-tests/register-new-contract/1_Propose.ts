@@ -23,7 +23,7 @@ import {
   ProposerEthers,
   RegistryEthers,
 } from "@uma/contracts-node";
-import { BaseContract, PopulatedTransaction } from "ethers";
+import { BaseContract, PopulatedTransaction, Signer } from "ethers";
 import hre from "hardhat";
 import { getContractInstance, getContractInstanceByUrl } from "../../utils/contracts";
 import { fundArbitrumParentMessengerForRelays, relayGovernanceMessages } from "../../utils/relay";
@@ -39,7 +39,7 @@ const newContractName = interfaceName.OptimisticAsserter;
 const NODE_URL_ENV = "NODE_URL_";
 
 async function main() {
-  const proposerSigner = await hre.ethers.getSigner(proposerWallet);
+  const proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
 
   const newContractAddressMainnet = await getAddress(newContractName, 1);
 

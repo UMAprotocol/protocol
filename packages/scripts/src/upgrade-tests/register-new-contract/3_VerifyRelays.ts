@@ -27,6 +27,8 @@ import {
 const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
+import { Signer } from "ethers";
+import { ParamType } from "ethers/lib/utils";
 import { getContractInstance } from "../../utils/contracts";
 import { decodeRelayMessages } from "../../utils/relay";
 import { forkNetwork } from "../../utils/utils";
@@ -85,7 +87,7 @@ async function main() {
             [relay.transaction.params.to, relay.transaction.params.data]
           );
           await governorChildTunnel
-            .connect(hre.ethers.provider.getSigner(fxChild))
+            .connect(hre.ethers.provider.getSigner(fxChild) as Signer)
             .processMessageFromRoot(0, fxRootTunnel, calldata);
         }
       }
@@ -119,11 +121,13 @@ async function main() {
                 { name: "to", type: "address" },
                 { name: "data", type: "bytes" },
               ],
-            },
+            } as ParamType,
           ],
           [governorHubRelaysForNetwork.transaction.params.calls]
         );
-        await governorSpoke.connect(hre.ethers.provider.getSigner(messenger)).processMessageFromParent(callData);
+        await governorSpoke
+          .connect(hre.ethers.provider.getSigner(messenger) as Signer)
+          .processMessageFromParent(callData);
       }
     }
 

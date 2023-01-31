@@ -68,7 +68,8 @@ async function main() {
   const callData = process.env["PROPOSAL_DATA"];
   if (!callData) throw new Error("PROPOSAL_DATA environment variable not set");
 
-  const networkId = await hre.getChainId();
+  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
+
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
   const registry = await getContractInstance<RegistryEthers>("Registry");
