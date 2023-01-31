@@ -108,16 +108,17 @@ export const fundArbitrumParentMessengerForRelays = async (
 ): Promise<void> => {
   // Sending a xchain transaction to Arbitrum will fail unless Arbitrum messenger has enough ETH to pay for message:
   const l1CallValue = await arbitrumParentMessenger.getL1CallValue();
+  const cost = l1CallValue.mul(totalNumberOfTransactions);
   console.log(
     `Arbitrum xchain messages require that the Arbitrum_ParentMessenger has at least a ${hre.ethers.utils.formatEther(
-      l1CallValue.mul(totalNumberOfTransactions)
+      cost
     )} ETH balance.`
   );
 
   const apmBalance = await arbitrumParentMessenger.provider.getBalance(arbitrumParentMessenger.address);
 
-  if (apmBalance.lt(l1CallValue.mul(totalNumberOfTransactions))) {
-    const amoutToSend = l1CallValue.mul(totalNumberOfTransactions).sub(apmBalance);
+  if (apmBalance.lt(cost)) {
+    const amoutToSend = cost.sub(apmBalance);
     console.log(`Sending ${hre.ethers.utils.formatEther(amoutToSend)} ETH to Arbitrum_ParentMessenger`);
 
     const sendEthTxn = await from.sendTransaction({
