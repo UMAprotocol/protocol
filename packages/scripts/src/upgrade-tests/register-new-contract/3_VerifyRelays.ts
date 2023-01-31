@@ -12,29 +12,23 @@
 // PROPOSAL_DATA=<PROPOSAL_DATA> \
 // yarn hardhat run ./src/upgrade-tests/register-new-contract/3_VerifyRelays.ts
 
-import "@nomiclabs/hardhat-ethers";
-import { strict as assert } from "assert";
-import hre from "hardhat";
-
 import {
+  assert,
+  decodeRelayMessages,
   FinderEthers,
+  forkNetwork,
+  getAddress,
+  getContractInstance,
   GovernorChildTunnelEthers,
   GovernorSpokeEthers,
+  hre,
+  newContractName,
   OptimisticAsserterEthers,
+  ParamType,
   RegistryEthers,
-} from "@uma/contracts-node";
-
-const { RegistryRolesEnum, interfaceName } = require("@uma/common");
-const { getAddress } = require("@uma/contracts-node");
-
-import { Signer } from "ethers";
-import { ParamType } from "ethers/lib/utils";
-import { getContractInstance } from "../../utils/contracts";
-import { decodeRelayMessages } from "../../utils/relay";
-import { forkNetwork } from "../../utils/utils";
-
-// CONSTANTS
-const newContractName = interfaceName.OptimisticAsserter;
+  RegistryRolesEnum,
+  Signer,
+} from "./common";
 
 async function main() {
   const shouldForkNetwork = process.env.FORK_NETWORK === "true";

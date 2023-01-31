@@ -5,25 +5,23 @@
 // Then execute the script from core with the PROPOSAL_DATA logged by  ./src/upgrade-tests/register-new-contract/1_Propose.ts:
 // PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/register-new-contract/2_Verify.ts --network localhost
 
-import "@nomiclabs/hardhat-ethers";
-import { strict as assert } from "assert";
-import hre from "hardhat";
-
-const { RegistryRolesEnum, interfaceName } = require("@uma/common");
-const { getAddress } = require("@uma/contracts-node");
-
 import {
+  assert,
+  decodeData,
+  decodeRelayMessages,
   FinderEthers,
+  getAddress,
+  getContractInstance,
   GovernorEthers,
   GovernorHubEthers,
   GovernorRootTunnelEthers,
+  hre,
+  newContractName,
+  ProposedTransaction,
   RegistryEthers,
-} from "@uma/contracts-node";
-import { getContractInstance } from "../../utils/contracts";
-import { decodeData, decodeRelayMessages, ProposedTransaction, RelayTransaction } from "../../utils/relay";
-
-// CONSTANTS
-const newContractName = interfaceName.OptimisticAsserter;
+  RegistryRolesEnum,
+  RelayTransaction,
+} from "./common";
 
 const verifyGovernanceHubMessage = async (
   governorHub: GovernorHubEthers,

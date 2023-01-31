@@ -10,30 +10,31 @@
 // NODE_URL_42161=<ARBITRUM-NODE-URL> \
 // yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts --network localhost
 
-import { BigNumberish } from "@ethersproject/bignumber";
-import { BytesLike } from "@ethersproject/bytes";
-import "@nomiclabs/hardhat-ethers";
-import { interfaceName } from "@uma/common";
 import {
+  BaseContract,
+  BigNumberish,
+  BytesLike,
   FinderEthers,
+  fundArbitrumParentMessengerForRelays,
+  getAddress,
+  getContractInstance,
+  getContractInstanceByUrl,
   GovernorEthers,
   GovernorHubEthers,
   GovernorRootTunnelEthers,
+  hre,
+  newContractName,
   ParentMessengerBaseEthers,
+  PopulatedTransaction,
   ProposerEthers,
   RegistryEthers,
-} from "@uma/contracts-node";
-import { BaseContract, PopulatedTransaction, Signer } from "ethers";
-import hre from "hardhat";
-import { getContractInstance, getContractInstanceByUrl } from "../../utils/contracts";
-import { fundArbitrumParentMessengerForRelays, relayGovernanceMessages } from "../../utils/relay";
-
-const { getAddress } = require("@uma/contracts-node");
-const { RegistryRolesEnum } = require("@uma/common");
+  RegistryRolesEnum,
+  relayGovernanceMessages,
+  Signer,
+} from "./common";
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
-const newContractName = interfaceName.OptimisticAsserter;
 
 // Env vars
 const NODE_URL_ENV = "NODE_URL_";
