@@ -5,8 +5,9 @@
 // Then execute the script from core with the PROPOSAL_DATA logged by  ./src/upgrade-tests/register-new-contract/1_Propose.ts:
 // PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/register-new-contract/2_Verify.ts --network localhost
 
-const hre = require("hardhat");
-const assert = require("assert").strict;
+import "@nomiclabs/hardhat-ethers";
+import { strict as assert } from "assert";
+import hre from "hardhat";
 
 const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");

@@ -10,25 +10,26 @@
 // NODE_URL_42161=<ARBITRUM-NODE-URL> \
 // yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts --network localhost
 
-const hre = require("hardhat");
+import { BigNumberish } from "@ethersproject/bignumber";
+import { BytesLike } from "@ethersproject/bytes";
+import "@nomiclabs/hardhat-ethers";
+import { interfaceName } from "@uma/common";
+import {
+  FinderEthers,
+  GovernorEthers,
+  GovernorHubEthers,
+  GovernorRootTunnelEthers,
+  ParentMessengerBaseEthers,
+  ProposerEthers,
+  RegistryEthers,
+} from "@uma/contracts-node";
+import { BaseContract, PopulatedTransaction } from "ethers";
+import hre from "hardhat";
+import { getContractInstance, getContractInstanceByUrl } from "../../utils/contracts";
+import { fundArbitrumParentMessengerForRelays, relayGovernanceMessages } from "../../utils/relay";
 
 const { getAddress } = require("@uma/contracts-node");
 const { RegistryRolesEnum } = require("@uma/common");
-import { BigNumberish } from "@ethersproject/bignumber";
-import { BytesLike } from "@ethersproject/bytes";
-import { interfaceName } from "@uma/common";
-import {
-  ArbitrumParentMessenger,
-  Finder,
-  Governor,
-  GovernorHub,
-  GovernorRootTunnel,
-  Proposer,
-  Registry,
-} from "@uma/contracts-node/typechain/core/ethers";
-import { BaseContract, PopulatedTransaction } from "ethers";
-import { getContractInstance, getContractInstanceByUrl } from "../../utils/contracts";
-import { fundArbitrumParentMessengerForRelays, relayGovernanceMessages } from "../../utils/relay";
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
@@ -42,14 +43,14 @@ async function main() {
 
   const newContractAddressMainnet = await getAddress(newContractName, 1);
 
-  const finder = await getContractInstance<Finder>("Finder");
-  const governor = await getContractInstance<Governor>("Governor");
-  const registry = await getContractInstance<Registry>("Registry");
-  const proposer = await getContractInstance<Proposer>("Proposer");
-  const arbitrumParentMessenger = await getContractInstance<ArbitrumParentMessenger>("Arbitrum_ParentMessenger");
+  const finder = await getContractInstance<FinderEthers>("Finder");
+  const governor = await getContractInstance<GovernorEthers>("Governor");
+  const registry = await getContractInstance<RegistryEthers>("Registry");
+  const proposer = await getContractInstance<ProposerEthers>("Proposer");
+  const arbitrumParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Arbitrum_ParentMessenger");
 
-  const governorRootTunnel = await getContractInstance<GovernorRootTunnel>("GovernorRootTunnel"); // for polygon
-  const governorHub = await getContractInstance<GovernorHub>("GovernorHub"); // rest of l2
+  const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnel"); // for polygon
+  const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHub"); // rest of l2
 
   const l2Networks = { BOBA: 288, MATIC: 137, OPTIMISM: 10, ARBITRUM: 42161 };
 
@@ -72,14 +73,14 @@ async function main() {
     const isPolygon = l2ChainId === 137;
     const isArbitrum = l2ChainId === 42161;
 
-    const l2Registry = await getContractInstanceByUrl<Registry>("Registry", l2NodeUrl);
+    const l2Registry = await getContractInstanceByUrl<RegistryEthers>("Registry", l2NodeUrl);
 
     // The l2Governor in polygon is the GovernorChildTunnel and in the rest of the l2's is the GovernorHub
     const l2Governor = await getContractInstanceByUrl<BaseContract>(
       isPolygon ? "GovernorChildTunnel" : "GovernorSpoke",
       l2NodeUrl
     );
-    const l2Finder = await getContractInstanceByUrl<Finder>("Finder", l2NodeUrl);
+    const l2Finder = await getContractInstanceByUrl<FinderEthers>("Finder", l2NodeUrl);
 
     if (await l2Registry.isContractRegistered(l2NewContractAddress)) continue;
 

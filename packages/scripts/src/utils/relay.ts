@@ -1,9 +1,10 @@
 import { BigNumberish } from "@ethersproject/bignumber";
 import { BytesLike } from "@ethersproject/bytes";
-import { ArbitrumParentMessenger, GovernorHub, GovernorRootTunnel } from "@uma/contracts-node/typechain/core/ethers";
+import "@nomiclabs/hardhat-ethers";
+import { GovernorHubEthers, GovernorRootTunnelEthers, ParentMessengerBaseEthers } from "@uma/contracts-node";
 import { TransactionDataDecoder } from "@uma/financial-templates-lib";
 import { PopulatedTransaction, Signer } from "ethers";
-const hre = require("hardhat");
+import hre from "hardhat";
 
 export interface ProposedTransaction {
   to: string;
@@ -34,7 +35,7 @@ export type GovernanceMessages = GovernanceMessage[];
 export const relayGovernanceRootTunnelMessage = async (
   targetAddress: string,
   tx: PopulatedTransaction,
-  governorRootTunnel: GovernorRootTunnel
+  governorRootTunnel: GovernorRootTunnelEthers
 ): Promise<{
   to: string;
   value: BigNumberish;
@@ -51,7 +52,7 @@ export const relayGovernanceRootTunnelMessage = async (
 
 export const relayGovernanceHubMessages = async (
   messages: GovernanceMessages,
-  governorHub: GovernorHub,
+  governorHub: GovernorHubEthers,
   chainId: BigNumberish
 ): Promise<
   {
@@ -72,7 +73,7 @@ export const relayGovernanceHubMessages = async (
 
 export const relayGovernanceMessages = async (
   messages: GovernanceMessages,
-  l1Governor: GovernorHub | GovernorRootTunnel,
+  l1Governor: GovernorHubEthers | GovernorRootTunnelEthers,
   chainId: number
 ): Promise<
   {
@@ -88,16 +89,20 @@ export const relayGovernanceMessages = async (
     const relayedMessages = [];
     for (const message of messages) {
       relayedMessages.push(
-        await relayGovernanceRootTunnelMessage(message.targetAddress, message.tx, l1Governor as GovernorRootTunnel)
+        await relayGovernanceRootTunnelMessage(
+          message.targetAddress,
+          message.tx,
+          l1Governor as GovernorRootTunnelEthers
+        )
       );
     }
     return relayedMessages;
   }
-  return relayGovernanceHubMessages(messages, l1Governor as GovernorHub, chainId);
+  return relayGovernanceHubMessages(messages, l1Governor as GovernorHubEthers, chainId);
 };
 
 export const fundArbitrumParentMessengerForRelays = async (
-  arbitrumParentMessenger: ArbitrumParentMessenger,
+  arbitrumParentMessenger: ParentMessengerBaseEthers,
   from: Signer,
   totalNumberOfTransactions: BigNumberish
 ): Promise<void> => {

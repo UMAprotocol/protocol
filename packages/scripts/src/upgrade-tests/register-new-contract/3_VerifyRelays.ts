@@ -12,8 +12,9 @@
 // PROPOSAL_DATA=<PROPOSAL_DATA> \
 // yarn hardhat run ./src/upgrade-tests/register-new-contract/3_VerifyRelays.ts
 
-const hre = require("hardhat");
-const assert = require("assert").strict;
+import "@nomiclabs/hardhat-ethers";
+import { strict as assert } from "assert";
+import hre from "hardhat";
 
 import {
   FinderEthers,
@@ -26,7 +27,6 @@ import {
 const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
-import { ethers } from "ethers";
 import { getContractInstance } from "../../utils/contracts";
 import { decodeRelayMessages } from "../../utils/relay";
 import { forkNetwork } from "../../utils/utils";
@@ -74,7 +74,10 @@ async function main() {
           params: [fxChild],
         });
 
-        await hre.network.provider.send("hardhat_setBalance", [fxChild, ethers.utils.parseEther("10.0").toHexString()]);
+        await hre.network.provider.send("hardhat_setBalance", [
+          fxChild,
+          hre.ethers.utils.parseEther("10.0").toHexString(),
+        ]);
 
         for (const relay of governorRootRelays) {
           const calldata: string = hre.ethers.utils.defaultAbiCoder.encode(
@@ -99,7 +102,7 @@ async function main() {
 
         await hre.network.provider.send("hardhat_setBalance", [
           messenger,
-          ethers.utils.parseEther("10.0").toHexString(),
+          hre.ethers.utils.parseEther("10.0").toHexString(),
         ]);
 
         const governorHubRelaysForNetwork = governorHubRelays.find(
