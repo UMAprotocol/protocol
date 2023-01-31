@@ -64,4 +64,5 @@ export const OPTIMISTIC_ORACLE_IGNORE = [
   "ZODIAC",
   "NUMERICAL",
   "DXY",
+  "DECENTRA-LIST",
 ];
