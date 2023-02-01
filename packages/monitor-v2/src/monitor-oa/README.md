@@ -6,7 +6,7 @@ where `OptimisticAsserter` contract is deployed.
 The main entry point to Optimistic Asserter monitor bots is running:
 
 ```
-node ./packages/scripts/dist/monitor-oa/index.js
+node ./packages/monitor-v2/dist/monitor-oa/index.js
 ```
 
 All the configuration should be provided with following environment variables:
