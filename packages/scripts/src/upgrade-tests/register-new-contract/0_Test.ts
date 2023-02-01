@@ -25,12 +25,14 @@ async function main() {
   });
 
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);
+  const balance = await votingToken.balanceOf(proposerWallet);
   console.log("Allowance", allowance.toString());
 
   const requiredAmount = hre.ethers.utils.parseEther("10000.0");
 
   console.log("Required amount", requiredAmount.toString());
-  console.log("Is enough? ", allowance.gte(requiredAmount));
+  console.log("Is allowance enough? ", allowance.gte(requiredAmount));
+  console.log("Is balance enough? ", balance.gte(requiredAmount));
 
   // Test sending a transaction
   await signer.sendTransaction({
@@ -38,7 +40,7 @@ async function main() {
     value: 0,
   });
 
-  console.log("Sent transaction");
+  console.log("Sent test empty transaction");
 }
 
 main().then(
