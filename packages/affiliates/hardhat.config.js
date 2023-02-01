@@ -2,7 +2,7 @@ const { getHardhatConfig } = require("@uma/common");
 
 const path = require("path");
 const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
-const packageWkdir = path.dirname(require.resolve("@uma/financial-templates-lib/package.json"));
+const packageWkdir = path.dirname(require.resolve("@uma/affiliates/package.json"));
 
 const configOverride = {
   paths: {
