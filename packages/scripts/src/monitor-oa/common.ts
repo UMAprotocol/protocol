@@ -33,22 +33,25 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
+  const STARTING_BLOCK_KEY = `STARTING_BLOCK_NUMBER_${chainId}`;
+  const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${chainId}`;
+
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
 
   // Default to 1 minute polling delay.
   const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
 
-  if (pollingDelay === 0 && (!env.STARTING_BLOCK_NUMBER || !env.ENDING_BLOCK_NUMBER)) {
-    throw new Error("Must provide STARTING_BLOCK_NUMBER and ENDING_BLOCK_NUMBER if running serverless");
+  if (pollingDelay === 0 && (!env[STARTING_BLOCK_KEY] || !env[ENDING_BLOCK_KEY])) {
+    throw new Error(`Must provide ${STARTING_BLOCK_KEY} and ${ENDING_BLOCK_KEY} if running serverless`);
   }
 
   // If no block numbers are provided, default to the latest block.
   const latestBlockNumber: number = await provider.getBlockNumber();
-  const startingBlock = env.STARTING_BLOCK_NUMBER ? Number(env.STARTING_BLOCK_NUMBER) : latestBlockNumber;
-  const endingBlock = env.ENDING_BLOCK_NUMBER ? Number(env.ENDING_BLOCK_NUMBER) : latestBlockNumber;
+  const startingBlock = env[STARTING_BLOCK_KEY] ? Number(env[STARTING_BLOCK_KEY]) : latestBlockNumber;
+  const endingBlock = env[ENDING_BLOCK_KEY] ? Number(env[ENDING_BLOCK_KEY]) : latestBlockNumber;
   if (startingBlock > endingBlock) {
-    throw new Error("STARTING_BLOCK_NUMBER must be less than or equal to ENDING_BLOCK_NUMBER");
+    throw new Error(`${STARTING_BLOCK_KEY} must be less than or equal to ${ENDING_BLOCK_KEY}`);
   }
 
   const botModes = {
