@@ -7,7 +7,7 @@ DVMv2 monitor bots can follow mainnet and goerli networks to report on real time
 The main entry point to live monitor bots is running:
 
 ```
-node ./packages/scripts/dist/monitor-dvm/index.js
+node ./packages/monitor-v2/dist/monitor-dvm/index.js
 ```
 
 All the configuration should be provided with following environment variables:
