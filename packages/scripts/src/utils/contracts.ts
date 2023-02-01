@@ -1,4 +1,4 @@
-const { getAbi, getAddress } = require("@uma/contracts-node");
+const { getAddress } = require("@uma/contracts-node");
 const hre = require("hardhat");
 import { Contract, ContractFactory } from "ethers";
 import { Provider } from "@ethersproject/abstract-provider";
@@ -24,15 +24,4 @@ export const getContractInstanceByUrl = async <T extends Contract>(
   const factory: ContractFactory = await hre.ethers.getContractFactory(contractName);
   const contractAddress = await getAddress(contractName, Number(networkId));
   return (await factory.attach(contractAddress)).connect(provider) as T;
-};
-
-export const getContractInstanceWithProvider = async <T extends Contract>(
-  contractName: string,
-  provider: Provider,
-  address?: string
-): Promise<T> => {
-  const networkId = (await provider.getNetwork()).chainId;
-  const contractAddress = address || (await getAddress(contractName, networkId));
-  const contractAbi = getAbi(contractName);
-  return new Contract(contractAddress, contractAbi, provider) as T;
 };
