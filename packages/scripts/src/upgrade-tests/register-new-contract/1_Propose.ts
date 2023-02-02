@@ -43,13 +43,14 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const NODE_URL_ENV = "NODE_URL_";
 
 async function main() {
-  if (!process.env.GCKMS_WALLET) throw new Error("GCKMS_WALLET env var not set");
+  let proposerSigner: Signer;
 
-  const wallet: Wallet = await getGckmsSigner(process.env.GCKMS_WALLET);
-
-  if (wallet.address !== proposerWallet) throw new Error("GCKMS_WALLET does not match proposerWallet");
-
-  const proposerSigner: Signer = wallet.connect(hre.ethers.provider as Provider);
+  if (process.env.GCKMS_WALLET) {
+    const wallet: Wallet = await getGckmsSigner(process.env.GCKMS_WALLET);
+    proposerSigner = wallet.connect(hre.ethers.provider as Provider);
+  } else {
+    proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
+  }
 
   const newContractAddressMainnet = await getAddress(newContractName, 1);
 
