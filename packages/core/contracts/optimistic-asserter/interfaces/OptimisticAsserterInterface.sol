@@ -106,7 +106,7 @@ interface OptimisticAsserterInterface {
      * @param identifier identifier to fetch information for and store locally.
      * @param currency currency to fetch information for and store locally.
      */
-    function syncUmaParams(bytes32 identifier, address currency) public;
+    function syncUmaParams(bytes32 identifier, address currency) external;
 
     /**
      * @notice Resolves an assertion. If the assertion has not been disputed, the assertion is resolved as true and the
@@ -116,7 +116,7 @@ interface OptimisticAsserterInterface {
      * the bond is returned to the asserter or disputer.
      * @param assertionId unique identifier for the assertion to resolve.
      */
-    function settleAssertion(bytes32 assertionId) public;
+    function settleAssertion(bytes32 assertionId) external;
 
     /**
      * @notice Settles an assertion and returns the resolution.
