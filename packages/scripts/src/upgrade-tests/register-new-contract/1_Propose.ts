@@ -31,6 +31,9 @@ import {
   RegistryRolesEnum,
   relayGovernanceMessages,
   Signer,
+  Wallet,
+  getGckmsSigner,
+  Provider,
 } from "./common";
 
 // PARAMETERS
@@ -40,7 +43,16 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const NODE_URL_ENV = "NODE_URL_";
 
 async function main() {
-  const proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
+  let proposerSigner: Signer;
+
+  if (process.env.GCKMS_WALLET) {
+    const wallet: Wallet = await getGckmsSigner(process.env.GCKMS_WALLET);
+    proposerSigner = wallet.connect(hre.ethers.provider as Provider);
+    if (proposerWallet.toLowerCase() != wallet.address.toLowerCase())
+      throw new Error("GCKMS wallet does not match proposer wallet");
+  } else {
+    proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
+  }
 
   const newContractAddressMainnet = await getAddress(newContractName, 1);
 
