@@ -100,6 +100,32 @@ interface OptimisticAsserterInterface {
     ) external returns (bytes32);
 
     /**
+     * @notice Fetches information about a specific identifier & currency from the UMA contracts and stores a local copy
+     * of the information within this contract. This is used to save gas when making assertions as we can avoid an
+     * external call to the UMA contracts to fetch this.
+     * @param identifier identifier to fetch information for and store locally.
+     * @param currency currency to fetch information for and store locally.
+     */
+    function syncUmaParams(bytes32 identifier, address currency) public;
+
+    /**
+     * @notice Resolves an assertion. If the assertion has not been disputed, the assertion is resolved as true and the
+     * asserter receives the bond. If the assertion has been disputed, the assertion is resolved depending on the oracle
+     * result. Based on the result, the asserter or disputer receives the bond. If the assertion was disputed then an
+     * amount of the bond is sent to the UMA Store as an oracle fee based on the burnedBondPercentage. The remainder of
+     * the bond is returned to the asserter or disputer.
+     * @param assertionId unique identifier for the assertion to resolve.
+     */
+    function settleAssertion(bytes32 assertionId) public;
+
+    /**
+     * @notice Settles an assertion and returns the resolution.
+     * @param assertionId unique identifier for the assertion to resolve and return the resolution for.
+     * @return resolution of the assertion.
+     */
+    function settleAndGetAssertionResult(bytes32 assertionId) external returns (bool);
+
+    /**
      * @notice Fetches the resolution of a specific assertion and returns it. If the assertion has not been settled then
      * this will revert. If the assertion was disputed and configured to discard the oracle resolution return false.
      * @param assertionId unique identifier for the assertion to fetch the resolution for.
