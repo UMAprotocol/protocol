@@ -10,6 +10,9 @@
 // NODE_URL_42161=<ARBITRUM-NODE-URL> \
 // yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts --network localhost
 
+import { Provider } from "@ethersproject/abstract-provider";
+import { getGckmsSigner } from "@uma/common";
+import { Wallet } from "ethers";
 import {
   BaseContract,
   BigNumberish,
@@ -40,7 +43,13 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const NODE_URL_ENV = "NODE_URL_";
 
 async function main() {
-  const proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
+  if (!process.env.GCKMS_WALLET) throw new Error("GCKMS_WALLET env var not set");
+
+  const wallet: Wallet = await getGckmsSigner(process.env.GCKMS_WALLET);
+
+  if (wallet.address !== proposerWallet) throw new Error("GCKMS_WALLET does not match proposerWallet");
+
+  const proposerSigner: Signer = wallet.connect(hre.ethers.provider as Provider);
 
   const newContractAddressMainnet = await getAddress(newContractName, 1);
 
