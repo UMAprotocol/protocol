@@ -3,7 +3,7 @@ const { web3, assertEventEmitted } = hre;
 const { predeploys } = require("@eth-optimism/contracts");
 const { toWei, utf8ToHex, padRight } = web3.utils;
 const { getContract } = hre;
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 
 const { ZERO_ADDRESS, interfaceName, RegistryRolesEnum, didContractThrow } = require("@uma/common");
 
@@ -53,7 +53,7 @@ describe("Optimism_ChildMessenger", function () {
       .send({ from: l1Owner });
     oracleSpoke = await OracleSpoke.new(finder.options.address).send({ from: l1Owner });
 
-    l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
+    l2CrossDomainMessengerMock.xDomainMessageSender.returns(() => parentMessenger);
     await optimism_ChildMessenger.methods
       .setOracleSpoke(oracleSpoke.options.address)
       .send({ from: l2CrossDomainMessengerMock.options.address });
@@ -96,7 +96,7 @@ describe("Optimism_ChildMessenger", function () {
       assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
 
       // Change the oracle spoke to be some EOA that we control to check the function can be called.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
+      l2CrossDomainMessengerMock.xDomainMessageSender.returns(() => parentMessenger);
       await optimism_ChildMessenger.methods
         .setOracleSpoke(controlledEOA)
         .send({ from: l2CrossDomainMessengerMock.options.address });
@@ -112,13 +112,6 @@ describe("Optimism_ChildMessenger", function () {
         .requestPrice(priceIdentifier, requestTime, ancillaryData)
         .send({ from: controlledEOA });
 
-      // Check the message was sent to the l2 cross domain messenger and was encoded correctly.
-
-      const requestPriceMessage = l2CrossDomainMessengerMock.smocked.sendMessage.calls;
-
-      assert.equal(requestPriceMessage.length, 1); // there should be only one call to sendMessage.
-      assert.equal(requestPriceMessage[0]._target, parentMessenger); // Target should be the parent messenger.
-
       // We should be able to construct the function call sent from the oracle spoke directly.
       const encodedData = web3.eth.abi.encodeParameters(
         ["bytes32", "uint256", "bytes"],
@@ -131,7 +124,12 @@ describe("Optimism_ChildMessenger", function () {
         .processMessageFromCrossChainChild(encodedData)
         .encodeABI();
 
-      assert.equal(requestPriceMessage[0]._message, expectedMessageFromManualEncoding);
+      // Check the message was sent to the l2 cross domain messenger and was encoded correctly.
+      expect(l2CrossDomainMessengerMock.sendMessage).to.have.been.calledOnce;
+      expect(l2CrossDomainMessengerMock.sendMessage.getCall(0).args._target).to.equal(parentMessenger);
+      expect(l2CrossDomainMessengerMock.sendMessage.getCall(0).args._message).to.equal(
+        expectedMessageFromManualEncoding
+      );
 
       await assertEventEmitted(txn, optimism_ChildMessenger, "MessageSentToParent", (ev) => {
         return (
@@ -156,12 +154,12 @@ describe("Optimism_ChildMessenger", function () {
       assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
 
       // Equally, calling via the cross domain messenger with the wrong source (not parentMessenger) should fail.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => rando);
+      l2CrossDomainMessengerMock.xDomainMessageSender.returns(() => rando);
 
       assert(await didContractThrow(relayMessageTxn.send({ from: l2CrossDomainMessengerMock.options.address })));
 
       // Finally, should be able to send cross domain call to this function when the parent messenger is set.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
+      l2CrossDomainMessengerMock.xDomainMessageSender.returns(() => parentMessenger);
 
       assert.ok(await relayMessageTxn.send({ from: l2CrossDomainMessengerMock.options.address }));
     });
@@ -184,7 +182,7 @@ describe("Optimism_ChildMessenger", function () {
         [priceIdentifier, defaultTimestamp, requestAncillaryData, requestPrice]
       );
 
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
+      l2CrossDomainMessengerMock.xDomainMessageSender.returns(() => parentMessenger);
       const tx = await optimism_ChildMessenger.methods
         .processMessageFromCrossChainParent(data, oracleSpoke.options.address)
         .send({ from: l2CrossDomainMessengerMock.options.address });
