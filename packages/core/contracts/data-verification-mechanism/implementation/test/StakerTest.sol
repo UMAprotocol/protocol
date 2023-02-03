@@ -7,7 +7,7 @@ import "../../../common/implementation/Testable.sol";
 // Version of the Staker contract used in tests so time can be controlled.
 abstract contract StakerControlledTiming is Staker, Testable {
     constructor(
-        uint256 _emissionRate,
+        uint128 _emissionRate,
         uint64 _unstakeCoolDown,
         address _votingToken,
         address _timerAddress
@@ -20,16 +20,16 @@ abstract contract StakerControlledTiming is Staker, Testable {
 
 contract StakerTest is StakerControlledTiming {
     constructor(
-        uint256 _emissionRate,
+        uint128 _emissionRate,
         uint64 _unstakeCoolDown,
         address _votingToken,
         address _timer
     ) StakerControlledTiming(_emissionRate, _unstakeCoolDown, _votingToken, _timer) {}
 
-    function applySlashingToCumulativeStaked(address voter, int256 amount) public {
+    function applySlashingToCumulativeStaked(address voter, int128 amount) public {
         _updateTrackers(voter); // apply any unaccumulated rewards before modifying the staked balances.
-        require(int256(cumulativeStake) + amount >= 0, "Cumulative staked cannot be negative");
-        voterStakes[voter].stake = uint256(int256(voterStakes[voter].stake) + amount);
+        require(int128(cumulativeStake) + amount >= 0, "Cumulative staked cannot be negative");
+        voterStakes[voter].stake = uint128(int128(voterStakes[voter].stake) + amount);
     }
 
     function _inActiveReveal() internal view override returns (bool) {
@@ -40,5 +40,5 @@ contract StakerTest is StakerControlledTiming {
         return 0;
     }
 
-    function _computePendingStakes(address wallet, uint256 amount) internal override {}
+    function _computePendingStakes(address wallet, uint128 amount) internal override {}
 }

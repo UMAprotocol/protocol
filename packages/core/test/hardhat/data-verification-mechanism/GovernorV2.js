@@ -16,7 +16,7 @@ const GovernorTest = getContract("GovernorTest");
 const Timer = getContract("Timer");
 const Registry = getContract("Registry");
 const Finder = getContract("Finder");
-const SlashingLibrary = getContract("SlashingLibrary");
+const SlashingLibrary = getContract("FixedSlashSlashingLibrary");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
@@ -181,6 +181,10 @@ describe("GovernorV2", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
+
+    // Both pending requests should be governance requests
+    assert.equal(pendingRequests[0].isGovernance, true);
+    assert.equal(pendingRequests[1].isGovernance, true);
 
     // Check that the proposals shows up and that the identifiers are constructed correctly.
     assert.equal(pendingRequests.length, 2);
@@ -815,6 +819,7 @@ describe("GovernorV2", function () {
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       "3", // maxRolls
+      "1000", // maxRequestsPerRound
       web3.utils.toWei("5000000"), // 5% GAT
       web3.utils.toWei("0.25"), // 25% PAT
       votingToken.options.address, // voting token

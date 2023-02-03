@@ -91,7 +91,7 @@ jobs:
     steps:
       - add_ssh_keys:
           fingerprints:
-            - "e5:da:db:1a:1d:66:5b:e7:f5:43:f2:24:1c:56:6a:97"
+            - "ad:e6:34:8f:ee:03:d5:b2:29:38:8c:64:0f:83:a2:ab"
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:

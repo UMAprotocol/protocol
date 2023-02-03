@@ -19,8 +19,11 @@ abstract contract VotingV2Interface {
     }
 
     struct PendingRequestAncillaryAugmented {
+        uint32 lastVotingRound;
+        bool isGovernance;
+        uint64 time;
+        uint32 rollCount;
         bytes32 identifier;
-        uint256 time;
         bytes ancillaryData;
     }
 
@@ -126,11 +129,16 @@ abstract contract VotingV2Interface {
     ) public virtual;
 
     /**
-     * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests `PendingRequest` array containing identifiers
-     * and timestamps for all pending requests.
+     * @notice Gets the requests that are being voted on this round.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
-    function getPendingRequests() external view virtual returns (PendingRequestAncillaryAugmented[] memory);
+    function getPendingRequests() external virtual returns (PendingRequestAncillaryAugmented[] memory);
+
+    /**
+     * @notice Gets the requests that are being voted on this round after processing any resolvable price requests.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
+     */
+    function getPendingRequestsPostUpdate() external virtual returns (PendingRequestAncillaryAugmented[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
@@ -142,7 +150,7 @@ abstract contract VotingV2Interface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external view virtual returns (uint256);
+    function getCurrentRoundId() external view virtual returns (uint32);
 
     // Voting Owner functions.
 
@@ -161,6 +169,14 @@ abstract contract VotingV2Interface {
     function setMaxRolls(uint32 newMaxRolls) external virtual;
 
     /**
+     * @notice Sets the maximum number of requests that can be made in a single round. Used to bound the maximum
+     * sequential slashing that can be applied within a single round.
+     * @dev Can only be called by the contract owner.
+     * @param newMaxRequestsPerRound the new maximum number of requests that can be made in a single round.
+     */
+    function setMaxRequestPerRound(uint32 newMaxRequestsPerRound) external virtual;
+
+    /**
      * @notice Resets the GAT number and SPAT percentage. The GAT is the minimum number of tokens that must participate
      * in a vote for it to resolve (quorum number). The SPAT is is the minimum percentage of tokens that must agree
      * in a vote for it to resolve (percentage of staked tokens) Note: this change only applies to rounds that
@@ -168,7 +184,7 @@ abstract contract VotingV2Interface {
      * @param newGat sets the next round's GAT and going forward.
      * @param newSpat sets the next round's SPAT and going forward.
      */
-    function setGatAndSpat(uint256 newGat, uint256 newSpat) external virtual;
+    function setGatAndSpat(uint128 newGat, uint64 newSpat) external virtual;
 
     /**
      * @notice Changes the slashing library used by this contract.

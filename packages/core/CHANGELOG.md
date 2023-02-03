@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.48.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.47.0...@uma/core@2.48.0) (2023-01-17)
+
+### Bug Fixes
+
+- optimize dvm-v2 variable types ([#4384](https://github.com/UMAprotocol/protocol/issues/4384)) ([661c394](https://github.com/UMAprotocol/protocol/commit/661c394acfd6606882e1d1483a739eea4e5a2a04))
+- reuse storage slots for tracking processed requests ([#4381](https://github.com/UMAprotocol/protocol/issues/4381)) ([d4246c0](https://github.com/UMAprotocol/protocol/commit/d4246c039983ebc8e64f9996d1e2a755401d6a27))
+
+### Features
+
+- add getProcessedPendingRequests ([#4376](https://github.com/UMAprotocol/protocol/issues/4376)) ([69a497b](https://github.com/UMAprotocol/protocol/commit/69a497b7829c63ac832a1518ce3a0cb04634aa6f))
+- add new voting v2 goerli address ([#4386](https://github.com/UMAprotocol/protocol/issues/4386)) ([cdb0679](https://github.com/UMAprotocol/protocol/commit/cdb0679347d752e8c200ee30310b589da21ed240))
+- add post update functions ([#4383](https://github.com/UMAprotocol/protocol/issues/4383)) ([861dc62](https://github.com/UMAprotocol/protocol/commit/861dc623f4ba711caf363b457d2915444b1513b6))
+- Address unbounded intra round slashing ([#4380](https://github.com/UMAprotocol/protocol/issues/4380)) ([324f309](https://github.com/UMAprotocol/protocol/commit/324f309364c27896e950f23f8325ce8f636abcd3))
+- small commenting change to be as consistant as posible ([#4382](https://github.com/UMAprotocol/protocol/issues/4382)) ([9c55f01](https://github.com/UMAprotocol/protocol/commit/9c55f013d23dc04780c0222788b2fa347ec29a17))
+- voting v2 minor refactoring ([#4385](https://github.com/UMAprotocol/protocol/issues/4385)) ([824615e](https://github.com/UMAprotocol/protocol/commit/824615e15a588628e822f5985432a481fede14da))
+
+# [2.47.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.46.0...@uma/core@2.47.0) (2023-01-11)
+
+### Features
+
+- voting v2 monitoring scripts ([#4312](https://github.com/UMAprotocol/protocol/issues/4312)) ([1582a8a](https://github.com/UMAprotocol/protocol/commit/1582a8a5623e1e76f026ff7ff487792a5cae5fe6))
+
+# [2.46.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.45.0...@uma/core@2.46.0) (2023-01-09)
+
+### Bug Fixes
+
+- [DVM2.0-audit-code-clean]: Address additional formatting and syling issues from code reading session ([#4360](https://github.com/UMAprotocol/protocol/issues/4360)) ([ae4b3aa](https://github.com/UMAprotocol/protocol/commit/ae4b3aab01cf653b13785aa80b72acd30bd32a69))
+- [DVM2.0-audit-incentive-fix] add participation activation threshold ([#4364](https://github.com/UMAprotocol/protocol/issues/4364)) ([50a520d](https://github.com/UMAprotocol/protocol/commit/50a520ded47745328a387c97aec00ba1975119c2))
+- [DVM2.0-audit-small-refinement] slashing library price request id reference ([#4363](https://github.com/UMAprotocol/protocol/issues/4363)) ([5726cd1](https://github.com/UMAprotocol/protocol/commit/5726cd16cd74b96aab82d6f99c9683e3d72b6723))
+- [DVM2.0-gas-golf]: Decrease gas cost through small optimisations ([#4359](https://github.com/UMAprotocol/protocol/issues/4359)) ([6cf4909](https://github.com/UMAprotocol/protocol/commit/6cf49091cec0295d8beee013f3ebaa72107e23db))
+- Fix MerkleDistributor unit tests ([#4328](https://github.com/UMAprotocol/protocol/issues/4328)) ([6300730](https://github.com/UMAprotocol/protocol/commit/63007309ee3d484ffa610ea2270ff0daac9ea72f))
+
+### Features
+
+- add partial voter slashed event ([#4367](https://github.com/UMAprotocol/protocol/issues/4367)) ([20794ec](https://github.com/UMAprotocol/protocol/commit/20794eca565906ca4c2c89c5a7b1c1683d86aa65))
+- Change PAT -> SPAT ([#4366](https://github.com/UMAprotocol/protocol/issues/4366)) ([3306b5d](https://github.com/UMAprotocol/protocol/commit/3306b5d402a69b02b41e30bd70dec8d323511685))
+- deploy new votingv2 and slashing library goerli ([#4368](https://github.com/UMAprotocol/protocol/issues/4368)) ([b5c9412](https://github.com/UMAprotocol/protocol/commit/b5c9412bfe019fd93cb8d78704d7b053fd0c32b5))
+
 # [2.45.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.44.0...@uma/core@2.45.0) (2022-12-28)
 
 ### Bug Fixes

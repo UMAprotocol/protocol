@@ -18,7 +18,7 @@ contract CommonDataVerificationMechanismForkTest is CommonTestBase {
 
     bytes32 identifier = bytes32("YES_OR_NO_QUERY");
     bytes ancillaryData = bytes("Some data");
-    uint256 gatMeetingNumOfTokens = 6e24;
+    uint128 gatMeetingNumOfTokens = 6e24;
     uint256 requestTime = 420;
 
     function _commonSetup() public {
@@ -27,7 +27,7 @@ contract CommonDataVerificationMechanismForkTest is CommonTestBase {
         if (!shouldRunForkedTest) return; // Exit early if we are not executing forked tests.
 
         // TODO: look into a way to not have to hard code these addresses. Ok for now as we wont be changing them.
-        address votingAddress = chainId == 1 ? address(0) : 0xF71cdF8A34c56933A8871354A2570a301364e95F;
+        address votingAddress = chainId == 1 ? address(0) : 0xBc3683DEf184ad64f6162024BD401e8D49d0E517;
 
         voting = VotingV2(votingAddress);
 

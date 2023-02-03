@@ -34,7 +34,7 @@
     "@google-cloud/kms": "^3.0.1",
     "@google-cloud/storage": "^6.4.2",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
-    "@nomiclabs/hardhat-etherscan": "^3.0.0",
+    "@nomiclabs/hardhat-etherscan": "^3.1.5",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@truffle/contract": "^4.6.5",
     "@truffle/hdwallet-provider": "eip1559-beta",

@@ -45,14 +45,14 @@
   },
   {
     "contractName": "VotingV2",
-    "address": "0xBc3683DEf184ad64f6162024BD401e8D49d0E517"
+    "address": "0x1755DD08108095C48509F5C91e071e0cb62eb27a"
   },
   {
     "contractName": "VotingToken",
     "address": "0xBa950974AFdae520cEE596c98295150Cf8D9659c"
   },
   {
-    "contractName": "SlashingLibrary",
+    "contractName": "FixedSlashSlashingLibrary",
     "address": "0xe8711717a8a010BeB257fb90898BB20eA5Ebf55F"
   },
   {
@@ -118,5 +118,9 @@
   {
     "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
     "address": "0x56e68853Bc173534F30a23E9De64B2BC4b64D61e"
+  },
+  {
+    "contractName": "OptimisticAsserter",
+    "address": "0x501B9005D0dB1cC00d231471f052b935D8566A59"
   }
 ]

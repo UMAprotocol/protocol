@@ -9,7 +9,7 @@ const assert = require("assert").strict;
 
 const { formatBytes32String, formatEther, parseEther, parseUnits, toUtf8Bytes } = hre.ethers.utils;
 
-import { BigNumber, BigNumberish, BytesLike, EventFilter } from "ethers";
+import { BigNumber, BigNumberish, BytesLike, EventFilter, Signer } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
@@ -92,7 +92,7 @@ async function main() {
   async function _requestProposeDispute(priceRequestData: PriceRequestData): Promise<BytesLike> {
     await (
       await optimisticOracleV2
-        .connect(requesterSigner)
+        .connect(requesterSigner as Signer)
         .requestPrice(
           priceRequestData.priceRequest.identifier,
           priceRequestData.priceRequest.time,
@@ -101,10 +101,12 @@ async function main() {
           0
         )
     ).wait();
-    await (await votingToken.connect(requesterSigner).approve(optimisticOracleV2.address, finalFee.mul(4))).wait();
+    await (
+      await votingToken.connect(requesterSigner as Signer).approve(optimisticOracleV2.address, finalFee.mul(4))
+    ).wait();
     await (
       await optimisticOracleV2
-        .connect(requesterSigner)
+        .connect(requesterSigner as Signer)
         .proposePrice(
           requesterSigner.address,
           priceRequestData.priceRequest.identifier,
@@ -115,7 +117,7 @@ async function main() {
     ).wait();
     await (
       await optimisticOracleV2
-        .connect(requesterSigner)
+        .connect(requesterSigner as Signer)
         .disputePrice(
           requesterSigner.address,
           priceRequestData.priceRequest.identifier,
@@ -145,7 +147,7 @@ async function main() {
   async function _commitVote(signer: SignerWithAddress, vote: CommittedVote): Promise<void> {
     (
       await votingV2
-        .connect(signer)
+        .connect(signer as Signer)
         .commitVote(
           vote.priceRequest.identifier,
           vote.priceRequest.time,
@@ -158,7 +160,7 @@ async function main() {
   async function _revealVote(signer: SignerWithAddress, vote: CommittedVote): Promise<void> {
     (
       await votingV2
-        .connect(signer)
+        .connect(signer as Signer)
         .revealVote(
           vote.priceRequest.identifier,
           vote.priceRequest.time,
@@ -191,7 +193,7 @@ async function main() {
       ).toString() !== OptimisticOracleRequestStatesEnum.SETTLED
     ) {
       await optimisticOracleV2
-        .connect(requesterSigner)
+        .connect(requesterSigner as Signer)
         .settle(
           requesterSigner.address,
           priceRequestData.priceRequest.identifier,
@@ -261,13 +263,13 @@ async function main() {
   console.log(` 1. Foundation has ${formatEther(foundationBalance)} UMA, funding requester and voters...`);
 
   // There will be 3 voters with initial balances set relative to GAT, and for two disputed price
-  // price requests 8 * finalFee amount will be needed (Optimistic Oracle bond defaults to finalFee).
+  // price requests 12 * finalFee amount will be needed (Optimistic Oracle bond defaults to finalFee).
   if (
     foundationBalance.lt(
       gat
         .mul(voter1RelativeGatFunding.add(voter2RelativeGatFunding.add(voter3RelativeGatFunding)))
         .div(parseEther("1"))
-        .add(finalFee.mul(8))
+        .add(finalFee.mul(12))
     )
   )
     throw new Error("Foundation balance too low for simulation!");
@@ -289,21 +291,23 @@ async function main() {
   // Transfering required balances. This assumes recipient accounts did not have more than target amounts before
   // simulation.
   await (
-    await votingToken.connect(foundationSigner).transfer(requesterSigner.address, finalFee.mul(8).sub(requesterBalance))
+    await votingToken
+      .connect(foundationSigner as Signer)
+      .transfer(requesterSigner.address, finalFee.mul(12).sub(requesterBalance))
   ).wait();
   await (
     await votingToken
-      .connect(foundationSigner)
+      .connect(foundationSigner as Signer)
       .transfer(voter1Signer.address, gat.mul(voter1RelativeGatFunding).div(parseEther("1").sub(voter1Balance)))
   ).wait();
   await (
     await votingToken
-      .connect(foundationSigner)
+      .connect(foundationSigner as Signer)
       .transfer(voter2Signer.address, gat.mul(voter2RelativeGatFunding).div(parseEther("1").sub(voter2Balance)))
   ).wait();
   await (
     await votingToken
-      .connect(foundationSigner)
+      .connect(foundationSigner as Signer)
       .transfer(voter3Signer.address, gat.mul(voter3RelativeGatFunding).div(parseEther("1").sub(voter3Balance)))
   ).wait();
 
@@ -319,16 +323,16 @@ async function main() {
   console.log(` ✅ Voter 3 now has ${formatEther(voter3Balance)} UMA.`);
 
   console.log(" 2. Voters are staking all their UMA...");
-  await (await votingToken.connect(voter1Signer).approve(votingV2.address, voter1Balance)).wait();
-  await (await votingToken.connect(voter2Signer).approve(votingV2.address, voter2Balance)).wait();
-  await (await votingToken.connect(voter3Signer).approve(votingV2.address, voter3Balance)).wait();
+  await (await votingToken.connect(voter1Signer as Signer).approve(votingV2.address, voter1Balance)).wait();
+  await (await votingToken.connect(voter2Signer as Signer).approve(votingV2.address, voter2Balance)).wait();
+  await (await votingToken.connect(voter3Signer as Signer).approve(votingV2.address, voter3Balance)).wait();
   console.log(" ✅ Approvals on the voting contract done.");
 
-  await (await votingV2.connect(voter1Signer).stake(voter1Balance)).wait();
+  await (await votingV2.connect(voter1Signer as Signer).stake(voter1Balance)).wait();
   await _updateRewardTrackers(0, voter1Balance);
-  await (await votingV2.connect(voter2Signer).stake(voter2Balance)).wait();
+  await (await votingV2.connect(voter2Signer as Signer).stake(voter2Balance)).wait();
   await _updateRewardTrackers(1, voter2Balance);
-  await (await votingV2.connect(voter3Signer).stake(voter3Balance)).wait();
+  await (await votingV2.connect(voter3Signer as Signer).stake(voter3Balance)).wait();
   await _updateRewardTrackers(2, voter3Balance);
   console.log(" ✅ Voters have staked all their UMA.");
 
@@ -367,7 +371,7 @@ async function main() {
 
   console.log(" 6. Not reaching quorum on the first data request...");
   // Only the Voter 1 participates, below GAT.
-  let voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
+  const voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
   await _commitVote(voter1Signer, voter1FirstRequestVote);
   console.log(" ✅ Voter 1 committed.");
 
@@ -403,11 +407,11 @@ async function main() {
   );
   console.log(" ✅ Verified that no slashing has been applied to staked balances.");
 
-  await (await votingV2.connect(voter1Signer).requestUnstake(voter1Balance)).wait();
+  await (await votingV2.connect(voter1Signer as Signer).requestUnstake(voter1Balance)).wait();
   await _updateRewardTrackers(0, voter1Balance.mul("-1"));
-  await (await votingV2.connect(voter2Signer).requestUnstake(voter2Balance)).wait();
+  await (await votingV2.connect(voter2Signer as Signer).requestUnstake(voter2Balance)).wait();
   await _updateRewardTrackers(1, voter2Balance.mul("-1"));
-  await (await votingV2.connect(voter3Signer).requestUnstake(voter3Balance)).wait();
+  await (await votingV2.connect(voter3Signer as Signer).requestUnstake(voter3Balance)).wait();
   await _updateRewardTrackers(2, voter3Balance.mul("-1"));
   console.log(" ✅ Voters requested unstake of all UMA.");
 
@@ -417,15 +421,15 @@ async function main() {
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
   console.log(" 9. Executing unstake...");
-  await (await votingV2.connect(voter1Signer).executeUnstake()).wait();
-  await (await votingV2.connect(voter2Signer).executeUnstake()).wait();
-  await (await votingV2.connect(voter3Signer).executeUnstake()).wait();
+  await (await votingV2.connect(voter1Signer as Signer).executeUnstake()).wait();
+  await (await votingV2.connect(voter2Signer as Signer).executeUnstake()).wait();
+  await (await votingV2.connect(voter3Signer as Signer).executeUnstake()).wait();
   console.log(" ✅ Voters have unstaked all UMA.");
 
   console.log(" 10. Claiming staking rewards...");
-  await (await votingV2.connect(voter1Signer).withdrawRewards()).wait();
-  await (await votingV2.connect(voter2Signer).withdrawRewards()).wait();
-  await (await votingV2.connect(voter3Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter1Signer as Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter2Signer as Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter3Signer as Signer).withdrawRewards()).wait();
   const voter1Rewards = (await votingToken.balanceOf(voter1Signer.address)).sub(voter1Balance);
   const voter2Rewards = (await votingToken.balanceOf(voter2Signer.address)).sub(voter2Balance);
   const voter3Rewards = (await votingToken.balanceOf(voter3Signer.address)).sub(voter3Balance);
@@ -451,24 +455,34 @@ async function main() {
   console.log(` ✅ Verified that all reward amounts are correct.`);
 
   console.log(" 11. Voters are restaking original balances...");
-  await (await votingToken.connect(voter1Signer).approve(votingV2.address, voter1Balance)).wait();
-  await (await votingToken.connect(voter2Signer).approve(votingV2.address, voter2Balance)).wait();
-  await (await votingToken.connect(voter3Signer).approve(votingV2.address, voter3Balance)).wait();
+  await (await votingToken.connect(voter1Signer as Signer).approve(votingV2.address, voter1Balance)).wait();
+  await (await votingToken.connect(voter2Signer as Signer).approve(votingV2.address, voter2Balance)).wait();
+  await (await votingToken.connect(voter3Signer as Signer).approve(votingV2.address, voter3Balance)).wait();
   console.log(" ✅ Approvals on the voting contract done.");
 
-  await (await votingV2.connect(voter1Signer).stake(voter1Balance)).wait();
-  await (await votingV2.connect(voter2Signer).stake(voter2Balance)).wait();
-  await (await votingV2.connect(voter3Signer).stake(voter3Balance)).wait();
+  await (await votingV2.connect(voter1Signer as Signer).stake(voter1Balance)).wait();
+  await (await votingV2.connect(voter2Signer as Signer).stake(voter2Balance)).wait();
+  await (await votingV2.connect(voter3Signer as Signer).stake(voter3Balance)).wait();
   console.log(" ✅ Voters have restaked original balances.");
 
-  console.log(" 12. Waiting till the start of the next voting cycle...");
+  console.log(" 12. Waiting until the start of the next voting cycle...");
   await increaseEvmTime(
     Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  console.log(" 13. Adding the second data request...");
+  console.log(" 13. Adding the second and third data request...");
+
+  console.log(" 13.1. At this point the first request should have been deleted because of rolling too many times.");
+  // Update trackers to process the price requests
+  await votingV2.connect(requesterSigner as Signer).updateTrackers(requesterSigner.address);
+  assert.equal(
+    (await votingV2.getPriceRequestStatuses([firstRequestData.priceRequest]))[0].status.toString(),
+    PriceRequestStatusEnum.NOT_REQUESTED
+  );
+  console.log(" ✅ First request was deleted after rolling too many times.");
+
   const secondRequestData: PriceRequestData = {
     originalAncillaryData: toUtf8Bytes(`q:"How much is 60 times two?"`),
     proposedPrice: "120",
@@ -479,7 +493,19 @@ async function main() {
     (await votingV2.getPriceRequestStatuses([secondRequestData.priceRequest]))[0].status.toString(),
     PriceRequestStatusEnum.FUTURE
   );
-  console.log(" ✅ Verified the second data request enqueued for future voting round.");
+
+  const thirdRequestData: PriceRequestData = {
+    originalAncillaryData: toUtf8Bytes(`q:"Really hard question, maybe 120, maybe 90?"`),
+    proposedPrice: "120",
+    priceRequest: { identifier: priceIdentifier, time: currentTime } as VotingPriceRequest,
+  };
+  thirdRequestData.priceRequest.ancillaryData = await _requestProposeDispute(thirdRequestData);
+  assert.equal(
+    (await votingV2.getPriceRequestStatuses([thirdRequestData.priceRequest]))[0].status.toString(),
+    PriceRequestStatusEnum.FUTURE
+  );
+
+  console.log(" ✅ Verified the second and third data request enqueued for future voting round.");
 
   console.log(" 14. Waiting till the start of the next voting cycle...");
   await increaseEvmTime(
@@ -489,29 +515,31 @@ async function main() {
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
   assert.equal(
-    (await votingV2.getPriceRequestStatuses([secondRequestData.priceRequest]))[0].status.toString(),
-    PriceRequestStatusEnum.ACTIVE
+    (await votingV2.getPriceRequestStatuses([secondRequestData.priceRequest, thirdRequestData.priceRequest]))
+      .map((status) => status.status.toString())
+      .join(","),
+    [PriceRequestStatusEnum.ACTIVE, PriceRequestStatusEnum.ACTIVE].join(",")
   );
-  console.log(" ✅ Verified the second data request can be voted in the current round.");
+  console.log(" ✅ Verified the second and third data request can be voted in the current round.");
 
   console.log(" 15. Resolving both data requests...");
-  voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
+  const voter1ThirdRequestVote = await _createVote(thirdRequestData.priceRequest, voter1Signer.address, "90");
   const voter1SecondRequestVote = await _createVote(
     secondRequestData.priceRequest,
     voter1Signer.address,
     secondRequestData.proposedPrice.toString()
   );
-  await _commitVote(voter1Signer, voter1FirstRequestVote);
+  await _commitVote(voter1Signer, voter1ThirdRequestVote);
   await _commitVote(voter1Signer, voter1SecondRequestVote);
   console.log(" ✅ Voter 1 committed on both requests.");
 
-  const voter2FirstRequestVote = await _createVote(
-    firstRequestData.priceRequest,
+  const voter2ThirdRequestVote = await _createVote(
+    thirdRequestData.priceRequest,
     voter2Signer.address,
-    firstRequestData.proposedPrice.toString()
+    thirdRequestData.proposedPrice.toString()
   );
-  await _commitVote(voter2Signer, voter2FirstRequestVote);
-  console.log(" ✅ Voter 2 committed on the first request.");
+  await _commitVote(voter2Signer, voter2ThirdRequestVote);
+  console.log(" ✅ Voter 2 committed on the third request.");
 
   const voter3SecondRequestVote = await _createVote(
     secondRequestData.priceRequest,
@@ -525,9 +553,9 @@ async function main() {
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  await _revealVote(voter1Signer, voter1FirstRequestVote);
+  await _revealVote(voter1Signer, voter1ThirdRequestVote);
   await _revealVote(voter1Signer, voter1SecondRequestVote);
-  await _revealVote(voter2Signer, voter2FirstRequestVote);
+  await _revealVote(voter2Signer, voter2ThirdRequestVote);
   await _revealVote(voter3Signer, voter3SecondRequestVote);
   console.log(" ✅ Voters revealed.");
 
@@ -536,7 +564,7 @@ async function main() {
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
   assert.equal(
-    (await _getOptimisticOracleState(firstRequestData)).toString(),
+    (await _getOptimisticOracleState(thirdRequestData)).toString(),
     OptimisticOracleRequestStatesEnum.RESOLVED
   );
   assert.equal(
@@ -548,20 +576,20 @@ async function main() {
   console.log(" 16. Settling requests...");
   // Voter 1 voted on both requests and since it has the largest stake its voted price should be the right one as only
   // two voters participated in each vote.
-  const correctFirstPrice = voter1FirstRequestVote.price.toString();
+  const correctThirdPrice = voter1ThirdRequestVote.price.toString();
   const correctSecondPrice = voter1SecondRequestVote.price.toString();
-  assert.equal((await _settleAndGetPrice(firstRequestData)).toString(), correctFirstPrice);
+  assert.equal((await _settleAndGetPrice(thirdRequestData)).toString(), correctThirdPrice);
   assert.equal((await _settleAndGetPrice(secondRequestData)).toString(), correctSecondPrice);
   console.log(" ✅ Verified that correct prices are available to the requester.");
 
   console.log(" 17. Verifying slashing...");
-  // Voter 2 voted wrong and Voter 3 missed the first request.
-  const expectedVoter2FirstSlash = voter2Balance.mul(wrongVoteSlashPerToken).div(parseEther("1"));
-  const expectedVoter3FirstSlash = voter3Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
+  // Voter 2 voted wrong and Voter 3 missed the third request.
+  const expectedVoter2ThirdSlash = voter2Balance.mul(wrongVoteSlashPerToken).div(parseEther("1"));
+  const expectedVoter3ThirdSlash = voter3Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
   // Voter 2 missed the second request.
   const expectedVoter2SecondSlash = voter2Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
-  // Voter 1 gets all the slashing from other stakers in the first request.
-  const expectedVoter1FirstSlash = expectedVoter2FirstSlash.add(expectedVoter3FirstSlash).mul("-1");
+  // Voter 1 gets all the slashing from other stakers in the third request.
+  const expectedVoter1ThirdSlash = expectedVoter2ThirdSlash.add(expectedVoter3ThirdSlash).mul("-1");
   // Voter 1 and 3 shares slashing from Voter 2 in the second request.
   const expectedVoter1SecondSlash = expectedVoter2SecondSlash
     .mul(voter1Balance)
@@ -572,9 +600,9 @@ async function main() {
   const voter1Slash = voter1Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter1Signer.address));
   const voter2Slash = voter2Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter2Signer.address));
   const voter3Slash = voter3Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter3Signer.address));
-  assert.equal(voter1Slash.toString(), expectedVoter1FirstSlash.add(expectedVoter1SecondSlash).toString());
-  assert.equal(voter2Slash.toString(), expectedVoter2FirstSlash.add(expectedVoter2SecondSlash).toString());
-  assert.equal(voter3Slash.toString(), expectedVoter3FirstSlash.add(expectedVoter3SecondSlash).toString());
+  assert.equal(voter1Slash.toString(), expectedVoter1ThirdSlash.add(expectedVoter1SecondSlash).toString());
+  assert.equal(voter2Slash.toString(), expectedVoter2ThirdSlash.add(expectedVoter2SecondSlash).toString());
+  assert.equal(voter3Slash.toString(), expectedVoter3ThirdSlash.add(expectedVoter3SecondSlash).toString());
   console.log(` ✅ Verified the slashing amounts are correct.`);
   console.log(` ✅ Voter 1 was slashed by ${formatEther(voter1Slash)} UMA.`);
   console.log(` ✅ Voter 2 was slashed by ${formatEther(voter2Slash)} UMA.`);
@@ -583,17 +611,17 @@ async function main() {
   console.log(" 18. Requesting unstake...");
   await (
     await votingV2
-      .connect(voter1Signer)
+      .connect(voter1Signer as Signer)
       .requestUnstake(await votingV2.callStatic.getVoterStakePostUpdate(voter1Signer.address))
   ).wait();
   await (
     await votingV2
-      .connect(voter2Signer)
+      .connect(voter2Signer as Signer)
       .requestUnstake(await votingV2.callStatic.getVoterStakePostUpdate(voter2Signer.address))
   ).wait();
   await (
     await votingV2
-      .connect(voter3Signer)
+      .connect(voter3Signer as Signer)
       .requestUnstake(await votingV2.callStatic.getVoterStakePostUpdate(voter3Signer.address))
   ).wait();
   console.log(" ✅ Voters requested unstake of all UMA.");
@@ -604,29 +632,29 @@ async function main() {
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
   console.log(" 20. Executing unstake...");
-  await (await votingV2.connect(voter1Signer).executeUnstake()).wait();
-  await (await votingV2.connect(voter2Signer).executeUnstake()).wait();
-  await (await votingV2.connect(voter3Signer).executeUnstake()).wait();
+  await (await votingV2.connect(voter1Signer as Signer).executeUnstake()).wait();
+  await (await votingV2.connect(voter2Signer as Signer).executeUnstake()).wait();
+  await (await votingV2.connect(voter3Signer as Signer).executeUnstake()).wait();
   console.log(" ✅ Voters have unstaked all UMA.");
 
   console.log(" 21. Claiming staking rewards...");
-  await (await votingV2.connect(voter1Signer).withdrawRewards()).wait();
-  await (await votingV2.connect(voter2Signer).withdrawRewards()).wait();
-  await (await votingV2.connect(voter3Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter1Signer as Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter2Signer as Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter3Signer as Signer).withdrawRewards()).wait();
   // TODO: verify claimed reward amounts.
 
   console.log(" 22. Returning all UMA to the foundation...");
   await votingToken
-    .connect(requesterSigner)
+    .connect(requesterSigner as Signer)
     .transfer(foundationSigner.address, await votingToken.balanceOf(requesterSigner.address));
   await votingToken
-    .connect(voter1Signer)
+    .connect(voter1Signer as Signer)
     .transfer(foundationSigner.address, await votingToken.balanceOf(voter1Signer.address));
   await votingToken
-    .connect(voter2Signer)
+    .connect(voter2Signer as Signer)
     .transfer(foundationSigner.address, await votingToken.balanceOf(voter2Signer.address));
   await votingToken
-    .connect(voter3Signer)
+    .connect(voter3Signer as Signer)
     .transfer(foundationSigner.address, await votingToken.balanceOf(voter3Signer.address));
 
   foundationBalance = await votingToken.balanceOf(FOUNDATION_WALLET);
