@@ -46,9 +46,8 @@ async function main() {
   let proposerSigner: Signer;
 
   if (process.env.GCKMS_WALLET) {
-    const wallet: Wallet = await getGckmsSigner(process.env.GCKMS_WALLET);
-    proposerSigner = wallet.connect(hre.ethers.provider as Provider);
-    if (proposerWallet.toLowerCase() != wallet.address.toLowerCase())
+    proposerSigner = ((await getGckmsSigner()) as Wallet).connect(hre.ethers.provider as Provider);
+    if (proposerWallet.toLowerCase() != (await proposerSigner.getAddress()).toLowerCase())
       throw new Error("GCKMS wallet does not match proposer wallet");
   } else {
     proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
