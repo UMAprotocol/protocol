@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { web3, assertEventEmitted } = hre;
 const { toWei, utf8ToHex, padRight, toBN } = web3.utils;
 const { getContract } = hre;
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 
 const { ZERO_ADDRESS, didContractThrow, interfaceName } = require("@uma/common");
 const { deployContractMock } = require("../../helpers/SmockitHelper");
@@ -211,18 +211,6 @@ describe("Arbitrum_ParentMessenger", function () {
         .publishPrice(chainId, priceIdentifier, priceTime, ancillaryData)
         .send({ from: l1Owner, value: l1CallValue.toString() });
 
-      // Validate that the inbox received the expected cross-domain message, destined for the child.
-      const publishPriceMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
-
-      assert.equal(publishPriceMessage.length, 1); // there should be only one call.
-      assert.equal(publishPriceMessage[0].destAddr, childMessengerAddress); // Target should be the child messenger.
-      assert.equal(publishPriceMessage[0].l2CallValue.toString(), "0");
-      assert.equal(publishPriceMessage[0].maxSubmissionCost.toString(), defaultMaxSubmissionCost.toString());
-      assert.equal(publishPriceMessage[0].excessFeeRefundAddress, l1Owner);
-      assert.equal(publishPriceMessage[0].callValueRefundAddress, l1Owner);
-      assert.equal(publishPriceMessage[0].maxGas.toString(), defaultGasLimit.toString());
-      assert.equal(publishPriceMessage[0].gasPriceBid.toString(), defaultGasPrice.toString());
-
       // Inbox receives msg.value
       assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), l1CallValue.toString());
 
@@ -235,7 +223,19 @@ describe("Arbitrum_ParentMessenger", function () {
       const expectedMessageFromManualEncoding = await childMessengerInterface.methods
         .processMessageFromCrossChainParent(encodedData, oracleSpokeAddress)
         .encodeABI();
-      assert.equal(publishPriceMessage[0].data, expectedMessageFromManualEncoding);
+
+      // Validate that the inbox received the expected cross-domain message, destined for the child.
+      expect(inbox.createRetryableTicketNoRefundAliasRewrite).to.be.calledOnce;
+      expect(inbox.createRetryableTicketNoRefundAliasRewrite).to.be.calledOnceWith(
+        childMessengerAddress,
+        "0",
+        defaultMaxSubmissionCost.toString(),
+        l1Owner,
+        l1Owner,
+        defaultGasLimit.toString(),
+        defaultGasPrice.toString(),
+        expectedMessageFromManualEncoding
+      );
 
       await assertEventEmitted(txn, arbitrum_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
@@ -269,18 +269,6 @@ describe("Arbitrum_ParentMessenger", function () {
       });
       const txn = await governorHub.methods.relayGovernance(chainId, call).send({ from: l1Owner });
 
-      // Validate that the inbox received the expected cross-domain message, destined for the child.
-      const relayGovernanceMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
-
-      assert.equal(relayGovernanceMessage.length, 1); // there should be only one call.
-      assert.equal(relayGovernanceMessage[0].destAddr, childMessengerAddress); // Target should be the child messenger.
-      assert.equal(relayGovernanceMessage[0].l2CallValue.toString(), "0");
-      assert.equal(relayGovernanceMessage[0].maxSubmissionCost.toString(), defaultMaxSubmissionCost.toString());
-      assert.equal(relayGovernanceMessage[0].excessFeeRefundAddress, l1Owner);
-      assert.equal(relayGovernanceMessage[0].callValueRefundAddress, l1Owner);
-      assert.equal(relayGovernanceMessage[0].maxGas.toString(), defaultGasLimit.toString());
-      assert.equal(relayGovernanceMessage[0].gasPriceBid.toString(), defaultGasPrice.toString());
-
       // Inbox receives msg.value
       assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), l1CallValue.toString());
 
@@ -312,7 +300,19 @@ describe("Arbitrum_ParentMessenger", function () {
       const expectedMessageFromEvent = childMessengerInterface.methods
         .processMessageFromCrossChainParent(targetDataSentFromGovernorHub, governorSpokeAddress) // note the oracleSpokeAddress for the target in the message
         .encodeABI();
-      assert.equal(relayGovernanceMessage[0].data, expectedMessageFromEvent);
+
+      // Validate that the inbox received the expected cross-domain message, destined for the child.
+      expect(inbox.createRetryableTicketNoRefundAliasRewrite).to.be.calledOnce;
+      expect(inbox.createRetryableTicketNoRefundAliasRewrite).to.be.calledOnceWith(
+        childMessengerAddress,
+        "0",
+        defaultMaxSubmissionCost.toString(),
+        l1Owner,
+        l1Owner,
+        defaultGasLimit.toString(),
+        defaultGasPrice.toString(),
+        expectedMessageFromEvent
+      );
 
       await assertEventEmitted(txn, arbitrum_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
@@ -342,18 +342,6 @@ describe("Arbitrum_ParentMessenger", function () {
       });
       const txn = await setChildParentMessenger.send({ from: l1Owner });
 
-      // Validate that the inbox received the expected cross-domain message, destined for the child.
-      const smockedMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
-
-      assert.equal(smockedMessage.length, 1); // there should be only one call.
-      assert.equal(smockedMessage[0].destAddr, childMessengerAddress); // Target should be the child messenger.
-      assert.equal(smockedMessage[0].l2CallValue.toString(), "0");
-      assert.equal(smockedMessage[0].maxSubmissionCost.toString(), defaultMaxSubmissionCost.toString());
-      assert.equal(smockedMessage[0].excessFeeRefundAddress, l1Owner);
-      assert.equal(smockedMessage[0].callValueRefundAddress, l1Owner);
-      assert.equal(smockedMessage[0].maxGas.toString(), defaultGasLimit.toString());
-      assert.equal(smockedMessage[0].gasPriceBid.toString(), defaultGasPrice.toString());
-
       // Inbox receives msg.value
       assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), l1CallValue.toString());
 
@@ -362,7 +350,19 @@ describe("Arbitrum_ParentMessenger", function () {
       const expectedMessageFromManualEncoding = await childMessengerInterface.methods
         .setParentMessenger(rando)
         .encodeABI();
-      assert.equal(smockedMessage[0].data, expectedMessageFromManualEncoding);
+
+      // Validate that the inbox received the expected cross-domain message, destined for the child.
+      expect(inbox.createRetryableTicketNoRefundAliasRewrite).to.be.calledOnce;
+      expect(inbox.createRetryableTicketNoRefundAliasRewrite).to.be.calledOnceWith(
+        childMessengerAddress,
+        "0",
+        defaultMaxSubmissionCost.toString(),
+        l1Owner,
+        l1Owner,
+        defaultGasLimit.toString(),
+        defaultGasPrice.toString(),
+        expectedMessageFromManualEncoding
+      );
 
       await assertEventEmitted(txn, arbitrum_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
@@ -392,25 +392,25 @@ describe("Arbitrum_ParentMessenger", function () {
       });
       const txn = await setChildOracleSpoke.send({ from: l1Owner });
 
-      // Validate that the inbox received the expected cross-domain message, destined for the child.
-      const smockedMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
-
-      assert.equal(smockedMessage.length, 1); // there should be only one call.
-      assert.equal(smockedMessage[0].destAddr, childMessengerAddress); // Target should be the child messenger.
-      assert.equal(smockedMessage[0].l2CallValue.toString(), "0");
-      assert.equal(smockedMessage[0].maxSubmissionCost.toString(), defaultMaxSubmissionCost.toString());
-      assert.equal(smockedMessage[0].excessFeeRefundAddress, l1Owner);
-      assert.equal(smockedMessage[0].callValueRefundAddress, l1Owner);
-      assert.equal(smockedMessage[0].maxGas.toString(), defaultGasLimit.toString());
-      assert.equal(smockedMessage[0].gasPriceBid.toString(), defaultGasPrice.toString());
-
       // Inbox receives msg.value
       assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), l1CallValue.toString());
 
       // We should be able to re-construct the encoded data, which should match what was sent from the messenger.
       const childMessengerInterface = await Arbitrum_ChildMessenger.at(ZERO_ADDRESS);
       const expectedMessageFromManualEncoding = await childMessengerInterface.methods.setOracleSpoke(rando).encodeABI();
-      assert.equal(smockedMessage[0].data, expectedMessageFromManualEncoding);
+
+      // Validate that the inbox received the expected cross-domain message, destined for the child.
+      expect(inbox.createRetryableTicketNoRefundAliasRewrite).to.be.calledOnce;
+      expect(inbox.createRetryableTicketNoRefundAliasRewrite).to.be.calledOnceWith(
+        childMessengerAddress,
+        "0",
+        defaultMaxSubmissionCost.toString(),
+        l1Owner,
+        l1Owner,
+        defaultGasLimit.toString(),
+        defaultGasPrice.toString(),
+        expectedMessageFromManualEncoding
+      );
 
       await assertEventEmitted(txn, arbitrum_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
@@ -442,8 +442,8 @@ describe("Arbitrum_ParentMessenger", function () {
 
       // Must call this function from the L2 bridge. First, set up the bridge such that `activeOutbox` returns
       // an outbox who's `l2ToL1Sender` is set to the same address as `childMessenger` stored in the contract.
-      inbox.smocked.bridge.will.return.with(() => bridge.options.address);
-      outbox.smocked.l2ToL1Sender.will.return.with(() => childMessengerAddress);
+      inbox.bridge.returns(() => bridge.options.address);
+      outbox.l2ToL1Sender.returns(() => childMessengerAddress);
       await bridge.methods.setOutbox(outbox.options.address).send({ from: l1Owner });
       const tx = await bridge.methods
         .processMessageFromCrossChainChild(arbitrum_ParentMessenger.options.address, sentData)
