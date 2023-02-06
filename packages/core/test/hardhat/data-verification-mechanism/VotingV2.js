@@ -5260,6 +5260,9 @@ describe("VotingV2", function () {
     const outstandingRewardsAccount2 = await voting.methods.outstandingRewards(account2).call();
 
     // Outstanding rewards should be equal, regardless of when the user called updateTracker.
+    // At this point this test fails because account1 is getting rewards for 1 round at 32M tokends and 1 round at 32M
+    // + positive slash, whereas account2 is getting rewards for 2 round at 32M tokens + positive slash. This is because
+    // they way we calculate Staker rewards in voting.updateTrackers makes them behave retroactively.
     assert.equal(outstandingRewardsAccount1.toString(), outstandingRewardsAccount2.toString());
   });
 
