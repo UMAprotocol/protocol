@@ -19,9 +19,10 @@ async function main() {
   console.log("process.env.ETHERSCAN_API_KEY", process.env.ETHERSCAN_API_KEY);
   if (!process.env.ETHERSCAN_API_KEY) throw new Error("No ETHERSCAN_API_KEY");
   if (!process.env.OWNER_TO_MIGRATE) throw new Error("No OWNER_TO_MIGRATE set");
+  const owner = process.env.OWNER_TO_MIGRATE || "";
 
   const factoryV1 = await getContractInstance<DesignatedVotingFactoryEthers>("DesignatedVotingFactory");
-  //   const factoryV2 = await getContractInstance<DesignatedVotingV2FactoryEthers>("DesignatedVotingV2Factory");
+  const factoryV2 = await getContractInstance<DesignatedVotingV2FactoryEthers>("DesignatedVotingV2Factory");
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
   // Step 1: find all DesignatedVoting contracts created by the DesignatedVotingFactory.
   const designatedVotingContracts = await _fetchDesignatedVotingContractsCreatedByFactory(factoryV1);
@@ -48,13 +49,23 @@ async function main() {
     .map((contract, index) => {
       return { designatedVoting: contract.address, owner: owners[index], hotWallet: hotWallets[index] };
     })
-    .filter((contract) => contract.owner === process.env.OWNER_TO_MIGRATE);
+    .filter((contract) => contract.owner === owner);
 
-  console.log(`Found the following DesignatedVoting to migrate owned by ${process.env.OWNER_TO_MIGRATE}:`);
-  console.table(designatedVotingData);
+  // Log all designated voting and the associated hot wallets. remove the owner element from the object to keep it short.
+  console.log(`Found the following DesignatedVoting to migrate owned by ${owner}:`);
+  console.table(
+    designatedVotingData.map((e: any) => {
+      delete e.owner;
+      return e;
+    })
+  );
 
   // Step 4: Deploy new DesignatedVotingV2 contracts for each hot wallet.
-  const multiCallPayload = designatedVotingData.map((contract) => {
+  const multiCallPayload = designatedVotingData.map(async (data) => {
+    await factoryV2.populateTransaction.newDesignatedVoting(owner, data.hotWallet);
+  });
+
+  console.log("multiCallPayload", multiCallPayload);
 }
 
 async function _fetchDesignatedVotingContractsCreatedByFactory(

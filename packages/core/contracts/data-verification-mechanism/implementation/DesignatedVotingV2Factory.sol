@@ -10,9 +10,7 @@ import "../../common/implementation/MultiCaller.sol";
  */
 contract DesignatedVotingV2Factory is MultiCaller {
     address private finder;
-    mapping(address => DesignatedVotingV2) public designatedVotingContracts;
-
-    event NewDesignatedVoting(address indexed designatedVoter, address indexed designatedVoting);
+    event NewDesignatedVoting(address indexed Voter, address indexed Voting, address indexed Owner);
 
     /**
      * @notice Construct the DesignatedVotingFactory contract.
@@ -25,24 +23,14 @@ contract DesignatedVotingV2Factory is MultiCaller {
     /**
      * @notice Deploys a new `DesignatedVoting` contract.
      * @param ownerAddress defines who will own the deployed instance of the designatedVoting contract.
+     * @param voterAddress defines who will be able to vote on behalf of the owner, using the designatedVoting contract.
      * @return designatedVoting a new DesignatedVoting contract.
      */
-    function newDesignatedVoting(address ownerAddress) external returns (DesignatedVotingV2) {
-        DesignatedVotingV2 designatedVoting = new DesignatedVotingV2(finder, ownerAddress, msg.sender);
-        designatedVotingContracts[msg.sender] = designatedVoting;
-        emit NewDesignatedVoting(msg.sender, address(designatedVoting));
+    function newDesignatedVoting(address ownerAddress, address voterAddress) external returns (DesignatedVotingV2) {
+        DesignatedVotingV2 designatedVoting = new DesignatedVotingV2(finder, ownerAddress, voterAddress);
+
+        emit NewDesignatedVoting(voterAddress, address(designatedVoting), ownerAddress);
 
         return designatedVoting;
-    }
-
-    /**
-     * @notice Associates a `DesignatedVoting` instance with `msg.sender`.
-     * @param designatedVotingAddress address to designate voting to.
-     * @dev This is generally only used if the owner of a `DesignatedVoting` contract changes their `voter`
-     * address and wants that reflected here.
-     */
-    function setDesignatedVoting(address designatedVotingAddress) external {
-        designatedVotingContracts[msg.sender] = DesignatedVotingV2(designatedVotingAddress);
-        emit NewDesignatedVoting(msg.sender, designatedVotingAddress);
     }
 }
