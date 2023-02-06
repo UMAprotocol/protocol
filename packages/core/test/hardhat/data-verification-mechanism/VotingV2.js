@@ -5189,6 +5189,66 @@ describe("VotingV2", function () {
     }
   });
 
+  it("Should should ensure equal reward payouts for equivalent actions regardless of the frequency of calling updateTracker", async function () {
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // Commit a vote, move to reveal phase.
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const salt = getRandomSignedInt();
+    const price = 0;
+    const hashAccount1 = computeVoteHash({ salt, roundId, identifier, price, account: account1, time });
+    const hashAccount2 = computeVoteHash({ salt, roundId, identifier, price, account: account2, time });
+    await voting.methods.commitVote(identifier, time, hashAccount1).send({ from: account1 });
+    await voting.methods.commitVote(identifier, time, hashAccount2).send({ from: account2 });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
+
+    const currentTime = toBN(await voting.methods.getCurrentTime().call());
+
+    let timeIncrement;
+    const secondsPerDay = web3.utils.toBN(86400);
+    const phase = await voting.methods.getVotePhase().call();
+    if (phase.toString() === VotePhasesEnum.COMMIT) {
+      // Commit phase, so it will take 2 days to move to the next round.
+      timeIncrement = secondsPerDay.muln(2);
+    } else {
+      // Reveal phase, so it will take 1 day to move to the next round.
+      timeIncrement = secondsPerDay;
+    }
+
+    timeIncrement = timeIncrement.sub(toBN(1));
+
+    await voting.methods.setCurrentTime(currentTime.add(timeIncrement)).send({ from: accounts[0] });
+
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+
+    // Expect that all accounts should be slashed
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+    await voting.methods.updateTrackers(account3).send({ from: account1 });
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+
+    const outstandingRewardsAccount1 = await voting.methods.outstandingRewards(account1).call();
+    const outstandingRewardsAccount2 = await voting.methods.outstandingRewards(account2).call();
+
+    // Outstanding rewards should be equal
+    assert.equal(outstandingRewardsAccount1.toString(), outstandingRewardsAccount2.toString());
+  });
+
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following
