@@ -5190,6 +5190,8 @@ describe("VotingV2", function () {
   });
 
   it("Should should ensure equal reward payouts for equivalent actions regardless of the frequency of calling updateTracker", async function () {
+    // In this test we want to check that the rewards coming from the constant emission rate, for two users with the
+    // same stakes and voting the same, are the same, independently of when these users call update trackers.
     const identifier = padRight(utf8ToHex("test"), 64);
     const time = "1000";
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
@@ -5197,7 +5199,8 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
 
-    // Commit a vote, move to reveal phase.
+    // account1 and account 2 have the same stake amount initially, 32M tokens each and will vote the same so they
+    // should receive the same slashing.
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const salt = getRandomSignedInt();
     const price = 0;
@@ -5210,6 +5213,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
 
+    // Move 1 second before the next round starts
     const currentTime = toBN(await voting.methods.getCurrentTime().call());
 
     let timeIncrement;
@@ -5227,6 +5231,8 @@ describe("VotingV2", function () {
 
     await voting.methods.setCurrentTime(currentTime.add(timeIncrement)).send({ from: accounts[0] });
 
+    // Account1 calls updateTracker one second before the next round starts, this will give them the rewards corresponding
+    // to emission rate for 1 round minus 1 second.
     await voting.methods.updateTrackers(account1).send({ from: account1 });
 
     await moveToNextRound(voting, accounts[0]);
@@ -5242,10 +5248,18 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account3).send({ from: account1 });
     await voting.methods.updateTrackers(account4).send({ from: account1 });
 
+    const voterSlashedEvents = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const voter1SlashedEvent = voterSlashedEvents.find((event) => event.returnValues.voter === account1);
+    const voter2SlashedEvent = voterSlashedEvents.find((event) => event.returnValues.voter === account2);
+
+    // Both voters should be slashed the same positive amount of tokens because they voted correctly.
+    assert.equal(toBN(voter1SlashedEvent.returnValues.slashedTokens).gt(toBN(0)), true);
+    assert.equal(voter1SlashedEvent.returnValues.slashedTokens, voter2SlashedEvent.returnValues.slashedTokens);
+
     const outstandingRewardsAccount1 = await voting.methods.outstandingRewards(account1).call();
     const outstandingRewardsAccount2 = await voting.methods.outstandingRewards(account2).call();
 
-    // Outstanding rewards should be equal
+    // Outstanding rewards should be equal, regardless of when the user called updateTracker.
     assert.equal(outstandingRewardsAccount1.toString(), outstandingRewardsAccount2.toString());
   });
 
