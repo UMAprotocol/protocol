@@ -35,6 +35,8 @@
     }
   ],
   "dependencies": {
+    "@ethersproject/providers": "^5.4.2",
+    "@ethersproject/abstract-signer": "^5.4.0",
     "@google-cloud/datastore": "^7.0.0",
     "@types/lodash-es": "^4.17.5",
     "@uma/contracts-frontend": "^0.4.9",
