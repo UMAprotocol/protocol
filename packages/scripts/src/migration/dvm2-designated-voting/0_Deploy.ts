@@ -16,7 +16,6 @@ async function main() {
 
   const networkId = Number(await hre.getChainId());
   if (networkId != 1) throw new Error("Can only run on mainnet");
-  console.log("process.env.ETHERSCAN_API_KEY", process.env.ETHERSCAN_API_KEY);
   if (!process.env.ETHERSCAN_API_KEY) throw new Error("No ETHERSCAN_API_KEY");
   if (!process.env.OWNER_TO_MIGRATE) throw new Error("No OWNER_TO_MIGRATE set");
   const owner = process.env.OWNER_TO_MIGRATE || "";
@@ -41,9 +40,7 @@ async function main() {
   // Step 3: Find all owners and hot wallets for all DesignatedVoting contracts that have UMA. Construct one condensed
   // data structure that contains all key information. Remove any that are not owned by the provided owner.
   const owners = await Promise.all(designatedVotingContractsWithTokens.map((contract) => contract.getMember(0)));
-  console.log("owners", owners);
   const hotWallets = await Promise.all(designatedVotingContractsWithTokens.map((contract) => contract.getMember(1)));
-  console.log("hotWallets", hotWallets);
 
   const designatedVotingData = designatedVotingContractsWithTokens
     .map((contract, index) => {
