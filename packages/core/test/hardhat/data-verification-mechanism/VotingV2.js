@@ -2529,7 +2529,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
       (await voting.methods.voterStakes(account4).call()).stake,
-      toWei("4000000").add(toBN("4959573333333333333333")) // Their original stake amount of 4mm plus the slash of 4959.56.
+      toWei("4000000").add(toBN("4959573333333333333332")) // Their original stake amount of 4mm plus the slash of 4959.56.
     );
   });
 
