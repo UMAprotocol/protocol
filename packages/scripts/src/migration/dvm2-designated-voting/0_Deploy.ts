@@ -5,7 +5,7 @@ import {
   VotingTokenEthers,
   DesignatedVotingFactoryEthers,
   DesignatedVotingEthers,
-  DesignatedVotingV2FactoryEthers,
+  // DesignatedVotingV2FactoryEthers,
 } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
 

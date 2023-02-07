@@ -10,7 +10,7 @@ import "../../common/implementation/MultiCaller.sol";
  */
 contract DesignatedVotingV2Factory is MultiCaller {
     address private finder;
-    event NewDesignatedVoting(address indexed Voter, address indexed Voting, address indexed Owner);
+    event NewDesignatedVoting(address indexed voter, address indexed designatedVoting, address indexed owner);
 
     /**
      * @notice Construct the DesignatedVotingFactory contract.
