@@ -19,7 +19,7 @@
     "@awaitjs/express": "^0.3.0",
     "@eth-optimism/contracts": "^0.5.7",
     "@eth-optimism/message-relayer": "^0.1.8",
-    "@eth-optimism/smock": "^1.1.9",
+    "@defi-wonderland/smock": "^2.3.4",
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
     "@ethersproject/contracts": "^5.4.0",

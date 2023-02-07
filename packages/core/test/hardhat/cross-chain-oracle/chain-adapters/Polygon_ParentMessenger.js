@@ -1,7 +1,6 @@
 const hre = require("hardhat");
-const { web3, assertEventEmitted } = hre;
-const { getContract } = hre;
-const { assert } = require("chai");
+const { web3, assertEventEmitted, getContract } = hre;
+const { assert, expect } = require("chai");
 
 const { didContractThrow } = require("@uma/common");
 
@@ -81,9 +80,8 @@ describe("Polygon_ParentMessenger", function () {
     });
 
     // Check that FxRoot function is called with correct params
-    let sendMessageToChildCall = fxRoot.smocked.sendMessageToChild.calls[0];
-    assert.equal(sendMessageToChildCall._receiver, fxChildAddress);
-    assert.equal(sendMessageToChildCall._data, expectedMessageSentData);
+    expect(fxRoot.sendMessageToChild.getCall(0).args._receiver).to.equal(fxChildAddress);
+    expect(fxRoot.sendMessageToChild.getCall(0).args._data).to.equal(expectedMessageSentData);
 
     // Called by GovernorHub sends data to GovernorSpoke
     txn = await sendMessage.send({ from: governorHubAddress });
@@ -101,9 +99,8 @@ describe("Polygon_ParentMessenger", function () {
     });
 
     // Check that FxRoot function is called with correct params
-    sendMessageToChildCall = fxRoot.smocked.sendMessageToChild.calls[0];
-    assert.equal(sendMessageToChildCall._receiver, fxChildAddress);
-    assert.equal(sendMessageToChildCall._data, expectedMessageSentData);
+    expect(fxRoot.sendMessageToChild.getCall(1).args._receiver).to.equal(fxChildAddress);
+    expect(fxRoot.sendMessageToChild.getCall(1).args._data).to.equal(expectedMessageSentData);
   });
   it("_processMessageFromChild", async function () {
     // Data to pass into this method includes: (1) the data to send to the target and (2) the target contract
@@ -118,9 +115,8 @@ describe("Polygon_ParentMessenger", function () {
     const txn = await messenger.methods.processMessageFromChild(data).send({ from: deployer });
 
     // Check that oracle hub is called as expected
-    const processMessageFromChildCall = oracleHubSmocked.smocked.processMessageFromChild.calls[0];
-    assert.equal(processMessageFromChildCall.chainId, childChainId);
-    assert.equal(processMessageFromChildCall.data, dataToSendToTarget);
+    expect(oracleHubSmocked.processMessageFromChild.getCall(0).args.chainId.toString()).to.equal(childChainId);
+    expect(oracleHubSmocked.processMessageFromChild.getCall(0).args.data).to.equal(dataToSendToTarget);
 
     // Check events are emitted
     await assertEventEmitted(txn, messenger, "MessageReceivedFromChild", (ev) => {

@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { web3, assertEventEmitted } = hre;
 const { toWei, utf8ToHex, padRight, toBN } = web3.utils;
 const { getContract } = hre;
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 
 const { ZERO_ADDRESS, interfaceName, RegistryRolesEnum, didContractThrow } = require("@uma/common");
 
@@ -55,7 +55,7 @@ describe("Arbitrum_ChildMessenger", function () {
       { address: "0x0000000000000000000000000000000000000064" },
       getContract("ArbSys")
     );
-    arbsys.smocked.sendTxToL1.will.return.with(() => "9");
+    arbsys.sendTxToL1.returns(() => "9");
 
     arbitrum_ChildMessenger = await Arbitrum_ChildMessenger.new(parentMessenger).send({ from: l1Owner });
 
@@ -119,13 +119,6 @@ describe("Arbitrum_ChildMessenger", function () {
         .requestPrice(priceIdentifier, requestTime, ancillaryData)
         .send({ from: controlledEOA });
 
-      // Check the message was sent to the l2 cross domain messenger and was encoded correctly.
-
-      const smockedMessage = arbsys.smocked.sendTxToL1.calls;
-
-      assert.equal(smockedMessage.length, 1); // there should be only one call
-      assert.equal(smockedMessage[0].destination, parentMessenger); // Target should be the parent messenger.
-
       // We should be able to construct the function call sent from the oracle spoke directly.
       const encodedData = web3.eth.abi.encodeParameters(
         ["bytes32", "uint256", "bytes"],
@@ -138,7 +131,9 @@ describe("Arbitrum_ChildMessenger", function () {
         .processMessageFromCrossChainChild(encodedData)
         .encodeABI();
 
-      assert.equal(smockedMessage[0].calldataForL1, expectedMessageFromManualEncoding);
+      // Check the message was sent to the l2 cross domain messenger and was encoded correctly.
+      expect(arbsys.sendTxToL1).to.be.calledOnce;
+      expect(arbsys.sendTxToL1).to.have.been.calledOnceWith(parentMessenger, expectedMessageFromManualEncoding);
 
       await assertEventEmitted(txn, arbitrum_ChildMessenger, "MessageSentToParent", (ev) => {
         return (
