@@ -232,15 +232,15 @@ contract OptimisticGovernor is Module, Lockable {
         // Assert that the proposal is correct to the OA. If not disputed, they can be executed with executeProposal().
         // Maps the proposal hash to the returned assertionId.
         proposalHashes[proposalHash] = optimisticAsserter.assertTruth(
-            claim,          // claim containing proposalHash.
-            proposer,       // asserter will receive back bond if the assertion is correct.
-            address(0),     // callbackRecipient is not set. TODO: consider using for automated proposal deletion.
-            address(0),     // escalationManager is not set.
-            liveness,       // liveness in seconds.
-            collateral,     // currency in which the bond is denominated.
-            bondAmount,     // bond amount, will revert if it is less than required by the Optimistic Asserter.
-            identifier,     // identifier used to determine if the claim is correct at DVM.
-            bytes32(0)      // domainId is not set.
+            claim, // claim containing proposalHash.
+            proposer, // asserter will receive back bond if the assertion is correct.
+            address(0), // callbackRecipient is not set. TODO: consider using for automated proposal deletion.
+            address(0), // escalationManager is not set.
+            liveness, // liveness in seconds.
+            collateral, // currency in which the bond is denominated.
+            bondAmount, // bond amount, will revert if it is less than required by the Optimistic Asserter.
+            identifier, // identifier used to determine if the claim is correct at DVM.
+            bytes32(0) // domainId is not set.
         );
 
         uint256 challengeWindowEnds = time + liveness;
