@@ -52,7 +52,6 @@ contract OptimisticGovernor is Module, Lockable {
     IERC20 public collateral;
     uint64 public liveness;
     // Extra bond in addition to the final fee for the collateral type.
-    // TODO: check how finalFee is handled as OA does not explicitly require it.
     uint256 public bondAmount;
     string public rules;
     // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
@@ -266,8 +265,7 @@ contract OptimisticGovernor is Module, Lockable {
         bytes32 assertionId = proposalHashes[_proposalHash];
 
         // You can not execute a proposal that has been disputed at some point in the past.
-        // TODO: replace with getAssertion, but might be redundant if using EM discarding disputed assertions.
-        // TODO: alternative to EM could rely on callback to delete disputed proposal.
+        // TODO: alternative is discard oracle in EM or rely on callback to delete disputed proposal.
         require(
             optimisticAsserter.getAssertion(assertionId).disputer == address(0),
             "Must call deleteDisputedProposal instead"
