@@ -222,12 +222,15 @@ contract OptimisticGovernor is Module, Lockable {
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
         require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals are not allowed");
 
-        // TODO: Check getMinimumBond on OA. Use that only if it is greater than the bondAmount.
-        // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
+        // Check the minimum required bond and use that if it is greater than the bondAmount.
+        uint256 minimumBond = optimisticAsserter.getMinimumBond(address(collateral));
+        uint256 totalBond = minimumBond > bondAmount ? minimumBond : bondAmount;
+
+        // Get the bond from the proposer and approve the required bond to be used by the optimistic asserter.
         // This will fail if the proposer has not granted the OptimisticGovernor contract an allowance
-        // of the collateral token equal to or greater than the bondAmount.
-        collateral.safeTransferFrom(msg.sender, address(this), bondAmount);
-        collateral.safeIncreaseAllowance(address(optimisticAsserter), bondAmount);
+        // of the collateral token equal to or greater than the totalBond.
+        collateral.safeTransferFrom(msg.sender, address(this), totalBond);
+        collateral.safeIncreaseAllowance(address(optimisticAsserter), totalBond);
 
         // Assert that the proposal is correct to the OA. If not disputed, they can be executed with executeProposal().
         // Maps the proposal hash to the returned assertionId.
@@ -238,7 +241,7 @@ contract OptimisticGovernor is Module, Lockable {
             address(0), // escalationManager is not set.
             liveness, // liveness in seconds.
             collateral, // currency in which the bond is denominated.
-            bondAmount, // bond amount, will revert if it is less than required by the Optimistic Asserter.
+            totalBond, // bond amount, will revert if it is less than required by the Optimistic Asserter.
             identifier, // identifier used to determine if the claim is correct at DVM.
             bytes32(0) // domainId is not set.
         );
