@@ -12,8 +12,7 @@ import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
 import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
 import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
 
-// TODO: Replace with OA interface.
-import "../../optimistic-oracle/interfaces/OptimisticOracleV2Interface.sol";
+import "../../optimistic-asserter/interfaces/OptimisticAsserterInterface.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
@@ -59,11 +58,7 @@ contract OptimisticGovernor is Module, Lockable {
     // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
     // TODO: might require OA compatable identifier.
     bytes32 public identifier;
-    // TODO: this will be replaced with OA.
-    OptimisticOracleV2Interface public optimisticOracle;
-
-    // TODO: this should be redundant as OA resolves boolean.
-    int256 public constant PROPOSAL_VALID_RESPONSE = int256(1e18);
+    OptimisticAsserterInterface public optimisticAsserter;
 
     bytes public constant PROPOSAL_HASH_KEY = "proposalHash";
 
@@ -79,9 +74,8 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 requestTime;
     }
 
-    // This maps proposal hashes to the proposal timestamps.
-    // TODO: Might reuse this for mapping proposal hashes to assertionIds.
-    mapping(bytes32 => uint256) public proposalHashes;
+    // This maps proposal hashes to the assertionIds.
+    mapping(bytes32 => bytes32) public proposalHashes;
 
     /**
      * @notice Construct Optimistic Governor module.
@@ -204,6 +198,7 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 time = getCurrentTime();
         address proposer = msg.sender;
 
+        // TODO: get rid of Proposal struct since time is not passed to assertion.
         // Create proposal in memory to emit in an event.
         Proposal memory proposal;
         proposal.requestTime = time;
@@ -222,41 +217,30 @@ contract OptimisticGovernor is Module, Lockable {
         bytes32 proposalHash = keccak256(abi.encode(_transactions));
 
         // Add the proposal hash to ancillary data.
-        // TODO: rework to be compatable with claim and identifier since OA is creating ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, proposalHash);
+        bytes memory claim = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, proposalHash);
 
-        // Check that the proposal is not already mapped to a proposal time, i.e., is not a duplicate.
-        require(proposalHashes[proposalHash] == 0, "Duplicate proposals are not allowed");
+        // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
+        require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals are not allowed");
 
-        // Map the proposal hash to the current time.
-        proposalHashes[proposalHash] = time;
-        // TODO: store mapping of proposalHash to assertionId.
-        // TODO: reconsider if mapping to time above is required.
-
-        // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
-        // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/OptimisticOracleV2Interface.sol
-        // TODO: use makeAssertion on OA.
-        optimisticOracle.requestPrice(identifier, time, ancillaryData, collateral, 0);
         // TODO: Check getMinimumBond on OA. Use that only if it is greater than the bondAmount.
-        uint256 totalBond = optimisticOracle.setBond(identifier, time, ancillaryData, bondAmount);
-        // TODO: Liveness is set in makeAssertion above.
-        optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
-
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
         // This will fail if the proposer has not granted the OptimisticGovernor contract an allowance
-        // of the collateral token equal to or greater than the totalBond.
-        collateral.safeTransferFrom(msg.sender, address(this), totalBond);
-        // TODO: Replace with OA.
-        collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
+        // of the collateral token equal to or greater than the bondAmount.
+        collateral.safeTransferFrom(msg.sender, address(this), bondAmount);
+        collateral.safeIncreaseAllowance(address(optimisticAsserter), bondAmount);
 
-        // TODO: This is redundant in OA.
-        optimisticOracle.proposePriceFor(
-            msg.sender,
-            address(this),
-            identifier,
-            time,
-            ancillaryData,
-            PROPOSAL_VALID_RESPONSE
+        // Assert that the proposal is correct to the OA. If not disputed, they can be executed with executeProposal().
+        // Maps the proposal hash to the returned assertionId.
+        proposalHashes[proposalHash] = optimisticAsserter.assertTruth(
+            claim,          // claim containing proposalHash.
+            proposer,       // asserter will receive back bond if the assertion is correct.
+            address(0),     // callbackRecipient is not set. TODO: consider using for automated proposal deletion.
+            address(0),     // escalationManager is not set.
+            liveness,       // liveness in seconds.
+            collateral,     // currency in which the bond is denominated.
+            bondAmount,     // bond amount, will revert if it is less than required by the Optimistic Asserter.
+            identifier,     // identifier used to determine if the claim is correct at DVM.
+            bytes32(0)      // domainId is not set.
         );
 
         uint256 challengeWindowEnds = time + liveness;
@@ -272,32 +256,25 @@ contract OptimisticGovernor is Module, Lockable {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         bytes32 _proposalHash = keccak256(abi.encode(_transactions));
 
-        // Add the proposal hash to ancillary data.
-        // TODO: This is redundant in OA.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash);
-
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
-        require(proposalHashes[_proposalHash] != 0, "proposal hash does not exist");
+        require(proposalHashes[_proposalHash] != bytes32(0), "proposal hash does not exist");
 
-        // Get the original proposal time.
-        // TODO: Time is redundant in OA, but need to get the mapped assertionId.
-        uint256 _originalTime = proposalHashes[_proposalHash];
+        // Get the original proposal assertionId.
+        bytes32 assertionId = proposalHashes[_proposalHash];
 
         // You can not execute a proposal that has been disputed at some point in the past.
         // TODO: replace with getAssertion, but might be redundant if using EM discarding disputed assertions.
         // TODO: alternative to EM could rely on callback to delete disputed proposal.
         require(
-            optimisticOracle.getRequest(address(this), identifier, _originalTime, ancillaryData).disputer == address(0),
+            optimisticAsserter.getAssertion(assertionId).disputer == address(0),
             "Must call deleteDisputedProposal instead"
         );
 
         // Remove proposal hash so transactions can not be executed again.
         delete proposalHashes[_proposalHash];
 
-        // This will revert if the price has not been settled and can not currently be settled.
-        // TODO: replace with settleAndGetAssertionResult.
-        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
-        require(price == PROPOSAL_VALID_RESPONSE, "Proposal was rejected");
+        // This will revert if the assertion has not been settled and can not currently be settled.
+        require(optimisticAsserter.settleAndGetAssertionResult(assertionId), "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
             Transaction memory transaction = _transactions[i];
@@ -316,7 +293,7 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function deleteProposal(bytes32 _proposalHash) external onlyOwner {
         // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
+        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal does not exist");
 
         delete proposalHashes[_proposalHash];
         emit ProposalDeleted(_proposalHash, msg.sender, "DeletedByOwner");
@@ -329,19 +306,16 @@ contract OptimisticGovernor is Module, Lockable {
     // TODO: This can be replaced with assertionResolvedCallback from OA. This requires mapping assertionId to proposalHash.
     function deleteRejectedProposal(bytes32 _proposalHash) external {
         // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
+        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal does not exist");
 
-        // Add the proposal hash to ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash);
+        // Get the original proposal assertionId.
+        bytes32 assertionId = proposalHashes[_proposalHash];
 
-        // Get the original proposal time.
-        uint256 _originalTime = proposalHashes[_proposalHash];
-
-        // This will revert if the price has not been settled and cannot currently be settled.
-        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
+        // This will revert if the assertion has not been settled and cannot currently be settled.
+        bool assertionResult = optimisticAsserter.settleAndGetAssertionResult(assertionId);
 
         // Check that proposal was rejected.
-        require(price != PROPOSAL_VALID_RESPONSE, "Proposal was not rejected");
+        require(!assertionResult, "Proposal was not rejected");
 
         // Delete the proposal.
         delete proposalHashes[_proposalHash];
@@ -355,20 +329,13 @@ contract OptimisticGovernor is Module, Lockable {
     // TODO: This can be replaced with assertionDisputedCallback from OA. This requires mapping assertionId to proposalHash.
     function deleteDisputedProposal(bytes32 _proposalHash) external {
         // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
+        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal does not exist");
 
-        // Add the proposal hash to ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash);
-
-        // Get the original proposal time.
-        uint256 _originalTime = proposalHashes[_proposalHash];
-
-        // Get the state of the proposal.
-        OptimisticOracleV2Interface.Request memory request =
-            optimisticOracle.getRequest(address(this), identifier, _originalTime, ancillaryData);
+        // Get the original proposal assertionId.
+        bytes32 assertionId = proposalHashes[_proposalHash];
 
         // Check that proposal was disputed.
-        require(request.disputer != address(0), "Proposal was not disputed");
+        require(optimisticAsserter.getAssertion(assertionId).disputer != address(0), "Proposal was not disputed");
 
         // Delete the proposal.
         delete proposalHashes[_proposalHash];
@@ -395,13 +362,12 @@ contract OptimisticGovernor is Module, Lockable {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
-    // TODO: replace with syncing OA.
     function _sync() internal {
-        optimisticOracle = _getOptimisticOracle();
+        optimisticAsserter = _getOptimisticAsserter();
     }
 
-    function _getOptimisticOracle() private view returns (OptimisticOracleV2Interface) {
-        return OptimisticOracleV2Interface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracleV2));
+    function _getOptimisticAsserter() private view returns (OptimisticAsserterInterface) {
+        return OptimisticAsserterInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticAsserter));
     }
 
     function _isContract(address addr) private view returns (bool) {
