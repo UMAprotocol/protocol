@@ -301,29 +301,6 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     /**
-     * @notice Method to allow anyone to delete a proposal that was rejected.
-     * @param _proposalHash the hash of the proposal being deleted.
-     */
-    // TODO: This can be replaced with assertionResolvedCallback from OA. This requires mapping assertionId to proposalHash.
-    function deleteRejectedProposal(bytes32 _proposalHash) external {
-        // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal does not exist");
-
-        // Get the original proposal assertionId.
-        bytes32 assertionId = proposalHashes[_proposalHash];
-
-        // This will revert if the assertion has not been settled and cannot currently be settled.
-        bool assertionResult = optimisticAsserter.settleAndGetAssertionResult(assertionId);
-
-        // Check that proposal was rejected.
-        require(!assertionResult, "Proposal was not rejected");
-
-        // Delete the proposal.
-        delete proposalHashes[_proposalHash];
-        emit ProposalDeleted(_proposalHash, msg.sender, "Rejected");
-    }
-
-    /**
      * @notice Method to allow anyone to delete a proposal that was disputed.
      * @param _proposalHash the hash of the proposal being deleted.
      */
