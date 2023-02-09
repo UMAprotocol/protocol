@@ -5188,7 +5188,7 @@ describe("VotingV2", function () {
       if (toBN(slashedTokens).isNeg()) assert(startingAccountBalances[voter].gte(toBN(slashedTokens).abs()));
     }
   });
-  it.only("Can change address of slashing library between rounds and voters are slashed appropriately", async function () {
+  it("Can change address of slashing library between rounds and voters are slashed appropriately", async function () {
     // consider the slashing library being changed between. A voter should be slashed based on the slashing library that
     // was set at the round the vote resolved. For example consider there being two rounds with requests in each. In
     // round 1 the standard slashing library is used. In round 2 the slashing library changes to slashing amounts by 2x.
