@@ -70,7 +70,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         NotRequested, // Was never requested.
         Active, // Is being voted on in the current round.
         Resolved, // Was resolved in a previous round.
-        Future // Is scheduled to be voted on in a future round.
+        Future, // Is scheduled to be voted on in a future round.
+        ToDelete // Is scheduled to be deleted.
     }
 
     enum VoteParticipation {
@@ -932,6 +933,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         }
 
         if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
+        if (requestStatus == RequestStatus.ToDelete) return (false, 0, "Price will be deleted");
         (bool previouslyResolved, int256 previousPrice) =
             _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
         if (previouslyResolved) return (true, previousPrice, "");
@@ -1065,7 +1067,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             (bool isResolved, ) = _getResolvedPrice(voteInstance, priceRequest.lastVotingRound);
             if (isResolved) return RequestStatus.Resolved;
             if (_shouldDeleteRequest(_getActualRollCount(priceRequest, currentRoundId), priceRequest.isGovernance))
-                return RequestStatus.NotRequested;
+                return RequestStatus.ToDelete;
             return RequestStatus.Active;
         }
         if (priceRequest.lastVotingRound == currentRoundId) {
