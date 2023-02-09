@@ -289,18 +289,6 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     /**
-     * @notice Method to allow the owner to delete a particular proposal.
-     * @param _proposalHash the hash of the proposal being deleted.
-     */
-    function deleteProposal(bytes32 _proposalHash) external onlyOwner {
-        // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal does not exist");
-
-        delete proposalHashes[_proposalHash];
-        emit ProposalDeleted(_proposalHash, msg.sender, "DeletedByOwner");
-    }
-
-    /**
      * @notice Method to allow anyone to delete a proposal that was disputed.
      * @param _proposalHash the hash of the proposal being deleted.
      */

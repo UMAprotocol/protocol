@@ -608,8 +608,6 @@ describe("OptimisticGovernor", () => {
   //   );
   // });
 
-  it("Non-owners can not delete unexecuted proposals", async function () {});
-
   it("Owner can update stored contract parameters", async function () {});
 
   it("Non-owners can not update stored contract parameters", async function () {});
