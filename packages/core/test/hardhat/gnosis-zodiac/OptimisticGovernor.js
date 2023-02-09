@@ -298,6 +298,8 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
+    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+
     await assertEventEmitted(
       receipt,
       optimisticOracleModule,
@@ -331,7 +333,7 @@ describe("OptimisticGovernor", () => {
     const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
     const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
 
-    await optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor });
+    receipt = await optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
       startingBalance1.add(toBN(toWei("1"))).toString()
@@ -343,6 +345,13 @@ describe("OptimisticGovernor", () => {
     assert.equal(
       (await testToken2.methods.balanceOf(proposer).call()).toString(),
       startingBalance3.add(toBN(toWei("2"))).toString()
+    );
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "ProposalExecuted",
+      (event) => event.proposalHash == proposalHash && event.assertionId == assertionId
     );
   });
 

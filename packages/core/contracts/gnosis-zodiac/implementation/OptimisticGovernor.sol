@@ -27,6 +27,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     event TransactionsProposed(
         address indexed proposer,
         uint256 indexed proposalTime,
+        bytes32 indexed assertionId,
         Proposal proposal,
         bytes32 proposalHash,
         bytes explanation,
@@ -34,6 +35,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     );
 
     event TransactionExecuted(bytes32 indexed proposalHash, uint256 indexed transactionIndex);
+
+    event ProposalExecuted(bytes32 indexed proposalHash, bytes32 indexed assertionId);
 
     event ProposalDeleted(bytes32 indexed proposalHash, bytes32 indexed assertionId);
 
@@ -267,7 +270,15 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
         uint256 challengeWindowEnds = time + liveness;
 
-        emit TransactionsProposed(proposer, time, proposal, proposalHash, _explanation, challengeWindowEnds);
+        emit TransactionsProposed(
+            proposer,
+            time,
+            assertionId,
+            proposal,
+            proposalHash,
+            _explanation,
+            challengeWindowEnds
+        );
     }
 
     /**
@@ -300,6 +311,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
             );
             emit TransactionExecuted(_proposalHash, i);
         }
+
+        emit ProposalExecuted(_proposalHash, assertionId);
     }
 
     /**
