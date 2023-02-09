@@ -147,12 +147,12 @@ interface OptimisticAsserterInterface {
         bytes claim,
         address indexed asserter,
         address callbackRecipient,
-        address indexed escalationManager,
+        address escalationManager,
         address caller,
         uint64 expirationTime,
         IERC20 currency,
         uint256 bond,
-        bytes32 identifier
+        bytes32 indexed identifier
     );
 
     event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
