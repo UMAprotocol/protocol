@@ -530,7 +530,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         for (uint256 i = 0; i < pendingPriceRequestsIds.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequestsIds[i]];
-            if (_getRequestStatus(priceRequest, getCurrentRoundId()) == RequestStatus.Active) {
+            if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
                 unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
                     lastVotingRound: priceRequest.lastVotingRound,
                     isGovernance: priceRequest.isGovernance,
