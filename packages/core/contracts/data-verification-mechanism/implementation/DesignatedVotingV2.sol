@@ -43,8 +43,6 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
         _setStakeRole(uint256(Roles.Owner));
 
         finder = FinderInterface(finderAddress);
-
-        delegateToVoter();
     }
 
     /**
