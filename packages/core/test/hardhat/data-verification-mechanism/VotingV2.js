@@ -1781,9 +1781,13 @@ describe("VotingV2", function () {
       price.toString()
     );
 
-    // Check that getNumberOfPriceRequests return the correct number of price requests.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 1);
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
+    // Check that getNumberOfPriceRequestsPostUpdate return the correct number of price requests.
+    assert.equal((await voting.methods.getNumberOfPriceRequestsPostUpdate().call()).numberPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequestsPostUpdate().call()).numberResolvedPriceRequests, 1);
+
+    // Check that getPendingRequests returns the pending price requests without updating.
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
     // Check that getPendingRequests returns the pending price requests updated.
     assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 1);
@@ -3115,8 +3119,8 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]); // Move into the reveal phase
 
-    // We should have a total number of priceRequestIds (instances where prices are requested) of 4.
-    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 4);
+    // We should have a total number of priceRequestIds (instances where prices are requested) of 3.
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 3);
 
     // Consider the slashing. There were a total of 4 requests that actually settled. Account2 and account3 were
     // slashed every time as they did not participate in any votes. Account4 only participated in the last vote.
@@ -4425,6 +4429,18 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
 
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
+
+    await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 3);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
+
+    await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 2);
+
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 4);
   });
