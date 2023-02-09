@@ -47,6 +47,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
     event SetIdentifier(bytes32 indexed identifier);
 
+    event SetEscalationManager(address indexed escalationManager);
+
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
     FinderInterface public immutable finder;
 
@@ -59,6 +61,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     // TODO: might require OA compatable identifier.
     bytes32 public identifier;
     OptimisticAsserterInterface public optimisticAsserter;
+    address public escalationManager;
 
     bytes public constant PROPOSAL_HASH_KEY = "proposalHash";
 
@@ -182,6 +185,16 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     /**
+     * @notice Sets the escalation manager for future proposals.
+     * @param _escalationManager address of the escalation manager, can be zero to disable escalation manager.
+     */
+    function setEscalationManager(address _escalationManager) public onlyOwner {
+        require(_isContract(_escalationManager), "EM not a contract");
+        escalationManager = _escalationManager;
+        emit SetEscalationManager(_escalationManager);
+    }
+
+    /**
      * @notice This pulls in the most up-to-date Optimistic Oracle.
      * @dev If a new OptimisticOracle is added and this is run between a proposal's introduction and execution, the
      * proposal will become unexecutable.
@@ -242,7 +255,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
                 claim, // claim containing proposalHash.
                 proposer, // asserter will receive back bond if the assertion is correct.
                 address(this), // callbackRecipient is set to this contract for automated proposal deletion on disputes.
-                address(0), // escalationManager is not set.
+                escalationManager, // escalationManager (if set) used for whitelisting proposers / disputers.
                 liveness, // liveness in seconds.
                 collateral, // currency in which the bond is denominated.
                 totalBond, // bond amount, will revert if it is less than required by the Optimistic Asserter.
