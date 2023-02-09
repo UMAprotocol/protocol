@@ -4425,20 +4425,8 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
 
-    // assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 4);
-    // assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
-
-    // await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
-    // assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 3);
-    // assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
-
-    // await voting.methods.processResolvablePriceRequestsRange(1).send({ from: accounts[0] });
-    // assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
-    // assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 2);
-
-    // await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
-    // assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
-    // assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 4);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 4);
   });
   it("Can successfully remove large amounts of spam piecewise", async function () {
     // Request so many requests in one go that we cant resolve them all in one transaction. Rather, we need to update
