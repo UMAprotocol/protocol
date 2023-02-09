@@ -633,15 +633,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
         PriceRequest storage priceRequest = priceRequests[resolvedPriceRequestIds[requestIndex]];
-        uint32 requestRound = priceRequest.lastVotingRound;
-        VoteInstance storage voteInstance = priceRequest.voteInstances[requestRound];
+        uint32 lastVotingRound = priceRequest.lastVotingRound;
+        VoteInstance storage voteInstance = priceRequest.voteInstances[lastVotingRound];
 
         uint256 totalVotes = voteInstance.results.totalVotes;
         uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
-        uint256 totalStaked = rounds[requestRound].cumulativeStakeAtRound;
+        uint256 totalStaked = rounds[lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            rounds[requestRound].slashingLibrary.calcSlashing(
+            rounds[lastVotingRound].slashingLibrary.calcSlashing(
                 totalStaked,
                 totalVotes,
                 totalCorrectVotes,
@@ -652,7 +652,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 totalSlashed =
             ((noVoteSlash * (totalStaked - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
 
-        return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes, requestRound);
+        return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes, lastVotingRound);
     }
 
     /**
