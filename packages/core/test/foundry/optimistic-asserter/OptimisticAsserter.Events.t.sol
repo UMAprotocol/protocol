@@ -42,7 +42,8 @@ contract OptimisticAsserterEvents is CommonOptimisticAsserterTest {
             TestAddress.account1,
             uint64(timer.getCurrentTime()) + defaultLiveness,
             defaultCurrency,
-            defaultBond
+            defaultBond,
+            defaultIdentifier
         );
 
         // Account1 asserts a false claim.

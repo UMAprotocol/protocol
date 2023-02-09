@@ -205,7 +205,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             msg.sender,
             time + liveness,
             currency,
-            bond
+            bond,
+            identifier
         );
     }
 

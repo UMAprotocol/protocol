@@ -151,7 +151,8 @@ interface OptimisticAsserterInterface {
         address caller,
         uint64 expirationTime,
         IERC20 currency,
-        uint256 bond
+        uint256 bond,
+        bytes32 identifier
     );
 
     event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
