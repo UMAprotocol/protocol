@@ -10,7 +10,7 @@ const {
   RegistryRolesEnum,
 } = require("@uma/common");
 // const { isEmpty } = require("lodash");
-const { utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
+const { hexToUtf8, leftPad, utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
 
 // Tested contracts
 const OptimisticGovernor = getContract("OptimisticGovernorTest");
@@ -215,6 +215,9 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
+    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const claim = utf8ToHex("proposalHash:" + proposalHash.slice(2) + ",explanation:" + hexToUtf8(explanation));
+
     await assertEventEmitted(
       receipt,
       optimisticOracleModule,
@@ -238,6 +241,22 @@ describe("OptimisticGovernor", () => {
         event.proposal.transactions[2].value == 0 &&
         event.proposal.transactions[2].data == txnData3 &&
         event.proposal.transactions[2].operation == 0
+    );
+    await assertEventEmitted(
+      receipt,
+      optimisticAsserter,
+      "AssertionMade",
+      (event) =>
+        event.assertionId == assertionId &&
+        event.domainId == leftPad(0, 64) &&
+        event.claim == claim &&
+        event.asserter == proposer &&
+        event.callbackRecipient == optimisticOracleModule.options.address &&
+        event.escalationManager == ZERO_ADDRESS &&
+        event.caller == optimisticOracleModule.options.address &&
+        event.expirationTime == endingTime &&
+        event.currency == bondToken.options.address &&
+        event.bond == bond.toString()
     );
   });
 

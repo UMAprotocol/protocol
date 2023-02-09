@@ -67,6 +67,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     address public escalationManager;
 
     bytes public constant PROPOSAL_HASH_KEY = "proposalHash";
+    bytes public constant EXPLANATION_KEY = "explanation";
 
     struct Transaction {
         address to;
@@ -235,8 +236,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         // Create the proposal hash.
         bytes32 proposalHash = keccak256(abi.encode(_transactions));
 
-        // Add the proposal hash to ancillary data.
-        bytes memory claim = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, proposalHash);
+        // Add the proposal hash and explanation to ancillary data.
+        bytes memory claim = _constructClaim(proposalHash, _explanation);
 
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
         require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals are not allowed");
@@ -368,5 +369,16 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
     function _isContract(address addr) private view returns (bool) {
         return addr.code.length > 0;
+    }
+
+    function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) private pure returns (bytes memory) {
+        return
+            abi.encodePacked(
+                AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash),
+                ",",
+                EXPLANATION_KEY,
+                ":",
+                _explanation
+            );
     }
 }
