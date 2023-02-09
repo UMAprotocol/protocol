@@ -5228,6 +5228,11 @@ describe("VotingV2", function () {
       (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       price.toString()
     );
+
+    // However, cant request another price as migrated.
+    assert(
+      await didContractThrow(voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract }))
+    );
   });
 
   const addNonSlashingVote = async () => {
