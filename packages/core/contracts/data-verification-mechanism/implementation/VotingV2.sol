@@ -293,6 +293,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes memory ancillaryData,
         bool isGovernance
     ) internal {
+        // Process any resolvable price requests
+        processResolvablePriceRequests();
         require(time <= getCurrentTime(), "Can only request in past");
         require(isGovernance || _getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(ancillaryData.length <= ANCILLARY_BYTES_LIMIT, "Invalid ancillary data");
