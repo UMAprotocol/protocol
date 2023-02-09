@@ -420,8 +420,7 @@ describe("OptimisticGovernor", () => {
       (event) => event.assertionId == assertionId && event.caller == disputer && event.disputer == disputer
     );
 
-    // Disputed proposal hash can be deleted from any address.
-    await optimisticOracleModule.methods.deleteDisputedProposal(proposalHash).send({ from: rando });
+    // Disputed proposal hash is deleted automatically from callback.
     const disputedProposalHash = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
     assert.equal(disputedProposalHash, 0);
   });
@@ -470,8 +469,7 @@ describe("OptimisticGovernor", () => {
     // Dispute proposal
     await optimisticAsserter.methods.disputeAssertion(assertionId, disputer).send({ from: disputer });
 
-    // Disputed proposal hash can be deleted from any address.
-    await optimisticOracleModule.methods.deleteDisputedProposal(proposalHash).send({ from: rando });
+    // Disputed proposal hash is deleted automatically from callback.
     const disputedProposalHashTimestamp = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
     assert.equal(disputedProposalHashTimestamp, 0);
 

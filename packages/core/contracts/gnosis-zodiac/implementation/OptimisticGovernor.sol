@@ -13,12 +13,13 @@ import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterfac
 import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
 
 import "../../optimistic-asserter/interfaces/OptimisticAsserterInterface.sol";
+import "../../optimistic-asserter/interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
 
-contract OptimisticGovernor is Module, Lockable {
+contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Module, Lockable {
     using SafeERC20 for IERC20;
 
     event OptimisticGovernorDeployed(address indexed owner, address indexed avatar, address target);
@@ -34,7 +35,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     event TransactionExecuted(bytes32 indexed proposalHash, uint256 indexed transactionIndex);
 
-    event ProposalDeleted(bytes32 indexed proposalHash, address indexed sender, bytes32 indexed status);
+    event ProposalDeleted(bytes32 indexed proposalHash, bytes32 indexed assertionId);
 
     event SetBond(IERC20 indexed collateral, uint256 indexed bondAmount);
 
@@ -75,6 +76,9 @@ contract OptimisticGovernor is Module, Lockable {
 
     // This maps proposal hashes to the assertionIds.
     mapping(bytes32 => bytes32) public proposalHashes;
+
+    // This maps assertionIds to the proposal hashes.
+    mapping(bytes32 => bytes32) public assertionIds;
 
     /**
      * @notice Construct Optimistic Governor module.
@@ -232,18 +236,21 @@ contract OptimisticGovernor is Module, Lockable {
         collateral.safeIncreaseAllowance(address(optimisticAsserter), totalBond);
 
         // Assert that the proposal is correct to the OA. If not disputed, they can be executed with executeProposal().
-        // Maps the proposal hash to the returned assertionId.
-        proposalHashes[proposalHash] = optimisticAsserter.assertTruth(
-            claim, // claim containing proposalHash.
-            proposer, // asserter will receive back bond if the assertion is correct.
-            address(0), // callbackRecipient is not set. TODO: consider using for automated proposal deletion.
-            address(0), // escalationManager is not set.
-            liveness, // liveness in seconds.
-            collateral, // currency in which the bond is denominated.
-            totalBond, // bond amount, will revert if it is less than required by the Optimistic Asserter.
-            identifier, // identifier used to determine if the claim is correct at DVM.
-            bytes32(0) // domainId is not set.
-        );
+        // Maps the proposal hash to the returned assertionId and vice versa.
+        bytes32 assertionId =
+            optimisticAsserter.assertTruth(
+                claim, // claim containing proposalHash.
+                proposer, // asserter will receive back bond if the assertion is correct.
+                address(this), // callbackRecipient is set to this contract for automated proposal deletion on disputes.
+                address(0), // escalationManager is not set.
+                liveness, // liveness in seconds.
+                collateral, // currency in which the bond is denominated.
+                totalBond, // bond amount, will revert if it is less than required by the Optimistic Asserter.
+                identifier, // identifier used to determine if the claim is correct at DVM.
+                bytes32(0) // domainId is not set.
+            );
+        proposalHashes[proposalHash] = assertionId;
+        assertionIds[assertionId] = proposalHash;
 
         uint256 challengeWindowEnds = time + liveness;
 
@@ -264,15 +271,9 @@ contract OptimisticGovernor is Module, Lockable {
         // Get the original proposal assertionId.
         bytes32 assertionId = proposalHashes[_proposalHash];
 
-        // You can not execute a proposal that has been disputed at some point in the past.
-        // TODO: alternative is discard oracle in EM or rely on callback to delete disputed proposal.
-        require(
-            optimisticAsserter.getAssertion(assertionId).disputer == address(0),
-            "Must call deleteDisputedProposal instead"
-        );
-
-        // Remove proposal hash so transactions can not be executed again.
+        // Remove proposal hash and assertionId so transactions can not be executed again.
         delete proposalHashes[_proposalHash];
+        delete assertionIds[assertionId];
 
         // This will revert if the assertion has not been settled and can not currently be settled.
         require(optimisticAsserter.settleAndGetAssertionResult(assertionId), "Proposal was rejected");
@@ -289,24 +290,27 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     /**
-     * @notice Method to allow anyone to delete a proposal that was disputed.
-     * @param _proposalHash the hash of the proposal being deleted.
+     * @notice Callback to automatically delete a proposal that was disputed.
+     * @param assertionId the identifier of the disputed assertion.
      */
-    // TODO: This can be replaced with assertionDisputedCallback from OA. This requires mapping assertionId to proposalHash.
-    function deleteDisputedProposal(bytes32 _proposalHash) external {
-        // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal does not exist");
+    function assertionDisputedCallback(bytes32 assertionId) public {
+        // TODO: Check that OG does not break for potential OA contract upgrades.
+        require(msg.sender == address(optimisticAsserter), "Not authorized");
 
-        // Get the original proposal assertionId.
-        bytes32 assertionId = proposalHashes[_proposalHash];
-
-        // Check that proposal was disputed.
-        require(optimisticAsserter.getAssertion(assertionId).disputer != address(0), "Proposal was not disputed");
-
-        // Delete the proposal.
-        delete proposalHashes[_proposalHash];
-        emit ProposalDeleted(_proposalHash, msg.sender, "Disputed");
+        // Delete the disputed proposal and associated assertionId.
+        bytes32 proposalHash = assertionIds[assertionId];
+        delete proposalHashes[proposalHash];
+        delete assertionIds[assertionId];
+        emit ProposalDeleted(proposalHash, assertionId);
     }
+
+    /**
+     * @notice Callback function that is called by Optimistic Asserter when an assertion is resolved.
+     * @dev This function does nothing and is only here to satisfy the callback recipient interface.
+     * @param assertionId The identifier of the assertion that was resolved.
+     * @param assertedTruthfully Whether the assertion was resolved as truthful or not.
+     */
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public {}
 
     /**
      * @notice Gets the current time for this contract.
