@@ -5188,6 +5188,47 @@ describe("VotingV2", function () {
       if (toBN(slashedTokens).isNeg()) assert(startingAccountBalances[voter].gte(toBN(slashedTokens).abs()));
     }
   });
+  it("Can still resolve requests if voting contract migrates during vote cycle", async function () {
+    // Consider the situation where during a voting cycle the voting contract is migrated to a new address. This could
+    // happen if there are requests at the same time as a contract upgrade, for example. In this situation the prices that
+    // were requested before the migration should still be able to be resolved.
+
+    // Request a price.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    // Say one voter is able to commit before the execution of the migration.
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    let hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+
+    // Now, before anyone else can commit the migration happens. This voter should be able to reveal and other voters
+    // should be able to commit and reveal without issue, despite the migration.
+    console.log("A");
+    await voting.methods.setMigrated(rand).send({ from: account1 });
+    console.log("B");
+
+    let hash2 = computeVoteHash({ ...baseRequest, price: price, account: account2, time: time });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
+
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
+
+    // The price should be resolved.
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+  });
 
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
