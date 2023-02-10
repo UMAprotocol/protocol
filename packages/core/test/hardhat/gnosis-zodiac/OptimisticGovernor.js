@@ -125,7 +125,7 @@ describe("OptimisticGovernor", () => {
       timer.options.address
     ).send({ from: owner });
 
-    avatar.methods.setModule(optimisticOracleModule.options.address).send({ from: owner });
+    await avatar.methods.setModule(optimisticOracleModule.options.address).send({ from: owner });
 
     await bondToken.methods.mint(proposer, doubleTotalBond).send({ from: owner });
     await bondToken.methods.approve(optimisticOracleModule.options.address, doubleTotalBond).send({ from: proposer });
