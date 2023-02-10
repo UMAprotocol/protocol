@@ -5243,7 +5243,7 @@ describe("VotingV2", function () {
 
     // Equally, we should see the stakers who did not participate slashed at the expected rates. Consider account2. They
     // did not vote in either request and should habve been slashed at 0.0016 for the first request as 32mm * 0.0016 = 51200
-    // and for the second request at 0.0032 * (32mm-51200) = 102236.16. They should therefore have a balance of 
+    // and for the second request at 0.0032 * (32mm-51200) = 102236.16. They should therefore have a balance of
     // 32mm - 51200 - 102236.16 = 31846563.84
     assert.equal(await voting.methods.getVoterStakePostUpdate(account2).call(), toWei("31846563.84"));
   });
