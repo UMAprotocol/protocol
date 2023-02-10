@@ -603,6 +603,68 @@ describe("OptimisticGovernor", () => {
     );
   });
 
+  it("Can delete proposal after optimistic asserter upgrade", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { assertionId } = (await findEvent(receipt, optimisticAsserter, "AssertionMade")).match.returnValues;
+
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
+    // Upgrade the optimistic asserter.
+    const defaultCurrency = await TestnetERC20.new("Default Currency", "DC", 18).send({ from: owner });
+    const newOptimisticAsserter = await OptimisticAsserterTest.new(
+      finder.options.address,
+      defaultCurrency.options.address,
+      liveness,
+      timer.options.address
+    ).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticAsserter), newOptimisticAsserter.options.address)
+      .send({ from: owner });
+
+    // deleteProposalOnUpgrade should still fail as the upgraded optimistic asserter is not yet cached.
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer })
+      )
+    );
+
+    // Cache the upgraded optimistic asserter.
+    await optimisticOracleModule.methods.sync().send({ from: disputer });
+
+    // deleteProposalOnUpgrade should now succeed.
+    let receipt2 = await optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer });
+    await assertEventEmitted(
+      receipt2,
+      optimisticOracleModule,
+      "ProposalDeleted",
+      (event) => event.proposalHash == proposalHash && event.assertionId == assertionId
+    );
+  });
+
   it("Disputed proposals can not be executed", async function () {
     // Issue some test tokens to the avatar address.
     await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
