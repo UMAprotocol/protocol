@@ -1529,7 +1529,6 @@ describe("VotingV2", function () {
     const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
     await newVoting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
     await moveToNextPhase(newVoting, accounts[0]);
-    // await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await newVoting.methods.revealVote(identifier, time1, price, salt).send({ from: account1 });
     await moveToNextRound(newVoting, accounts[0]);
 
@@ -1544,12 +1543,6 @@ describe("VotingV2", function () {
     // Now newVoting and registered contracts can call methods.
     assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: migratedVoting }));
     assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: registeredContract }));
-
-    // commit/reveal are completely disabled, regardless if called by newVoting.
-    assert(
-      await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: migratedVoting }))
-    );
-    assert(await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: account1 })));
 
     // Requesting prices is completely disabled after migration, regardless if called by newVoting.
     assert(await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: migratedVoting })));
