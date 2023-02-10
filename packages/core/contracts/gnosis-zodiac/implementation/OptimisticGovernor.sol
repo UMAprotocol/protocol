@@ -193,7 +193,6 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @param _escalationManager address of the escalation manager, can be zero to disable escalation manager.
      */
     function setEscalationManager(address _escalationManager) external onlyOwner {
-        require(_isContract(_escalationManager), "EM not a contract");
         escalationManager = _escalationManager;
         emit SetEscalationManager(_escalationManager);
     }
