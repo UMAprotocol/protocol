@@ -288,7 +288,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored
         // proposal hash. This is possible when a) the transactions have not been proposed, b) transactions have already
-        // been executed or c) the proposal was disputed.
+        // been executed, c) the proposal was disputed or d) the proposal was deleted after Optimistic Asserter upgrade.
         require(proposalHashes[_proposalHash] != bytes32(0), "Proposal hash does not exist");
 
         // Get the original proposal assertionId.
@@ -317,19 +317,43 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     /**
+     * @notice Function to delete a proposal on an Optimistic Asserter upgrade.
+     * @param _proposalHash the hash of the proposal to delete.
+     * @dev In case of an Optimistic Asserter upgrade, the proposal execution would be blocked as its related
+     * assertionId would not be recognized by the new Optimistic Asserter. This function allows the proposal to be
+     * deleted if detecting an Optimistic Asserter upgrade so that transactions can be re-proposed if needed.
+     */
+    function deleteProposalOnUpgrade(bytes32 _proposalHash) public nonReentrant {
+        // Get the assertionId for the proposal.
+        bytes32 assertionId = proposalHashes[_proposalHash];
+
+        // Detect Optimistic Asserter upgrade by checking if it has the matching assertionId.
+        require(optimisticAsserter.getAssertion(assertionId).asserter == address(0), "OA upgrade not detected");
+
+        // Remove proposal hash and assertionId so that transactions can be re-proposed if needed.
+        delete proposalHashes[_proposalHash];
+        delete assertionIds[assertionId];
+
+        emit ProposalDeleted(_proposalHash, assertionId);
+    }
+
+    /**
      * @notice Callback to automatically delete a proposal that was disputed.
      * @param assertionId the identifier of the disputed assertion.
      */
     function assertionDisputedCallback(bytes32 assertionId) external {
-        // TODO: Check that OG does not break for potential OA contract upgrades.
-        require(msg.sender == address(optimisticAsserter), "Not authorized");
-
-        // Delete the disputed proposal and associated assertionId.
         bytes32 proposalHash = assertionIds[assertionId];
-        delete proposalHashes[proposalHash];
-        delete assertionIds[assertionId];
 
-        emit ProposalDeleted(proposalHash, assertionId);
+        // Callback should only be called by the Optimistic Asserter. Address would not match in case of contract
+        // upgrade, thus try deleting the proposal through deleteProposalOnUpgrade function that should revert if
+        // address mismatch was not caused by an Optimistic Asserter upgrade.
+        if (msg.sender == address(optimisticAsserter)) {
+            // Delete the disputed proposal and associated assertionId.
+            delete proposalHashes[proposalHash];
+            delete assertionIds[assertionId];
+
+            emit ProposalDeleted(proposalHash, assertionId);
+        } else deleteProposalOnUpgrade(proposalHash);
     }
 
     /**
