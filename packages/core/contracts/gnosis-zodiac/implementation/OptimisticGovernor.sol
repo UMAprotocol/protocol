@@ -19,6 +19,12 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
 
+/**
+ * @title Optimistic Governor
+ * @notice A contract that allows optimistic governance of a set of transactions. The contract can be used to propose
+ * transactions that can be challenged by anyone. If the challenge is not resolved within a certain liveness period, the
+ * transactions can be executed.
+ */
 contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Module, Lockable {
     using SafeERC20 for IERC20;
 
@@ -52,51 +58,46 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
     event SetEscalationManager(address indexed escalationManager);
 
-    // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
-    FinderInterface public immutable finder;
+    FinderInterface public immutable finder; // Finder used to discover other UMA ecosystem contracts.
 
-    IERC20 public collateral;
-    uint64 public liveness;
-    // Extra bond in addition to the final fee for the collateral type.
-    uint256 public bondAmount;
-    string public rules;
-    // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
-    // TODO: might require OA compatable identifier.
-    bytes32 public identifier;
-    OptimisticAsserterInterface public optimisticAsserter;
-    address public escalationManager;
+    IERC20 public collateral; // Collateral currency used to assert proposed transactions.
+    uint64 public liveness; // The amount of time to dispute proposed transactions before they can be executed.
+    uint256 public bondAmount; // Configured amount of collateral currency to make assertions for proposed transactions.
+    string public rules; // Rules for the Gnosis Safe (e.g., IPFS hash or URI).
+    bytes32 public identifier; // Identifier used to request price from the DVM, compatible with Optimistic Asserter.
+    OptimisticAsserterInterface public optimisticAsserter; // Optimistic Asserter contract used to assert proposed transactions.
+    address public escalationManager; // Optional Escalation Manager contract to whitelist proposers / disputers.
 
+    // Keys for assertion claim data.
     bytes public constant PROPOSAL_HASH_KEY = "proposalHash";
     bytes public constant EXPLANATION_KEY = "explanation";
 
+    // Struct for a proposed transaction.
     struct Transaction {
-        address to;
-        Enum.Operation operation;
-        uint256 value;
-        bytes data;
+        address to; // The address to which the transaction is being sent.
+        Enum.Operation operation; // Operation type of transaction: 0 == call, 1 == delegate call.
+        uint256 value; // The value, in wei, to be sent with the transaction.
+        bytes data; // The data payload to be sent in the transaction.
     }
 
+    // Struct for a proposed set of transactions, used only for off-chain infrastructure.
     struct Proposal {
         Transaction[] transactions;
         uint256 requestTime;
     }
 
-    // This maps proposal hashes to the assertionIds.
-    mapping(bytes32 => bytes32) public proposalHashes;
-
-    // This maps assertionIds to the proposal hashes.
-    mapping(bytes32 => bytes32) public assertionIds;
+    mapping(bytes32 => bytes32) public proposalHashes; // Maps proposal hashes to assertionIds.
+    mapping(bytes32 => bytes32) public assertionIds; // Maps assertionIds to proposal hashes.
 
     /**
      * @notice Construct Optimistic Governor module.
      * @param _finder Finder address.
      * @param _owner Address of the owner.
      * @param _collateral Address of the ERC20 collateral used for bonds.
-     * @param _bondAmount Additional bond required, beyond the final fee.
+     * @param _bondAmount Amount of collateral currency to make assertions for proposed transactions
      * @param _rules Reference to the rules for the Gnosis Safe (e.g., IPFS hash or URI).
-     * @param _identifier The approved identifier to be used with the contract, usually "ZODIAC".
+     * @param _identifier The approved identifier to be used with the contract, compatible with Optimistic Asserter.
      * @param _liveness The period, in seconds, in which a proposal can be disputed.
-     * @dev if the bondAmount is zero, there will be no reward for disputers, reducing incentives to dispute invalid proposals.
      */
     constructor(
         address _finder,
@@ -113,6 +114,12 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         setUp(initializeParams);
     }
 
+    /**
+     * @notice Sets up the Optimistic Governor module.
+     * @param initializeParams ABI encoded parameters to initialize the module with.
+     * @dev This method can be called only either by the constructor or as part of first time initialization when
+     * cloning the module.
+     */
     function setUp(bytes memory initializeParams) public override initializer {
         _startReentrantGuardDisabled();
         __Ownable_init();
@@ -142,12 +149,12 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @param _bondAmount amount of the bond token that will need to be paid for future proposals.
      */
     function setCollateralAndBond(IERC20 _collateral, uint256 _bondAmount) public onlyOwner {
-        // ERC20 token to be used as collateral (must be approved by UMA Store contract).
+        // ERC20 token to be used as collateral (must be approved by UMA governance).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "Bond token not supported");
         collateral = _collateral;
 
-        // Value of the bond required for proposals, in addition to the final fee. A bond of zero is
-        // acceptable, in which case the Optimistic Oracle will require the final fee as the bond.
+        // Value of the bond posted for asserting the proposed transactions. If the minimum amount required by
+        // Optimistic Asserter is higher this contract will attempt to pull the required bond amount.
         bondAmount = _bondAmount;
         emit SetBond(_collateral, _bondAmount);
     }
@@ -178,7 +185,6 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
     /**
      * @notice Sets the identifier for future proposals.
-     * @dev Changing this after a proposal is made but before it is executed will make it unexecutable.
      * @param _identifier identifier to set.
      */
     function setIdentifier(bytes32 _identifier) public onlyOwner {
@@ -189,8 +195,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     /**
-     * @notice Sets the escalation manager for future proposals.
-     * @param _escalationManager address of the escalation manager, can be zero to disable escalation manager.
+     * @notice Sets the Escalation Manager for future proposals.
+     * @param _escalationManager address of the Escalation Manager, can be zero to disable this functionality.
      */
     function setEscalationManager(address _escalationManager) external onlyOwner {
         escalationManager = _escalationManager;
@@ -198,8 +204,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     /**
-     * @notice This pulls in the most up-to-date Optimistic Oracle.
-     * @dev If a new OptimisticOracle is added and this is run between a proposal's introduction and execution, the
+     * @notice This caches the most up-to-date Optimistic Asserter.
+     * @dev If a new Optimistic Asserter is added and this is run between a proposal's introduction and execution, the
      * proposal will become unexecutable.
      */
     function sync() external nonReentrant {
@@ -207,17 +213,17 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     /**
-     * @notice Makes a new proposal for transactions to be executed with an "explanation" argument.
+     * @notice Makes a new proposal for transactions to be executed with an explanation argument.
      * @param _transactions the transactions being proposed.
      * @param _explanation Auxillary information that can be referenced to validate the proposal.
-     * @dev Proposer must grant the contract collateral allowance equal or greater than the totalBond.
+     * @dev Proposer must grant the contract collateral allowance at least to the bondAmount or result of getMinimumBond
+     * from the Optimistic Asserter, whichever is greater.
      */
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) external nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
         uint256 time = getCurrentTime();
         address proposer = msg.sender;
 
-        // TODO: get rid of Proposal struct since time is not passed to assertion.
         // Create proposal in memory to emit in an event.
         Proposal memory proposal;
         proposal.requestTime = time;
@@ -241,44 +247,35 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
         require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals not allowed");
 
-        // Check the minimum required bond and use that if it is greater than the bondAmount.
+        // Check the minimum required bond and use that instead if it is greater than the bondAmount.
         uint256 minimumBond = optimisticAsserter.getMinimumBond(address(collateral));
         uint256 totalBond = minimumBond > bondAmount ? minimumBond : bondAmount;
 
-        // Get the bond from the proposer and approve the required bond to be used by the optimistic asserter.
-        // This will fail if the proposer has not granted the OptimisticGovernor contract an allowance
+        // Get the bond from the proposer and approve the required bond to be used by the Optimistic Asserter.
+        // This will fail if the proposer has not granted the Optimistic Governor contract an allowance
         // of the collateral token equal to or greater than the totalBond.
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticAsserter), totalBond);
 
-        // Assert that the proposal is correct to the OA. If not disputed, they can be executed with executeProposal().
-        // Maps the proposal hash to the returned assertionId and vice versa.
+        // Assert that the proposal is correct at the Optimistic Asserter.
         bytes32 assertionId =
             optimisticAsserter.assertTruth(
-                claim, // claim containing proposalHash.
+                claim, // claim containing proposalHash and explanation.
                 proposer, // asserter will receive back bond if the assertion is correct.
                 address(this), // callbackRecipient is set to this contract for automated proposal deletion on disputes.
                 escalationManager, // escalationManager (if set) used for whitelisting proposers / disputers.
                 liveness, // liveness in seconds.
                 collateral, // currency in which the bond is denominated.
-                totalBond, // bond amount, will revert if it is less than required by the Optimistic Asserter.
+                totalBond, // bond amount used to assert proposal.
                 identifier, // identifier used to determine if the claim is correct at DVM.
                 bytes32(0) // domainId is not set.
             );
+
+        // Maps the proposal hash to the returned assertionId and vice versa.
         proposalHashes[proposalHash] = assertionId;
         assertionIds[assertionId] = proposalHash;
 
-        uint256 challengeWindowEnds = time + liveness;
-
-        emit TransactionsProposed(
-            proposer,
-            time,
-            assertionId,
-            proposal,
-            proposalHash,
-            _explanation,
-            challengeWindowEnds
-        );
+        emit TransactionsProposed(proposer, time, assertionId, proposal, proposalHash, _explanation, time + liveness);
     }
 
     /**
@@ -289,7 +286,9 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         bytes32 _proposalHash = keccak256(abi.encode(_transactions));
 
-        // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
+        // This will reject the transaction if the proposal hash generated from the inputs does not match the stored
+        // proposal hash. This is possible when a) the transactions have not been proposed, b) transactions have already
+        // been executed or c) the proposal was disputed.
         require(proposalHashes[_proposalHash] != bytes32(0), "Proposal hash does not exist");
 
         // Get the original proposal assertionId.
@@ -303,6 +302,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         // This will revert if the assertion has not been settled and can not currently be settled.
         optimisticAsserter.settleAndGetAssertionResult(assertionId);
 
+        // Execute the transactions.
         for (uint256 i = 0; i < _transactions.length; i++) {
             Transaction memory transaction = _transactions[i];
 
@@ -328,6 +328,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         bytes32 proposalHash = assertionIds[assertionId];
         delete proposalHashes[proposalHash];
         delete assertionIds[assertionId];
+
         emit ProposalDeleted(proposalHash, assertionId);
     }
 
@@ -347,30 +348,34 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         return block.timestamp;
     }
 
+    // Gets the address of Collateral Whitelist from the Finder.
     function _getCollateralWhitelist() internal view returns (AddressWhitelistInterface) {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
+    // Gets the address of Identifier Whitelist from the Finder.
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
+    // Gets the address of Store contract from the Finder.
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
+    // Caches the address of the Optimistic Asserter from the Finder.
     function _sync() internal {
-        optimisticAsserter = _getOptimisticAsserter();
+        optimisticAsserter = OptimisticAsserterInterface(
+            finder.getImplementationAddress(OracleInterfaces.OptimisticAsserter)
+        );
     }
 
-    function _getOptimisticAsserter() internal view returns (OptimisticAsserterInterface) {
-        return OptimisticAsserterInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticAsserter));
-    }
-
+    // Checks if the address is a contract.
     function _isContract(address addr) internal view returns (bool) {
         return addr.code.length > 0;
     }
 
+    // Constructs the claim that will be asserted at the Optimistic Asserter.
     function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) internal pure returns (bytes memory) {
         return
             abi.encodePacked(
