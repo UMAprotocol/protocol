@@ -663,6 +663,11 @@ describe("OptimisticGovernor", () => {
       "ProposalDeleted",
       (event) => event.proposalHash == proposalHash && event.assertionId == assertionId
     );
+
+    // Revert to the original optimistic asserter for other tests.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticAsserter), optimisticAsserter.options.address)
+      .send({ from: owner });
   });
 
   it("Disputed proposals can not be executed", async function () {
