@@ -26,6 +26,7 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const TestnetERC20 = getContract("TestnetERC20");
 const TestAvatar = getContract("TestAvatar");
+const FullPolicyEscalationManager = getContract("FullPolicyEscalationManager");
 
 const finalFee = toWei("100");
 const liveness = 7200;
@@ -1017,6 +1018,91 @@ describe("OptimisticGovernor", () => {
       await didContractThrow(
         optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer })
       )
+    );
+  });
+
+  it("Whitelist proposers with Escalation Manager", async function () {
+    // Deploy Full Policy Escalation Manager and set it as escalation manager.
+    const escalationManager = await FullPolicyEscalationManager.new(optimisticAsserter.options.address).send({
+      from: owner,
+    });
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(escalationManager.options.address)
+      .encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Configure whitelisting for asserters (requires also whitelisting for asserting callers).
+    await escalationManager.methods.configureEscalationManager(true, true, false, false, false).send({ from: owner });
+
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    // Without actual whitelist the proposal should revert.
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer })
+      )
+    );
+
+    // Whitelist Optimistic Governor as whitelisted asserting caller and proposer as whitelisted asserter.
+    await escalationManager.methods
+      .setWhitelistedAssertingCallers(optimisticOracleModule.options.address, true)
+      .send({ from: owner });
+    await escalationManager.methods.setWhitelistedAsserters(proposer, true).send({ from: owner });
+
+    // Proposal should now be allowed.
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+    const endingTime = proposalTime + liveness;
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "TransactionsProposed",
+      (event) =>
+        event.proposer == proposer &&
+        event.proposalTime == proposalTime &&
+        event.proposalHash == proposalHash &&
+        event.explanation == explanation &&
+        event.challengeWindowEnds == endingTime &&
+        event.proposal.requestTime == proposalTime &&
+        event.proposal.transactions[0].to == testToken.options.address &&
+        event.proposal.transactions[0].value == 0 &&
+        event.proposal.transactions[0].data == txnData1 &&
+        event.proposal.transactions[0].operation == 0 &&
+        event.proposal.transactions[1].to == testToken.options.address &&
+        event.proposal.transactions[1].value == 0 &&
+        event.proposal.transactions[1].data == txnData2 &&
+        event.proposal.transactions[1].operation == 0 &&
+        event.proposal.transactions[2].to == testToken2.options.address &&
+        event.proposal.transactions[2].value == 0 &&
+        event.proposal.transactions[2].data == txnData3 &&
+        event.proposal.transactions[2].operation == 0
     );
   });
 });
