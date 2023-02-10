@@ -374,7 +374,39 @@ describe("OptimisticGovernor", () => {
     );
   });
 
-  it("Proposals can not be executed twice", async function () {});
+  it("Proposals can not be executed twice", async function () {
+    // Issue some test tokens to the avatar address (double the amount needed to execute the proposal).
+    await testToken.methods.allocateTo(avatar.options.address, toWei("6")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("4")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send half of newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    await optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer });
+
+    // Wait until the end of the dispute period.
+    await advanceTime(liveness);
+
+    // Execute the proposal.
+    await optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor });
+
+    // Try to execute the proposal again.
+    assert(
+      await didContractThrow(optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor }))
+    );
+  });
 
   it("Proposals can not be executed until after liveness", async function () {
     // Issue some test tokens to the avatar address.
