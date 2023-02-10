@@ -854,7 +854,40 @@ describe("OptimisticGovernor", () => {
     );
   });
 
-  it("Non-owners can not update stored contract parameters", async function () {});
+  it("Non-owners can not update stored contract parameters", async function () {
+    // Deploy new bond token and try to set it as the new collateral currency from a non-owner.
+    const newBondToken = await ERC20.new("New Bond", "BOND2", 18).send({ from: owner });
+    await collateralWhitelist.methods.addToWhitelist(newBondToken.options.address).send({ from: owner });
+    const newBondAmount = "1";
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods
+          .setCollateralAndBond(newBondToken.options.address, newBondAmount)
+          .send({ from: rando })
+      )
+    );
+
+    // Try set new rules from a non-owner.
+    const newRules = "New rules";
+    assert(await didContractThrow(optimisticOracleModule.methods.setRules(newRules).send({ from: rando })));
+
+    // Try set new liveness from a non-owner.
+    const newLiveness = "10";
+    assert(await didContractThrow(optimisticOracleModule.methods.setLiveness(newLiveness).send({ from: rando })));
+
+    // Try set new identifier from a non-owner.
+    const newIdentifier = rightPad(utf8ToHex("New Identifier"), 64);
+    await identifierWhitelist.methods.addSupportedIdentifier(newIdentifier).send({ from: owner });
+    assert(await didContractThrow(optimisticOracleModule.methods.setIdentifier(newIdentifier).send({ from: rando })));
+
+    // Try set new Escalation Manager from a non-owner.
+    const newEscalationManager = executor;
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.setEscalationManager(newEscalationManager).send({ from: rando })
+      )
+    );
+  });
 
   it("Proposals can be executed with minimal proxy optimistic governor", async function () {
     // Deploy proxy factory.
