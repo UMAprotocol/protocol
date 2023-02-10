@@ -320,7 +320,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @notice Callback to automatically delete a proposal that was disputed.
      * @param assertionId the identifier of the disputed assertion.
      */
-    function assertionDisputedCallback(bytes32 assertionId) public {
+    function assertionDisputedCallback(bytes32 assertionId) external {
         // TODO: Check that OG does not break for potential OA contract upgrades.
         require(msg.sender == address(optimisticAsserter), "Not authorized");
 
@@ -337,7 +337,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @param assertionId The identifier of the assertion that was resolved.
      * @param assertedTruthfully Whether the assertion was resolved as truthful or not.
      */
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public {}
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {}
 
     /**
      * @notice Gets the current time for this contract.
