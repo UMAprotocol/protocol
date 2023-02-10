@@ -108,7 +108,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         uint64 _liveness
     ) {
         bytes memory initializeParams = abi.encode(_owner, _collateral, _bondAmount, _rules, _identifier, _liveness);
-        require(_finder != address(0), "finder address can not be empty");
+        require(_finder != address(0), "Finder address can not be empty");
         finder = FinderInterface(_finder);
         setUp(initializeParams);
     }
@@ -143,7 +143,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      */
     function setCollateralAndBond(IERC20 _collateral, uint256 _bondAmount) public onlyOwner {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
-        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
+        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "Bond token not supported");
         collateral = _collateral;
 
         // Value of the bond required for proposals, in addition to the final fee. A bond of zero is
@@ -158,7 +158,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      */
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
-        require(bytes(_rules).length > 0, "rules can not be empty");
+        require(bytes(_rules).length > 0, "Rules can not be empty");
         rules = _rules;
         emit SetRules(_rules);
     }
@@ -170,8 +170,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      */
     function setLiveness(uint64 _liveness) public onlyOwner {
         // Set liveness for disputing proposed transactions.
-        require(_liveness > 0, "liveness can't be 0");
-        require(_liveness < 5200 weeks, "liveness must be less than 5200 weeks");
+        require(_liveness > 0, "Liveness can't be 0");
+        require(_liveness < 5200 weeks, "Liveness must be less than 5200 weeks");
         liveness = _liveness;
         emit SetLiveness(_liveness);
     }
@@ -183,7 +183,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      */
     function setIdentifier(bytes32 _identifier) public onlyOwner {
         // Set identifier which is used along with the rules to determine if transactions are valid.
-        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
+        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "Identifier not supported");
         identifier = _identifier;
         emit SetIdentifier(_identifier);
     }
@@ -239,7 +239,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         bytes memory claim = _constructClaim(proposalHash, _explanation);
 
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
-        require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals are not allowed");
+        require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals not allowed");
 
         // Check the minimum required bond and use that if it is greater than the bondAmount.
         uint256 minimumBond = optimisticAsserter.getMinimumBond(address(collateral));
@@ -290,7 +290,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         bytes32 _proposalHash = keccak256(abi.encode(_transactions));
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
-        require(proposalHashes[_proposalHash] != bytes32(0), "proposal hash does not exist");
+        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal hash does not exist");
 
         // Get the original proposal assertionId.
         bytes32 assertionId = proposalHashes[_proposalHash];
@@ -307,7 +307,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
             require(
                 exec(transaction.to, transaction.value, transaction.data, transaction.operation),
-                "Failed to execute the transaction"
+                "Failed to execute transaction"
             );
             emit TransactionExecuted(_proposalHash, i);
         }
