@@ -324,8 +324,9 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * deleted if detecting an Optimistic Asserter upgrade so that transactions can be re-proposed if needed.
      */
     function deleteProposalOnUpgrade(bytes32 _proposalHash) public nonReentrant {
-        // Get the assertionId for the proposal.
+        require(_proposalHash != bytes32(0), "Invalid proposal hash");
         bytes32 assertionId = proposalHashes[_proposalHash];
+        require(assertionId != bytes32(0), "Proposal hash does not exist");
 
         // Detect Optimistic Asserter upgrade by checking if it has the matching assertionId.
         require(optimisticAsserter.getAssertion(assertionId).asserter == address(0), "OA upgrade not detected");
@@ -342,6 +343,9 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @param assertionId the identifier of the disputed assertion.
      */
     function assertionDisputedCallback(bytes32 assertionId) external {
+        // In order to optimize for happy path, the assertionId is validated for potential spoofing only in the
+        // deleteProposalOnUpgrade call. Genuine Optimistic Asserter should always pass a valid assertionId that has a
+        // matching proposalHash in this contract.
         bytes32 proposalHash = assertionIds[assertionId];
 
         // Callback should only be called by the Optimistic Asserter. Address would not match in case of contract
