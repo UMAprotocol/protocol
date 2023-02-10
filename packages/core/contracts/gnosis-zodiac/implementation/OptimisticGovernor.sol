@@ -299,8 +299,9 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         delete proposalHashes[_proposalHash];
         delete assertionIds[assertionId];
 
+        // There is no need to check the assertion result as this point can be reached only for non-disputed assertions.
         // This will revert if the assertion has not been settled and can not currently be settled.
-        require(optimisticAsserter.settleAndGetAssertionResult(assertionId), "Proposal was rejected");
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
 
         for (uint256 i = 0; i < _transactions.length; i++) {
             Transaction memory transaction = _transactions[i];
