@@ -592,6 +592,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Returns the number of current pending price requests to be voted and the number of resolved price
        requests over all time.
+     * @dev This method might return stale values if the state of the contract has changed since the last time
+       `processResolvablePriceRequests()` was called. To get the most up-to-date values, call
+       `getNumberOfPriceRequestsPostUpdate()` instead.
      * @return numberPendingPriceRequests the total number of pending prices requests.
      * @return numberResolvedPriceRequests the total number of prices resolved over all time.
      */
