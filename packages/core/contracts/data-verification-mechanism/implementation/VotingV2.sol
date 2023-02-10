@@ -475,9 +475,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // Check that the hash that was committed matches to the one that was revealed. Note that if the voter had
         // then they must reveal with the same account they had committed with.
         require(
-            keccak256(
-                abi.encodePacked(price, salt, voter, time, ancillaryData, uint256(currentRoundId), identifier)
-            ) == voteSubmission.commit,
+            keccak256(abi.encodePacked(price, salt, voter, time, ancillaryData, uint256(currentRoundId), identifier)) ==
+                voteSubmission.commit,
             "Revealed data != commit hash"
         );
 
