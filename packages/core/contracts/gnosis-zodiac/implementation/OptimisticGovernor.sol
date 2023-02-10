@@ -50,7 +50,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
     event SetCollateral(IERC20 indexed collateral);
 
-    event SetRules(string indexed rules);
+    event SetRules(string rules);
 
     event SetLiveness(uint64 indexed liveness);
 
