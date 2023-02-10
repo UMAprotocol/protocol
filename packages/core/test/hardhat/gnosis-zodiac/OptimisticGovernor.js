@@ -567,7 +567,41 @@ describe("OptimisticGovernor", () => {
     );
   });
 
-  it("Can not delete proposal that was not disputed", async function () {});
+  it("Can not delete proposal with the same optimistic asserter", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
+    // deleteProposalOnUpgrade should fail if the optimistic asserter was not upgraded.
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer })
+      )
+    );
+  });
 
   it("Disputed proposals can not be executed", async function () {
     // Issue some test tokens to the avatar address.
