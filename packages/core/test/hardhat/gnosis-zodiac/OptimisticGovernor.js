@@ -10,7 +10,7 @@ const {
   RegistryRolesEnum,
 } = require("@uma/common");
 // const { isEmpty } = require("lodash");
-const { hexToUtf8, leftPad, utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
+const { hexToUtf8, leftPad, rightPad, utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
 
 // Tested contracts
 const OptimisticGovernor = getContract("OptimisticGovernorTest");
@@ -767,7 +767,92 @@ describe("OptimisticGovernor", () => {
   //   );
   // });
 
-  it("Owner can update stored contract parameters", async function () {});
+  it("Owner can update stored contract parameters", async function () {
+    // All tests here are run through the avatar contract that is the owner of the module.
+
+    // Deploy new bond token and set it as the new collateral currency.
+    const newBondToken = await ERC20.new("New Bond", "BOND2", 18).send({ from: owner });
+    await collateralWhitelist.methods.addToWhitelist(newBondToken.options.address).send({ from: owner });
+    const newBondAmount = "1";
+    const setCollateralData = optimisticOracleModule.methods
+      .setCollateralAndBond(newBondToken.options.address, newBondAmount)
+      .encodeABI();
+    let collateralReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setCollateralData)
+      .send({ from: owner });
+
+    // Check that the new bond token is set as the collateral currency and correct amount.
+    assert.equal(await optimisticOracleModule.methods.collateral().call(), newBondToken.options.address);
+    assert.equal(await optimisticOracleModule.methods.bondAmount().call(), newBondAmount);
+    await assertEventEmitted(
+      collateralReceipt,
+      optimisticOracleModule,
+      "SetBond",
+      (event) => event.collateral == newBondToken.options.address && event.bondAmount == newBondAmount
+    );
+
+    // Set new rules.
+    const newRules = "New rules";
+    const setRulesData = optimisticOracleModule.methods.setRules(newRules).encodeABI();
+    let rulesReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setRulesData)
+      .send({ from: owner });
+
+    // Check that the new rules are set.
+    assert.equal(await optimisticOracleModule.methods.rules().call(), newRules);
+    await assertEventEmitted(rulesReceipt, optimisticOracleModule, "SetRules", (event) => event.rules == newRules);
+
+    // Set new liveness.
+    const newLiveness = "10";
+    const setLivenessData = optimisticOracleModule.methods.setLiveness(newLiveness).encodeABI();
+    let livenessReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setLivenessData)
+      .send({ from: owner });
+
+    // Check that the new liveness is set.
+    assert.equal(await optimisticOracleModule.methods.liveness().call(), newLiveness);
+    await assertEventEmitted(
+      livenessReceipt,
+      optimisticOracleModule,
+      "SetLiveness",
+      (event) => event.liveness == newLiveness
+    );
+
+    // Set new identifier and whitelist it.
+    const newIdentifier = rightPad(utf8ToHex("New Identifier"), 64);
+    await identifierWhitelist.methods.addSupportedIdentifier(newIdentifier).send({ from: owner });
+    const setIdentifierData = optimisticOracleModule.methods.setIdentifier(newIdentifier).encodeABI();
+    let identifierReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setIdentifierData)
+      .send({ from: owner });
+
+    // Check that the new identifier is set.
+    assert.equal(await optimisticOracleModule.methods.identifier().call(), newIdentifier);
+    await assertEventEmitted(
+      identifierReceipt,
+      optimisticOracleModule,
+      "SetIdentifier",
+      (event) => event.identifier == newIdentifier
+    );
+
+    // Set new Escalation Manager.
+    const newEscalationManager = executor;
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(newEscalationManager)
+      .encodeABI();
+    let escalationManagerReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Check that the new Escalation Manager is set.
+    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), newEscalationManager);
+    await assertEventEmitted(
+      escalationManagerReceipt,
+      optimisticOracleModule,
+      "SetEscalationManager",
+      (event) => event.escalationManager == newEscalationManager
+    );
+  });
 
   it("Non-owners can not update stored contract parameters", async function () {});
 
