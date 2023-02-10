@@ -997,4 +997,26 @@ describe("OptimisticGovernor", () => {
       startingBalance3.add(toBN(toWei("2"))).toString()
     );
   });
+
+  it("Cannot delete non-existing assertion", async function () {
+    // When spoofing callback with non-existing assertion its proposal hash is zero and fallback to
+    // deleteProposalOnUpgrade should revert that.
+    const assertionId = "0x1234";
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.assertionDisputedCallback(assertionId).send({ from: disputer })
+      )
+    );
+  });
+
+  it("Cannot delete non-existing proposal", async function () {
+    // When spoofing callback with non-existing proposal its proposal hash is zero and fallback to
+    // deleteProposalOnUpgrade should revert that.
+    const proposalHash = "0x1234";
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer })
+      )
+    );
+  });
 });
