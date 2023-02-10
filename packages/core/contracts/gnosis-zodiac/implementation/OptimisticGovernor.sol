@@ -363,15 +363,15 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         optimisticAsserter = _getOptimisticAsserter();
     }
 
-    function _getOptimisticAsserter() private view returns (OptimisticAsserterInterface) {
+    function _getOptimisticAsserter() internal view returns (OptimisticAsserterInterface) {
         return OptimisticAsserterInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticAsserter));
     }
 
-    function _isContract(address addr) private view returns (bool) {
+    function _isContract(address addr) internal view returns (bool) {
         return addr.code.length > 0;
     }
 
-    function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) private pure returns (bytes memory) {
+    function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) internal pure returns (bytes memory) {
         return
             abi.encodePacked(
                 AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash),
