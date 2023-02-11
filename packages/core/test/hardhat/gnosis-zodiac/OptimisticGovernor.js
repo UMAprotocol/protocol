@@ -1105,4 +1105,71 @@ describe("OptimisticGovernor", () => {
         event.proposal.transactions[2].operation == 0
     );
   });
+
+  it("Whitelist disputers with Escalation Manager", async function () {
+    // Deploy Full Policy Escalation Manager and set it as escalation manager.
+    const escalationManager = await FullPolicyEscalationManager.new(optimisticAsserter.options.address).send({
+      from: owner,
+    });
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(escalationManager.options.address)
+      .encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Configure whitelisting for disputers.
+    await escalationManager.methods.configureEscalationManager(false, false, true, false, false).send({ from: owner });
+
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { assertionId } = (await findEvent(receipt, optimisticAsserter, "AssertionMade")).match.returnValues;
+
+    // Advance time to one second before end of the dispute period.
+    const stillOpen = liveness - 1;
+    await advanceTime(stillOpen);
+
+    // Without actual whitelist the dispute should revert.
+    assert(
+      await didContractThrow(
+        optimisticAsserter.methods.disputeAssertion(assertionId, disputer).send({ from: disputer })
+      )
+    );
+
+    // Add disputer to the whitelist.
+    await escalationManager.methods.setDisputeCallerInWhitelist(disputer, true).send({ from: owner });
+
+    // Dispute should now be allowed.
+    let disputeReceipt = await optimisticAsserter.methods
+      .disputeAssertion(assertionId, disputer)
+      .send({ from: disputer });
+
+    await assertEventEmitted(
+      disputeReceipt,
+      optimisticAsserter,
+      "AssertionDisputed",
+      (event) => event.assertionId == assertionId && event.caller == disputer && event.disputer == disputer
+    );
+  });
 });
