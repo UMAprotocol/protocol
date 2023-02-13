@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 import "../../common/implementation/MultiCaller.sol";
 import "../../common/implementation/Stakeable.sol";
 import "../interfaces/FinderInterface.sol";
-import "../interfaces/VotingV2Interface.sol";
 import "./Constants.sol";
 
 /**
