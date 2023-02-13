@@ -140,7 +140,7 @@ contract EmergencyProposer is Ownable, Lockable {
     }
 
     /**
-     * @notice After the proposal is executable, the executor or proposer can use this function to remove the proposal
+     * @notice After the proposal is executable, the executor or owner can use this function to remove the proposal
      * without slashing.
      * @dev This means that the DVM didn't explicitly reject the proposal. Allowing the executor to slash the quorum
      * would give the executor too much power. So the only control either party has is to remove the proposal,
@@ -151,7 +151,7 @@ contract EmergencyProposer is Ownable, Lockable {
     function removeProposal(uint256 id) external nonReentrant() {
         EmergencyProposal storage proposal = emergencyProposals[id];
         require(proposal.expiryTime <= getCurrentTime(), "must be expired to remove");
-        require(msg.sender == owner() || msg.sender == executor, "proposer or executor");
+        require(msg.sender == owner() || msg.sender == executor, "owner or executor");
         require(proposal.lockedTokens != 0, "invalid proposal");
         token.safeTransfer(proposal.sender, proposal.lockedTokens);
         emit EmergencyProposalRemoved(

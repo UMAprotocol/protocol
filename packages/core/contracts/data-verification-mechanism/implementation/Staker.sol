@@ -210,7 +210,6 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /**
      * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal
      * and stake in the same transaction if requested by a delegate or the voter.
-     * @dev This method requires that the msg.sender (voter or delegate) has approved this contract.
      * @dev The rewarded tokens simply pass through this contract before being staked on the voter's behalf.
      *  The balance of the delegate remains unchanged.
      * @return uint128 the amount of tokens that the voter is staking.
@@ -248,7 +247,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
-     * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second per staked token.
+     * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second.
      * @param newEmissionRate the new amount of voting tokens that are emitted per second, split pro rata to stakers.
      */
     function setEmissionRate(uint128 newEmissionRate) external onlyOwner {

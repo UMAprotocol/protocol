@@ -383,7 +383,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Gets the status of a list of price requests, identified by their identifier and time.
+     * @notice Gets the status of a list of price requests, identified by their identifier, time and ancillary data.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of pending requests which includes identifier, timestamp & ancillary data for the requests.
      * @return requestStates a list, in the same order as the input list, giving the status of the specified requests.
@@ -708,7 +708,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Resets the GAT number and PAT percentage. GAT is the minimum number of tokens that must participate in a
+     * @notice Resets the GAT number and SPAT percentage. GAT is the minimum number of tokens that must participate in a
      * vote for it to resolve (quorum number). SPAT is the minimum percentage of tokens that must agree on a result
      * for it to resolve (percentage of staked tokens) This change only applies to subsequent rounds.
      * @param newGat sets the next round's GAT and going forward.
