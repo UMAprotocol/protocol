@@ -14,6 +14,8 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
     uint256 public immutable governanceSlashAmount;
 
     constructor(uint256 _baseSlashAmount, uint256 _governanceSlashAmount) {
+        require(_baseSlashAmount < 1e18, "Invalid base slash amount");
+        require(_governanceSlashAmount < 1e18, "Invalid governance slash amount");
         baseSlashAmount = _baseSlashAmount;
         governanceSlashAmount = _governanceSlashAmount;
     }
