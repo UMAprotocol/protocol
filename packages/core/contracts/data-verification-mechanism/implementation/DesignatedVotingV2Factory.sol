@@ -8,7 +8,7 @@ import "./DesignatedVotingV2.sol";
  * @dev Allows off-chain infrastructure to look up a hot wallet's deployed DesignatedVoting contract.
  */
 contract DesignatedVotingV2Factory {
-    address private finder;
+    address public immutable finder;
     mapping(address => DesignatedVotingV2) public designatedVotingContracts;
 
     event NewDesignatedVoting(address indexed designatedVoter, address indexed designatedVoting);

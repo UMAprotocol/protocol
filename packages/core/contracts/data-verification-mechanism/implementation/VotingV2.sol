@@ -95,7 +95,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     uint64 public nextPendingIndexToProcess; // Next pendingPriceRequestsIds index to process in lastRoundIdProcessed.
 
-    FinderInterface private immutable finder; // Reference to the UMA Finder contract, used to find other UMA contracts.
+    FinderInterface public immutable finder; // Reference to the UMA Finder contract, used to find other UMA contracts.
 
     SlashingLibraryInterface public slashingLibrary; // Reference to Slashing Library, used to compute slashing amounts.
 
@@ -121,7 +121,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     uint64 public spat; // SPAT: Minimum percentage of staked tokens that must agree on the answer to resolve a vote.
 
-    uint64 private constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
+    uint64 public constant UINT64_MAX = type(uint64).max; // Max value of an unsigned integer.
 
     uint256 public constant ANCILLARY_BYTES_LIMIT = 8192; // Max length in bytes of ancillary data.
 

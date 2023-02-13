@@ -46,7 +46,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
 
     uint64 public lastUpdateTime; // Tracks the last time the reward rate was updated, used in reward allocation.
 
-    ExpandedIERC20 public votingToken; // An instance of the UMA voting token to mint rewards for stakers
+    ExpandedIERC20 public immutable votingToken; // An instance of the UMA voting token to mint rewards for stakers
 
     /****************************************
      *                EVENTS                *
