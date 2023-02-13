@@ -126,8 +126,11 @@ describe("VotingV2", function () {
     for (const ac of [account1, account2, account3, account4, rand]) {
       if ((await voting.methods.voterStakes(ac).call()).pendingUnstake != 0)
         await voting.methods.executeUnstake().send({ from: ac });
-      await voting.methods.requestUnstake(await voting.methods.getVoterStakePostUpdate(ac).call()).send({ from: ac });
-      await voting.methods.executeUnstake().send({ from: ac });
+      const stake = await voting.methods.getVoterStakePostUpdate(ac).call();
+      if (stake !== "0") {
+        await voting.methods.requestUnstake(stake).send({ from: ac });
+        await voting.methods.executeUnstake().send({ from: ac });
+      }
     }
 
     const votingBalance = await votingToken.methods.balanceOf(voting.options.address).call();
@@ -4063,13 +4066,11 @@ describe("VotingV2", function () {
     await voting.methods
       .requestUnstake((await voting.methods.voterStakes(account4).call()).stake)
       .send({ from: account4 });
-    await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
 
     await voting.methods.executeUnstake().send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account2 });
     await voting.methods.executeUnstake().send({ from: account3 });
     await voting.methods.executeUnstake().send({ from: account4 });
-    await voting.methods.executeUnstake().send({ from: rand });
 
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
@@ -4620,13 +4621,11 @@ describe("VotingV2", function () {
     await voting.methods
       .requestUnstake((await voting.methods.voterStakes(account4).call()).stake)
       .send({ from: account4 });
-    await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
 
     await voting.methods.executeUnstake().send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account2 });
     await voting.methods.executeUnstake().send({ from: account3 });
     await voting.methods.executeUnstake().send({ from: account4 });
-    await voting.methods.executeUnstake().send({ from: rand });
 
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
