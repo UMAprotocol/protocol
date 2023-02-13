@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "./Constants.sol";
+import "./AdminIdentifierLib.sol";
+
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/MultiRole.sol";
+import "../../common/implementation/AncillaryData.sol";
+
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
-import "./Constants.sol";
-import "./AdminIdentifierLib.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -101,6 +104,9 @@ contract GovernorV2 is MultiRole, Lockable {
 
         // Add a zero-initialized element to the proposals array.
         proposals.push();
+
+        // Append the id to the ancillary data. This ensures that the price request to the DVM is unique.
+        ancillaryData = AncillaryData.appendKeyValueUint(ancillaryData, "GovernanceProposalId", id);
 
         // Initialize the new proposal.
         Proposal storage proposal = proposals[id];
