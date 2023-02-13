@@ -350,4 +350,9 @@ describe("Staker", function () {
       await assertEventEmitted(result, staker, "ExecutedUnstake");
     });
   });
+  describe("Staker: input validation", function () {
+    it("Cannot stake 0 UMA", async function () {
+      assert(await didContractThrow(staker.methods.stake("0").send({ from: account1 })));
+    });
+  });
 });
