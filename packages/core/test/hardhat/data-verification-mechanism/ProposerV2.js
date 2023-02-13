@@ -92,7 +92,13 @@ describe("ProposerV2", function () {
   });
 
   it("Bond must be paid", async function () {
-    const txn = proposer.methods.propose([], defaultAncillaryData);
+    // Build a no-op txn for the governor to execute.
+    const noOpTxnBytes = votingToken.methods.approve(submitter, "0").encodeABI();
+
+    const txn = proposer.methods.propose(
+      [{ to: votingToken.options.address, value: 0, data: noOpTxnBytes }],
+      defaultAncillaryData
+    );
 
     // No balance and bond isn't approved.
     assert(await didContractThrow(txn.send({ from: submitter })));
