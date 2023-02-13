@@ -21,7 +21,7 @@ abstract contract OracleInterface {
      * @param time unix timestamp for the price request.
      * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
-    function hasPrice(bytes32 identifier, uint256 time) public view virtual returns (bool);
+    function hasPrice(bytes32 identifier, uint256 time) external view virtual returns (bool);
 
     /**
      * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.

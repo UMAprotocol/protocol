@@ -346,7 +346,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param time unix timestamp of the price request.
      * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
-    function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
+    function hasPrice(bytes32 identifier, uint256 time) external view override returns (bool) {
         return hasPrice(identifier, time, "");
     }
 
@@ -898,7 +898,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         address voter,
         uint256 roundId,
         MinimumVotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
-    ) public returns (uint256) {
+    ) external returns (uint256) {
         uint256 rewards =
             MinimumVotingAncillaryInterface(address(previousVotingContract))
                 .retrieveRewards(voter, roundId, toRetrieve)

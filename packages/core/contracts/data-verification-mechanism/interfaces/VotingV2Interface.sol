@@ -108,7 +108,7 @@ abstract contract VotingV2Interface {
         bytes memory ancillaryData,
         bytes32 hash,
         bytes memory encryptedVote
-    ) public virtual;
+    ) external virtual;
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
