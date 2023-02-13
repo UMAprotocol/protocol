@@ -153,6 +153,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      */
     function requestUnstake(uint128 amount) external override nonReentrant() {
         require(!_inActiveReveal(), "In an active reveal phase");
+        require(amount > 0, "Cannot unstake 0");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
