@@ -250,13 +250,10 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
         require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals not allowed");
 
-        // Check the minimum required bond and use that instead if it is greater than the bondAmount.
-        uint256 minimumBond = optimisticAsserter.getMinimumBond(address(collateral));
-        uint256 totalBond = minimumBond > bondAmount ? minimumBond : bondAmount;
-
         // Get the bond from the proposer and approve the required bond to be used by the Optimistic Asserter.
         // This will fail if the proposer has not granted the Optimistic Governor contract an allowance
         // of the collateral token equal to or greater than the totalBond.
+        uint256 totalBond = getProposalBond();
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticAsserter), totalBond);
 
@@ -377,6 +374,15 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
+    }
+
+    /**
+     * @notice Getter function to check required collateral currency approval.
+     * @return The amount of bond required to propose a transaction.
+     */
+    function getProposalBond() public view returns (uint256) {
+        uint256 minimumBond = optimisticAsserter.getMinimumBond(address(collateral));
+        return minimumBond > bondAmount ? minimumBond : bondAmount;
     }
 
     // Gets the address of Collateral Whitelist from the Finder.

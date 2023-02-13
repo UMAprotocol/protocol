@@ -35,6 +35,7 @@ const identifier = utf8ToHex("ZODIAC");
 const totalBond = toBN(finalFee).add(toBN(bond)).toString();
 const doubleTotalBond = toBN(totalBond).mul(toBN(2)).toString();
 const rules = "https://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi.ipfs.dweb.link/";
+const burnedBondPercentage = toWei("0.5");
 
 describe("OptimisticGovernor", () => {
   let accounts, owner, proposer, disputer, rando, executor;
@@ -114,6 +115,7 @@ describe("OptimisticGovernor", () => {
     await bondToken.methods.addMember(TokenRolesEnum.MINTER, owner).send({ from: owner });
     await collateralWhitelist.methods.addToWhitelist(bondToken.options.address).send({ from: owner });
     await store.methods.setFinalFee(bondToken.options.address, { rawValue: finalFee }).send({ from: owner });
+    await optimisticAsserter.methods.syncUmaParams(identifier, bondToken.options.address).send({ from: owner });
 
     optimisticOracleModule = await OptimisticGovernor.new(
       finder.options.address,
@@ -1171,5 +1173,22 @@ describe("OptimisticGovernor", () => {
       "AssertionDisputed",
       (event) => event.assertionId == assertionId && event.caller == disputer && event.disputer == disputer
     );
+  });
+
+  it("Correct proposal bond", async function () {
+    // Since bond is set above minimum required by the optimistic asserter (100 / 0.5) getProposalBond should return
+    // bond (500).
+    assert.equal(await optimisticOracleModule.methods.getProposalBond().call(), bond);
+
+    // Set zero bond.
+    const newBondAmount = "0";
+    const setCollateralData = optimisticOracleModule.methods
+      .setCollateralAndBond(bondToken.options.address, newBondAmount)
+      .encodeABI();
+    await avatar.methods.exec(optimisticOracleModule.options.address, "0", setCollateralData).send({ from: owner });
+
+    // Check that the proposal bond now is set to the floor driven by the final fee.
+    const proposalBond = toBN(finalFee).mul(toBN(toWei("1")).div(toBN(burnedBondPercentage)));
+    assert.equal(await optimisticOracleModule.methods.getProposalBond().call(), proposalBond.toString());
   });
 });
