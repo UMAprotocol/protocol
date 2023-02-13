@@ -197,6 +197,9 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     /**
      * @notice Sets the Escalation Manager for future proposals.
      * @param _escalationManager address of the Escalation Manager, can be zero to disable this functionality.
+     * @dev Only the owner can call this method. The provided address must conform to the Escalation Manager interface.
+     * FullPolicyEscalationManager can be used, but within the context of this contract it should be used only for
+     * whitelisting of proposers and disputers since Optimistic Governor is deleting disputed proposals.
      */
     function setEscalationManager(address _escalationManager) external onlyOwner {
         escalationManager = _escalationManager;
