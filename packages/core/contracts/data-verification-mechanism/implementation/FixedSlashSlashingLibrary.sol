@@ -13,9 +13,14 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
     uint256 public immutable baseSlashAmount;
     uint256 public immutable governanceSlashAmount;
 
+    /**
+     * @notice Construct the FixedSlashSlashingLibrary contract.
+     * @param _baseSlashAmount Slash amount per token for missed votes and wrong non-governance votes.
+     * @param _governanceSlashAmount Slash amount per token for wrong governance votes.
+     */
     constructor(uint256 _baseSlashAmount, uint256 _governanceSlashAmount) {
-        baseSlashAmount = _baseSlashAmount;
-        governanceSlashAmount = _governanceSlashAmount;
+        baseSlashAmount = _baseSlashAmount; // Slash amount per token for missed votes and wrong non-governance votes.
+        governanceSlashAmount = _governanceSlashAmount; // Slash amount per token for wrong governance votes.
     }
 
     /**
