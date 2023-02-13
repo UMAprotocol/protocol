@@ -197,6 +197,22 @@ describe("Staker", function () {
 
       // Attempting to unstake without requesting.
       assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
+
+      await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
+
+      // Set the unstake cooldown to 0.
+      await staker.methods.setUnstakeCoolDown(0).send({ from: account1 });
+
+      const balanceBefore = await votingToken.methods.balanceOf(account1).call();
+      await staker.methods.executeUnstake().send({ from: account1 });
+      const balanceAfter = await votingToken.methods.balanceOf(account1).call();
+      assert.equal(balanceAfter, amountToStake.add(toBN(balanceBefore))); // Should get back the original amount staked.
+    });
+    it("Unstaking time is not retroactive", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 });
+
+      // Attempting to unstake without requesting.
+      assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
       await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
       // Not waiting long enough should also revert.
       assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
@@ -204,7 +220,13 @@ describe("Staker", function () {
       assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
 
       // Set the unstake cooldown to 0.
-      await staker.methods.setUnstakeCoolDown(0).send({ from: account1 });
+      await staker.methods.setUnstakeCoolDown(1).send({ from: account1 });
+      assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
+
+      const currentTime = toBN(await staker.methods.getCurrentTime().call());
+      const unstakeTime = toBN((await staker.methods.voterStakes(account1).call()).unstakeTime);
+
+      await advanceTime(unstakeTime.sub(currentTime).toString());
 
       const balanceBefore = await votingToken.methods.balanceOf(account1).call();
       await staker.methods.executeUnstake().send({ from: account1 });
