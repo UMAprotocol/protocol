@@ -522,7 +522,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Gets the requests that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
-    function getPendingRequests() public override returns (PendingRequestAncillaryAugmented[] memory) {
+    function getPendingRequests() public view override returns (PendingRequestAncillaryAugmented[] memory) {
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequestsIds only to those requests that have an Active RequestStatus.
         PendingRequestAncillaryAugmented[] memory unresolved =
@@ -607,6 +607,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
     function getNumberOfPriceRequests()
         public
+        view
         returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
     {
         return (pendingPriceRequestsIds.length, resolvedPriceRequestIds.length);
