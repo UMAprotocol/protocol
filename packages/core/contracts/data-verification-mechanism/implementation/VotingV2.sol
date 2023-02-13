@@ -1061,9 +1061,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         view
         returns (RequestStatus)
     {
-        if (priceRequest.lastVotingRound == 0) {
-            return RequestStatus.NotRequested;
-        }
+        if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
         if (priceRequest.lastVotingRound < currentRoundId) {
             // Check if the request has already been resolved
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -1073,9 +1071,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 return RequestStatus.ToDelete;
             return RequestStatus.Active;
         }
-        if (priceRequest.lastVotingRound == currentRoundId) {
-            return RequestStatus.Active;
-        }
+        if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;
+
         return RequestStatus.Future; // Means than priceRequest.lastVotingRound > currentRoundId
     }
 
