@@ -76,8 +76,8 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
      * @param totalCorrectVotes The total amount of correct votes.
      * @param priceRequestIndex The price request index within the resolvedPriceRequestIds array.
      * @param isGovernance Whether the request is a governance request.
-     * @return wrongVoteSlashPerToken The amount of tokens to slash for voting wrong.
-     * @return noVoteSlashPerToken The amount of tokens to slash for not voting.
+     * @return uint256 The amount of tokens to slash for voting wrong.
+     * @return uint256 The amount of tokens to slash for not voting.
      */
     function calcSlashing(
         uint256 totalStaked,
@@ -85,7 +85,7 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
         uint256 totalCorrectVotes,
         uint256 priceRequestIndex,
         bool isGovernance
-    ) external view returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+    ) external view returns (uint256, uint256) {
         return (
             isGovernance
                 ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes, priceRequestIndex)

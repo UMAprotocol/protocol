@@ -49,18 +49,18 @@ library ResultComputationV2 {
      * to be valid. Used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      * @param minModalVotes min (exclusive) number of tokens that must have voted for the modal outcome for it to result
      * in a resolution. This is used to avoid cases where the mode is a very small plurality.
-     * @return isResolved indicates if the price has been resolved correctly.
-     * @return price the price that the dvm resolved to.
+     * @return bool true if the price has been resolved correctly.
+     * @return int256 the price that the dvm resolved to.
      */
     function getResolvedPrice(
         Data storage data,
         uint128 minTotalVotes,
         uint128 minModalVotes
-    ) internal view returns (bool isResolved, int256 price) {
-        if (data.totalVotes > minTotalVotes && data.voteFrequency[data.currentMode] > minModalVotes) {
-            isResolved = true; // modeThreshold and minVoteThreshold are exceeded, so the resolved price is the mode.
-            price = data.currentMode;
-        } else isResolved = false;
+    ) internal view returns (bool, int256) {
+        // If minimum participation is met and the mode has enough votes, then the result is the mode.
+        if (data.totalVotes > minTotalVotes && data.voteFrequency[data.currentMode] > minModalVotes)
+            return (true, data.currentMode);
+        return (false, 0);
     }
 
     /**

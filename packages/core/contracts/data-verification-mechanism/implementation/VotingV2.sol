@@ -602,26 +602,20 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Returns the number of current pending price requests to be voted and the number of resolved price
        requests over all time.
-     * @return numberPendingPriceRequests the total number of pending prices requests.
-     * @return numberResolvedPriceRequests the total number of prices resolved over all time.
+     * @return uint256 the total number of pending prices requests.
+     * @return uint256 the total number of prices resolved over all time.
      */
-    function getNumberOfPriceRequests()
-        public
-        returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
-    {
+    function getNumberOfPriceRequests() public returns (uint256, uint256) {
         return (pendingPriceRequestsIds.length, resolvedPriceRequestIds.length);
     }
 
     /**
      * @notice Returns the number of current pending price requests to be voted and the number of resolved price
        requests over all time after processing any resolvable price requests.
-     * @return numberPendingPriceRequests the total number of pending prices requests.
-     * @return numberResolvedPriceRequests the total number of prices resolved over all time.
+     * @return uint256 the total number of pending prices requests.
+     * @return uint256 the total number of prices resolved over all time.
      */
-    function getNumberOfPriceRequestsPostUpdate()
-        external
-        returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
-    {
+    function getNumberOfPriceRequestsPostUpdate() external returns (uint256, uint256) {
         processResolvablePriceRequests();
         return getNumberOfPriceRequests();
     }
@@ -1076,10 +1070,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         else return RequestStatus.Future; // Means than priceRequest.lastVotingRound > currentRoundId
     }
 
+    // Returns if the price is resolvable and the price.
     function _getResolvedPrice(VoteInstance storage voteInstance, uint256 lastVotingRound)
         internal
         view
-        returns (bool isResolved, int256 price)
+        returns (bool, int256)
     {
         return
             voteInstance.results.getResolvedPrice(
