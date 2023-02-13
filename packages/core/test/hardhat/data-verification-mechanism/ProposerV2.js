@@ -231,4 +231,9 @@ describe("ProposerV2", function () {
     await votingToken.methods.transfer(proposer.options.address, bond).send({ from: submitter });
     assert(await didContractThrow(proposer.methods.resolveProposal(id).send({ from: submitter })));
   });
+
+  it("Validate proposal id", async function () {
+    const invalidId = "100";
+    assert(await didContractThrow(proposer.methods.resolveProposal(invalidId).send({ from: rando })));
+  });
 });
