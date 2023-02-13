@@ -44,7 +44,7 @@ contract EmergencyProposer is Ownable, Lockable {
     // The number of tokens needed to propose an emergency action.
     uint256 public quorum;
 
-    // The minimum time that must elapsed between from when a proposal is created to when it can be executed.
+    // The minimum time that must elapse between from when a proposal is created to when it can be executed.
     uint64 public minimumWaitTime;
 
     // The only address that can execute an emergency proposal. Will be set to a multisig. Acts to guardrail the
@@ -240,7 +240,7 @@ contract EmergencyProposer is Ownable, Lockable {
 
     /**
      * @notice Admin method to set the minimum wait time for a proposal to be executed.
-     * @dev Admin is intended to be the governance system. The minumum wait time is added to the current time at the
+     * @dev Admin is intended to be the governance system. The minimum wait time is added to the current time at the
      * time of the proposal to determine when the proposal will be executable. Any changes to this value after that
      * point will have no impact on the proposal.
      * @param newMinimumWaitTime the new minimum wait time.

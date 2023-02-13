@@ -124,7 +124,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     ) internal {
         VoterStake storage voterStake = voterStakes[recipient];
 
-        // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
+        // If the staker has a cumulative staked balance of 0 then we can shortcut their nextIndexToProcess to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
         // _getStartingIndexForStaker returns the appropriate index to start at.
         if (voterStake.stake == 0) voterStake.nextIndexToProcess = _getStartingIndexForStaker();
