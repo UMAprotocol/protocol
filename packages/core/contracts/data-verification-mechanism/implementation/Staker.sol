@@ -28,7 +28,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint128 outstandingRewards; // Accumulated rewards that have not yet been claimed.
         int128 unappliedSlash; // Used to track unapplied slashing in the case of bisected rounds.
         uint64 nextIndexToProcess; // The next request index that a staker is susceptible to be slashed on.
-        uint64 unstakeRequestTime; // Time that a staker requested to unstake. Used to determine if cooldown has passed.
+        uint64 unstakeTime; // Time that a staker can unstake. Used to determine if cooldown has passed.
         address delegate; // Address a staker has delegated to. The delegate can commit/reveal/claimRestake rewards.
     }
 
@@ -146,7 +146,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Request a certain number of tokens to be unstaked. After the unstake time expires, the user may execute
      * the unstake. Tokens requested to unstake are not slashable nor subject to earning rewards.
      * This function cannot be called during an active reveal phase.
-     * Note there is no way to cancel an unstake request, you must wait until after unstakeRequestTime and re-stake.
+     * Note there is no way to cancel an unstake request, you must wait until after unstakeTime and re-stake.
      * @param amount the amount of tokens to request to be unstaked.
      */
     function requestUnstake(uint128 amount) external override nonReentrant() {
@@ -159,26 +159,27 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         cumulativeStake -= amount;
         voterStake.pendingUnstake = amount;
         voterStake.stake -= amount;
-        voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
+        voterStake.unstakeTime = SafeCast.toUint64(getCurrentTime()) + unstakeCoolDown;
 
-        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeRequestTime, voterStake.stake);
+        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeTime, voterStake.stake);
     }
 
     /**
      * @notice  Execute a previously requested unstake. Requires the unstake time to have passed.
-     * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker.
+     * @dev If a staker requested an unstake and time > unstakeTime then send funds to staker. If unstakeCoolDown is
+     * set to 0 then the unstake can be executed immediately.
      */
     function executeUnstake() external override nonReentrant() {
         VoterStake storage voterStake = voterStakes[msg.sender];
         require(
-            voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
+            voterStake.unstakeTime != 0 && (getCurrentTime() >= voterStake.unstakeTime || unstakeCoolDown == 0),
             "Unstake time not passed"
         );
         uint128 tokensToSend = voterStake.pendingUnstake;
 
         if (tokensToSend > 0) {
             voterStake.pendingUnstake = 0;
-            voterStake.unstakeRequestTime = 0;
+            voterStake.unstakeTime = 0;
             votingToken.transfer(msg.sender, tokensToSend);
         }
 

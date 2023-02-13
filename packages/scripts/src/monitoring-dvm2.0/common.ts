@@ -93,7 +93,7 @@ export const unstakeFromStakedAccount = async (votingV2: VotingV2Ethers, voter: 
     const voterStake = await votingV2.voterStakes(voter);
     if (voterStake.pendingUnstake.gt(ethers.BigNumber.from(0))) {
       console.log("Staker", voter, "has a pending unstake. Executing then re-unstaking");
-      const unstakeTime = voterStake.unstakeRequestTime.add(await votingV2.unstakeCoolDown());
+      const unstakeTime = voterStake.unstakeTime;
       const currentTime = await votingV2.getCurrentTime();
       const pendingStakeRemainingTime = unstakeTime.gt(currentTime) ? unstakeTime.sub(currentTime) : BigNumber.from(0);
       await increaseEvmTime(pendingStakeRemainingTime.toNumber());
