@@ -149,7 +149,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * Note there is no way to cancel an unstake request, you must wait until after unstakeRequestTime and re-stake.
      * @param amount the amount of tokens to request to be unstaked.
      */
-    function requestUnstake(uint128 amount) external override nonReentrant() {
+    function requestUnstake(uint128 amount) external nonReentrant() {
         require(!_inActiveReveal(), "In an active reveal phase");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
@@ -168,7 +168,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice  Execute a previously requested unstake. Requires the unstake time to have passed.
      * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker.
      */
-    function executeUnstake() external override nonReentrant() {
+    function executeUnstake() external nonReentrant() {
         VoterStake storage voterStake = voterStakes[msg.sender];
         require(
             voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
@@ -291,10 +291,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return address voter that corresponds to the delegate.
      */
     function getVoterFromDelegate(address caller) public view returns (address) {
-        if (
-            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
-        ) return delegateToStaker[caller];
+        address delegateToStaker = delegateToStaker[caller];
+        // The delegate chose to be a delegate for the staker.
+        if (delegateToStaker != address(0) && voterStakes[delegateToStaker].delegate == caller) return delegateToStaker;
+        // The staker chose the delegate.
         else return caller;
     }
 
