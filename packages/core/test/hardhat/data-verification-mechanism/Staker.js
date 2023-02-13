@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { web3, assertEventEmitted } = hre;
-const { runDefaultFixture, didContractThrow } = require("@uma/common");
+const { runDefaultFixture, didContractRevertWith, didContractThrow } = require("@uma/common");
 const { getContract } = hre;
 
 const { assert } = require("chai");
@@ -352,13 +352,15 @@ describe("Staker", function () {
   });
   describe("Staker: input validation", function () {
     it("Cannot stake 0 UMA", async function () {
-      assert(await didContractThrow(staker.methods.stake("0").send({ from: account1 })));
+      assert(await didContractRevertWith(staker.methods.stake("0").send({ from: account1 }), "Cannot stake 0"));
     });
 
     it("Cannot unstake 0 UMA", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
 
-      assert(await didContractThrow(staker.methods.requestUnstake("0").send({ from: account1 })));
+      assert(
+        await didContractRevertWith(staker.methods.requestUnstake("0").send({ from: account1 }), "Cannot unstake 0")
+      );
     });
   });
 });

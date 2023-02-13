@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { getContract, assertEventEmitted, web3 } = hre;
-const { runVotingV2Fixture, interfaceName, didContractThrow } = require("@uma/common");
+const { runVotingV2Fixture, interfaceName, didContractRevertWith, didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
 
 const MockOracleGovernance = getContract("MockOracleGovernance");
@@ -234,6 +234,11 @@ describe("ProposerV2", function () {
 
   it("Validate proposal id", async function () {
     const invalidId = "100";
-    assert(await didContractThrow(proposer.methods.resolveProposal(invalidId).send({ from: rando })));
+    assert(
+      await didContractRevertWith(
+        proposer.methods.resolveProposal(invalidId).send({ from: rando }),
+        "Invalid proposal id"
+      )
+    );
   });
 });

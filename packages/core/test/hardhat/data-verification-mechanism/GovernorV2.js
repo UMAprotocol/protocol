@@ -1,7 +1,13 @@
 const hre = require("hardhat");
 const { runVotingV2Fixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
-const { RegistryRolesEnum, didContractThrow, getRandomSignedInt, computeVoteHashAncillary } = require("@uma/common");
+const {
+  RegistryRolesEnum,
+  didContractRevertWith,
+  didContractThrow,
+  getRandomSignedInt,
+  computeVoteHashAncillary,
+} = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
@@ -1050,6 +1056,11 @@ describe("GovernorV2", function () {
   });
 
   it("Cannot propose empty transactions array", async function () {
-    assert(await didContractThrow(governorV2.methods.propose([], defaultAncillaryData).send({ from: accounts[0] })));
+    assert(
+      await didContractRevertWith(
+        governorV2.methods.propose([], defaultAncillaryData).send({ from: accounts[0] }),
+        "Empty transactions array"
+      )
+    );
   });
 });

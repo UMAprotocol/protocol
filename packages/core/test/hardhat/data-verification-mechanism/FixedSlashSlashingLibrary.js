@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
-const { didContractThrow } = require("@uma/common");
+const { didContractRevertWith } = require("@uma/common");
 
 const { getContract, web3 } = hre;
 const { toWei } = web3.utils;
@@ -19,13 +19,19 @@ describe("FixedSlashSlashingLibrary", function () {
   it("Validate baseSlashAmount", async function () {
     const invalidBaseSlashAmount = toWei("1");
     assert(
-      await didContractThrow(SlashingLibrary.new(invalidBaseSlashAmount, governanceSlashAmount).send({ from: owner }))
+      await didContractRevertWith(
+        SlashingLibrary.new(invalidBaseSlashAmount, governanceSlashAmount).send({ from: owner }),
+        "Invalid base slash amount"
+      )
     );
   });
   it("Validate governanceSlashAmount", async function () {
     const invalidGovernanceSlashAmount = toWei("1");
     assert(
-      await didContractThrow(SlashingLibrary.new(baseSlashAmount, invalidGovernanceSlashAmount).send({ from: owner }))
+      await didContractRevertWith(
+        SlashingLibrary.new(baseSlashAmount, invalidGovernanceSlashAmount).send({ from: owner }),
+        "Invalid governance slash amount"
+      )
     );
   });
 });
