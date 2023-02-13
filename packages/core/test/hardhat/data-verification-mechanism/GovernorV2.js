@@ -1048,4 +1048,8 @@ describe("GovernorV2", function () {
 
     assert.equal(hexToUtf8(identifier), `Admin ${expectedOutputIdValue}`);
   });
+
+  it("Cannot propose empty transactions array", async function () {
+    assert(await didContractThrow(governorV2.methods.propose([], defaultAncillaryData).send({ from: accounts[0] })));
+  });
 });
