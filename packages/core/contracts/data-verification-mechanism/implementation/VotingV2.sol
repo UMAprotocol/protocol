@@ -584,7 +584,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
-     * @return uint256 the unique round ID.
+     * @return uint32 the unique round ID.
      */
     function getCurrentRoundId() public view override returns (uint32) {
         return uint32(voteTiming.computeCurrentRoundId(getCurrentTime()));
@@ -593,7 +593,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Returns the round end time, as a function of the round number.
      * @param roundId representing the unique round ID.
-     * @return uint256 representing the unique round ID.
+     * @return uint256 representing the round end time.
      */
     function getRoundEndTime(uint256 roundId) external view returns (uint256) {
         return voteTiming.computeRoundEndTime(roundId);
