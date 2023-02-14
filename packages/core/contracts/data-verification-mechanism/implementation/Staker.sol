@@ -294,11 +294,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return address voter that corresponds to the delegate.
      */
     function getVoterFromDelegate(address caller) public view returns (address) {
-        address delegateToStaker = delegateToStaker[caller];
+        address delegator = delegator[caller];
         // The delegate chose to be a delegate for the staker.
-        if (delegateToStaker != address(0) && voterStakes[delegateToStaker].delegate == caller) return delegateToStaker;
-        // The staker chose the delegate.
-        else return caller;
+        if (delegator != address(0) && voterStakes[delegator].delegate == caller) return delegator;
+        else return caller; // The staker chose the delegate.
     }
 
     /**
