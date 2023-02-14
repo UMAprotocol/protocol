@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "./ResultComputationV2.sol";
 import "./Staker.sol";
 import "./VoteTiming.sol";
@@ -840,11 +842,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (participation == VoteParticipation.DidNotVote)
-                slash = -int256((effectiveStake * trackers.noVoteSlashPerToken) / 1e18);
+                slash = -int256(Math.ceilDiv(effectiveStake * trackers.noVoteSlashPerToken, 1e18));
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (participation == VoteParticipation.WrongVote)
-                slash = -int256((effectiveStake * trackers.wrongVoteSlashPerToken) / 1e18);
+                slash = -int256(Math.ceilDiv(effectiveStake * trackers.wrongVoteSlashPerToken, 1e18));
 
                 // Else, the voter voted correctly. Receive a pro-rate share of the other voters slash.
             else slash = int256((effectiveStake * trackers.totalSlashed) / trackers.totalCorrectVotes);
