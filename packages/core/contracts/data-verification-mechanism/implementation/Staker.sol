@@ -122,6 +122,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         address recipient,
         uint128 amount
     ) internal {
+        require(amount > 0, "Cannot stake 0");
+
         VoterStake storage voterStake = voterStakes[recipient];
 
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
@@ -151,6 +153,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      */
     function requestUnstake(uint128 amount) external override nonReentrant() {
         require(!_inActiveReveal(), "In an active reveal phase");
+        require(amount > 0, "Cannot unstake 0");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 

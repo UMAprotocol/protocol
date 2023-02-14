@@ -93,6 +93,7 @@ contract GovernorV2 is MultiRole, Lockable {
         nonReentrant()
         onlyRoleHolder(uint256(Roles.Proposer))
     {
+        require(transactions.length > 0, "Empty transactions array");
         uint256 id = proposals.length;
         uint256 time = getCurrentTime();
 
