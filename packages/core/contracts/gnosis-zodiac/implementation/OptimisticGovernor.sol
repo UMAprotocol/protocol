@@ -75,6 +75,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     // Keys for assertion claim data.
     bytes public constant PROPOSAL_HASH_KEY = "proposalHash";
     bytes public constant EXPLANATION_KEY = "explanation";
+    bytes public constant RULES_KEY = "rules";
 
     // Struct for a proposed transaction.
     struct Transaction {
@@ -248,7 +249,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         // Create the proposal hash.
         bytes32 proposalHash = keccak256(abi.encode(_transactions));
 
-        // Add the proposal hash and explanation to ancillary data.
+        // Add the proposal hash, explanation and rules to ancillary data.
         bytes memory claim = _constructClaim(proposalHash, _explanation);
 
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
@@ -264,7 +265,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         // Assert that the proposal is correct at the Optimistic Asserter.
         bytes32 assertionId =
             optimisticAsserter.assertTruth(
-                claim, // claim containing proposalHash and explanation.
+                claim, // claim containing proposalHash, explanation and rules.
                 proposer, // asserter will receive back bond if the assertion is correct.
                 address(this), // callbackRecipient is set to this contract for automated proposal deletion on disputes.
                 escalationManager, // escalationManager (if set) used for whitelisting proposers / disputers.
@@ -417,15 +418,19 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     // Constructs the claim that will be asserted at the Optimistic Asserter.
-    // TODO: consider adding rules.
-    function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) internal pure returns (bytes memory) {
+    function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) internal view returns (bytes memory) {
         return
             abi.encodePacked(
                 AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash),
                 ",",
                 EXPLANATION_KEY,
-                ":",
-                _explanation
+                ':"',
+                _explanation,
+                '",',
+                RULES_KEY,
+                ':"',
+                rules,
+                '"'
             );
     }
 }

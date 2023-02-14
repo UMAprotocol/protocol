@@ -219,7 +219,9 @@ describe("OptimisticGovernor", () => {
     const endingTime = proposalTime + liveness;
 
     const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
-    const claim = utf8ToHex("proposalHash:" + proposalHash.slice(2) + ",explanation:" + hexToUtf8(explanation));
+    const claim = utf8ToHex(
+      "proposalHash:" + proposalHash.slice(2) + ',explanation:"' + hexToUtf8(explanation) + '",rules:"' + rules + '"'
+    );
 
     await assertEventEmitted(
       receipt,
