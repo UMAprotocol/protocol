@@ -375,6 +375,14 @@ describe("OptimisticGovernor", () => {
       "ProposalExecuted",
       (event) => event.proposalHash == proposalHash && event.assertionId == assertionId
     );
+    for (let i = 0; i < 3; i++) {
+      await assertEventEmitted(
+        receipt,
+        optimisticOracleModule,
+        "TransactionExecuted",
+        (event) => event.proposalHash == proposalHash && event.assertionId == assertionId && event.transactionIndex == i
+      );
+    }
   });
 
   it("Proposals can not be executed twice", async function () {

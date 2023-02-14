@@ -40,7 +40,11 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         uint256 challengeWindowEnds
     );
 
-    event TransactionExecuted(bytes32 indexed proposalHash, uint256 indexed transactionIndex);
+    event TransactionExecuted(
+        bytes32 indexed proposalHash,
+        bytes32 indexed assertionId,
+        uint256 indexed transactionIndex
+    );
 
     event ProposalExecuted(bytes32 indexed proposalHash, bytes32 indexed assertionId);
 
@@ -310,7 +314,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
                 exec(transaction.to, transaction.value, transaction.data, transaction.operation),
                 "Failed to execute transaction"
             );
-            emit TransactionExecuted(_proposalHash, i); // TODO: add assertionId.
+            emit TransactionExecuted(_proposalHash, assertionId, i);
         }
 
         emit ProposalExecuted(_proposalHash, assertionId);
