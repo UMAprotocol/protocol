@@ -5357,6 +5357,65 @@ describe("VotingV2", function () {
     for (const ac of [account1, account2, account3, account4, rand])
       await voting.methods.withdrawRewards().send({ from: ac });
   });
+  it("Can change address of slashing library between rounds and voters are slashed appropriately", async function () {
+    // consider the slashing library being changed between. A voter should be slashed based on the slashing library that
+    // was set at the round the vote resolved. For example consider there being two rounds with requests in each. In
+    // round 1 the standard slashing library is used. In round 2 the slashing library changes to slashing amounts by 2x.
+    // If a voter was staked but did not interact with the contracts between these rounds they should be slashed according
+    // to the library set on each round.
+
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    let hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+
+    // move to the next phase, reveal and change the slashing library and request another price to vote on in the next round.
+
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    const newSlashingLib = await SlashingLibrary.new(toWei("0.0032", "ether"), "0").send({ from: accounts[0] });
+    console.log("newSlashingLib", newSlashingLib.options.address);
+    await voting.methods.setSlashingLibrary(newSlashingLib.options.address).send({ from: accounts[0] });
+    const time2 = time + 1;
+    await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    // commit and reveal a vote on the second price request.
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    baseRequest = { salt, roundId, identifier };
+    hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time2 });
+    await voting.methods.commitVote(identifier, time2, hash1).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time2, price, salt).send({ from: account1 });
+
+    // We should also be able to check that the round this request was voted on correctly had the new slashing lib frozen.
+    assert.equal((await voting.methods.rounds(roundId).call()).slashingLibrary, newSlashingLib.options.address);
+
+    // Move to next round, update all account slashing trackers and verify the slashing is applied as expected.
+    await moveToNextRound(voting, accounts[0]);
+    for (const account of [account1, account2, account3, account4])
+      await voting.methods.updateTrackers(account).send({ from: account1 });
+
+    // Cumulative slash on first round should be 0.0016 * (100mm-32mm) = 108800. Cumulative slash on second round should
+    // be 0.0032 * (100mm-32mm-108800) = 217,251.84. We should therefore expect the balance of the account1 who
+    // voted in both rounds to be 32mm + 108800 + 217,251.84 = 32326051.84
+    assert.equal(await voting.methods.getVoterStakePostUpdate(account1).call(), toWei("32326051.84"));
+
+    // Equally, we should see the stakers who did not participate slashed at the expected rates. Consider account2. They
+    // did not vote in either request and should habve been slashed at 0.0016 for the first request as 32mm * 0.0016 = 51200
+    // and for the second request at 0.0032 * (32mm-51200) = 102236.16. They should therefore have a balance of
+    // 32mm - 51200 - 102236.16 = 31846563.84
+    assert.equal(await voting.methods.getVoterStakePostUpdate(account2).call(), toWei("31846563.84"));
+  });
 
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this

@@ -53,6 +53,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct Round {
+        SlashingLibraryInterface slashingLibrary; // Slashing library used to compute voter participation slash at this round.
         uint128 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
         uint128 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint128 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
@@ -644,14 +645,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         uint256 totalVotes = voteInstance.results.totalVotes;
         uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
-        uint256 stakedAtRound = rounds[lastVotingRound].cumulativeStakeAtRound;
-        bool isGovernance = priceRequest.isGovernance;
+        uint256 totalStaked = rounds[lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, isGovernance);
+            rounds[lastVotingRound].slashingLibrary.calcSlashing(
+                totalStaked,
+                totalVotes,
+                totalCorrectVotes,
+                requestIndex,
+                priceRequest.isGovernance
+            );
 
         uint256 totalSlashed =
-            ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
+            ((noVoteSlash * (totalStaked - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
 
         return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes, lastVotingRound);
     }
@@ -990,6 +996,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
         if (rounds[roundId].minParticipationRequirement == 0) {
+            rounds[roundId].slashingLibrary = slashingLibrary;
+
             // The minimum required participation for a vote to settle within this round is the GAT (fixed number).
             rounds[roundId].minParticipationRequirement = gat;
 
