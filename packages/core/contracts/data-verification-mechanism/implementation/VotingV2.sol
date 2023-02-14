@@ -318,6 +318,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         }
     }
 
+    /**
+     * @notice Gets the round ID that a request should be voted on.
+     * @return uint32 round ID that a request should be voted on.
+     */
     function getRoundIdToVoteOnRequest(uint32 targetRoundId) public view returns (uint32) {
         while (rounds[targetRoundId].numberOfRequestsToVote >= maxRequestsPerRound) ++targetRoundId;
         return targetRoundId;
@@ -383,7 +387,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Gets the status of a list of price requests, identified by their identifier and time.
+     * @notice Gets the status of a list of price requests, identified by their identifier, time and ancillary data.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of pending requests which includes identifier, timestamp & ancillary data for the requests.
      * @return requestStates a list, in the same order as the input list, giving the status of the specified requests.
@@ -585,7 +589,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
-     * @return uint256 the unique round ID.
+     * @return uint32 the unique round ID.
      */
     function getCurrentRoundId() public view override returns (uint32) {
         return uint32(voteTiming.computeCurrentRoundId(getCurrentTime()));
@@ -594,7 +598,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Returns the round end time, as a function of the round number.
      * @param roundId representing the unique round ID.
-     * @return uint256 representing the unique round ID.
+     * @return uint256 representing the round end time.
      */
     function getRoundEndTime(uint256 roundId) external view returns (uint256) {
         return voteTiming.computeRoundEndTime(roundId);
@@ -709,7 +713,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Resets the GAT number and PAT percentage. GAT is the minimum number of tokens that must participate in a
+     * @notice Resets the GAT number and SPAT percentage. GAT is the minimum number of tokens that must participate in a
      * vote for it to resolve (quorum number). SPAT is the minimum percentage of tokens that must agree on a result
      * for it to resolve (percentage of staked tokens) This change only applies to subsequent rounds.
      * @param newGat sets the next round's GAT and going forward.
