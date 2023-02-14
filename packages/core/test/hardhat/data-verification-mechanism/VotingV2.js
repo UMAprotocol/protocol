@@ -54,22 +54,25 @@ describe("VotingV2", function () {
     const minterRole = 1;
     await votingToken.methods.addMember(minterRole, account1).send({ from: accounts[0] });
 
-    // Seed the three accounts and stake into the voting contract.  account1 starts with 100MM tokens, so divide up as:
-    // 1: 32MM
-    // 2: 32MM
-    // 3: 32MM
-    // 4: 4MM (can't reach the 5% GAT alone)
-    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account1 });
-    await voting.methods.stake(toWei("32000000")).send({ from: account1 });
-    await votingToken.methods.transfer(account2, toWei("32000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account2 });
-    await voting.methods.stake(toWei("32000000")).send({ from: account2 });
-    await votingToken.methods.transfer(account3, toWei("32000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account3 });
-    await voting.methods.stake(toWei("32000000")).send({ from: account3 });
-    await votingToken.methods.transfer(account4, toWei("4000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(voting.options.address, toWei("400000000")).send({ from: account4 });
-    await voting.methods.stake(toWei("4000000")).send({ from: account4 });
+    // Seed accounts unless the test is explicitly skipping default distribution.
+    if (!this.currentTest.title.endsWith("skip default seeding")) {
+      // Seed the three accounts and stake into the voting contract.  account1 starts with 100MM tokens, so divide up as:
+      // 1: 32MM
+      // 2: 32MM
+      // 3: 32MM
+      // 4: 4MM (can't reach the 5% GAT alone)
+      await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account1 });
+      await voting.methods.stake(toWei("32000000")).send({ from: account1 });
+      await votingToken.methods.transfer(account2, toWei("32000000")).send({ from: accounts[0] });
+      await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account2 });
+      await voting.methods.stake(toWei("32000000")).send({ from: account2 });
+      await votingToken.methods.transfer(account3, toWei("32000000")).send({ from: accounts[0] });
+      await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account3 });
+      await voting.methods.stake(toWei("32000000")).send({ from: account3 });
+      await votingToken.methods.transfer(account4, toWei("4000000")).send({ from: accounts[0] });
+      await votingToken.methods.approve(voting.options.address, toWei("400000000")).send({ from: account4 });
+      await voting.methods.stake(toWei("4000000")).send({ from: account4 });
+    }
 
     // Set the inflation rate to 0 by default, so the balances stay fixed until inflation is tested.
 
@@ -2526,7 +2529,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
       (await voting.methods.voterStakes(account4).call()).stake,
-      toWei("4000000").add(toBN("4959573333333333333333")) // Their original stake amount of 4mm plus the slash of 4959.56.
+      toWei("4000000").add(toBN("4959573333333333333332")) // Their original stake amount of 4mm plus the slash of 4959.56.
     );
   });
 
@@ -5187,6 +5190,173 @@ describe("VotingV2", function () {
       // the total amount that was slashed for each account should not exceed the starting UMA balance
       if (toBN(slashedTokens).isNeg()) assert(startingAccountBalances[voter].gte(toBN(slashedTokens).abs()));
     }
+  });
+  it("Rounding of slashing does not make contract insolvent, skip default seeding", async function () {
+    // Test how the rounding of slashing affects the contract's solvency. The setup of this test is dependent on using
+    // FixedSlashSlashingLibrary with baseSlashAmount set to 0.0016 * 10^18. Floor rounding would cause 1000 wei staked
+    // balance to be slashed by 1 wei while for 2 such voters their total 2000 wei would cause total negative slash of
+    // 3 wei to be applied for the correct voters. The distribution of staked tokens should be constructed such that the
+    // total negative slash amount is perfectly divisible by the number of correct voters.
+
+    // Following distribution for ~90MM among 5 accounts satisfies the conditions for the test:
+    // 1: 20MM (will vote correctly)
+    // 2: 20MM (will vote correctly)
+    // 3: 20MM (will vote correctly)
+    // 4: 15MM + 1000wei (will vote incorrectly)
+    // 5(rand): 15MM + 1000wei (will vote incorrectly)
+    // account1 starts with 100MM tokens, so divide up as:
+    await votingToken.methods.approve(voting.options.address, toWei("2000000000")).send({ from: account1 });
+    await voting.methods.stake(toWei("20000000")).send({ from: account1 });
+    await votingToken.methods.transfer(account2, toWei("20000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("2000000000")).send({ from: account2 });
+    await voting.methods.stake(toWei("20000000")).send({ from: account2 });
+    await votingToken.methods.transfer(account3, toWei("20000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("2000000000")).send({ from: account3 });
+    await voting.methods.stake(toWei("20000000")).send({ from: account3 });
+    await votingToken.methods.transfer(account4, toWei("15000000").add(toBN("1000"))).send({ from: accounts[0] });
+    await votingToken.methods
+      .approve(voting.options.address, toWei("15000000").add(toBN("1000")))
+      .send({ from: account4 });
+    await voting.methods.stake(toWei("15000000").add(toBN("1000"))).send({ from: account4 });
+    await votingToken.methods.transfer(rand, toWei("15000000").add(toBN("1000"))).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("15000000").add(toBN("1000"))).send({ from: rand });
+    await voting.methods.stake(toWei("15000000").add(toBN("1000"))).send({ from: rand });
+
+    // Submit test price request.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Commit votes.
+    const price = 123;
+    const wrongPrice = 456;
+    const salt = getRandomSignedInt();
+    const hash1 = computeVoteHash({ price: price, salt: salt, account: account1, time, roundId, identifier });
+    const hash2 = computeVoteHash({ price: price, salt: salt, account: account2, time, roundId, identifier });
+    const hash3 = computeVoteHash({ price: price, salt: salt, account: account3, time, roundId, identifier });
+    const hash4 = computeVoteHash({ price: wrongPrice, salt: salt, account: account4, time, roundId, identifier });
+    const hash5 = computeVoteHash({ price: wrongPrice, salt: salt, account: rand, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
+    await voting.methods.commitVote(identifier, time, hash3).send({ from: account3 });
+    await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
+    await voting.methods.commitVote(identifier, time, hash5).send({ from: rand });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account3 });
+    await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: rand });
+
+    // Move to next round and verify that the balance of voting contract and cumulativeStake variable are at least equal
+    // to the sum of individual stake amounts. Actual unstaking is performed in the afterEach hook.
+    await moveToNextRound(voting, accounts[0]);
+    let totalStaked = toBN(0);
+    for (const ac of [account1, account2, account3, account4, rand]) {
+      totalStaked = totalStaked.add(toBN(await voting.methods.getVoterStakePostUpdate(ac).call()));
+    }
+    assert.isTrue(toBN(await voting.methods.cumulativeStake().call()).gte(totalStaked));
+    assert.isTrue(toBN(await votingToken.methods.balanceOf(voting.options.address).call()).gte(totalStaked));
+  });
+  it("Rounding of slashing does not brick contract if everyone is voting, skip default seeding", async function () {
+    // Test how the rounding of slashing affects the consistency of totalVotes and cumulativeStakeAtRound when everybody
+    // is voting. The setup of this test is dependent on using FixedSlashSlashingLibrary with baseSlashAmount set to
+    // 0.0016 * 10^18. Floor rounding would cause 1000 wei staked balance to be slashed by 1 wei while for 2 such voters
+    // their total 2000 wei would cause total negative slash of 3 wei to be applied for the correct voters. The
+    // distribution of staked tokens should be constructed such that the total negative slash amount is perfectly
+    // divisible by the number of correct voters.
+
+    // Following distribution for ~90MM among 5 accounts satisfies the conditions for the test:
+    // 1: 20MM (will vote correctly)
+    // 2: 20MM (will vote correctly)
+    // 3: 20MM (will vote correctly)
+    // 4: 15MM + 1000wei (will vote incorrectly)
+    // 5(rand): 15MM + 1000wei (will vote incorrectly)
+    // account1 starts with 100MM tokens, so divide up as:
+    await votingToken.methods.approve(voting.options.address, toWei("2000000000")).send({ from: account1 });
+    await voting.methods.stake(toWei("20000000")).send({ from: account1 });
+    await votingToken.methods.transfer(account2, toWei("20000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("2000000000")).send({ from: account2 });
+    await voting.methods.stake(toWei("20000000")).send({ from: account2 });
+    await votingToken.methods.transfer(account3, toWei("20000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("2000000000")).send({ from: account3 });
+    await voting.methods.stake(toWei("20000000")).send({ from: account3 });
+    await votingToken.methods.transfer(account4, toWei("15000000").add(toBN("1000"))).send({ from: accounts[0] });
+    await votingToken.methods
+      .approve(voting.options.address, toWei("15000000").add(toBN("1000")))
+      .send({ from: account4 });
+    await voting.methods.stake(toWei("15000000").add(toBN("1000"))).send({ from: account4 });
+    await votingToken.methods.transfer(rand, toWei("15000000").add(toBN("1000"))).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("15000000").add(toBN("1000"))).send({ from: rand });
+    await voting.methods.stake(toWei("15000000").add(toBN("1000"))).send({ from: rand });
+
+    // Submit test price request.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    let time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Commit votes.
+    const price = 123;
+    const wrongPrice = 456;
+    const salt = getRandomSignedInt();
+    const hash1 = computeVoteHash({ price: price, salt: salt, account: account1, time, roundId, identifier });
+    const hash2 = computeVoteHash({ price: price, salt: salt, account: account2, time, roundId, identifier });
+    const hash3 = computeVoteHash({ price: price, salt: salt, account: account3, time, roundId, identifier });
+    const hash4 = computeVoteHash({ price: wrongPrice, salt: salt, account: account4, time, roundId, identifier });
+    const hash5 = computeVoteHash({ price: wrongPrice, salt: salt, account: rand, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
+    await voting.methods.commitVote(identifier, time, hash3).send({ from: account3 });
+    await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
+    await voting.methods.commitVote(identifier, time, hash5).send({ from: rand });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account3 });
+    await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: rand });
+
+    // Submit the second test price request.
+    time = time + 1;
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Commit votes with everybody voting for the same price.
+    const newHash1 = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
+    const newHash2 = computeVoteHash({ price, salt, account: account2, time, roundId, identifier });
+    const newHash3 = computeVoteHash({ price, salt, account: account3, time, roundId, identifier });
+    const newHash4 = computeVoteHash({ price, salt, account: account4, time, roundId, identifier });
+    const newHash5 = computeVoteHash({ price, salt, account: rand, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, newHash1).send({ from: account1 });
+    await voting.methods.commitVote(identifier, time, newHash2).send({ from: account2 });
+    await voting.methods.commitVote(identifier, time, newHash3).send({ from: account3 });
+    await voting.methods.commitVote(identifier, time, newHash4).send({ from: account4 });
+    await voting.methods.commitVote(identifier, time, newHash5).send({ from: rand });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account3 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: rand });
+
+    // Move to next round and verify that all stakers are able to claim rewards. This would be impossible if
+    // cumulativeStakeAtRound were to be out of sync with totalVotes for the round.
+    await moveToNextRound(voting, accounts[0]);
+    for (const ac of [account1, account2, account3, account4, rand])
+      await voting.methods.withdrawRewards().send({ from: ac });
   });
   it("Can change address of slashing library between rounds and voters are slashed appropriately", async function () {
     // consider the slashing library being changed between. A voter should be slashed based on the slashing library that
