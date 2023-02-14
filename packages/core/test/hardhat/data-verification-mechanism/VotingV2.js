@@ -5,6 +5,7 @@ const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const {
   RegistryRolesEnum,
   VotePhasesEnum,
+  didContractRevertWith,
   didContractThrow,
   getRandomSignedInt,
   decryptMessage,
@@ -4293,8 +4294,8 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call())[0].status, "4");
 
     assert(
-      await didContractThrow(
-        voting.methods.getPrice(identifier, time).send({ from: account1 }),
+      await didContractRevertWith(
+        voting.methods.getPrice(identifier, time).send({ from: registeredContract }),
         "Price will be deleted"
       )
     );
@@ -4321,8 +4322,8 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 0);
 
     assert(
-      await didContractThrow(
-        voting.methods.getPrice(identifier, time).send({ from: account1 }),
+      await didContractRevertWith(
+        voting.methods.getPrice(identifier, time).send({ from: registeredContract }),
         "Current voting round not ended"
       )
     );
