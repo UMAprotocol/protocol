@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { web3, assertEventEmitted } = hre;
-const { runDefaultFixture, didContractThrow } = require("@uma/common");
+const { runDefaultFixture, didContractRevertWith, didContractThrow } = require("@uma/common");
 const { getContract } = hre;
 
 const { assert } = require("chai");
@@ -192,12 +192,57 @@ describe("Staker", function () {
       // The account should have 0 outstanding rewards as they requested to unstake right at the beginning of the test.
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
     });
+    it("Unstaking time can be shortcut if unstakeCooldown is set to zero", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 });
+
+      // Attempting to unstake without requesting.
+      assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
+
+      await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
+
+      // Set the unstake cooldown to 0.
+      await staker.methods.setUnstakeCoolDown(0).send({ from: account1 });
+
+      const balanceBefore = await votingToken.methods.balanceOf(account1).call();
+      await staker.methods.executeUnstake().send({ from: account1 });
+      const balanceAfter = await votingToken.methods.balanceOf(account1).call();
+      assert.equal(balanceAfter, amountToStake.add(toBN(balanceBefore))); // Should get back the original amount staked.
+    });
+    it("Unstaking time is not retroactive", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 });
+
+      // Attempting to unstake without requesting.
+      assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
+      await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
+      // Not waiting long enough should also revert.
+      assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
+      await advanceTime(1000);
+      assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
+
+      // Set the unstake cooldown to 0.
+      await staker.methods.setUnstakeCoolDown(1).send({ from: account1 });
+      assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
+
+      const currentTime = toBN(await staker.methods.getCurrentTime().call());
+      const unstakeTime = toBN((await staker.methods.voterStakes(account1).call()).unstakeTime);
+
+      await advanceTime(unstakeTime.sub(currentTime).toString());
+
+      const balanceBefore = await votingToken.methods.balanceOf(account1).call();
+      await staker.methods.executeUnstake().send({ from: account1 });
+      const balanceAfter = await votingToken.methods.balanceOf(account1).call();
+      assert.equal(balanceAfter, amountToStake.add(toBN(balanceBefore))); // Should get back the original amount staked.
+
+      // The account should have 0 outstanding rewards as they requested to unstake right at the beginning of the test.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
+    });
     it("Can not re-request to unstake", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
 
-      const unstakeRequestTime = Number(await staker.methods.getCurrentTime().call());
+      const currentTime = toBN(await staker.methods.getCurrentTime().call());
+      const unstakeTime = currentTime.add(toBN(await staker.methods.unstakeCoolDown().call()));
       await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
-      assert((await staker.methods.voterStakes(account1).call()).unstakeRequestTime, unstakeRequestTime);
+      assert((await staker.methods.voterStakes(account1).call()).unstakeTime, unstakeTime.toString());
       assert((await staker.methods.voterStakes(account1).call()).pendingUnstake, amountToStake);
       assert(await didContractThrow(staker.methods.requestUnstake(420).send({ from: account1 })));
     });
@@ -348,6 +393,19 @@ describe("Staker", function () {
 
       result = await staker.methods.executeUnstake().send({ from: account1 });
       await assertEventEmitted(result, staker, "ExecutedUnstake");
+    });
+  });
+  describe("Staker: input validation", function () {
+    it("Cannot stake 0 UMA", async function () {
+      assert(await didContractRevertWith(staker.methods.stake("0").send({ from: account1 }), "Cannot stake 0"));
+    });
+
+    it("Cannot unstake 0 UMA", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 });
+
+      assert(
+        await didContractRevertWith(staker.methods.requestUnstake("0").send({ from: account1 }), "Cannot unstake 0")
+      );
     });
   });
 });

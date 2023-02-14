@@ -7,7 +7,7 @@
     "bootstrap": "yarn",
     "lint": "yarn eslint && yarn prettier --list-different",
     "lint-fix": "yarn eslint --fix && yarn prettier --write",
-    "eslint": "eslint './**/*.js' './**/*.ts'",
+    "eslint": "eslint --quiet './**/*.js' './**/*.ts'",
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md' './**/*.ts'",
     "test": "NODE_OPTIONS=--max-old-space-size=4096 lerna run --stream --concurrency=4 test",
     "test-concurrent": "NODE_OPTIONS=--max-old-space-size=4096 lerna run --stream --concurrency=4 test --ignore @uma/serverless-orchestration --ignore @uma/affiliates && lerna run --stream --concurrency=1 test --scope @uma/serverless-orchestration --scope @uma/affiliates",

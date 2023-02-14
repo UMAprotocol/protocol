@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "./ResultComputationV2.sol";
 import "./Staker.sol";
 import "./VoteTiming.sol";
@@ -51,6 +53,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct Round {
+        SlashingLibraryInterface slashingLibrary; // Slashing library used to compute voter participation slash at this round.
         uint128 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
         uint128 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint128 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
@@ -316,6 +319,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         }
     }
 
+    /**
+     * @notice Gets the round ID that a request should be voted on.
+     * @return uint32 round ID that a request should be voted on.
+     */
     function getRoundIdToVoteOnRequest(uint32 targetRoundId) public view returns (uint32) {
         while (rounds[targetRoundId].numberOfRequestsToVote >= maxRequestsPerRound) ++targetRoundId;
         return targetRoundId;
@@ -381,7 +388,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Gets the status of a list of price requests, identified by their identifier and time.
+     * @notice Gets the status of a list of price requests, identified by their identifier, time and ancillary data.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of pending requests which includes identifier, timestamp & ancillary data for the requests.
      * @return requestStates a list, in the same order as the input list, giving the status of the specified requests.
@@ -520,7 +527,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Gets the requests that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
-    function getPendingRequests() public override returns (PendingRequestAncillaryAugmented[] memory) {
+    function getPendingRequests() public view override returns (PendingRequestAncillaryAugmented[] memory) {
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequestsIds only to those requests that have an Active RequestStatus.
         PendingRequestAncillaryAugmented[] memory unresolved =
@@ -582,7 +589,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
-     * @return uint256 the unique round ID.
+     * @return uint32 the unique round ID.
      */
     function getCurrentRoundId() public view override returns (uint32) {
         return uint32(voteTiming.computeCurrentRoundId(getCurrentTime()));
@@ -591,7 +598,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Returns the round end time, as a function of the round number.
      * @param roundId representing the unique round ID.
-     * @return uint256 representing the unique round ID.
+     * @return uint256 representing the round end time.
      */
     function getRoundEndTime(uint256 roundId) external view returns (uint256) {
         return voteTiming.computeRoundEndTime(roundId);
@@ -605,6 +612,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
     function getNumberOfPriceRequests()
         public
+        view
         returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
     {
         return (pendingPriceRequestsIds.length, resolvedPriceRequestIds.length);
@@ -637,14 +645,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         uint256 totalVotes = voteInstance.results.totalVotes;
         uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
-        uint256 stakedAtRound = rounds[lastVotingRound].cumulativeStakeAtRound;
-        bool isGovernance = priceRequest.isGovernance;
+        uint256 totalStaked = rounds[lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, isGovernance);
+            rounds[lastVotingRound].slashingLibrary.calcSlashing(
+                totalStaked,
+                totalVotes,
+                totalCorrectVotes,
+                requestIndex,
+                priceRequest.isGovernance
+            );
 
         uint256 totalSlashed =
-            ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
+            ((noVoteSlash * (totalStaked - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
 
         return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes, lastVotingRound);
     }
@@ -706,7 +719,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /**
-     * @notice Resets the GAT number and PAT percentage. GAT is the minimum number of tokens that must participate in a
+     * @notice Resets the GAT number and SPAT percentage. GAT is the minimum number of tokens that must participate in a
      * vote for it to resolve (quorum number). SPAT is the minimum percentage of tokens that must agree on a result
      * for it to resolve (percentage of staked tokens) This change only applies to subsequent rounds.
      * @param newGat sets the next round's GAT and going forward.
@@ -838,11 +851,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (participation == VoteParticipation.DidNotVote)
-                slash = -int256((effectiveStake * trackers.noVoteSlashPerToken) / 1e18);
+                slash = -int256(Math.ceilDiv(effectiveStake * trackers.noVoteSlashPerToken, 1e18));
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (participation == VoteParticipation.WrongVote)
-                slash = -int256((effectiveStake * trackers.wrongVoteSlashPerToken) / 1e18);
+                slash = -int256(Math.ceilDiv(effectiveStake * trackers.wrongVoteSlashPerToken, 1e18));
 
                 // Else, the voter voted correctly. Receive a pro-rate share of the other voters slash.
             else slash = int256((effectiveStake * trackers.totalSlashed) / trackers.totalCorrectVotes);
@@ -983,6 +996,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
         if (rounds[roundId].minParticipationRequirement == 0) {
+            rounds[roundId].slashingLibrary = slashingLibrary;
+
             // The minimum required participation for a vote to settle within this round is the GAT (fixed number).
             rounds[roundId].minParticipationRequirement = gat;
 

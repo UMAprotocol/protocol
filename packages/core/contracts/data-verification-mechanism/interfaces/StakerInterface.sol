@@ -17,9 +17,9 @@ interface StakerInterface {
 
     function withdrawAndRestake() external returns (uint128);
 
-    function setEmissionRate(uint128 emissionRate) external;
+    function setEmissionRate(uint128 newEmissionRate) external;
 
-    function setUnstakeCoolDown(uint64 unstakeCoolDown) external;
+    function setUnstakeCoolDown(uint64 newUnstakeCoolDown) external;
 
     /**
      * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker. The staker will still own
