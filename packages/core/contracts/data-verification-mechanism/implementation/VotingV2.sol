@@ -1055,7 +1055,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         nextPendingIndexToProcess = requestIndex; // Store the index traversed up to for this round.
     }
 
-    // Returns a price request status. A request is either: NotRequested, Active, Resolved or Future.
+    // Returns a price request status. A request is either: NotRequested, Active, Resolved, Future or ToDelete.
     function _getRequestStatus(PriceRequest storage priceRequest, uint32 currentRoundId)
         private
         view
@@ -1119,7 +1119,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         require(registry.isContractRegistered(msg.sender) || msg.sender == migratedAddress, "Caller not registered");
     }
 
-    // Checks if a request should be deleted. A request should be deleted if it has been rolled more than the maxRolls
+    // Checks if a request should be deleted. A non-gevernance request should be deleted if it has been rolled more than
+    // the maxRolls.
     function _shouldDeleteRequest(uint256 rollCount, bool isGovernance) private view returns (bool) {
         return rollCount > maxRolls && !isGovernance;
     }
