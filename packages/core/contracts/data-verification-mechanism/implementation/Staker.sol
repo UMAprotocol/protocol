@@ -88,8 +88,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint64 _unstakeCoolDown,
         address _votingToken
     ) {
-        emissionRate = _emissionRate;
-        unstakeCoolDown = _unstakeCoolDown;
+        setEmissionRate(_emissionRate);
+        setUnstakeCoolDown(_unstakeCoolDown);
         votingToken = ExpandedIERC20(_votingToken);
     }
 
@@ -254,7 +254,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second.
      * @param newEmissionRate the new amount of voting tokens that are emitted per second, split pro rata to stakers.
      */
-    function setEmissionRate(uint128 newEmissionRate) external onlyOwner {
+    function setEmissionRate(uint128 newEmissionRate) public onlyOwner {
         _updateReward(address(0));
         emissionRate = newEmissionRate;
         emit SetNewEmissionRate(newEmissionRate);
@@ -264,7 +264,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice  Set the amount of time a voter must wait to unstake after submitting a request to do so.
      * @param newUnstakeCoolDown the new duration of the cool down period in seconds.
      */
-    function setUnstakeCoolDown(uint64 newUnstakeCoolDown) external onlyOwner {
+    function setUnstakeCoolDown(uint64 newUnstakeCoolDown) public onlyOwner {
         unstakeCoolDown = newUnstakeCoolDown;
         emit SetNewUnstakeCoolDown(newUnstakeCoolDown);
     }

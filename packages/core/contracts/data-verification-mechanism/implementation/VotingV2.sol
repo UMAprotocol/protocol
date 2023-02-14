@@ -53,6 +53,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     struct Round {
+        SlashingLibraryInterface slashingLibrary; // Slashing library used to compute voter participation slash at this round.
         uint128 minParticipationRequirement; // Minimum staked tokens that must vote to resolve a request.
         uint128 minAgreementRequirement; // Minimum staked tokens that must agree on an outcome to resolve a request.
         uint128 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
@@ -67,18 +68,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 lastVotingRound; // The last round that this request was voted on (when it resolved).
     }
 
+    enum VoteParticipation {
+        DidNotVote, // Voter did not vote.
+        WrongVote, // Voter voted against the resolved price.
+        CorrectVote // Voter voted with the resolved price.
+    }
+
     // Represents the status a price request has.
     enum RequestStatus {
         NotRequested, // Was never requested.
         Active, // Is being voted on in the current round.
         Resolved, // Was resolved in a previous round.
-        Future // Is scheduled to be voted on in a future round.
-    }
-
-    enum VoteParticipation {
-        DidNotVote, // Voter did not vote.
-        WrongVote, // Voter voted against the resolved price.
-        CorrectVote // Voter voted with the resolved price.
+        Future, // Is scheduled to be voted on in a future round.
+        ToDelete // Is scheduled to be deleted.
     }
 
     // Only used as a return value in view methods -- never stored in the contract.
@@ -526,7 +528,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Gets the requests that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
-    function getPendingRequests() public override returns (PendingRequestAncillaryAugmented[] memory) {
+    function getPendingRequests() public view override returns (PendingRequestAncillaryAugmented[] memory) {
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequestsIds only to those requests that have an Active RequestStatus.
         PendingRequestAncillaryAugmented[] memory unresolved =
@@ -536,13 +538,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         for (uint256 i = 0; i < pendingPriceRequestsIds.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequestsIds[i]];
-
             if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
                 unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
                     lastVotingRound: priceRequest.lastVotingRound,
                     isGovernance: priceRequest.isGovernance,
                     time: priceRequest.time,
-                    rollCount: priceRequest.rollCount,
+                    rollCount: _getActualRollCount(priceRequest, currentRoundId),
                     identifier: priceRequest.identifier,
                     ancillaryData: priceRequest.ancillaryData
                 });
@@ -555,15 +556,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         for (uint256 i = 0; i < numUnresolved; i = unsafe_inc(i)) pendingRequests[i] = unresolved[i];
 
         return pendingRequests;
-    }
-
-    /**
-     * @notice Gets the requests that are being voted on this round after processing any resolvable price requests.
-     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
-     */
-    function getPendingRequestsPostUpdate() external override returns (PendingRequestAncillaryAugmented[] memory) {
-        processResolvablePriceRequests();
-        return getPendingRequests();
     }
 
     /**
@@ -607,11 +599,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Returns the number of current pending price requests to be voted and the number of resolved price
        requests over all time.
+     * @dev This method might return stale values if the state of the contract has changed since the last time
+       `processResolvablePriceRequests()` was called. To get the most up-to-date values, call
+       `getNumberOfPriceRequestsPostUpdate()` instead.
      * @return numberPendingPriceRequests the total number of pending prices requests.
      * @return numberResolvedPriceRequests the total number of prices resolved over all time.
      */
     function getNumberOfPriceRequests()
         public
+        view
         returns (uint256 numberPendingPriceRequests, uint256 numberResolvedPriceRequests)
     {
         return (pendingPriceRequestsIds.length, resolvedPriceRequestIds.length);
@@ -644,14 +640,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         uint256 totalVotes = voteInstance.results.totalVotes;
         uint256 totalCorrectVotes = voteInstance.results.getTotalCorrectlyVotedTokens();
-        uint256 stakedAtRound = rounds[lastVotingRound].cumulativeStakeAtRound;
-        bool isGovernance = priceRequest.isGovernance;
+        uint256 totalStaked = rounds[lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, requestIndex, isGovernance);
+            rounds[lastVotingRound].slashingLibrary.calcSlashing(
+                totalStaked,
+                totalVotes,
+                totalCorrectVotes,
+                requestIndex,
+                priceRequest.isGovernance
+            );
 
         uint256 totalSlashed =
-            ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
+            ((noVoteSlash * (totalStaked - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;
 
         return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes, lastVotingRound);
     }
@@ -948,6 +949,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         }
 
         if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
+        if (requestStatus == RequestStatus.ToDelete) return (false, 0, "Price will be deleted");
         (bool previouslyResolved, int256 previousPrice) =
             _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
         if (previouslyResolved) return (true, previousPrice, "");
@@ -990,6 +992,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
         if (rounds[roundId].minParticipationRequirement == 0) {
+            rounds[roundId].slashingLibrary = slashingLibrary;
+
             // The minimum required participation for a vote to settle within this round is the GAT (fixed number).
             rounds[roundId].minParticipationRequirement = gat;
 
@@ -1049,7 +1053,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             request.rollCount += currentRoundId - request.lastVotingRound;
 
             // If the roll count exceeds the threshold and the request is not governance then it is deletable.
-            if (request.rollCount > maxRolls && !request.isGovernance) {
+            if (_shouldDeleteRequest(request.rollCount, request.isGovernance)) {
                 emit RequestDeleted(request.identifier, request.time, request.ancillaryData, request.rollCount);
                 delete priceRequests[pendingPriceRequestsIds[requestIndex]];
                 _removeRequestFromPendingPriceRequestsIds(requestIndex);
@@ -1066,19 +1070,25 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         nextPendingIndexToProcess = requestIndex; // Store the index traversed up to for this round.
     }
 
-    // Returns a price request status. A request is either: NotRequested, Active, Resolved or Future.
+    // Returns a price request status. A request is either: NotRequested, Active, Resolved, Future or ToDelete.
     function _getRequestStatus(PriceRequest storage priceRequest, uint32 currentRoundId)
         private
         view
         returns (RequestStatus)
     {
         if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
-        else if (priceRequest.lastVotingRound < currentRoundId) {
+        if (priceRequest.lastVotingRound < currentRoundId) {
+            // Check if the request has already been resolved
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (bool isResolved, ) = _getResolvedPrice(voteInstance, priceRequest.lastVotingRound);
-            return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
-        } else if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;
-        else return RequestStatus.Future; // Means than priceRequest.lastVotingRound > currentRoundId
+            if (isResolved) return RequestStatus.Resolved;
+            if (_shouldDeleteRequest(_getActualRollCount(priceRequest, currentRoundId), priceRequest.isGovernance))
+                return RequestStatus.ToDelete;
+            return RequestStatus.Active;
+        }
+        if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;
+
+        return RequestStatus.Future; // Means than priceRequest.lastVotingRound > currentRoundId
     }
 
     function _getResolvedPrice(VoteInstance storage voteInstance, uint256 lastVotingRound)
@@ -1122,5 +1132,22 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _requireRegisteredContract() private view {
         RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
         require(registry.isContractRegistered(msg.sender) || msg.sender == migratedAddress, "Caller not registered");
+    }
+
+    // Checks if a request should be deleted. A non-gevernance request should be deleted if it has been rolled more than
+    // the maxRolls.
+    function _shouldDeleteRequest(uint256 rollCount, bool isGovernance) private view returns (bool) {
+        return rollCount > maxRolls && !isGovernance;
+    }
+
+    // Returns the actual roll count of a request. This is the roll count plus the number of rounds that have passed
+    // since the last voting round.
+    function _getActualRollCount(PriceRequest storage priceRequest, uint32 currentRoundId)
+        private
+        view
+        returns (uint32)
+    {
+        if (currentRoundId <= priceRequest.lastVotingRound) return priceRequest.rollCount;
+        return priceRequest.rollCount + currentRoundId - priceRequest.lastVotingRound;
     }
 }
