@@ -5,6 +5,7 @@ const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const {
   RegistryRolesEnum,
   VotePhasesEnum,
+  didContractRevertWith,
   didContractThrow,
   getRandomSignedInt,
   decryptMessage,
@@ -1738,11 +1739,8 @@ describe("VotingV2", function () {
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound(votingTest, accounts[0]);
 
-    // Check that getPendingRequestsPostUpdate already returns the correct number of elements.
-    assert.equal(
-      (await VotingV2.at(votingTest.options.address).methods.getPendingRequestsPostUpdate().call()).length,
-      0
-    );
+    // Check that getPendingRequests already returns the correct number of elements.
+    assert.equal((await VotingV2.at(votingTest.options.address).methods.getPendingRequests().call()).length, 0);
     assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 1);
 
     // Updating the account tracker should remove the request from the pending array as it is now resolved.
@@ -1798,17 +1796,15 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
-    // Check that getPendingRequestsPostUpdate returns the pending price requests updated.
-    assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 0);
-    assert.equal((await voting.methods.getPendingRequestsPostUpdate().call())[0].rollCount, 1);
+    // Check that getPendingRequests returns the pending price requests updated.
+    assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 1);
 
     // Roll two more rounds to delete the price request.
     await moveToNextRound(voting, accounts[0]);
     await moveToNextRound(voting, accounts[0]);
 
-    // Check that getPendingRequestsPostUpdate already returns the correct number of elements.
-    assert.equal((await voting.methods.getPendingRequestsPostUpdate().call()).length, 0);
-    assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
+    // Check that getPendingRequests already returns the correct number of elements.
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
   });
   it("Votes can correctly handle arbitrary ancillary data", async function () {
     const identifier1 = padRight(utf8ToHex("request-retrieval"), 64);
@@ -4270,6 +4266,67 @@ describe("VotingV2", function () {
 
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
+  });
+  it("Request to be deleted can be re-requested only after processing resolvable price requests", async function () {
+    // Verify that if a request rolls enough times (to hit maxRolls) it is automatically removed from the
+    // pending requests array and becomes unresolvable.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    // Verify that the order of requests is respected as they move between the pending and settled arrays.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
+
+    // Within the first active commit the roll counter should be 0.
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 2);
+
+    assert.equal((await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call())[0].status, "1");
+
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
+    assert.equal((await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call())[0].status, "4");
+
+    assert(
+      await didContractRevertWith(
+        voting.methods.getPrice(identifier, time).send({ from: registeredContract }),
+        "Price will be deleted"
+      )
+    );
+
+    let result = await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await assertEventNotEmitted(result, voting, "RequestAdded");
+
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
+
+    const currentRoundId = await voting.methods.getCurrentRoundId().call();
+    result = await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await assertEventEmitted(result, voting, "RequestAdded", (ev) => {
+      return (
+        // The vote is added to the next round, so we have to add 1 to the current round id.
+        ev.roundId.toString() == toBN(currentRoundId).addn(1).toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time.toString()
+      );
+    });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
+    assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 0);
+
+    assert(
+      await didContractRevertWith(
+        voting.methods.getPrice(identifier, time).send({ from: registeredContract }),
+        "Current voting round not ended"
+      )
+    );
   });
   it("Handles calling settle during reveal", async function () {
     // In the event that someone calls processResolvablePriceRequests() during the reveal phase, after a vote has reached
