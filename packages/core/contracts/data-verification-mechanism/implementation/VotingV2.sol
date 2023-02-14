@@ -65,6 +65,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint32 lastVotingRound; // The last round that this request was voted on (when it resolved).
     }
 
+    enum VoteParticipation {
+        DidNotVote, // Voter did not vote.
+        WrongVote, // Voter voted against the resolved price.
+        CorrectVote // Voter voted with the resolved price.
+    }
+
     // Represents the status a price request has.
     enum RequestStatus {
         NotRequested, // Was never requested.
@@ -72,12 +78,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         Resolved, // Was resolved in a previous round.
         Future, // Is scheduled to be voted on in a future round.
         ToDelete // Is scheduled to be deleted.
-    }
-
-    enum VoteParticipation {
-        DidNotVote, // Voter did not vote.
-        WrongVote, // Voter voted against the resolved price.
-        CorrectVote // Voter voted with the resolved price.
     }
 
     // Only used as a return value in view methods -- never stored in the contract.
