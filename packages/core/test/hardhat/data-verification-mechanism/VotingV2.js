@@ -1536,7 +1536,6 @@ describe("VotingV2", function () {
     const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
     await newVoting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
     await moveToNextPhase(newVoting, accounts[0]);
-    // await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await newVoting.methods.revealVote(identifier, time1, price, salt).send({ from: account1 });
     await moveToNextRound(newVoting, accounts[0]);
 
@@ -1551,12 +1550,6 @@ describe("VotingV2", function () {
     // Now newVoting and registered contracts can call methods.
     assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: migratedVoting }));
     assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: registeredContract }));
-
-    // commit/reveal are completely disabled, regardless if called by newVoting.
-    assert(
-      await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: migratedVoting }))
-    );
-    assert(await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: account1 })));
 
     // Requesting prices is completely disabled after migration, regardless if called by newVoting.
     assert(await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: migratedVoting })));
@@ -5472,6 +5465,51 @@ describe("VotingV2", function () {
     // and for the second request at 0.0032 * (32mm-51200) = 102236.16. They should therefore have a balance of
     // 32mm - 51200 - 102236.16 = 31846563.84
     assert.equal(await voting.methods.getVoterStakePostUpdate(account2).call(), toWei("31846563.84"));
+  });
+  it("Can still resolve requests if voting contract migrates during vote cycle", async function () {
+    // Consider the situation where during a voting cycle the voting contract is migrated to a new address. This could
+    // happen if there are requests at the same time as a contract upgrade, for example. In this situation the prices that
+    // were requested before the migration should still be able to be resolved.
+
+    // Request a price.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    // Say one voter is able to commit before the execution of the migration.
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    let hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+
+    // Now, before anyone else can commit the migration happens. This voter should be able to reveal and other voters
+    // should be able to commit and reveal without issue, despite the migration.
+
+    await voting.methods.setMigrated(rand).send({ from: account1 });
+
+    let hash2 = computeVoteHash({ ...baseRequest, price: price, account: account2, time: time });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
+
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
+
+    // The price should be resolved.
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+
+    // However, cant request another price as migrated.
+    assert(
+      await didContractThrow(voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract }))
+    );
   });
 
   const addNonSlashingVote = async () => {
