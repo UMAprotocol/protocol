@@ -16,6 +16,8 @@ library VoteTiming {
 
     /**
      * @notice Initializes the data object. Sets the phase length based on the input.
+     * @param data reference to the this library's data object.
+     * @param phaseLength length of voting phase in seconds.
      */
     function init(Data storage data, uint256 phaseLength) internal {
         // This should have a require message but this results in an internal Solidity error.
