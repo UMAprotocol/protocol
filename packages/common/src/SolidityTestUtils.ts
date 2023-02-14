@@ -13,6 +13,18 @@ export async function didContractThrow<T>(promise: Promise<T>): Promise<boolean>
   return false;
 }
 
+// Attempts to execute a promise and returns false if no error is thrown,
+// or the error message does not match the expected revert message
+export async function didContractRevertWith<T>(promise: Promise<T>, revertMessage: string): Promise<boolean> {
+  try {
+    await promise;
+  } catch (error) {
+    const expectedErrorMessage = `VM Exception while processing transaction: reverted with reason string '${revertMessage}'`;
+    return (error as Error).message === expectedErrorMessage;
+  }
+  return false;
+}
+
 type Web3Provider =
   | InstanceType<typeof Web3.providers.HttpProvider>
   | InstanceType<typeof Web3.providers.WebsocketProvider>;

@@ -84,6 +84,7 @@ contract ProposerV2 is Ownable, Lockable {
      */
     function resolveProposal(uint256 id) external nonReentrant() {
         BondedProposal memory bondedProposal = bondedProposals[id];
+        require(bondedProposal.sender != address(0), "Invalid proposal id");
         OracleAncillaryInterface voting =
             OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
         bytes32 adminIdentifier = AdminIdentifierLib._constructIdentifier(id);

@@ -19,6 +19,8 @@ contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
      * @param _governanceSlashAmount Slash amount per token for wrong governance votes.
      */
     constructor(uint256 _baseSlashAmount, uint256 _governanceSlashAmount) {
+        require(_baseSlashAmount < 1e18, "Invalid base slash amount");
+        require(_governanceSlashAmount < 1e18, "Invalid governance slash amount");
         baseSlashAmount = _baseSlashAmount; // Slash amount per token for missed votes and wrong non-governance votes.
         governanceSlashAmount = _governanceSlashAmount; // Slash amount per token for wrong governance votes.
     }
