@@ -159,7 +159,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         cumulativeStake -= amount;
         voterStake.pendingUnstake = amount;
         voterStake.stake -= amount;
-        voterStake.unstakeTime = SafeCast.toUint64(getCurrentTime()) + unstakeCoolDown;
+        voterStake.unstakeTime = uint64(getCurrentTime()) + unstakeCoolDown;
 
         emit RequestedUnstake(msg.sender, amount, voterStake.unstakeTime, voterStake.stake);
     }
