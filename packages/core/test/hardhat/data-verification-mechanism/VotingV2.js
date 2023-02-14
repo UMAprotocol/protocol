@@ -5,6 +5,7 @@ const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const {
   RegistryRolesEnum,
   VotePhasesEnum,
+  didContractRevertWith,
   didContractThrow,
   getRandomSignedInt,
   decryptMessage,
@@ -129,8 +130,11 @@ describe("VotingV2", function () {
     for (const ac of [account1, account2, account3, account4, rand]) {
       if ((await voting.methods.voterStakes(ac).call()).pendingUnstake != 0)
         await voting.methods.executeUnstake().send({ from: ac });
-      await voting.methods.requestUnstake(await voting.methods.getVoterStakePostUpdate(ac).call()).send({ from: ac });
-      await voting.methods.executeUnstake().send({ from: ac });
+      const stake = await voting.methods.getVoterStakePostUpdate(ac).call();
+      if (stake !== "0") {
+        await voting.methods.requestUnstake(stake).send({ from: ac });
+        await voting.methods.executeUnstake().send({ from: ac });
+      }
     }
 
     const votingBalance = await votingToken.methods.balanceOf(voting.options.address).call();
@@ -1532,7 +1536,6 @@ describe("VotingV2", function () {
     const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
     await newVoting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
     await moveToNextPhase(newVoting, accounts[0]);
-    // await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await newVoting.methods.revealVote(identifier, time1, price, salt).send({ from: account1 });
     await moveToNextRound(newVoting, accounts[0]);
 
@@ -1547,12 +1550,6 @@ describe("VotingV2", function () {
     // Now newVoting and registered contracts can call methods.
     assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: migratedVoting }));
     assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: registeredContract }));
-
-    // commit/reveal are completely disabled, regardless if called by newVoting.
-    assert(
-      await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: migratedVoting }))
-    );
-    assert(await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: account1 })));
 
     // Requesting prices is completely disabled after migration, regardless if called by newVoting.
     assert(await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: migratedVoting })));
@@ -1735,11 +1732,8 @@ describe("VotingV2", function () {
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound(votingTest, accounts[0]);
 
-    // Check that getPendingRequestsPostUpdate already returns the correct number of elements.
-    assert.equal(
-      (await VotingV2.at(votingTest.options.address).methods.getPendingRequestsPostUpdate().call()).length,
-      0
-    );
+    // Check that getPendingRequests already returns the correct number of elements.
+    assert.equal((await VotingV2.at(votingTest.options.address).methods.getPendingRequests().call()).length, 0);
     assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 1);
 
     // Updating the account tracker should remove the request from the pending array as it is now resolved.
@@ -1795,17 +1789,15 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 2);
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
 
-    // Check that getPendingRequestsPostUpdate returns the pending price requests updated.
-    assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 0);
-    assert.equal((await voting.methods.getPendingRequestsPostUpdate().call())[0].rollCount, 1);
+    // Check that getPendingRequests returns the pending price requests updated.
+    assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 1);
 
     // Roll two more rounds to delete the price request.
     await moveToNextRound(voting, accounts[0]);
     await moveToNextRound(voting, accounts[0]);
 
-    // Check that getPendingRequestsPostUpdate already returns the correct number of elements.
-    assert.equal((await voting.methods.getPendingRequestsPostUpdate().call()).length, 0);
-    assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
+    // Check that getPendingRequests already returns the correct number of elements.
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
   });
   it("Votes can correctly handle arbitrary ancillary data", async function () {
     const identifier1 = padRight(utf8ToHex("request-retrieval"), 64);
@@ -4066,13 +4058,11 @@ describe("VotingV2", function () {
     await voting.methods
       .requestUnstake((await voting.methods.voterStakes(account4).call()).stake)
       .send({ from: account4 });
-    await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
 
     await voting.methods.executeUnstake().send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account2 });
     await voting.methods.executeUnstake().send({ from: account3 });
     await voting.methods.executeUnstake().send({ from: account4 });
-    await voting.methods.executeUnstake().send({ from: rand });
 
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
@@ -4269,6 +4259,67 @@ describe("VotingV2", function () {
 
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
     assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
+  });
+  it("Request to be deleted can be re-requested only after processing resolvable price requests", async function () {
+    // Verify that if a request rolls enough times (to hit maxRolls) it is automatically removed from the
+    // pending requests array and becomes unresolvable.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    // Verify that the order of requests is respected as they move between the pending and settled arrays.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
+
+    // Within the first active commit the roll counter should be 0.
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 2);
+
+    assert.equal((await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call())[0].status, "1");
+
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
+    assert.equal((await voting.methods.getPriceRequestStatuses([{ identifier, time }]).call())[0].status, "4");
+
+    assert(
+      await didContractRevertWith(
+        voting.methods.getPrice(identifier, time).send({ from: registeredContract }),
+        "Price will be deleted"
+      )
+    );
+
+    let result = await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await assertEventNotEmitted(result, voting, "RequestAdded");
+
+    await voting.methods.processResolvablePriceRequests().send({ from: accounts[0] });
+
+    const currentRoundId = await voting.methods.getCurrentRoundId().call();
+    result = await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await assertEventEmitted(result, voting, "RequestAdded", (ev) => {
+      return (
+        // The vote is added to the next round, so we have to add 1 to the current round id.
+        ev.roundId.toString() == toBN(currentRoundId).addn(1).toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time.toString()
+      );
+    });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
+    assert.equal((await voting.methods.getPendingRequests().call())[0].rollCount, 0);
+
+    assert(
+      await didContractRevertWith(
+        voting.methods.getPrice(identifier, time).send({ from: registeredContract }),
+        "Current voting round not ended"
+      )
+    );
   });
   it("Handles calling settle during reveal", async function () {
     // In the event that someone calls processResolvablePriceRequests() during the reveal phase, after a vote has reached
@@ -4623,13 +4674,11 @@ describe("VotingV2", function () {
     await voting.methods
       .requestUnstake((await voting.methods.voterStakes(account4).call()).stake)
       .send({ from: account4 });
-    await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
 
     await voting.methods.executeUnstake().send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account2 });
     await voting.methods.executeUnstake().send({ from: account3 });
     await voting.methods.executeUnstake().send({ from: account4 });
-    await voting.methods.executeUnstake().send({ from: rand });
 
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
@@ -5357,6 +5406,110 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     for (const ac of [account1, account2, account3, account4, rand])
       await voting.methods.withdrawRewards().send({ from: ac });
+  });
+  it("Can change address of slashing library between rounds and voters are slashed appropriately", async function () {
+    // consider the slashing library being changed between. A voter should be slashed based on the slashing library that
+    // was set at the round the vote resolved. For example consider there being two rounds with requests in each. In
+    // round 1 the standard slashing library is used. In round 2 the slashing library changes to slashing amounts by 2x.
+    // If a voter was staked but did not interact with the contracts between these rounds they should be slashed according
+    // to the library set on each round.
+
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    let hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+
+    // move to the next phase, reveal and change the slashing library and request another price to vote on in the next round.
+
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    const newSlashingLib = await SlashingLibrary.new(toWei("0.0032", "ether"), "0").send({ from: accounts[0] });
+    console.log("newSlashingLib", newSlashingLib.options.address);
+    await voting.methods.setSlashingLibrary(newSlashingLib.options.address).send({ from: accounts[0] });
+    const time2 = time + 1;
+    await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    // commit and reveal a vote on the second price request.
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    baseRequest = { salt, roundId, identifier };
+    hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time2 });
+    await voting.methods.commitVote(identifier, time2, hash1).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time2, price, salt).send({ from: account1 });
+
+    // We should also be able to check that the round this request was voted on correctly had the new slashing lib frozen.
+    assert.equal((await voting.methods.rounds(roundId).call()).slashingLibrary, newSlashingLib.options.address);
+
+    // Move to next round, update all account slashing trackers and verify the slashing is applied as expected.
+    await moveToNextRound(voting, accounts[0]);
+    for (const account of [account1, account2, account3, account4])
+      await voting.methods.updateTrackers(account).send({ from: account1 });
+
+    // Cumulative slash on first round should be 0.0016 * (100mm-32mm) = 108800. Cumulative slash on second round should
+    // be 0.0032 * (100mm-32mm-108800) = 217,251.84. We should therefore expect the balance of the account1 who
+    // voted in both rounds to be 32mm + 108800 + 217,251.84 = 32326051.84
+    assert.equal(await voting.methods.getVoterStakePostUpdate(account1).call(), toWei("32326051.84"));
+
+    // Equally, we should see the stakers who did not participate slashed at the expected rates. Consider account2. They
+    // did not vote in either request and should habve been slashed at 0.0016 for the first request as 32mm * 0.0016 = 51200
+    // and for the second request at 0.0032 * (32mm-51200) = 102236.16. They should therefore have a balance of
+    // 32mm - 51200 - 102236.16 = 31846563.84
+    assert.equal(await voting.methods.getVoterStakePostUpdate(account2).call(), toWei("31846563.84"));
+  });
+  it("Can still resolve requests if voting contract migrates during vote cycle", async function () {
+    // Consider the situation where during a voting cycle the voting contract is migrated to a new address. This could
+    // happen if there are requests at the same time as a contract upgrade, for example. In this situation the prices that
+    // were requested before the migration should still be able to be resolved.
+
+    // Request a price.
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    // Say one voter is able to commit before the execution of the migration.
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    let hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+
+    // Now, before anyone else can commit the migration happens. This voter should be able to reveal and other voters
+    // should be able to commit and reveal without issue, despite the migration.
+
+    await voting.methods.setMigrated(rand).send({ from: account1 });
+
+    let hash2 = computeVoteHash({ ...baseRequest, price: price, account: account2, time: time });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
+
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account2 });
+
+    // The price should be resolved.
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+
+    // However, cant request another price as migrated.
+    assert(
+      await didContractThrow(voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract }))
+    );
   });
 
   const addNonSlashingVote = async () => {

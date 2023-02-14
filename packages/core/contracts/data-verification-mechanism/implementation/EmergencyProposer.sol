@@ -44,7 +44,7 @@ contract EmergencyProposer is Ownable, Lockable {
     // The number of tokens needed to propose an emergency action.
     uint256 public quorum;
 
-    // The minimum time that must elapsed between from when a proposal is created to when it can be executed.
+    // The minimum time that must elapse between from when a proposal is created to when it can be executed.
     uint64 public minimumWaitTime;
 
     // The only address that can execute an emergency proposal. Will be set to a multisig. Acts to guardrail the
@@ -140,7 +140,7 @@ contract EmergencyProposer is Ownable, Lockable {
     }
 
     /**
-     * @notice After the proposal is executable, the executor or proposer can use this function to remove the proposal
+     * @notice After the proposal is executable, the executor or owner can use this function to remove the proposal
      * without slashing.
      * @dev This means that the DVM didn't explicitly reject the proposal. Allowing the executor to slash the quorum
      * would give the executor too much power. So the only control either party has is to remove the proposal,
@@ -151,7 +151,7 @@ contract EmergencyProposer is Ownable, Lockable {
     function removeProposal(uint256 id) external nonReentrant() {
         EmergencyProposal storage proposal = emergencyProposals[id];
         require(proposal.expiryTime <= getCurrentTime(), "must be expired to remove");
-        require(msg.sender == owner() || msg.sender == executor, "proposer or executor");
+        require(msg.sender == owner() || msg.sender == executor, "owner or executor");
         require(proposal.lockedTokens != 0, "invalid proposal");
         token.safeTransfer(proposal.sender, proposal.lockedTokens);
         emit EmergencyProposalRemoved(
@@ -240,7 +240,7 @@ contract EmergencyProposer is Ownable, Lockable {
 
     /**
      * @notice Admin method to set the minimum wait time for a proposal to be executed.
-     * @dev Admin is intended to be the governance system. The minumum wait time is added to the current time at the
+     * @dev Admin is intended to be the governance system. The minimum wait time is added to the current time at the
      * time of the proposal to determine when the proposal will be executable. Any changes to this value after that
      * point will have no impact on the proposal.
      * @param newMinimumWaitTime the new minimum wait time.
