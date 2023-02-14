@@ -93,6 +93,7 @@ contract GovernorV2 is MultiRole, Lockable {
         nonReentrant()
         onlyRoleHolder(uint256(Roles.Proposer))
     {
+        require(transactions.length > 0, "Empty transactions array");
         uint256 id = proposals.length;
         uint256 time = getCurrentTime();
 
@@ -197,7 +198,7 @@ contract GovernorV2 is MultiRole, Lockable {
 
     /**
      * @notice Gets the proposal data for a particular id.
-     * @dev after a proposal is executed, its data will be zeroed out, except for the request time.
+     * @dev after a proposal is executed, its data will be zeroed out, except for the request time and ancillary data.
      * @param id uniquely identify the identity of the proposal.
      * @return proposal struct containing transactions[] and requestTime.
      */

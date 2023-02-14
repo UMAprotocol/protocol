@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 import "../../common/implementation/MultiCaller.sol";
 import "../../common/implementation/Stakeable.sol";
 import "../interfaces/FinderInterface.sol";
-import "../interfaces/VotingV2Interface.sol";
 import "./Constants.sol";
 
 /**
@@ -26,9 +25,9 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
     FinderInterface public immutable finder;
 
     /**
-     * @notice Construct the DesignatedVoting contract.
+     * @notice Construct the DesignatedVotingV2 contract.
      * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
-     * @param ownerAddress address of the owner of the DesignatedVoting contract.
+     * @param ownerAddress address of the owner of the DesignatedVotingV2 contract.
      * @param voterAddress address to which the owner has delegated their voting power.
      */
     constructor(
