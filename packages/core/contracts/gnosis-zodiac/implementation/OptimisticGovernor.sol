@@ -63,7 +63,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     IERC20 public collateral; // Collateral currency used to assert proposed transactions.
     uint64 public liveness; // The amount of time to dispute proposed transactions before they can be executed.
     uint256 public bondAmount; // Configured amount of collateral currency to make assertions for proposed transactions.
-    string public rules; // Rules for the Gnosis Safe (e.g., IPFS hash or URI).
+    string public rules; // Rules for the Optimistic Governor.
     bytes32 public identifier; // Identifier used to request price from the DVM, compatible with Optimistic Asserter.
     OptimisticAsserterInterface public optimisticAsserter; // Optimistic Asserter contract used to assert proposed transactions.
     address public escalationManager; // Optional Escalation Manager contract to whitelist proposers / disputers.
@@ -95,7 +95,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @param _owner Address of the owner.
      * @param _collateral Address of the ERC20 collateral used for bonds.
      * @param _bondAmount Amount of collateral currency to make assertions for proposed transactions
-     * @param _rules Reference to the rules for the Gnosis Safe (e.g., IPFS hash or URI).
+     * @param _rules Reference to the rules for the Optimistic Governor.
      * @param _identifier The approved identifier to be used with the contract, compatible with Optimistic Asserter.
      * @param _liveness The period, in seconds, in which a proposal can be disputed.
      */
@@ -164,7 +164,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @param _rules string that outlines or references the location where the rules can be found.
      */
     function setRules(string memory _rules) public onlyOwner {
-        // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
+        // Set reference to the rules for the Optimistic Governor
         require(bytes(_rules).length > 0, "Rules can not be empty");
         rules = _rules;
         emit SetRules(_rules);
@@ -310,7 +310,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
                 exec(transaction.to, transaction.value, transaction.data, transaction.operation),
                 "Failed to execute transaction"
             );
-            emit TransactionExecuted(_proposalHash, i);
+            emit TransactionExecuted(_proposalHash, i); // TODO: add assertionId.
         }
 
         emit ProposalExecuted(_proposalHash, assertionId);
@@ -413,6 +413,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     // Constructs the claim that will be asserted at the Optimistic Asserter.
+    // TODO: consider adding rules.
     function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) internal pure returns (bytes memory) {
         return
             abi.encodePacked(
