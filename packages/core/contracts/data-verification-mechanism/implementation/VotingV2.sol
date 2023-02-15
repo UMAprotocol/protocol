@@ -697,7 +697,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newMaxRolls the new number of rounds to roll a request before the DVM auto deletes it.
      */
     function setMaxRolls(uint32 newMaxRolls) public override onlyOwner {
-        // Changes to max rolls can impact un resolved requests. To protect against this process requests first.
+        // Changes to max rolls can impact unresolved requests. To protect against this process requests first.
         processResolvablePriceRequests();
         maxRolls = newMaxRolls;
         emit MaxRollsChanged(newMaxRolls);
