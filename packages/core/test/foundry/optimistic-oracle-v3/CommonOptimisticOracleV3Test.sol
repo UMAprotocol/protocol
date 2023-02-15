@@ -74,14 +74,14 @@ contract CommonOptimisticOracleV3Test is CommonTestBase {
 
     // Common setup function, re-used in most tests.
     function _commonSetup() public {
-        OptimisticOracleV3Fixture.OptimisticOracleV3Contracts memory oaContracts =
+        OptimisticOracleV3Fixture.OptimisticOracleV3Contracts memory ooContracts =
             new OptimisticOracleV3Fixture().setUp();
-        optimisticOracleV3 = oaContracts.optimisticOracleV3;
-        defaultCurrency = oaContracts.defaultCurrency;
-        mockOracle = oaContracts.mockOracle;
-        timer = oaContracts.timer;
-        finder = oaContracts.finder;
-        store = oaContracts.store;
+        optimisticOracleV3 = ooContracts.optimisticOracleV3;
+        defaultCurrency = ooContracts.defaultCurrency;
+        mockOracle = ooContracts.mockOracle;
+        timer = ooContracts.timer;
+        finder = ooContracts.finder;
+        store = ooContracts.store;
         assertingCaller = new AssertingCallerTest(optimisticOracleV3);
         burnedBondPercentage = optimisticOracleV3.burnedBondPercentage();
         defaultBond = optimisticOracleV3.getMinimumBond(address(defaultCurrency));

@@ -56,13 +56,13 @@ contract OptimisticOracleV3Fixture is Test {
 
 contract OptimisticOracleV3FixtureTest is Test {
     function testDefaultConfiguration() public {
-        OptimisticOracleV3Fixture.OptimisticOracleV3Contracts memory oaContracts =
+        OptimisticOracleV3Fixture.OptimisticOracleV3Contracts memory ooContracts =
             new OptimisticOracleV3Fixture().setUp();
 
-        oaContracts.addressWhitelist.isOnWhitelist(address(oaContracts.defaultCurrency));
-        oaContracts.identifierWhitelist.isIdentifierSupported("ASSERT_TRUTH");
-        assertEq(address(oaContracts.optimisticOracleV3.defaultCurrency()), address(oaContracts.defaultCurrency));
-        assertEq(oaContracts.optimisticOracleV3.getMinimumBond(address(oaContracts.defaultCurrency)), 100e18);
-        assertEq(oaContracts.optimisticOracleV3.defaultLiveness(), 7200);
+        ooContracts.addressWhitelist.isOnWhitelist(address(ooContracts.defaultCurrency));
+        ooContracts.identifierWhitelist.isIdentifierSupported("ASSERT_TRUTH");
+        assertEq(address(ooContracts.optimisticOracleV3.defaultCurrency()), address(ooContracts.defaultCurrency));
+        assertEq(ooContracts.optimisticOracleV3.getMinimumBond(address(ooContracts.defaultCurrency)), 100e18);
+        assertEq(ooContracts.optimisticOracleV3.defaultLiveness(), 7200);
     }
 }

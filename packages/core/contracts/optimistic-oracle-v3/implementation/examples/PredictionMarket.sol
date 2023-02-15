@@ -24,7 +24,7 @@ contract PredictionMarket is OptimisticOracleV3CallbackRecipientInterface {
         ExpandedIERC20 outcome1Token; // ERC20 token representing the value of the first outcome.
         ExpandedIERC20 outcome2Token; // ERC20 token representing the value of the second outcome.
         uint256 reward; // Reward available for asserting true market outcome.
-        uint256 requiredBond; // Expected bond to assert market outcome (OA can require higher bond).
+        uint256 requiredBond; // Expected bond to assert market outcome (OOv3 can require higher bond).
         bytes outcome1; // Short name of the first outcome.
         bytes outcome2; // Short name of the second outcome.
         bytes description; // Description of the market.
@@ -41,7 +41,7 @@ contract PredictionMarket is OptimisticOracleV3CallbackRecipientInterface {
 
     FinderInterface public immutable finder; // UMA protocol Finder used to discover other protocol contracts.
     IERC20 public immutable currency; // Currency used for all prediction markets.
-    OptimisticOracleV3Interface public immutable oa;
+    OptimisticOracleV3Interface public immutable oo;
     uint64 public constant assertionLiveness = 7200; // 2 hours.
     bytes32 public immutable defaultIdentifier; // Identifier used for all prediction markets.
     bytes public constant unresolvable = "Unresolvable"; // Name of the unresolvable outcome where payouts are split.
@@ -76,8 +76,8 @@ contract PredictionMarket is OptimisticOracleV3CallbackRecipientInterface {
         finder = FinderInterface(_finder);
         require(_getCollateralWhitelist().isOnWhitelist(_currency), "Unsupported currency");
         currency = IERC20(_currency);
-        oa = OptimisticOracleV3Interface(_optimisticOracleV3);
-        defaultIdentifier = oa.defaultIdentifier();
+        oo = OptimisticOracleV3Interface(_optimisticOracleV3);
+        defaultIdentifier = oo.defaultIdentifier();
     }
 
     function getMarket(bytes32 marketId) public view returns (Market memory) {
@@ -89,7 +89,7 @@ contract PredictionMarket is OptimisticOracleV3CallbackRecipientInterface {
         string memory outcome2, // Short name of the second outcome.
         string memory description, // Description of the market.
         uint256 reward, // Reward available for asserting true market outcome.
-        uint256 requiredBond // Expected bond to assert market outcome (OA can require higher bond).
+        uint256 requiredBond // Expected bond to assert market outcome (OOv3 can require higher bond).
     ) public returns (bytes32 marketId) {
         require(bytes(outcome1).length > 0, "Empty first outcome");
         require(bytes(outcome2).length > 0, "Empty second outcome");
@@ -146,13 +146,13 @@ contract PredictionMarket is OptimisticOracleV3CallbackRecipientInterface {
         );
 
         market.assertedOutcomeId = assertedOutcomeId;
-        uint256 minimumBond = oa.getMinimumBond(address(currency)); // OA might require higher bond.
+        uint256 minimumBond = oo.getMinimumBond(address(currency)); // OOv3 might require higher bond.
         uint256 bond = market.requiredBond > minimumBond ? market.requiredBond : minimumBond;
         bytes memory claim = _composeClaim(assertedOutcome, market.description);
 
         // Pull bond and make the assertion.
         currency.safeTransferFrom(msg.sender, address(this), bond);
-        currency.safeApprove(address(oa), bond);
+        currency.safeApprove(address(oo), bond);
         assertionId = _assertTruthWithDefaults(claim, bond);
 
         // Store the asserter and marketId for the assertionResolvedCallback.
@@ -165,7 +165,7 @@ contract PredictionMarket is OptimisticOracleV3CallbackRecipientInterface {
     // If the assertion was resolved true, then the asserter gets the reward and the market is marked as resolved.
     // Otherwise, assertedOutcomeId is reset and the market can be asserted again.
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public {
-        require(msg.sender == address(oa), "Not authorized");
+        require(msg.sender == address(oo), "Not authorized");
         Market storage market = markets[assertedMarkets[assertionId].marketId];
 
         if (assertedTruthfully) {
@@ -247,7 +247,7 @@ contract PredictionMarket is OptimisticOracleV3CallbackRecipientInterface {
     }
 
     function _assertTruthWithDefaults(bytes memory claim, uint256 bond) internal returns (bytes32 assertionId) {
-        assertionId = oa.assertTruth(
+        assertionId = oo.assertTruth(
             claim,
             msg.sender, // Asserter
             address(this), // Receive callback in this contract.

@@ -10,7 +10,7 @@ contract PredictionMarketInitializeTest is PredictionMarketTestCommon {
     function test_ContractParameters() public {
         assertEq(address(predictionMarket.finder()), address(finder));
         assertEq(address(predictionMarket.currency()), address(defaultCurrency));
-        assertEq(address(predictionMarket.oa()), address(optimisticOracleV3));
+        assertEq(address(predictionMarket.oo()), address(optimisticOracleV3));
         assertEq(predictionMarket.defaultIdentifier(), defaultIdentifier);
     }
 

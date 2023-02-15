@@ -83,17 +83,17 @@ contract DataAsserterTest is CommonOptimisticOracleV3Test {
         vm.startPrank(TestAddress.account1);
         defaultCurrency.allocateTo(TestAddress.account1, optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
         defaultCurrency.approve(address(dataAsserter), optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
-        bytes32 oaAssertionId2 = dataAsserter.assertDataFor(dataId, correctData, TestAddress.account1);
+        bytes32 ooAssertionId2 = dataAsserter.assertDataFor(dataId, correctData, TestAddress.account1);
         vm.stopPrank(); // Return caller address to standard.
 
         // Move time forward to allow for the assertion to expire.
         timer.setCurrentTime(timer.getCurrentTime() + dataAsserter.assertionLiveness());
 
         // Settle the assertion.
-        optimisticOracleV3.settleAssertion(oaAssertionId2);
+        optimisticOracleV3.settleAssertion(ooAssertionId2);
 
         // Data should now be available.
-        (dataAvailable, data) = dataAsserter.getData(oaAssertionId2);
+        (dataAvailable, data) = dataAsserter.getData(ooAssertionId2);
         assertTrue(dataAvailable);
         assertEq(data, correctData);
     }

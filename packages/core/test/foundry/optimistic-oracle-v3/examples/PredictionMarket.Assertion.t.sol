@@ -33,11 +33,11 @@ contract PredictionMarketAssertionTest is PredictionMarketTestCommon {
     }
 
     function test_AssertionMade() public {
-        uint256 oaBalanceBefore = defaultCurrency.balanceOf(address(optimisticOracleV3));
+        uint256 ooBalanceBefore = defaultCurrency.balanceOf(address(optimisticOracleV3));
 
-        // Make assertion and verify bond posted to Optimistic Asseror.
+        // Make assertion and verify bond posted to Optimistic Oracle V3.
         bytes32 assertionId = _assertMarket(marketId, outcome1);
-        assertEq(defaultCurrency.balanceOf(address(optimisticOracleV3)), oaBalanceBefore + requiredBond);
+        assertEq(defaultCurrency.balanceOf(address(optimisticOracleV3)), ooBalanceBefore + requiredBond);
 
         // Verify PredictionMarket storage.
         PredictionMarket.Market memory market = predictionMarket.getMarket(marketId);
@@ -64,12 +64,12 @@ contract PredictionMarketAssertionTest is PredictionMarketTestCommon {
         vm.roll(block.number + 1);
         vm.prank(TestAddress.owner);
         bytes32 secondMarketId = predictionMarket.initializeMarket(outcome1, outcome2, description, reward, 0);
-        uint256 oaBalanceBefore = defaultCurrency.balanceOf(address(optimisticOracleV3));
+        uint256 ooBalanceBefore = defaultCurrency.balanceOf(address(optimisticOracleV3));
         uint256 minimumBond = optimisticOracleV3.getMinimumBond(address(defaultCurrency));
 
-        // Make assertion and verify minimum bond posted to Optimistic Asseror.
+        // Make assertion and verify minimum bond posted to Optimistic Oracle V3.
         _assertMarket(secondMarketId, outcome1);
-        assertEq(defaultCurrency.balanceOf(address(optimisticOracleV3)), oaBalanceBefore + minimumBond);
+        assertEq(defaultCurrency.balanceOf(address(optimisticOracleV3)), ooBalanceBefore + minimumBond);
     }
 
     function test_DisputeCallbackReceived() public {

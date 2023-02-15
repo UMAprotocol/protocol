@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract DataAsserter {
     using SafeERC20 for IERC20;
     IERC20 public immutable defaultCurrency;
-    OptimisticOracleV3Interface public immutable oa;
+    OptimisticOracleV3Interface public immutable oo;
     uint64 public constant assertionLiveness = 7200;
     bytes32 public immutable defaultIdentifier;
 
@@ -31,8 +31,8 @@ contract DataAsserter {
 
     constructor(address _defaultCurrency, address _optimisticOracleV3) {
         defaultCurrency = IERC20(_defaultCurrency);
-        oa = OptimisticOracleV3Interface(_optimisticOracleV3);
-        defaultIdentifier = oa.defaultIdentifier();
+        oo = OptimisticOracleV3Interface(_optimisticOracleV3);
+        defaultIdentifier = oo.defaultIdentifier();
     }
 
     // For a given assertionId, returns a boolean indicating whether the data is accessible and the data itself.
@@ -51,9 +51,9 @@ contract DataAsserter {
         address asserter
     ) public returns (bytes32 assertionId) {
         asserter = asserter == address(0) ? msg.sender : asserter;
-        uint256 bond = oa.getMinimumBond(address(defaultCurrency));
+        uint256 bond = oo.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
-        defaultCurrency.safeApprove(address(oa), bond);
+        defaultCurrency.safeApprove(address(oo), bond);
 
         // The claim we want to assert is the first argument of assertTruth. It must contain all of the relevant
         // details so that anyone may verify the claim without having to read any further information on chain. As a
@@ -61,7 +61,7 @@ contract DataAsserter {
         // to verify the information in publicly available sources.
         // See the UMIP corresponding to the defaultIdentifier used in the OptimisticOracleV3 "ASSERT_TRUTH" for more
         // information on how to construct the claim.
-        assertionId = oa.assertTruth(
+        assertionId = oo.assertTruth(
             abi.encodePacked(
                 "Data asserted: 0x", // in the example data is type bytes32 so we add the hex prefix 0x.
                 ClaimData.toUtf8Bytes(data),
@@ -90,7 +90,7 @@ contract DataAsserter {
 
     // OptimisticOracleV3 resolve callback.
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public {
-        require(msg.sender == address(oa));
+        require(msg.sender == address(oo));
         // If the assertion was true, then the data assertion is resolved.
         if (assertedTruthfully) {
             assertionsData[assertionId].resolved = true;
@@ -101,6 +101,6 @@ contract DataAsserter {
     }
 
     // If assertion is disputed, do nothing and wait for resolution.
-    // This OptimisticOracleV3 callback function needs to be defined so the OA doesn't revert when it tries to call it.
+    // This OptimisticOracleV3 callback function needs to be defined so the OOv3 doesn't revert when it tries to call it.
     function assertionDisputedCallback(bytes32 assertionId) public {}
 }

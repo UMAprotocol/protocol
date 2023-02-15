@@ -7,11 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // This Isurance contract enables for the issuance of a single unlimited time policy per event/payout recipient There is
 // no limit to the number of payout requests that can be made of the same policy; however, only the first asserted
-// request will settle the insurance payment, whereas OA will settle bonds for all requestors.
+// request will settle the insurance payment, whereas OOv3 will settle bonds for all requestors.
 contract Insurance {
     using SafeERC20 for IERC20;
     IERC20 public immutable defaultCurrency;
-    OptimisticOracleV3Interface public immutable oa;
+    OptimisticOracleV3Interface public immutable oo;
     uint64 public constant assertionLiveness = 7200;
     bytes32 public immutable defaultIdentifier;
 
@@ -39,8 +39,8 @@ contract Insurance {
 
     constructor(address _defaultCurrency, address _optimisticOracleV3) {
         defaultCurrency = IERC20(_defaultCurrency);
-        oa = OptimisticOracleV3Interface(_optimisticOracleV3);
-        defaultIdentifier = oa.defaultIdentifier();
+        oo = OptimisticOracleV3Interface(_optimisticOracleV3);
+        defaultIdentifier = oo.defaultIdentifier();
     }
 
     function issueInsurance(
@@ -62,10 +62,10 @@ contract Insurance {
 
     function requestPayout(bytes32 policyId) public returns (bytes32 assertionId) {
         require(policies[policyId].payoutAddress != address(0), "Policy does not exist");
-        uint256 bond = oa.getMinimumBond(address(defaultCurrency));
+        uint256 bond = oo.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
-        defaultCurrency.safeApprove(address(oa), bond);
-        assertionId = oa.assertTruth(
+        defaultCurrency.safeApprove(address(oo), bond);
+        assertionId = oo.assertTruth(
             abi.encodePacked(
                 "Insurance contract is claiming that insurance event ",
                 policies[policyId].insuredEvent,
@@ -87,7 +87,7 @@ contract Insurance {
     }
 
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public {
-        require(msg.sender == address(oa));
+        require(msg.sender == address(oo));
         // If the assertion was true, then the policy is settled.
         if (assertedTruthfully) {
             _settlePayout(assertionId);

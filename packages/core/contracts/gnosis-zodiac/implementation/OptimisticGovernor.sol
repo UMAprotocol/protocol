@@ -344,7 +344,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         require(assertionId != bytes32(0), "Proposal hash does not exist");
 
         // Detect Optimistic Oracle V3 upgrade by checking if it has the matching assertionId.
-        require(optimisticOracleV3.getAssertion(assertionId).asserter == address(0), "OA upgrade not detected");
+        require(optimisticOracleV3.getAssertion(assertionId).asserter == address(0), "OOv3 upgrade not detected");
 
         // Remove proposal hash and assertionId so that transactions can be re-proposed if needed.
         delete proposalHashes[_proposalHash];

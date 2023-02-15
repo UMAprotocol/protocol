@@ -21,7 +21,7 @@ import "../../common/implementation/MultiCaller.sol";
 
 /**
  * @title Optimistic Oracle V3.
- * @notice The OA is used to assert truths about the world which are verified using an optimistic escalation game.
+ * @notice The OOv3 is used to assert truths about the world which are verified using an optimistic escalation game.
  * @dev Core idea: an asserter makes a statement about a truth, calling "assertTruth". If this statement is not
  * challenged, it is taken as the state of the world. If challenged, it is arbitrated using the UMA DVM, or if
  * configured, an escalation manager. Escalation managers enable integrations to define their own security properties and
