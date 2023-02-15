@@ -101,7 +101,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Pulls tokens from the sender's wallet and stakes them on his behalf.
      * @param amount the amount of tokens to stake.
      */
-    function stake(uint128 amount) public {
+    function stake(uint128 amount) external {
         _stakeTo(msg.sender, msg.sender, amount);
     }
 
@@ -110,7 +110,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @param recipient the recipient address.
      * @param amount the amount of tokens to stake.
      */
-    function stakeTo(address recipient, uint128 amount) public {
+    function stakeTo(address recipient, uint128 amount) external {
         _stakeTo(msg.sender, recipient, amount);
     }
 
@@ -193,7 +193,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Send accumulated rewards to the voter. Note that these rewards do not include slashing balance changes.
      * @return uint128 the amount of tokens sent to the voter.
      */
-    function withdrawRewards() public returns (uint128) {
+    function withdrawRewards() external returns (uint128) {
         return _withdrawRewards(msg.sender, msg.sender);
     }
 
