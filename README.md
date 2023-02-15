@@ -116,8 +116,8 @@ yarn lint
 
 ### Packages 📦
 
-Because this repo is a monorepo, it conatains many different npm packages. More will be discussed about these packages in the
-following sections. However, the basic structure is that each pacakge is listed in the `packages/` directory. Each package has
+Because this repo is a monorepo, it contains many different npm packages. More will be discussed about these packages in the
+following sections. However, the basic structure is that each package is listed in the `packages/` directory. Each package has
 its own scripts and dependencies and operates (mostly) independently from the others.
 
 ### Adding dependencies 👩‍👦
