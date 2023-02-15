@@ -2762,18 +2762,98 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-
     const price = 1;
-
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
 
-    // construct the vote hash. Note the account is the delegate.
-    const hash = computeVoteHash({ salt, roundId, identifier, price, account: rand, time });
+    // construct the vote hash. Note the account remains the account that staked, not the delegate.
+    const hash = computeVoteHash({ salt, roundId, identifier, price, account: account1, time });
 
     // Commit the votes.
     await voting.methods.commitVote(identifier, time, hash).send({ from: rand });
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: rand });
+    await moveToNextRound(voting, accounts[0]); // Move to the next round.
+
+    // The price should have settled as per usual and be recoverable. The original staker should have gained the positive
+    // slashing from being the oly correct voter. The total slashing should be 68mm * 0.0016 = 108800.
+    assert.equal(await voting.methods.getPrice(identifier, time).call({ from: registeredContract }), price);
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).stake, toWei("32000000").add(toWei("108800")));
+  });
+  it("Can change delegate during active voting round and still correctly reveal", async function () {
+    // Delegate from account1 to rand.
+    await voting.methods.setDelegate(rand).send({ from: account1 });
+    await voting.methods.setDelegator(account1).send({ from: rand });
+
+    // State variables should be set correctly.
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, rand);
+    assert.equal(await voting.methods.delegateToStaker(rand).call(), account1);
+
+    // Request a price and see that we can vote on it on behalf of the account1 from the delegate.
+    const identifier = padRight(utf8ToHex("delegated-voting"), 64); // Use the same identifier for both.
+    const time = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const price = 1;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    // construct the vote hash. Note the account remains the account that staked, not the delegate.
+    const hash = computeVoteHash({ salt, roundId, identifier, price, account: account1, time });
+
+    // Commit the votes.
+    await voting.methods.commitVote(identifier, time, hash).send({ from: rand });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    // Now, before we reveal change the delegate to a now address and reveal from that account. This should not impact
+    // the reveal flow at all.
+    await voting.methods.setDelegate(unregisteredContract).send({ from: account1 });
+    await voting.methods.setDelegator(account1).send({ from: unregisteredContract });
+
+    // State variables should be set correctly.
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, unregisteredContract);
+    assert.equal(await voting.methods.delegateToStaker(unregisteredContract).call(), account1);
+
+    // Now, should be able to reveal without any issue.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: unregisteredContract });
+    await moveToNextRound(voting, accounts[0]); // Move to the next round.
+
+    // The price should have settled as per usual and be recoverable. The original staker should have gained the positive
+    // slashing from being the oly correct voter. The total slashing should be 68mm * 0.0016 = 108800.
+    assert.equal(await voting.methods.getPrice(identifier, time).call({ from: registeredContract }), price);
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).stake, toWei("32000000").add(toWei("108800")));
+  });
+
+  it("Can commit from delegate and reveal from delegator", async function () {
+    // Delegate from account1 to rand.
+    await voting.methods.setDelegate(rand).send({ from: account1 });
+    await voting.methods.setDelegator(account1).send({ from: rand });
+
+    // State variables should be set correctly.
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, rand);
+    assert.equal(await voting.methods.delegateToStaker(rand).call(), account1);
+
+    // Request a price and see that we can vote on it on behalf of the account1 from the delegate.
+    const identifier = padRight(utf8ToHex("delegated-voting"), 64); // Use the same identifier for both.
+    const time = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const price = 1;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+
+    // construct the vote hash. Note the account remains the account that staked, not the delegate.
+    const hash = computeVoteHash({ salt, roundId, identifier, price, account: account1, time });
+
+    // Commit the votes.
+    await voting.methods.commitVote(identifier, time, hash).send({ from: rand });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    // Now, reveal from the delegator, not the delegate who did the commit. Should work as expected.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
     await moveToNextRound(voting, accounts[0]); // Move to the next round.
 
     // The price should have settled as per usual and be recoverable. The original staker should have gained the positive
