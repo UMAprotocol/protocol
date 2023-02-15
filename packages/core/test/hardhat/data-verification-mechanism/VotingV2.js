@@ -5591,6 +5591,80 @@ describe("VotingV2", function () {
       await didContractThrow(voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract }))
     );
   });
+  it("Changing max rolls while requests are unresolved does not impact requests", async function () {
+    // Consider if requests are resolveable but before they can be resolved the maxRolls variable is changed. If this
+    // was to happen then it is possible that requests that could be resolved get deleted before they resolve. To
+    // protect against this the contract processes resolvable price requests before setting max rolls. To test this
+    // we will construct a price request, vote on the request, move 2 rounds forward, then set maxRolls to a value
+    // that would delete them. Without resolving the request, we will call setMaxRolls. the contract should resolve
+    // these requests before setting the new max rolls.
+
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    let hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+
+    // move to the next phase, reveal and change the slashing library and request another price to vote on in the next round.
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 1);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
+    await voting.methods.setMaxRolls(1).send({ from: accounts[0] });
+
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 1);
+
+    // This action should have resolved the request.
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+  });
+  it("Increasing max rolls does not apply to existing requests that should be deleted", async function () {
+    // Consider if requests are not resolvable and should have been deleted based on a current maxRolls variable. If
+    // maxRolls value was extended this change should not apply retroactively and the contract should still delete
+    // these requests. To test this we will construct a price request, roll it 3 rounds forward without a vote and then
+    // extend maxRolls from its initial value of 2 to 3. The contract should delete the request as it was not
+    // resolvable before the maxRolls extension.
+
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    // Move to the round where price request should originally be voted on.
+    await moveToNextRound(voting, accounts[0]);
+
+    // Move 3 more rounds forward to make the request deletable based on the initial maxRolls of 2.
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+
+    // Extend maxRolls to 3.
+    await voting.methods.setMaxRolls(3).send({ from: accounts[0] });
+
+    // Verify that the request was deleted.
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
+    assert(
+      await didContractRevertWith(
+        voting.methods.getPrice(identifier, time).call({ from: registeredContract }),
+        "Price was never requested"
+      )
+    );
+  });
 
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
