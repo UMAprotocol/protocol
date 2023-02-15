@@ -62,5 +62,9 @@
   {
     "contractName": "LinearLongShortPairFinancialProductLibrary",
     "address": "0x85F46e5aCf6309345D0d6cfe22fbBAF7c349fF84"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0xa6147867264374F324524E30C02C331cF28aa879"
   }
 ]

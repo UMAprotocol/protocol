@@ -118,5 +118,9 @@
   {
     "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
     "address": "0x56e68853Bc173534F30a23E9De64B2BC4b64D61e"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0x9923D42eF695B5dd9911D05Ac944d4cAca3c4EAB"
   }
 ]
