@@ -156,9 +156,5 @@
   {
     "contractName": "Proposer",
     "address": "0x226726Ac52e6e948D1B7eA9168F9Ff2E27DbcbB5"
-  },
-  {
-    "contractName": "OptimisticAsserter",
-    "address": "0xFEc7C6AA64fDD17f456028e0B411f5c3877ADa5e"
   }
 ]

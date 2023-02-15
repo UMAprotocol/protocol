@@ -62,9 +62,5 @@
   {
     "contractName": "LinearLongShortPairFinancialProductLibrary",
     "address": "0x85F46e5aCf6309345D0d6cfe22fbBAF7c349fF84"
-  },
-  {
-    "contractName": "OptimisticAsserter",
-    "address": "0x211AD7adEf4d4348408B43da49D99bA117ADD8D1"
   }
 ]
