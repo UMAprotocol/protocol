@@ -205,7 +205,8 @@ contract OptimisticOracleV3 is OptimisticOracleV3Interface, Lockable, Ownable, M
             msg.sender,
             time + liveness,
             currency,
-            bond
+            bond,
+            identifier
         );
     }
 
