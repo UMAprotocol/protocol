@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { getContract, assertEventEmitted, web3 } = hre;
-const { runVotingV2Fixture, interfaceName, didContractThrow } = require("@uma/common");
+const { runVotingV2Fixture, interfaceName, didContractRevertWith, didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
 
 const MockOracleGovernance = getContract("MockOracleGovernance");
@@ -92,7 +92,13 @@ describe("ProposerV2", function () {
   });
 
   it("Bond must be paid", async function () {
-    const txn = proposer.methods.propose([], defaultAncillaryData);
+    // Build a no-op txn for the governor to execute.
+    const noOpTxnBytes = votingToken.methods.approve(submitter, "0").encodeABI();
+
+    const txn = proposer.methods.propose(
+      [{ to: votingToken.options.address, value: 0, data: noOpTxnBytes }],
+      defaultAncillaryData
+    );
 
     // No balance and bond isn't approved.
     assert(await didContractThrow(txn.send({ from: submitter })));
@@ -224,5 +230,15 @@ describe("ProposerV2", function () {
     // Send balance back to the proposer and check that the payout can't be made again.
     await votingToken.methods.transfer(proposer.options.address, bond).send({ from: submitter });
     assert(await didContractThrow(proposer.methods.resolveProposal(id).send({ from: submitter })));
+  });
+
+  it("Validate proposal id", async function () {
+    const invalidId = "100";
+    assert(
+      await didContractRevertWith(
+        proposer.methods.resolveProposal(invalidId).send({ from: rando }),
+        "Invalid proposal id"
+      )
+    );
   });
 });

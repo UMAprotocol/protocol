@@ -1,9 +1,16 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3, getContract, assertEventEmitted, findEvent } = hre;
-const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum, ZERO_ADDRESS } = require("@uma/common");
+const {
+  didContractThrow,
+  interfaceName,
+  runDefaultFixture,
+  TokenRolesEnum,
+  ZERO_ADDRESS,
+  RegistryRolesEnum,
+} = require("@uma/common");
 // const { isEmpty } = require("lodash");
-const { utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
+const { hexToUtf8, leftPad, rightPad, utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
 
 // Tested contracts
 const OptimisticGovernor = getContract("OptimisticGovernorTest");
@@ -12,13 +19,14 @@ const OptimisticGovernor = getContract("OptimisticGovernorTest");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-const OptimisticOracleV2 = getContract("OptimisticOracleV2");
+const OptimisticOracleV3Test = getContract("OptimisticOracleV3Test");
 const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const TestnetERC20 = getContract("TestnetERC20");
 const TestAvatar = getContract("TestAvatar");
+const FullPolicyEscalationManager = getContract("FullPolicyEscalationManager");
 
 const finalFee = toWei("100");
 const liveness = 7200;
@@ -27,6 +35,7 @@ const identifier = utf8ToHex("ZODIAC");
 const totalBond = toBN(finalFee).add(toBN(bond)).toString();
 const doubleTotalBond = toBN(totalBond).mul(toBN(2)).toString();
 const rules = "https://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi.ipfs.dweb.link/";
+const burnedBondPercentage = toWei("0.5");
 
 describe("OptimisticGovernor", () => {
   let accounts, owner, proposer, disputer, rando, executor;
@@ -36,9 +45,10 @@ describe("OptimisticGovernor", () => {
     collateralWhitelist,
     store,
     identifierWhitelist,
+    registry,
     bondToken,
     mockOracle,
-    optimisticOracle,
+    optimisticOracleV3,
     optimisticOracleModule,
     testToken,
     testToken2,
@@ -69,7 +79,7 @@ describe("OptimisticGovernor", () => {
     collateralWhitelist = await AddressWhitelist.deployed();
     store = await Store.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    optimisticOracle = await OptimisticOracleV2.deployed();
+    registry = await getContract("Registry").deployed();
     testToken = await TestnetERC20.new("Test", "TEST", 18).send({ from: accounts[0] });
     testToken2 = await TestnetERC20.new("Test2", "TEST2", 18).send({ from: accounts[0] });
 
@@ -79,6 +89,23 @@ describe("OptimisticGovernor", () => {
       .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
       .send({ from: owner });
     await identifierWhitelist.methods.addSupportedIdentifier(identifier).send({ from: owner });
+
+    // Deploy new OptimisticOracleV3 and register it with the Finder and Registry:
+    // TODO: This should be moved to separate fixture. defaultCurrency is not added to the whitelist
+    // and Store since it is not used in this test, but would be required when moved to a fixture.
+    const defaultCurrency = await TestnetERC20.new("Default Currency", "DC", 18).send({ from: owner });
+    optimisticOracleV3 = await OptimisticOracleV3Test.new(
+      finder.options.address,
+      defaultCurrency.options.address,
+      liveness,
+      timer.options.address
+    ).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), optimisticOracleV3.options.address)
+      .send({ from: owner });
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: owner });
+    await registry.methods.registerContract([], optimisticOracleV3.options.address).send({ from: owner });
+    await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: owner });
   });
 
   beforeEach(async function () {
@@ -88,6 +115,7 @@ describe("OptimisticGovernor", () => {
     await bondToken.methods.addMember(TokenRolesEnum.MINTER, owner).send({ from: owner });
     await collateralWhitelist.methods.addToWhitelist(bondToken.options.address).send({ from: owner });
     await store.methods.setFinalFee(bondToken.options.address, { rawValue: finalFee }).send({ from: owner });
+    await optimisticOracleV3.methods.syncUmaParams(identifier, bondToken.options.address).send({ from: owner });
 
     optimisticOracleModule = await OptimisticGovernor.new(
       finder.options.address,
@@ -100,12 +128,12 @@ describe("OptimisticGovernor", () => {
       timer.options.address
     ).send({ from: owner });
 
-    avatar.methods.setModule(optimisticOracleModule.options.address).send({ from: owner });
+    await avatar.methods.setModule(optimisticOracleModule.options.address).send({ from: owner });
 
     await bondToken.methods.mint(proposer, doubleTotalBond).send({ from: owner });
     await bondToken.methods.approve(optimisticOracleModule.options.address, doubleTotalBond).send({ from: proposer });
     await bondToken.methods.mint(disputer, totalBond).send({ from: owner });
-    await bondToken.methods.approve(optimisticOracle.options.address, totalBond).send({ from: disputer });
+    await bondToken.methods.approve(optimisticOracleV3.options.address, totalBond).send({ from: disputer });
   });
 
   it("Constructor validation", async function () {
@@ -190,6 +218,11 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
+    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const claim = utf8ToHex(
+      "proposalHash:" + proposalHash.slice(2) + ',explanation:"' + hexToUtf8(explanation) + '",rules:"' + rules + '"'
+    );
+
     await assertEventEmitted(
       receipt,
       optimisticOracleModule,
@@ -199,6 +232,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime &&
         event.proposal.requestTime == proposalTime &&
         event.proposal.transactions[0].to == testToken.options.address &&
@@ -213,6 +247,22 @@ describe("OptimisticGovernor", () => {
         event.proposal.transactions[2].value == 0 &&
         event.proposal.transactions[2].data == txnData3 &&
         event.proposal.transactions[2].operation == 0
+    );
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleV3,
+      "AssertionMade",
+      (event) =>
+        event.assertionId == assertionId &&
+        event.domainId == leftPad(0, 64) &&
+        event.claim == claim &&
+        event.asserter == proposer &&
+        event.callbackRecipient == optimisticOracleModule.options.address &&
+        event.escalationManager == ZERO_ADDRESS &&
+        event.caller == optimisticOracleModule.options.address &&
+        event.expirationTime == endingTime &&
+        event.currency == bondToken.options.address &&
+        event.bond == bond.toString()
     );
   });
 
@@ -273,6 +323,8 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
+    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+
     await assertEventEmitted(
       receipt,
       optimisticOracleModule,
@@ -282,6 +334,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime &&
         event.proposal.requestTime == proposalTime &&
         event.proposal.transactions[0].to == testToken.options.address &&
@@ -306,7 +359,7 @@ describe("OptimisticGovernor", () => {
     const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
     const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
 
-    await optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor });
+    receipt = await optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
       startingBalance1.add(toBN(toWei("1"))).toString()
@@ -319,9 +372,56 @@ describe("OptimisticGovernor", () => {
       (await testToken2.methods.balanceOf(proposer).call()).toString(),
       startingBalance3.add(toBN(toWei("2"))).toString()
     );
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "ProposalExecuted",
+      (event) => event.proposalHash == proposalHash && event.assertionId == assertionId
+    );
+    for (let i = 0; i < 3; i++) {
+      await assertEventEmitted(
+        receipt,
+        optimisticOracleModule,
+        "TransactionExecuted",
+        (event) => event.proposalHash == proposalHash && event.assertionId == assertionId && event.transactionIndex == i
+      );
+    }
   });
 
-  it("Proposals can not be executed twice", async function () {});
+  it("Proposals can not be executed twice", async function () {
+    // Issue some test tokens to the avatar address (double the amount needed to execute the proposal).
+    await testToken.methods.allocateTo(avatar.options.address, toWei("6")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("4")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send half of newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    await optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer });
+
+    // Wait until the end of the dispute period.
+    await advanceTime(liveness);
+
+    // Execute the proposal.
+    await optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor });
+
+    // Try to execute the proposal again.
+    assert(
+      await didContractThrow(optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor }))
+    );
+  });
 
   it("Proposals can not be executed until after liveness", async function () {
     // Issue some test tokens to the avatar address.
@@ -374,31 +474,28 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
+    const { assertionId } = (await findEvent(receipt, optimisticOracleV3, "AssertionMade")).match.returnValues;
 
     const { proposalHash } = (
       await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
     ).match.returnValues;
 
-    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
-
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
     await advanceTime(stillOpen);
 
-    let disputeReceipt = await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
+    let disputeReceipt = await optimisticOracleV3.methods
+      .disputeAssertion(assertionId, disputer)
       .send({ from: disputer });
 
     await assertEventEmitted(
       disputeReceipt,
-      optimisticOracle,
-      "DisputePrice",
-      (event) => event.requester == optimisticOracleModule.options.address && event.ancillaryData == ancillaryData
+      optimisticOracleV3,
+      "AssertionDisputed",
+      (event) => event.assertionId == assertionId && event.caller == disputer && event.disputer == disputer
     );
 
-    // Disputed proposal hash can be deleted from any address.
-    await optimisticOracleModule.methods.deleteDisputedProposal(proposalHash).send({ from: rando });
+    // Disputed proposal hash is deleted automatically from callback.
     const disputedProposalHash = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
     assert.equal(disputedProposalHash, 0);
   });
@@ -427,13 +524,11 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
+    const { assertionId } = (await findEvent(receipt, optimisticOracleV3, "AssertionMade")).match.returnValues;
 
     const { proposalHash } = (
       await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
     ).match.returnValues;
-
-    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
@@ -447,12 +542,9 @@ describe("OptimisticGovernor", () => {
     );
 
     // Dispute proposal
-    await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
-      .send({ from: disputer });
+    await optimisticOracleV3.methods.disputeAssertion(assertionId, disputer).send({ from: disputer });
 
-    // Disputed proposal hash can be deleted from any address.
-    await optimisticOracleModule.methods.deleteDisputedProposal(proposalHash).send({ from: rando });
+    // Disputed proposal hash is deleted automatically from callback.
     const disputedProposalHashTimestamp = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
     assert.equal(disputedProposalHashTimestamp, 0);
 
@@ -473,6 +565,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime2 &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime2 &&
         event.proposal.requestTime == proposalTime2 &&
         event.proposal.transactions[0].to == testToken.options.address &&
@@ -490,7 +583,108 @@ describe("OptimisticGovernor", () => {
     );
   });
 
-  it("Can not delete proposal that was not disputed", async function () {});
+  it("Can not delete proposal with the same Optimistic Oracle V3", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
+    // deleteProposalOnUpgrade should fail if the Optimistic Oracle V3 was not upgraded.
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer })
+      )
+    );
+  });
+
+  it("Can delete proposal after Optimistic Oracle V3 upgrade", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { assertionId } = (await findEvent(receipt, optimisticOracleV3, "AssertionMade")).match.returnValues;
+
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
+    // Upgrade the Optimistic Oracle V3.
+    const defaultCurrency = await TestnetERC20.new("Default Currency", "DC", 18).send({ from: owner });
+    const newOptimisticOracleV3 = await OptimisticOracleV3Test.new(
+      finder.options.address,
+      defaultCurrency.options.address,
+      liveness,
+      timer.options.address
+    ).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), newOptimisticOracleV3.options.address)
+      .send({ from: owner });
+
+    // deleteProposalOnUpgrade should still fail as the upgraded Optimistic Oracle V3 is not yet cached.
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer })
+      )
+    );
+
+    // Cache the upgraded Optimistic Oracle V3.
+    await optimisticOracleModule.methods.sync().send({ from: disputer });
+
+    // deleteProposalOnUpgrade should now succeed.
+    let receipt2 = await optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer });
+    await assertEventEmitted(
+      receipt2,
+      optimisticOracleModule,
+      "ProposalDeleted",
+      (event) => event.proposalHash == proposalHash && event.assertionId == assertionId
+    );
+
+    // Revert to the original Optimistic Oracle V3 for other tests.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), optimisticOracleV3.options.address)
+      .send({ from: owner });
+  });
 
   it("Disputed proposals can not be executed", async function () {
     // Issue some test tokens to the avatar address.
@@ -516,18 +710,14 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
-
-    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+    const { assertionId } = (await findEvent(receipt, optimisticOracleV3, "AssertionMade")).match.returnValues;
 
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
     await advanceTime(stillOpen);
 
     // Dispute.
-    await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
-      .send({ from: disputer });
+    await optimisticOracleV3.methods.disputeAssertion(assertionId, disputer).send({ from: disputer });
 
     // Advance time past the liveness window.
     await advanceTime(2);
@@ -593,11 +783,127 @@ describe("OptimisticGovernor", () => {
   //   );
   // });
 
-  it("Non-owners can not delete unexecuted proposals", async function () {});
+  it("Owner can update stored contract parameters", async function () {
+    // All tests here are run through the avatar contract that is the owner of the module.
 
-  it("Owner can update stored contract parameters", async function () {});
+    // Deploy new bond token and set it as the new collateral currency.
+    const newBondToken = await ERC20.new("New Bond", "BOND2", 18).send({ from: owner });
+    await collateralWhitelist.methods.addToWhitelist(newBondToken.options.address).send({ from: owner });
+    const newBondAmount = "1";
+    const setCollateralData = optimisticOracleModule.methods
+      .setCollateralAndBond(newBondToken.options.address, newBondAmount)
+      .encodeABI();
+    let collateralReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setCollateralData)
+      .send({ from: owner });
 
-  it("Non-owners can not update stored contract parameters", async function () {});
+    // Check that the new bond token is set as the collateral currency and correct amount.
+    assert.equal(await optimisticOracleModule.methods.collateral().call(), newBondToken.options.address);
+    assert.equal(await optimisticOracleModule.methods.bondAmount().call(), newBondAmount);
+    await assertEventEmitted(
+      collateralReceipt,
+      optimisticOracleModule,
+      "SetBond",
+      (event) => event.collateral == newBondToken.options.address && event.bondAmount == newBondAmount
+    );
+
+    // Set new rules.
+    const newRules = "New rules";
+    const setRulesData = optimisticOracleModule.methods.setRules(newRules).encodeABI();
+    let rulesReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setRulesData)
+      .send({ from: owner });
+
+    // Check that the new rules are set.
+    assert.equal(await optimisticOracleModule.methods.rules().call(), newRules);
+    await assertEventEmitted(rulesReceipt, optimisticOracleModule, "SetRules", (event) => event.rules == newRules);
+
+    // Set new liveness.
+    const newLiveness = "10";
+    const setLivenessData = optimisticOracleModule.methods.setLiveness(newLiveness).encodeABI();
+    let livenessReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setLivenessData)
+      .send({ from: owner });
+
+    // Check that the new liveness is set.
+    assert.equal(await optimisticOracleModule.methods.liveness().call(), newLiveness);
+    await assertEventEmitted(
+      livenessReceipt,
+      optimisticOracleModule,
+      "SetLiveness",
+      (event) => event.liveness == newLiveness
+    );
+
+    // Set new identifier and whitelist it.
+    const newIdentifier = rightPad(utf8ToHex("New Identifier"), 64);
+    await identifierWhitelist.methods.addSupportedIdentifier(newIdentifier).send({ from: owner });
+    const setIdentifierData = optimisticOracleModule.methods.setIdentifier(newIdentifier).encodeABI();
+    let identifierReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setIdentifierData)
+      .send({ from: owner });
+
+    // Check that the new identifier is set.
+    assert.equal(await optimisticOracleModule.methods.identifier().call(), newIdentifier);
+    await assertEventEmitted(
+      identifierReceipt,
+      optimisticOracleModule,
+      "SetIdentifier",
+      (event) => event.identifier == newIdentifier
+    );
+
+    // Set new Escalation Manager.
+    const newEscalationManager = executor;
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(newEscalationManager)
+      .encodeABI();
+    let escalationManagerReceipt = await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Check that the new Escalation Manager is set.
+    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), newEscalationManager);
+    await assertEventEmitted(
+      escalationManagerReceipt,
+      optimisticOracleModule,
+      "SetEscalationManager",
+      (event) => event.escalationManager == newEscalationManager
+    );
+  });
+
+  it("Non-owners can not update stored contract parameters", async function () {
+    // Deploy new bond token and try to set it as the new collateral currency from a non-owner.
+    const newBondToken = await ERC20.new("New Bond", "BOND2", 18).send({ from: owner });
+    await collateralWhitelist.methods.addToWhitelist(newBondToken.options.address).send({ from: owner });
+    const newBondAmount = "1";
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods
+          .setCollateralAndBond(newBondToken.options.address, newBondAmount)
+          .send({ from: rando })
+      )
+    );
+
+    // Try set new rules from a non-owner.
+    const newRules = "New rules";
+    assert(await didContractThrow(optimisticOracleModule.methods.setRules(newRules).send({ from: rando })));
+
+    // Try set new liveness from a non-owner.
+    const newLiveness = "10";
+    assert(await didContractThrow(optimisticOracleModule.methods.setLiveness(newLiveness).send({ from: rando })));
+
+    // Try set new identifier from a non-owner.
+    const newIdentifier = rightPad(utf8ToHex("New Identifier"), 64);
+    await identifierWhitelist.methods.addSupportedIdentifier(newIdentifier).send({ from: owner });
+    assert(await didContractThrow(optimisticOracleModule.methods.setIdentifier(newIdentifier).send({ from: rando })));
+
+    // Try set new Escalation Manager from a non-owner.
+    const newEscalationManager = executor;
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.setEscalationManager(newEscalationManager).send({ from: rando })
+      )
+    );
+  });
 
   it("Proposals can be executed with minimal proxy optimistic governor", async function () {
     // Deploy proxy factory.
@@ -668,6 +974,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime &&
         event.proposal.requestTime == proposalTime &&
         event.proposal.transactions[0].to == testToken.options.address &&
@@ -706,5 +1013,197 @@ describe("OptimisticGovernor", () => {
       (await testToken2.methods.balanceOf(proposer).call()).toString(),
       startingBalance3.add(toBN(toWei("2"))).toString()
     );
+  });
+
+  it("Cannot delete non-existing assertion", async function () {
+    // When spoofing callback with non-existing assertion its proposal hash is zero and fallback to
+    // deleteProposalOnUpgrade should revert that.
+    const assertionId = "0x1234";
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.assertionDisputedCallback(assertionId).send({ from: disputer })
+      )
+    );
+  });
+
+  it("Cannot delete non-existing proposal", async function () {
+    // When spoofing callback with non-existing proposal its proposal hash is zero and fallback to
+    // deleteProposalOnUpgrade should revert that.
+    const proposalHash = "0x1234";
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.deleteProposalOnUpgrade(proposalHash).send({ from: disputer })
+      )
+    );
+  });
+
+  it("Whitelist proposers with Escalation Manager", async function () {
+    // Deploy Full Policy Escalation Manager and set it as escalation manager.
+    const escalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(escalationManager.options.address)
+      .encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Configure whitelisting for asserters (requires also whitelisting for asserting callers).
+    await escalationManager.methods.configureEscalationManager(true, true, false, false, false).send({ from: owner });
+
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    // Without actual whitelist the proposal should revert.
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer })
+      )
+    );
+
+    // Whitelist Optimistic Governor as whitelisted asserting caller and proposer as whitelisted asserter.
+    await escalationManager.methods
+      .setWhitelistedAssertingCallers(optimisticOracleModule.options.address, true)
+      .send({ from: owner });
+    await escalationManager.methods.setWhitelistedAsserters(proposer, true).send({ from: owner });
+
+    // Proposal should now be allowed.
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+    const endingTime = proposalTime + liveness;
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "TransactionsProposed",
+      (event) =>
+        event.proposer == proposer &&
+        event.proposalTime == proposalTime &&
+        event.proposalHash == proposalHash &&
+        event.explanation == explanation &&
+        event.rules == rules &&
+        event.challengeWindowEnds == endingTime &&
+        event.proposal.requestTime == proposalTime &&
+        event.proposal.transactions[0].to == testToken.options.address &&
+        event.proposal.transactions[0].value == 0 &&
+        event.proposal.transactions[0].data == txnData1 &&
+        event.proposal.transactions[0].operation == 0 &&
+        event.proposal.transactions[1].to == testToken.options.address &&
+        event.proposal.transactions[1].value == 0 &&
+        event.proposal.transactions[1].data == txnData2 &&
+        event.proposal.transactions[1].operation == 0 &&
+        event.proposal.transactions[2].to == testToken2.options.address &&
+        event.proposal.transactions[2].value == 0 &&
+        event.proposal.transactions[2].data == txnData3 &&
+        event.proposal.transactions[2].operation == 0
+    );
+  });
+
+  it("Whitelist disputers with Escalation Manager", async function () {
+    // Deploy Full Policy Escalation Manager and set it as escalation manager.
+    const escalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(escalationManager.options.address)
+      .encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Configure whitelisting for disputers.
+    await escalationManager.methods.configureEscalationManager(false, false, true, false, false).send({ from: owner });
+
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { assertionId } = (await findEvent(receipt, optimisticOracleV3, "AssertionMade")).match.returnValues;
+
+    // Advance time to one second before end of the dispute period.
+    const stillOpen = liveness - 1;
+    await advanceTime(stillOpen);
+
+    // Without actual whitelist the dispute should revert.
+    assert(
+      await didContractThrow(
+        optimisticOracleV3.methods.disputeAssertion(assertionId, disputer).send({ from: disputer })
+      )
+    );
+
+    // Add disputer to the whitelist.
+    await escalationManager.methods.setDisputeCallerInWhitelist(disputer, true).send({ from: owner });
+
+    // Dispute should now be allowed.
+    let disputeReceipt = await optimisticOracleV3.methods
+      .disputeAssertion(assertionId, disputer)
+      .send({ from: disputer });
+
+    await assertEventEmitted(
+      disputeReceipt,
+      optimisticOracleV3,
+      "AssertionDisputed",
+      (event) => event.assertionId == assertionId && event.caller == disputer && event.disputer == disputer
+    );
+  });
+
+  it("Correct proposal bond", async function () {
+    // Since bond is set above minimum required by the Optimistic Oracle V3 (100 / 0.5) getProposalBond should return
+    // bond (500).
+    assert.equal(await optimisticOracleModule.methods.getProposalBond().call(), bond);
+
+    // Set zero bond.
+    const newBondAmount = "0";
+    const setCollateralData = optimisticOracleModule.methods
+      .setCollateralAndBond(bondToken.options.address, newBondAmount)
+      .encodeABI();
+    await avatar.methods.exec(optimisticOracleModule.options.address, "0", setCollateralData).send({ from: owner });
+
+    // Check that the proposal bond now is set to the floor driven by the final fee.
+    const proposalBond = toBN(finalFee).mul(toBN(toWei("1")).div(toBN(burnedBondPercentage)));
+    assert.equal(await optimisticOracleModule.methods.getProposalBond().call(), proposalBond.toString());
   });
 });

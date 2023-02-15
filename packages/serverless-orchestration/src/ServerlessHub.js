@@ -144,11 +144,14 @@ hub.post("/", async (req, res) => {
     for (const botName in configObject) {
       // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
       const [botWeb3, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
+
       const chainId = await _getChainId(botWeb3);
+
+      // Cache the chain id for this node url.
+      nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
+
       // If we've seen this chain ID already we can skip it.
       if (blockNumbersForChain[chainId]) continue;
-
-      nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
 
       // If STORE_MULTI_CHAIN_BLOCK_NUMBERS is set then this bot requires to know a number of last seen blocks across
       // a set of chainIds. Construct a batch promise to evaluate the latest block number for each chainId.

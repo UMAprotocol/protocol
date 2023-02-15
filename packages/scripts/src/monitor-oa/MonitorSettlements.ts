@@ -1,8 +1,8 @@
-import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticAsserterEthers } from "./common";
+import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV3Ethers } from "./common";
 import { logSettlement } from "./MonitorLogger";
 
 export async function monitorSettlements(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const oa = await getContractInstanceWithProvider<OptimisticAsserterEthers>("OptimisticAsserter", params.provider);
+  const oa = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
 
   const settlements = (
     await oa.queryFilter(oa.filters.AssertionSettled(), params.blockRange.start, params.blockRange.end)

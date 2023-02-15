@@ -44,7 +44,7 @@ library ResultComputationV2 {
     /**
      * @notice Returns whether the result is resolved, and if so, what value it resolved to.
      * @dev `price` should be ignored if `isResolved` is false.
-     * @param data contains information against which the `minVoteThreshold` is applied.
+     * @param data contains information against which the `minTotalVotes` and `minModalVotes` thresholds are applied.
      * @param minTotalVotes min (exclusive) number of tokens that must have voted (in any direction) for the result
      * to be valid. Used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      * @param minModalVotes min (exclusive) number of tokens that must have voted for the modal outcome for it to result
@@ -58,9 +58,9 @@ library ResultComputationV2 {
         uint128 minModalVotes
     ) internal view returns (bool isResolved, int256 price) {
         if (data.totalVotes > minTotalVotes && data.voteFrequency[data.currentMode] > minModalVotes) {
-            isResolved = true; // modeThreshold and minVoteThreshold are exceeded, so the resolved price is the mode.
+            isResolved = true; // minTotalVotes and minModalVotes are exceeded, so the resolved price is the mode.
             price = data.currentMode;
-        } else isResolved = false;
+        }
     }
 
     /**
@@ -78,7 +78,7 @@ library ResultComputationV2 {
      * @notice Gets the total number of tokens whose votes are considered correct.
      * @dev Should only be called after a vote is resolved, i.e., via `getResolvedPrice`.
      * @param data contains all votes against which the correctly voted tokens are counted.
-     * @return FixedPoint.Unsigned which indicates the frequency of the correctly voted tokens.
+     * @return uint128 which indicates the frequency of the correctly voted tokens.
      */
     function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (uint128) {
         return data.voteFrequency[data.currentMode];
