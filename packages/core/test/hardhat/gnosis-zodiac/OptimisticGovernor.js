@@ -232,6 +232,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime &&
         event.proposal.requestTime == proposalTime &&
         event.proposal.transactions[0].to == testToken.options.address &&
@@ -333,6 +334,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime &&
         event.proposal.requestTime == proposalTime &&
         event.proposal.transactions[0].to == testToken.options.address &&
@@ -563,6 +565,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime2 &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime2 &&
         event.proposal.requestTime == proposalTime2 &&
         event.proposal.transactions[0].to == testToken.options.address &&
@@ -971,6 +974,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime &&
         event.proposal.requestTime == proposalTime &&
         event.proposal.transactions[0].to == testToken.options.address &&
@@ -1101,6 +1105,7 @@ describe("OptimisticGovernor", () => {
         event.proposalTime == proposalTime &&
         event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.rules == rules &&
         event.challengeWindowEnds == endingTime &&
         event.proposal.requestTime == proposalTime &&
         event.proposal.transactions[0].to == testToken.options.address &&

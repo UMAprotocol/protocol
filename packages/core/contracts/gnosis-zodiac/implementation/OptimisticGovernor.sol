@@ -37,6 +37,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         Proposal proposal,
         bytes32 proposalHash,
         bytes explanation,
+        string rules,
         uint256 challengeWindowEnds
     );
 
@@ -280,7 +281,16 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         proposalHashes[proposalHash] = assertionId;
         assertionIds[assertionId] = proposalHash;
 
-        emit TransactionsProposed(proposer, time, assertionId, proposal, proposalHash, _explanation, time + liveness);
+        emit TransactionsProposed(
+            proposer,
+            time,
+            assertionId,
+            proposal,
+            proposalHash,
+            _explanation,
+            rules,
+            time + liveness
+        );
     }
 
     /**
