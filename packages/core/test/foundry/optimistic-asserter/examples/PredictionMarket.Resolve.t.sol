@@ -20,7 +20,7 @@ contract PredictionMarketResolveTest is PredictionMarketTestCommon {
             address(predictionMarket),
             abi.encodeCall(predictionMarket.assertionResolvedCallback, (assertionId, true))
         );
-        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertTrue(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Verify the asserter received back the bond and reward.
         assertEq(defaultCurrency.balanceOf(TestAddress.account1), asserterBalanceBefore + requiredBond + reward);
@@ -42,7 +42,7 @@ contract PredictionMarketResolveTest is PredictionMarketTestCommon {
             address(predictionMarket),
             abi.encodeCall(predictionMarket.assertionResolvedCallback, (assertionId, true))
         );
-        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertTrue(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Verify the asserter received back the bond, reward and half of disputer bond.
         assertEq(
@@ -67,7 +67,7 @@ contract PredictionMarketResolveTest is PredictionMarketTestCommon {
             address(predictionMarket),
             abi.encodeCall(predictionMarket.assertionResolvedCallback, (assertionId, false))
         );
-        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertFalse(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Verify the PredictionMarket still has the reward.
         assertEq(defaultCurrency.balanceOf(address(predictionMarket)), pmBalanceBefore);
@@ -85,13 +85,13 @@ contract PredictionMarketResolveTest is PredictionMarketTestCommon {
         // Dispute the assertion, but resolve it false at the Oracle.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, requiredBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
-        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertFalse(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Assert the second outcome and settle after the liveness.
         bytes32 secondAssertionId = _assertMarket(marketId, outcome2);
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
 
-        assertTrue(optimisticAsserter.settleAndGetAssertionResult(secondAssertionId));
+        assertTrue(optimisticOracleV3.settleAndGetAssertionResult(secondAssertionId));
 
         // Verify the second outcome resolved in PredictionMarket storage.
         PredictionMarket.Market memory market = predictionMarket.getMarket(marketId);

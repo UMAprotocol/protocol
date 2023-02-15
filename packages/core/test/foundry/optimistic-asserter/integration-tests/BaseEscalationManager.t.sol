@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/BaseEscalationManager.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/BaseEscalationManager.sol";
 
-contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
+contract BaseEscalationManagerTest is CommonOptimisticOracleV3Test {
     address escalationManager;
 
     function setUp() public virtual {
@@ -16,14 +16,14 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
         defaultCurrency.approve(address(assertingCaller), defaultBond);
         vm.stopPrank();
 
-        escalationManager = address(new BaseEscalationManager(address(optimisticAsserter)));
+        escalationManager = address(new BaseEscalationManager(address(optimisticOracleV3)));
     }
 
     function test_MakeAssertion() public {
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
 
         // Assertion should have default settings and point to the Escalation Manager and wrapper contract.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         assertFalse(assertion.escalationManagerSettings.discardOracle);
         assertFalse(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
         assertFalse(assertion.escalationManagerSettings.validateDisputers);
@@ -50,7 +50,7 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
 
         // Settlement should trigger callback with asserted truthfully.
         _expectAssertionResolvedCallback(escalationManager, assertionId, true);
-        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertTrue(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Asserter should get its bond back.
         _defaultCheckBalancesAfterSettle(false, true, false);
@@ -64,7 +64,7 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
         // Mock resolve assertion not truethful through Oracle and verify on resolve callback to Escalation Manager.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         _expectAssertionResolvedCallback(escalationManager, assertionId, false);
-        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertFalse(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
         vm.clearMockedCalls();
 
         // Disputer should get double the bond less Oracle fees.
@@ -79,7 +79,7 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
         // Mock resolve assertion truethful through Oracle and verify on resolve callback to Escalation Manager.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         _expectAssertionResolvedCallback(escalationManager, assertionId, true);
-        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertTrue(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
         vm.clearMockedCalls();
 
         // Asserter should get double the bond less Oracle fees.

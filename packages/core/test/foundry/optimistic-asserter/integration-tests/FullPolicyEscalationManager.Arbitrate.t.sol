@@ -10,7 +10,7 @@ contract FullPolicyEscalationManagerArbitrateTest is FullPolicyEscalationManager
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
 
         // Assertion should have arbitrateViaEscalationManager enabled and check other Escalation Manager settings.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         assertFalse(assertion.escalationManagerSettings.discardOracle);
         assertTrue(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
         assertFalse(assertion.escalationManagerSettings.validateDisputers);
@@ -24,18 +24,18 @@ contract FullPolicyEscalationManagerArbitrateTest is FullPolicyEscalationManager
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
 
         // Escalation manager should receive the price request on dispute.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         OracleRequest memory expectedOracleRequest =
             OracleRequest({
                 identifier: defaultIdentifier,
                 time: assertion.assertionTime,
-                ancillaryData: optimisticAsserter.stampAssertion(assertionId)
+                ancillaryData: optimisticOracleV3.stampAssertion(assertionId)
             });
         _expectOraclePriceRequest(escalationManager, expectedOracleRequest);
         _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         vm.expectRevert("Arbitration resolution not set");
-        optimisticAsserter.settleAndGetAssertionResult(assertionId);
+        optimisticOracleV3.settleAndGetAssertionResult(assertionId);
     }
 
     function test_ResolveAssertionTruthfulViaEscalationManager() public {
@@ -55,7 +55,7 @@ contract FullPolicyEscalationManagerArbitrateTest is FullPolicyEscalationManager
         // Escalation Manager should receive the callback and the assertion should be settled truthfully.
         _expectAssertionResolvedCallback(escalationManager, assertionId, true);
         _defaultSaveBalancesBeforeSettle();
-        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertTrue(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Asserter should get double the bond less Oracle fees.
         _defaultCheckBalancesAfterSettle(true, true, true);
@@ -78,7 +78,7 @@ contract FullPolicyEscalationManagerArbitrateTest is FullPolicyEscalationManager
         // Escalation Manager should receive the callback and the assertion should be settled not being truthful.
         _expectAssertionResolvedCallback(escalationManager, assertionId, false);
         _defaultSaveBalancesBeforeSettle();
-        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertFalse(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Disputer should get double the bond less Oracle fees.
         _defaultCheckBalancesAfterSettle(true, false, true);

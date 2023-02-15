@@ -6,7 +6,7 @@ import { getContractInstanceWithProvider } from "../utils/contracts";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 
-export { OptimisticAsserterEthers } from "@uma/contracts-node";
+export { OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 

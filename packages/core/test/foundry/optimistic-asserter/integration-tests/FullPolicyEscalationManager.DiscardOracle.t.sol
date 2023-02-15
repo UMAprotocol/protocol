@@ -10,7 +10,7 @@ contract FullPolicyEscalationManagerDiscardOracleTest is FullPolicyEscalationMan
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
 
         // Assertion should have arbitrateViaEscalationManager enabled and check other Escalation Manager settings.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         assertTrue(assertion.escalationManagerSettings.discardOracle);
         assertFalse(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
         assertFalse(assertion.escalationManagerSettings.validateDisputers);
@@ -29,7 +29,7 @@ contract FullPolicyEscalationManagerDiscardOracleTest is FullPolicyEscalationMan
         _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         // Assertion result should be false after dispute.
-        assertFalse(optimisticAsserter.getAssertionResult(assertionId));
+        assertFalse(optimisticOracleV3.getAssertionResult(assertionId));
     }
 
     function test_TruthfulOracleResultDiscarded() public {
@@ -41,7 +41,7 @@ contract FullPolicyEscalationManagerDiscardOracleTest is FullPolicyEscalationMan
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         _defaultSaveBalancesBeforeSettle();
-        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertFalse(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Asserter should still get double the bond less Oracle fees.
         _defaultCheckBalancesAfterSettle(true, true, true);

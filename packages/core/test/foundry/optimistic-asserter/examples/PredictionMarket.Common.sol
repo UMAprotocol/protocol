@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/examples/PredictionMarket.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/examples/PredictionMarket.sol";
 
-contract PredictionMarketTestCommon is CommonOptimisticAsserterTest {
+contract PredictionMarketTestCommon is CommonOptimisticOracleV3Test {
     PredictionMarket public predictionMarket;
     string outcome1 = "Red";
     string outcome2 = "Blue";
@@ -14,8 +14,8 @@ contract PredictionMarketTestCommon is CommonOptimisticAsserterTest {
 
     function _commonPredictionMarketSetUp() public {
         _commonSetup();
-        predictionMarket = new PredictionMarket(address(finder), address(defaultCurrency), address(optimisticAsserter));
-        uint256 minimumBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
+        predictionMarket = new PredictionMarket(address(finder), address(defaultCurrency), address(optimisticOracleV3));
+        uint256 minimumBond = optimisticOracleV3.getMinimumBond(address(defaultCurrency));
         requiredBond = minimumBond < 1000e18 ? 1000e18 : minimumBond; // Make sure the bond is sufficient.
         _fundInitializationReward();
     }
@@ -77,7 +77,7 @@ contract PredictionMarketTestCommon is CommonOptimisticAsserterTest {
 
         // Settle the assertion after liveness.
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
-        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertTrue(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Settle the outcome tokens.
         vm.prank(TestAddress.account2);

@@ -10,7 +10,7 @@ contract FullPolicyEscalationManagerBlockDisputeTest is FullPolicyEscalationMana
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
 
         // Assertion should have validateDisputers enabled and check other Escalation Manager settings.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         assertFalse(assertion.escalationManagerSettings.discardOracle);
         assertFalse(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
         assertTrue(assertion.escalationManagerSettings.validateDisputers);
@@ -26,9 +26,9 @@ contract FullPolicyEscalationManagerBlockDisputeTest is FullPolicyEscalationMana
         // Fund Account2 for the dispute that should be blocked.
         vm.startPrank(TestAddress.account2);
         defaultCurrency.allocateTo(TestAddress.account2, defaultBond);
-        defaultCurrency.approve(address(optimisticAsserter), defaultBond);
+        defaultCurrency.approve(address(optimisticOracleV3), defaultBond);
         vm.expectRevert("Dispute not allowed");
-        optimisticAsserter.disputeAssertion(assertionId, TestAddress.account2);
+        optimisticOracleV3.disputeAssertion(assertionId, TestAddress.account2);
         vm.stopPrank();
     }
 
@@ -45,7 +45,7 @@ contract FullPolicyEscalationManagerBlockDisputeTest is FullPolicyEscalationMana
         _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         // Assertion now should be in a disputed state.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         assertEq(assertion.disputer, TestAddress.account2);
     }
 }

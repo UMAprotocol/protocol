@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/SuperbondEscalationManager.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/SuperbondEscalationManager.sol";
 
-contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTest {
+contract SuperbondEscalationManagerTest is CommonOptimisticOracleV3Test {
     SuperbondEscalationManager escalationManager;
     uint256 superbond = 100e18;
     uint256 bond = 50e18;
@@ -12,7 +12,7 @@ contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTest {
     address anotherCurrency = TestAddress.random;
 
     function setUp() public {
-        escalationManager = new SuperbondEscalationManager(mockOptimisticAsserterAddress);
+        escalationManager = new SuperbondEscalationManager(mockOptimisticOracleV3Address);
         escalationManager.setSuperbond(superbond);
         escalationManager.setSuperbondCurrency(address(defaultCurrency));
     }
@@ -55,11 +55,11 @@ contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTest {
     }
 
     function _mockGetAssertion(bytes32 assertionId, uint256 bond) internal {
-        OptimisticAsserterInterface.Assertion memory assertion;
+        OptimisticOracleV3Interface.Assertion memory assertion;
         assertion.bond = bond;
         vm.mockCall(
-            mockOptimisticAsserterAddress,
-            abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
+            mockOptimisticOracleV3Address,
+            abi.encodeWithSelector(OptimisticOracleV3Interface.getAssertion.selector, assertionId),
             abi.encode(assertion)
         );
     }

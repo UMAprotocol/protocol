@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/DisputeLimitingEscalationManager.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/DisputeLimitingEscalationManager.sol";
 
-contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
+contract DisputeLimitingEscalationManagerTest is CommonOptimisticOracleV3Test {
     DisputeLimitingEscalationManager escalationManager;
 
     bytes32 assertionId = "test";
     bytes32 disputedAssertionId = "disputed";
 
     function setUp() public {
-        escalationManager = new DisputeLimitingEscalationManager(mockOptimisticAsserterAddress);
-        assertEq(address(escalationManager.optimisticAsserter()), mockOptimisticAsserterAddress);
+        escalationManager = new DisputeLimitingEscalationManager(mockOptimisticOracleV3Address);
+        assertEq(address(escalationManager.optimisticOracleV3()), mockOptimisticOracleV3Address);
     }
 
     function test_RevertIf_NotOwner() public {
@@ -41,17 +41,17 @@ contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
     }
 
     function test_RevertIf_UnauthorizedCaller() public {
-        vm.expectRevert("Not the optimistic asserter");
+        vm.expectRevert("Not the Optimistic Oracle V3");
         escalationManager.assertionDisputedCallback(disputedAssertionId);
 
-        vm.expectRevert("Not the optimistic asserter");
+        vm.expectRevert("Not the Optimistic Oracle V3");
         escalationManager.assertionResolvedCallback(disputedAssertionId, false);
     }
 
     function test_BlockAssertingCallerNotSet() public {
         _mockGetAssertionAssertingCaller(TestAddress.account1, assertionId);
 
-        vm.prank(mockOptimisticAsserterAddress);
+        vm.prank(mockOptimisticOracleV3Address);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policy.blockAssertion);
         assertFalse(policy.arbitrateViaEscalationManager);
@@ -63,7 +63,7 @@ contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
         escalationManager.setAssertingCaller(TestAddress.account1);
         _mockGetAssertionAssertingCaller(TestAddress.account1, assertionId);
 
-        vm.prank(mockOptimisticAsserterAddress);
+        vm.prank(mockOptimisticOracleV3Address);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policy.blockAssertion);
         assertFalse(policy.arbitrateViaEscalationManager);
@@ -76,7 +76,7 @@ contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
         _mockGetAssertionAssertingCaller(TestAddress.account1, disputedAssertionId);
         _mockGetAssertionAssertingCaller(TestAddress.account1, assertionId);
 
-        vm.startPrank(mockOptimisticAsserterAddress);
+        vm.startPrank(mockOptimisticOracleV3Address);
         escalationManager.assertionDisputedCallback(disputedAssertionId);
         assertEq(escalationManager.disputedAssertionId(), disputedAssertionId);
 
@@ -93,7 +93,7 @@ contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
         _mockGetAssertionAssertingCaller(TestAddress.account2, disputedAssertionId);
         _mockGetAssertionAssertingCaller(TestAddress.account1, assertionId);
 
-        vm.prank(mockOptimisticAsserterAddress);
+        vm.prank(mockOptimisticOracleV3Address);
         escalationManager.assertionDisputedCallback(disputedAssertionId);
         assertEq(escalationManager.disputedAssertionId(), bytes32(0));
 
@@ -107,7 +107,7 @@ contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
         _mockGetAssertionAssertingCaller(TestAddress.account1, disputedAssertionId);
         _mockGetAssertionAssertingCaller(TestAddress.account1, assertionId);
 
-        vm.startPrank(mockOptimisticAsserterAddress);
+        vm.startPrank(mockOptimisticOracleV3Address);
         escalationManager.assertionDisputedCallback(disputedAssertionId);
         assertEq(escalationManager.disputedAssertionId(), disputedAssertionId);
 
@@ -124,7 +124,7 @@ contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTest {
         _mockGetAssertionAssertingCaller(TestAddress.account1, disputedAssertionId);
         _mockGetAssertionAssertingCaller(TestAddress.account1, assertionId);
 
-        vm.startPrank(mockOptimisticAsserterAddress);
+        vm.startPrank(mockOptimisticOracleV3Address);
         escalationManager.assertionDisputedCallback(disputedAssertionId);
         assertEq(escalationManager.disputedAssertionId(), disputedAssertionId);
 

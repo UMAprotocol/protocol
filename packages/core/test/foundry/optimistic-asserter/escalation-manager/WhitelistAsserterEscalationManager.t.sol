@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistAsserterEscalationManager.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/WhitelistAsserterEscalationManager.sol";
 
-contract WhitelistAsserterEscalationManagerTest is CommonOptimisticAsserterTest {
+contract WhitelistAsserterEscalationManagerTest is CommonOptimisticOracleV3Test {
     WhitelistAsserterEscalationManager escalationManager;
 
     bytes32 assertionId = "test";
 
     function setUp() public {
-        escalationManager = new WhitelistAsserterEscalationManager(mockOptimisticAsserterAddress);
+        escalationManager = new WhitelistAsserterEscalationManager(mockOptimisticOracleV3Address);
     }
 
     function test_RevertIf_NotOwner() public {
@@ -84,12 +84,12 @@ contract WhitelistAsserterEscalationManagerTest is CommonOptimisticAsserterTest 
         address assertingCaller,
         address asserter
     ) internal {
-        OptimisticAsserterInterface.Assertion memory assertion;
+        OptimisticOracleV3Interface.Assertion memory assertion;
         assertion.escalationManagerSettings.assertingCaller = assertingCaller;
         assertion.asserter = asserter;
         vm.mockCall(
-            mockOptimisticAsserterAddress,
-            abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
+            mockOptimisticOracleV3Address,
+            abi.encodeWithSelector(OptimisticOracleV3Interface.getAssertion.selector, assertionId),
             abi.encode(assertion)
         );
     }

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/BaseEscalationManager.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/BaseEscalationManager.sol";
 
-contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
+contract BaseEscalationManagerTest is CommonOptimisticOracleV3Test {
     BaseEscalationManager escalationManager;
 
     bytes32 identifier = "test";
@@ -14,7 +14,7 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function setUp() public {
-        escalationManager = new BaseEscalationManager(address(optimisticAsserter));
+        escalationManager = new BaseEscalationManager(address(optimisticOracleV3));
     }
 
     function test_GetAssertionPolicy() public {
@@ -32,7 +32,7 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
     function test_RequestPrice() public {
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(identifier, time, ancillaryData);
-        vm.prank(address(optimisticAsserter));
+        vm.prank(address(optimisticOracleV3));
         escalationManager.requestPrice(identifier, time, ancillaryData);
     }
 
@@ -41,14 +41,14 @@ contract BaseEscalationManagerTest is CommonOptimisticAsserterTest {
         assertTrue(price == 0);
     }
 
-    function test_RevertIf_NotOptimisticAsserter() public {
-        vm.expectRevert("Not the optimistic asserter");
+    function test_RevertIf_NotOptimisticOracleV3() public {
+        vm.expectRevert("Not the Optimistic Oracle V3");
         escalationManager.requestPrice(identifier, time, ancillaryData);
 
-        vm.expectRevert("Not the optimistic asserter");
+        vm.expectRevert("Not the Optimistic Oracle V3");
         escalationManager.assertionResolvedCallback(bytes32(0), true);
 
-        vm.expectRevert("Not the optimistic asserter");
+        vm.expectRevert("Not the Optimistic Oracle V3");
         escalationManager.assertionDisputedCallback(bytes32(0));
     }
 }

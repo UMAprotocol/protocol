@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/OwnerSelectOracleEscalationManager.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/OwnerSelectOracleEscalationManager.sol";
 
-contract OwnerSelectOracleEscalationManagerTest is CommonOptimisticAsserterTest {
+contract OwnerSelectOracleEscalationManagerTest is CommonOptimisticOracleV3Test {
     OwnerSelectOracleEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new OwnerSelectOracleEscalationManager(address(optimisticAsserter));
+        escalationManager = new OwnerSelectOracleEscalationManager(address(optimisticOracleV3));
     }
 
     function test_SetArbitrateResolution() public {

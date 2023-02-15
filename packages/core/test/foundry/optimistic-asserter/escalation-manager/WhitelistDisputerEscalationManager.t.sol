@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistDisputerEscalationManager.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/WhitelistDisputerEscalationManager.sol";
 
-contract WhitelistDisputerEscalationManagerTest is CommonOptimisticAsserterTest {
+contract WhitelistDisputerEscalationManagerTest is CommonOptimisticOracleV3Test {
     WhitelistDisputerEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new WhitelistDisputerEscalationManager(address(optimisticAsserter));
+        escalationManager = new WhitelistDisputerEscalationManager(address(optimisticOracleV3));
     }
 
     function test_RevertIf_NotOwner() public {
@@ -19,14 +19,14 @@ contract WhitelistDisputerEscalationManagerTest is CommonOptimisticAsserterTest 
 
     function test_DisputeCallerNotOnWhitelist() public {
         // If the dispute caller is not whitelisted, then the dispute should not be allowed.
-        vm.prank(mockOptimisticAsserterAddress);
+        vm.prank(mockOptimisticOracleV3Address);
         assertFalse(escalationManager.isDisputeAllowed(bytes32(0), TestAddress.account2));
     }
 
     function test_DisputeCallerOnWhitelist() public {
         // If the dispute caller is whitelisted, then the dispute should be allowed.
         escalationManager.setDisputeCallerInWhitelist(TestAddress.account2, true);
-        vm.prank(mockOptimisticAsserterAddress);
+        vm.prank(mockOptimisticOracleV3Address);
         assertTrue(escalationManager.isDisputeAllowed(bytes32(0), TestAddress.account2));
     }
 }

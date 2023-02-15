@@ -18,7 +18,7 @@ contract FullPolicyEscalationManagerBlockAssertionTest is FullPolicyEscalationMa
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
 
         // Assertion should have default settings and point to the Escalation Manager and wrapper contract.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         assertFalse(assertion.escalationManagerSettings.discardOracle);
         assertFalse(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
         assertFalse(assertion.escalationManagerSettings.validateDisputers);
@@ -57,7 +57,7 @@ contract FullPolicyEscalationManagerBlockAssertionTest is FullPolicyEscalationMa
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
 
         // Assertion should have default settings and point to the Escalation Manager and wrapper contract.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         assertFalse(assertion.escalationManagerSettings.discardOracle);
         assertFalse(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
         assertFalse(assertion.escalationManagerSettings.validateDisputers);

@@ -11,7 +11,7 @@ async function main() {
 
   logger[startupLogLevel(params)]({
     at: "OAMonitor",
-    message: "Optimistic Asserter Monitor started 🔭",
+    message: "Optimistic Oracle V3 Monitor started 🔭",
     botModes: params.botModes,
   });
 
@@ -49,7 +49,7 @@ main().then(
   async (error) => {
     logger.error({
       at: "OAMonitor",
-      message: "Optimistic Asserter Monitor execution error🚨",
+      message: "Optimistic Oracle V3 Monitor execution error🚨",
       error,
     });
     // Wait 5 seconds to allow logger to flush.

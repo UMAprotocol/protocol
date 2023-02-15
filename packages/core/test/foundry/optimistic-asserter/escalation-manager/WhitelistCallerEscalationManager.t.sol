@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistCallerEscalationManager.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/WhitelistCallerEscalationManager.sol";
 
-contract WhitelistCallerEscalationManagerTest is CommonOptimisticAsserterTest {
+contract WhitelistCallerEscalationManagerTest is CommonOptimisticOracleV3Test {
     WhitelistCallerEscalationManager escalationManager;
 
     function setUp() public {
-        escalationManager = new WhitelistCallerEscalationManager(mockOptimisticAsserterAddress);
+        escalationManager = new WhitelistCallerEscalationManager(mockOptimisticOracleV3Address);
     }
 
     function test_AssertingCallerWhitelist() public {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./BaseEscalationManager.t.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/FullPolicyEscalationManager.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/escalation-manager/FullPolicyEscalationManager.sol";
 
 contract FullPolicyEscalationManagerCommon is BaseEscalationManagerTest {
     function setUp() public override {
@@ -14,6 +14,6 @@ contract FullPolicyEscalationManagerCommon is BaseEscalationManagerTest {
         defaultCurrency.approve(address(assertingCaller), defaultBond);
         vm.stopPrank();
 
-        escalationManager = address(new FullPolicyEscalationManager(address(optimisticAsserter)));
+        escalationManager = address(new FullPolicyEscalationManager(address(optimisticOracleV3)));
     }
 }

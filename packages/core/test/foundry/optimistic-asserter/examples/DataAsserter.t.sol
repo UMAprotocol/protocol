@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-import "../CommonOptimisticAsserterTest.sol";
-import "../../../../contracts/optimistic-asserter/implementation/examples/DataAsserter.sol";
+import "../CommonOptimisticOracleV3Test.sol";
+import "../../../../contracts/optimistic-oracle-v3/implementation/examples/DataAsserter.sol";
 
-contract DataAsserterTest is CommonOptimisticAsserterTest {
+contract DataAsserterTest is CommonOptimisticOracleV3Test {
     DataAsserter public dataAsserter;
     bytes32 dataId = bytes32("dataId");
     bytes32 correctData = bytes32("correctData");
@@ -11,14 +11,14 @@ contract DataAsserterTest is CommonOptimisticAsserterTest {
 
     function setUp() public {
         _commonSetup();
-        dataAsserter = new DataAsserter(address(defaultCurrency), address(optimisticAsserter));
+        dataAsserter = new DataAsserter(address(defaultCurrency), address(optimisticOracleV3));
     }
 
     function test_DataAssertionNoDispute() public {
         // Assert data.
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAsserter.getMinimumBond(address(defaultCurrency)));
-        defaultCurrency.approve(address(dataAsserter), optimisticAsserter.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.allocateTo(TestAddress.account1, optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.approve(address(dataAsserter), optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
         bytes32 assertionId = dataAsserter.assertDataFor(dataId, correctData, TestAddress.account1);
         vm.stopPrank(); // Return caller address to standard.
 
@@ -30,7 +30,7 @@ contract DataAsserterTest is CommonOptimisticAsserterTest {
         timer.setCurrentTime(timer.getCurrentTime() + dataAsserter.assertionLiveness());
 
         // Settle the assertion.
-        optimisticAsserter.settleAssertion(assertionId);
+        optimisticOracleV3.settleAssertion(assertionId);
 
         // Data should now be available.
         (dataAvailable, data) = dataAsserter.getData(assertionId);
@@ -41,15 +41,15 @@ contract DataAsserterTest is CommonOptimisticAsserterTest {
     function test_DataAssertionWithWrongDispute() public {
         // Assert data.
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAsserter.getMinimumBond(address(defaultCurrency)));
-        defaultCurrency.approve(address(dataAsserter), optimisticAsserter.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.allocateTo(TestAddress.account1, optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.approve(address(dataAsserter), optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
         bytes32 assertionId = dataAsserter.assertDataFor(dataId, correctData, TestAddress.account1);
         vm.stopPrank(); // Return caller address to standard.
 
         // Dispute assertion with Account2 and DVM votes that the original assertion was true.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
-        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertTrue(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         (bool dataAvailable, bytes32 data) = dataAsserter.getData(assertionId);
         assertTrue(dataAvailable);
@@ -59,15 +59,15 @@ contract DataAsserterTest is CommonOptimisticAsserterTest {
     function test_DataAssertionWithCorrectDispute() public {
         // Assert data.
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAsserter.getMinimumBond(address(defaultCurrency)));
-        defaultCurrency.approve(address(dataAsserter), optimisticAsserter.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.allocateTo(TestAddress.account1, optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.approve(address(dataAsserter), optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
         bytes32 assertionId = dataAsserter.assertDataFor(dataId, incorrectData, TestAddress.account1);
         vm.stopPrank(); // Return caller address to standard.
 
         // Dispute assertion with Account2 and DVM votes that the original assertion was wrong.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
-        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+        assertFalse(optimisticOracleV3.settleAndGetAssertionResult(assertionId));
 
         // Check that the data assertion has been deleted
         (, , address asserter, ) = dataAsserter.assertionsData(assertionId);
@@ -81,8 +81,8 @@ contract DataAsserterTest is CommonOptimisticAsserterTest {
 
         // Same asserter should be able to re-assert the correct data.
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAsserter.getMinimumBond(address(defaultCurrency)));
-        defaultCurrency.approve(address(dataAsserter), optimisticAsserter.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.allocateTo(TestAddress.account1, optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.approve(address(dataAsserter), optimisticOracleV3.getMinimumBond(address(defaultCurrency)));
         bytes32 oaAssertionId2 = dataAsserter.assertDataFor(dataId, correctData, TestAddress.account1);
         vm.stopPrank(); // Return caller address to standard.
 
@@ -90,7 +90,7 @@ contract DataAsserterTest is CommonOptimisticAsserterTest {
         timer.setCurrentTime(timer.getCurrentTime() + dataAsserter.assertionLiveness());
 
         // Settle the assertion.
-        optimisticAsserter.settleAssertion(oaAssertionId2);
+        optimisticOracleV3.settleAssertion(oaAssertionId2);
 
         // Data should now be available.
         (dataAvailable, data) = dataAsserter.getData(oaAssertionId2);

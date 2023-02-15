@@ -23,7 +23,7 @@ import {
   GovernorSpokeEthers,
   hre,
   newContractName,
-  OptimisticAsserterEthers,
+  OptimisticOracleV3Ethers,
   ParamType,
   RegistryEthers,
   RegistryRolesEnum,
@@ -48,7 +48,7 @@ async function main() {
 
     const finder = await getContractInstance<FinderEthers>("Finder", undefined, networkId);
     const registry = await getContractInstance<RegistryEthers>("Registry", undefined, networkId);
-    const newContractToVerify = await getContractInstance<OptimisticAsserterEthers>(
+    const newContractToVerify = await getContractInstance<OptimisticOracleV3Ethers>(
       newContractName,
       undefined,
       networkId
