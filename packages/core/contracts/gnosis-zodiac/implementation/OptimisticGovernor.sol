@@ -12,12 +12,12 @@ import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
 import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
 import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
 
+import "../../optimistic-asserter/implementation/ClaimData.sol";
 import "../../optimistic-asserter/interfaces/OptimisticAsserterInterface.sol";
 import "../../optimistic-asserter/interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
-import "../../common/implementation/AncillaryData.sol";
 
 /**
  * @title Optimistic Governor
@@ -431,7 +431,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) internal view returns (bytes memory) {
         return
             abi.encodePacked(
-                AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash),
+                ClaimData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash),
                 ",",
                 EXPLANATION_KEY,
                 ':"',
