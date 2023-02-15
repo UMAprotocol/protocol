@@ -151,7 +151,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * Note there is no way to cancel an unstake request, you must wait until after unstakeTime and re-stake.
      * @param amount the amount of tokens to request to be unstaked.
      */
-    function requestUnstake(uint128 amount) external override nonReentrant() {
+    function requestUnstake(uint128 amount) external nonReentrant() {
         require(!_inActiveReveal(), "In an active reveal phase");
         require(amount > 0, "Cannot unstake 0");
         _updateTrackers(msg.sender);
@@ -172,7 +172,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @dev If a staker requested an unstake and time > unstakeTime then send funds to staker. If unstakeCoolDown is
      * set to 0 then the unstake can be executed immediately.
      */
-    function executeUnstake() external override nonReentrant() {
+    function executeUnstake() external nonReentrant() {
         VoterStake storage voterStake = voterStakes[msg.sender];
         require(
             voterStake.unstakeTime != 0 && (getCurrentTime() >= voterStake.unstakeTime || unstakeCoolDown == 0),
@@ -294,11 +294,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return address voter that corresponds to the delegate.
      */
     function getVoterFromDelegate(address caller) public view returns (address) {
-        if (
-            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
-        ) return delegateToStaker[caller];
-        else return caller;
+        address delegator = delegateToStaker[caller];
+        // The delegate chose to be a delegate for the staker.
+        if (delegator != address(0) && voterStakes[delegator].delegate == caller) return delegator;
+        else return caller; // The staker chose the delegate.
     }
 
     /**
