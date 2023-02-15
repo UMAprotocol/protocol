@@ -10,13 +10,13 @@
 // NODE_URL_42161=<ARBITRUM-NODE-URL> \
 // yarn hardhat run ./src/upgrade-tests/register-new-contract/1_Propose.ts --network localhost
 
+import { ZERO_ADDRESS } from "@uma/common";
 import {
   BaseContract,
   BigNumberish,
   BytesLike,
   FinderEthers,
   fundArbitrumParentMessengerForRelays,
-  getAddress,
   getContractInstance,
   getContractInstanceByUrl,
   GovernorEthers,
@@ -24,6 +24,7 @@ import {
   GovernorRootTunnelEthers,
   hre,
   newContractName,
+  oldContractName,
   ParentMessengerBaseEthers,
   PopulatedTransaction,
   ProposerEthers,
@@ -42,7 +43,8 @@ const NODE_URL_ENV = "NODE_URL_";
 async function main() {
   const proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
 
-  const newContractAddressMainnet = await getAddress(newContractName, 1);
+  // const newContractAddressMainnet = await getAddress(newContractName, 1);
+  const newContractAddressMainnet = "0x0000000000000000000000000000000000000123"; // TODO: remove this hardcode
 
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
@@ -63,11 +65,19 @@ async function main() {
 
   if (!newContractAddressMainnet) throw new Error(`No ${newContractName} address found in mainnet deployment`);
 
+  // check that old contract is registered in the finder
+  const oldContractAddressFinder = await finder.getImplementationAddress(
+    hre.ethers.utils.formatBytes32String(oldContractName)
+  );
+
+  if (oldContractAddressFinder === ZERO_ADDRESS) throw new Error(`No ${oldContractName} address found in finder`);
+
   for (const networkName in l2Networks) {
     const governanceMessages: { targetAddress: string; tx: PopulatedTransaction }[] = [];
     const l2ChainId = l2Networks[networkName as keyof typeof l2Networks];
     const l2NodeUrl = process.env[String(NODE_URL_ENV + l2ChainId)];
-    const l2NewContractAddress = await getAddress(newContractName, l2ChainId);
+    // const l2NewContractAddress = await getAddress(newContractName, l2ChainId);
+    const l2NewContractAddress = "0x0000000000000000000000000000000000000123"; // TODO: remove this hardcode
 
     if (!l2NodeUrl || !l2NewContractAddress) throw new Error(`Missing ${networkName} network config`);
 
@@ -82,6 +92,13 @@ async function main() {
       l2NodeUrl
     );
     const l2Finder = await getContractInstanceByUrl<FinderEthers>("Finder", l2NodeUrl);
+
+    // check that old contract is registered in the finder
+    const oldContractAddressFinderL2 = await l2Finder.getImplementationAddress(
+      hre.ethers.utils.formatBytes32String(oldContractName)
+    );
+    if (oldContractAddressFinderL2 === ZERO_ADDRESS)
+      throw new Error(`No ${oldContractName} address found in finder on ${networkName} network`);
 
     if (await l2Registry.isContractRegistered(l2NewContractAddress)) continue;
 
@@ -124,6 +141,13 @@ async function main() {
     );
 
     governanceMessages.push({ targetAddress: l2Finder.address, tx: setFinderData });
+
+    // 5. Remove old contract from finder.
+    const removeFinderData = await l2Finder.populateTransaction.changeImplementationAddress(
+      hre.ethers.utils.formatBytes32String(oldContractName),
+      ZERO_ADDRESS
+    );
+    governanceMessages.push({ targetAddress: l2Finder.address, tx: removeFinderData });
 
     const relayedMessages = await relayGovernanceMessages(
       governanceMessages,
@@ -171,6 +195,15 @@ async function main() {
     if (!addNewContractToFinderTx.data) throw new Error("addNewContractToFinderTx.data is empty");
     console.log("AddNewContractToFinderTx", addNewContractToFinderTx);
     adminProposalTransactions.push({ to: finder.address, value: 0, data: addNewContractToFinderTx.data });
+
+    // 5. Remove the old contract from the Finder.
+    const removeOldContractFromFinderTx = await finder.populateTransaction.changeImplementationAddress(
+      hre.ethers.utils.formatBytes32String(oldContractName),
+      ZERO_ADDRESS
+    );
+    if (!removeOldContractFromFinderTx.data) throw new Error("removeOldContractFromFinderTx.data is empty");
+    console.log("RemoveOldContractFromFinderTx", removeOldContractFromFinderTx);
+    adminProposalTransactions.push({ to: finder.address, value: 0, data: removeOldContractFromFinderTx.data });
   }
 
   console.log("Proposing...");

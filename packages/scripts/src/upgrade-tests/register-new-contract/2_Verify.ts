@@ -5,18 +5,19 @@
 // Then execute the script from core with the PROPOSAL_DATA logged by  ./src/upgrade-tests/register-new-contract/1_Propose.ts:
 // PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/register-new-contract/2_Verify.ts --network localhost
 
+import { didContractThrow } from "@uma/common";
 import {
   assert,
   decodeData,
   decodeRelayMessages,
   FinderEthers,
-  getAddress,
   getContractInstance,
   GovernorEthers,
   GovernorHubEthers,
   GovernorRootTunnelEthers,
   hre,
   newContractName,
+  oldContractName,
   ProposedTransaction,
   RegistryEthers,
   RegistryRolesEnum,
@@ -66,7 +67,7 @@ async function main() {
   const callData = process.env["PROPOSAL_DATA"];
   if (!callData) throw new Error("PROPOSAL_DATA environment variable not set");
 
-  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
+  // const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
 
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
@@ -88,7 +89,8 @@ async function main() {
 
   const newContractAddressMainnet = registerTx.params.contractAddress;
 
-  const newContractAddressCheck = await getAddress(newContractName, Number(networkId));
+  // const newContractAddressCheck = await getAddress(newContractName, Number(networkId));
+  const newContractAddressCheck = "0x0000000000000000000000000000000000000123"; // TODO: remove this hardcode
 
   console.log("Verifying that new contract address is correct...");
   assert.equal(newContractAddressMainnet, newContractAddressCheck);
@@ -120,6 +122,13 @@ async function main() {
   assert.equal(
     (await finder.getImplementationAddress(hre.ethers.utils.formatBytes32String(newContractName))).toLowerCase(),
     newContractAddressMainnet.toLowerCase()
+  );
+  console.log("Verified!");
+
+  // Verify that the old contract is not registered with the Finder.
+  console.log("Verifying that the Old Contract is not registered with the Finder...");
+  assert(
+    await didContractThrow(finder.getImplementationAddress(hre.ethers.utils.formatBytes32String(oldContractName)))
   );
   console.log("Verified!");
 

@@ -42,10 +42,13 @@ const getAddress = (contractName: string, networkId: number): Promise<string> =>
 
 const newContractName = interfaceName.OptimisticOracleV3;
 
+const oldContractName = "OptimisticAsserter";
+
 export {
   hre,
   interfaceName,
   newContractName,
+  oldContractName,
   getContractInstance,
   getContractInstanceByUrl,
   fundArbitrumParentMessengerForRelays,
