@@ -43,7 +43,7 @@ try {
   // Do nothing, file doesn't exist.
 }
 
-const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
+const FindBlockAtTimestamp = require("./FindBlockAtTimeStamp");
 const { getAbi, getAddress } = require("@uma/contracts-node");
 const { getWeb3 } = require("@uma/common");
 /** *****************************************

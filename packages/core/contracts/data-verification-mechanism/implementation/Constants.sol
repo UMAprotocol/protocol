@@ -19,6 +19,7 @@ library OracleInterfaces {
     bytes32 public constant ChildMessenger = "ChildMessenger";
     bytes32 public constant OracleHub = "OracleHub";
     bytes32 public constant OracleSpoke = "OracleSpoke";
+    bytes32 public constant OptimisticAsserter = "OptimisticAsserter";
 }
 
 /**

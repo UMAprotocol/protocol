@@ -28,7 +28,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint128 outstandingRewards; // Accumulated rewards that have not yet been claimed.
         int128 unappliedSlash; // Used to track unapplied slashing in the case of bisected rounds.
         uint64 nextIndexToProcess; // The next request index that a staker is susceptible to be slashed on.
-        uint64 unstakeRequestTime; // Time that a staker requested to unstake. Used to determine if cooldown has passed.
+        uint64 unstakeTime; // Time that a staker can unstake. Used to determine if cooldown has passed.
         address delegate; // Address a staker has delegated to. The delegate can commit/reveal/claimRestake rewards.
     }
 
@@ -46,7 +46,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
 
     uint64 public lastUpdateTime; // Tracks the last time the reward rate was updated, used in reward allocation.
 
-    ExpandedIERC20 public votingToken; // An instance of the UMA voting token to mint rewards for stakers
+    ExpandedIERC20 public immutable votingToken; // An instance of the UMA voting token to mint rewards for stakers
 
     /****************************************
      *                EVENTS                *
@@ -88,8 +88,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint64 _unstakeCoolDown,
         address _votingToken
     ) {
-        emissionRate = _emissionRate;
-        unstakeCoolDown = _unstakeCoolDown;
+        setEmissionRate(_emissionRate);
+        setUnstakeCoolDown(_unstakeCoolDown);
         votingToken = ExpandedIERC20(_votingToken);
     }
 
@@ -101,7 +101,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Pulls tokens from the sender's wallet and stakes them on his behalf.
      * @param amount the amount of tokens to stake.
      */
-    function stake(uint128 amount) public {
+    function stake(uint128 amount) external {
         _stakeTo(msg.sender, msg.sender, amount);
     }
 
@@ -110,7 +110,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @param recipient the recipient address.
      * @param amount the amount of tokens to stake.
      */
-    function stakeTo(address recipient, uint128 amount) public {
+    function stakeTo(address recipient, uint128 amount) external {
         _stakeTo(msg.sender, recipient, amount);
     }
 
@@ -122,9 +122,11 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         address recipient,
         uint128 amount
     ) internal {
+        require(amount > 0, "Cannot stake 0");
+
         VoterStake storage voterStake = voterStakes[recipient];
 
-        // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
+        // If the staker has a cumulative staked balance of 0 then we can shortcut their nextIndexToProcess to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
         // _getStartingIndexForStaker returns the appropriate index to start at.
         if (voterStake.stake == 0) voterStake.nextIndexToProcess = _getStartingIndexForStaker();
@@ -146,11 +148,12 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Request a certain number of tokens to be unstaked. After the unstake time expires, the user may execute
      * the unstake. Tokens requested to unstake are not slashable nor subject to earning rewards.
      * This function cannot be called during an active reveal phase.
-     * Note there is no way to cancel an unstake request, you must wait until after unstakeRequestTime and re-stake.
+     * Note there is no way to cancel an unstake request, you must wait until after unstakeTime and re-stake.
      * @param amount the amount of tokens to request to be unstaked.
      */
-    function requestUnstake(uint128 amount) external override nonReentrant() {
+    function requestUnstake(uint128 amount) external nonReentrant() {
         require(!_inActiveReveal(), "In an active reveal phase");
+        require(amount > 0, "Cannot unstake 0");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
@@ -159,26 +162,27 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         cumulativeStake -= amount;
         voterStake.pendingUnstake = amount;
         voterStake.stake -= amount;
-        voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
+        voterStake.unstakeTime = uint64(getCurrentTime()) + unstakeCoolDown;
 
-        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeRequestTime, voterStake.stake);
+        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeTime, voterStake.stake);
     }
 
     /**
      * @notice  Execute a previously requested unstake. Requires the unstake time to have passed.
-     * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker.
+     * @dev If a staker requested an unstake and time > unstakeTime then send funds to staker. If unstakeCoolDown is
+     * set to 0 then the unstake can be executed immediately.
      */
-    function executeUnstake() external override nonReentrant() {
+    function executeUnstake() external nonReentrant() {
         VoterStake storage voterStake = voterStakes[msg.sender];
         require(
-            voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
+            voterStake.unstakeTime != 0 && (getCurrentTime() >= voterStake.unstakeTime || unstakeCoolDown == 0),
             "Unstake time not passed"
         );
         uint128 tokensToSend = voterStake.pendingUnstake;
 
         if (tokensToSend > 0) {
             voterStake.pendingUnstake = 0;
-            voterStake.unstakeRequestTime = 0;
+            voterStake.unstakeTime = 0;
             votingToken.transfer(msg.sender, tokensToSend);
         }
 
@@ -189,7 +193,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Send accumulated rewards to the voter. Note that these rewards do not include slashing balance changes.
      * @return uint128 the amount of tokens sent to the voter.
      */
-    function withdrawRewards() public returns (uint128) {
+    function withdrawRewards() external returns (uint128) {
         return _withdrawRewards(msg.sender, msg.sender);
     }
 
@@ -210,7 +214,6 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /**
      * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal
      * and stake in the same transaction if requested by a delegate or the voter.
-     * @dev This method requires that the msg.sender (voter or delegate) has approved this contract.
      * @dev The rewarded tokens simply pass through this contract before being staked on the voter's behalf.
      *  The balance of the delegate remains unchanged.
      * @return uint128 the amount of tokens that the voter is staking.
@@ -248,10 +251,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
-     * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second per staked token.
+     * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second.
      * @param newEmissionRate the new amount of voting tokens that are emitted per second, split pro rata to stakers.
      */
-    function setEmissionRate(uint128 newEmissionRate) external onlyOwner {
+    function setEmissionRate(uint128 newEmissionRate) public onlyOwner {
         _updateReward(address(0));
         emissionRate = newEmissionRate;
         emit SetNewEmissionRate(newEmissionRate);
@@ -261,7 +264,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice  Set the amount of time a voter must wait to unstake after submitting a request to do so.
      * @param newUnstakeCoolDown the new duration of the cool down period in seconds.
      */
-    function setUnstakeCoolDown(uint64 newUnstakeCoolDown) external onlyOwner {
+    function setUnstakeCoolDown(uint64 newUnstakeCoolDown) public onlyOwner {
         unstakeCoolDown = newUnstakeCoolDown;
         emit SetNewUnstakeCoolDown(newUnstakeCoolDown);
     }
@@ -291,11 +294,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return address voter that corresponds to the delegate.
      */
     function getVoterFromDelegate(address caller) public view returns (address) {
-        if (
-            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
-        ) return delegateToStaker[caller];
-        else return caller;
+        address delegator = delegateToStaker[caller];
+        // The delegate chose to be a delegate for the staker.
+        if (delegator != address(0) && voterStakes[delegator].delegate == caller) return delegator;
+        else return caller; // The staker chose the delegate.
     }
 
     /**

@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../interfaces/VotingInterface.sol";
 
 /**
  * @title Library to compute rounds and phases for an equal length commit-reveal voting cycle.
  */
 library VoteTiming {
-    using SafeMath for uint256;
-
     struct Data {
         uint256 phaseLength;
     }
 
     /**
      * @notice Initializes the data object. Sets the phase length based on the input.
+     * @param data reference to the this library's data object.
+     * @param phaseLength length of voting phase in seconds.
      */
     function init(Data storage data, uint256 phaseLength) internal {
         // This should have a require message but this results in an internal Solidity error.
@@ -32,8 +31,8 @@ library VoteTiming {
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
     function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength.mul(uint256(VotingAncillaryInterface.Phase.NUM_PHASES));
-        return currentTime.div(roundLength);
+        uint256 roundLength = data.phaseLength * uint256(VotingAncillaryInterface.Phase.NUM_PHASES);
+        return currentTime / roundLength;
     }
 
     /**
@@ -43,8 +42,8 @@ library VoteTiming {
      * @return timestamp unix time of when the current round will end.
      */
     function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength.mul(uint256(VotingAncillaryInterface.Phase.NUM_PHASES));
-        return roundLength.mul(roundId.add(1));
+        uint256 roundLength = data.phaseLength * uint256(VotingAncillaryInterface.Phase.NUM_PHASES);
+        return roundLength * (roundId + 1);
     }
 
     /**
@@ -61,7 +60,7 @@ library VoteTiming {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.
         return
             VotingAncillaryInterface.Phase(
-                currentTime.div(data.phaseLength).mod(uint256(VotingAncillaryInterface.Phase.NUM_PHASES))
+                (currentTime / data.phaseLength) % uint256(VotingAncillaryInterface.Phase.NUM_PHASES)
             );
     }
 }
