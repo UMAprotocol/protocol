@@ -60,7 +60,7 @@ library ResultComputationV2 {
         if (data.totalVotes > minTotalVotes && data.voteFrequency[data.currentMode] > minModalVotes) {
             isResolved = true; // minTotalVotes and minModalVotes are exceeded, so the resolved price is the mode.
             price = data.currentMode;
-        } else isResolved = false;
+        }
     }
 
     /**

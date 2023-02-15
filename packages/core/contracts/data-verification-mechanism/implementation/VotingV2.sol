@@ -310,7 +310,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             uint32 roundIdToVoteOn = getRoundIdToVoteOnRequest(currentRoundId + 1);
             ++rounds[roundIdToVoteOn].numberOfRequestsToVote;
             priceRequest.identifier = identifier;
-            priceRequest.time = SafeCast.toUint64(time);
+            priceRequest.time = uint64(time);
             priceRequest.ancillaryData = ancillaryData;
             priceRequest.lastVotingRound = roundIdToVoteOn;
             if (isGovernance) priceRequest.isGovernance = isGovernance;
@@ -1036,7 +1036,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 // resolvedPriceRequestIds array and b) removing requestId from pendingPriceRequestsIds. Don't need to
                 // increment requestIndex as from pendingPriceRequestsIds amounts to decreasing the while loop bound.
                 resolvedPriceRequestIds.push(pendingPriceRequestsIds[requestIndex]);
-                _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
+                _removeRequestFromPendingPriceRequestsIds(requestIndex);
                 emit RequestResolved(
                     request.lastVotingRound,
                     resolvedPriceRequestIds.length - 1,
@@ -1056,7 +1056,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             if (_shouldDeleteRequest(request.rollCount, request.isGovernance)) {
                 emit RequestDeleted(request.identifier, request.time, request.ancillaryData, request.rollCount);
                 delete priceRequests[pendingPriceRequestsIds[requestIndex]];
-                _removeRequestFromPendingPriceRequestsIds(SafeCast.toUint64(requestIndex));
+                _removeRequestFromPendingPriceRequestsIds(requestIndex);
                 continue;
             }
             // Else, the request should be rolled. This involves only moving forward the lastVotingRound.
