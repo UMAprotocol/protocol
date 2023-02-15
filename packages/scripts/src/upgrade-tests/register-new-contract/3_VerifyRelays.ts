@@ -12,6 +12,7 @@
 // PROPOSAL_DATA=<PROPOSAL_DATA> \
 // yarn hardhat run ./src/upgrade-tests/register-new-contract/3_VerifyRelays.ts
 
+import { didContractThrow } from "@uma/common";
 import {
   assert,
   decodeRelayMessages,
@@ -23,6 +24,7 @@ import {
   GovernorSpokeEthers,
   hre,
   newContractName,
+  oldContractName,
   OptimisticOracleV3Ethers,
   ParamType,
   RegistryEthers,
@@ -133,10 +135,16 @@ async function main() {
     assert(await registry.isContractRegistered(newContractToVerify.address));
     console.log("Verified!");
 
-    console.log(`[${networkName}] that the New Contract is registered with the Finder...`);
+    console.log(`[${networkName}] Verifying that the New Contract is registered with the Finder...`);
     assert.equal(
       (await finder.getImplementationAddress(hre.ethers.utils.formatBytes32String(newContractName))).toLowerCase(),
       newContractToVerify.address.toLowerCase()
+    );
+    console.log("Verified!");
+
+    console.log(`[${networkName}] Verifying that the Old Contract is not registered with the Finder...`);
+    assert(
+      await didContractThrow(finder.getImplementationAddress(hre.ethers.utils.formatBytes32String(oldContractName)))
     );
     console.log("Verified!");
   }

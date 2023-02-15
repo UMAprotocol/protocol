@@ -11,6 +11,7 @@ import {
   decodeData,
   decodeRelayMessages,
   FinderEthers,
+  getAddress,
   getContractInstance,
   GovernorEthers,
   GovernorHubEthers,
@@ -67,7 +68,7 @@ async function main() {
   const callData = process.env["PROPOSAL_DATA"];
   if (!callData) throw new Error("PROPOSAL_DATA environment variable not set");
 
-  // const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
+  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
 
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
@@ -89,8 +90,7 @@ async function main() {
 
   const newContractAddressMainnet = registerTx.params.contractAddress;
 
-  // const newContractAddressCheck = await getAddress(newContractName, Number(networkId));
-  const newContractAddressCheck = "0x0000000000000000000000000000000000000123"; // TODO: remove this hardcode
+  const newContractAddressCheck = await getAddress(newContractName, Number(networkId));
 
   console.log("Verifying that new contract address is correct...");
   assert.equal(newContractAddressMainnet, newContractAddressCheck);

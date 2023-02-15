@@ -17,6 +17,7 @@ import {
   BytesLike,
   FinderEthers,
   fundArbitrumParentMessengerForRelays,
+  getAddress,
   getContractInstance,
   getContractInstanceByUrl,
   GovernorEthers,
@@ -43,8 +44,7 @@ const NODE_URL_ENV = "NODE_URL_";
 async function main() {
   const proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
 
-  // const newContractAddressMainnet = await getAddress(newContractName, 1);
-  const newContractAddressMainnet = "0x0000000000000000000000000000000000000123"; // TODO: remove this hardcode
+  const newContractAddressMainnet = await getAddress(newContractName, 1);
 
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
@@ -76,8 +76,7 @@ async function main() {
     const governanceMessages: { targetAddress: string; tx: PopulatedTransaction }[] = [];
     const l2ChainId = l2Networks[networkName as keyof typeof l2Networks];
     const l2NodeUrl = process.env[String(NODE_URL_ENV + l2ChainId)];
-    // const l2NewContractAddress = await getAddress(newContractName, l2ChainId);
-    const l2NewContractAddress = "0x0000000000000000000000000000000000000123"; // TODO: remove this hardcode
+    const l2NewContractAddress = await getAddress(newContractName, l2ChainId);
 
     if (!l2NodeUrl || !l2NewContractAddress) throw new Error(`Missing ${networkName} network config`);
 
