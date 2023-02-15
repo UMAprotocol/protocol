@@ -16,10 +16,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract ProposerV2 is Ownable, Lockable {
     using SafeERC20 for IERC20;
-    IERC20 public immutable token;
-    uint256 public bond;
-    GovernorV2 public immutable governor;
-    Finder public immutable finder;
+    IERC20 public immutable token; // The ERC20 token that the bond is paid in.
+    uint256 public bond; // The bond amount for making a proposal.
+    GovernorV2 public immutable governor; // The governor contract that this contract makes proposals to.
+    Finder public immutable finder; // Finder contract that stores addresses of UMA system contracts.
 
     struct BondedProposal {
         address sender;
@@ -84,6 +84,7 @@ contract ProposerV2 is Ownable, Lockable {
      */
     function resolveProposal(uint256 id) external nonReentrant() {
         BondedProposal memory bondedProposal = bondedProposals[id];
+        require(bondedProposal.sender != address(0), "Invalid proposal id");
         OracleAncillaryInterface voting =
             OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
         bytes32 adminIdentifier = AdminIdentifierLib._constructIdentifier(id);

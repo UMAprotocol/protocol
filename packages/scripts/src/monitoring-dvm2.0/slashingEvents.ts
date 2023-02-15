@@ -5,7 +5,15 @@
 // CUSTOM_NODE_URL=https://<goerli OR mainnet>.infura.io/v3/<YOUR-INFURA-KEY> \
 // yarn hardhat run ./src/monitoring-dvm2.0/slashingEvents.ts
 
-import { getSumSlashedEvents, getUniqueVoters, getVotingContracts, updateTrackers } from "./common";
+import { BigNumber } from "ethers";
+import { bigNumberAbsDiff } from "../utils/utils";
+import {
+  getNumberSlashedEvents,
+  getSumSlashedEvents,
+  getUniqueVoters,
+  getVotingContracts,
+  updateTrackers,
+} from "./common";
 
 async function main() {
   const { votingV2 } = await getVotingContracts();
@@ -16,8 +24,13 @@ async function main() {
   await updateTrackers(votingV2, uniqueVoters);
 
   const sumSlashEvents = await getSumSlashedEvents(votingV2);
+  const numberSlashedEvents = await getNumberSlashedEvents(votingV2);
 
-  if (!sumSlashEvents.eq(0)) {
+  // The sum of SlashEvents should be smaller than the number of slashes, as
+  // each slash can result in 1 WEI of imprecision due to rounding.
+  const absDiff = bigNumberAbsDiff(sumSlashEvents, BigNumber.from(0));
+
+  if (!absDiff.lte(numberSlashedEvents)) {
     throw new Error(
       "The sum of slashedTokens across all VoterSlashed events is not zero. Instead it is: " + sumSlashEvents.toString()
     );
