@@ -73,7 +73,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
 
     /**
      * @notice Implements price requesting logic for the escalation manager. This function is called by the Optimistic
-     * Asserter on dispute and is constructed to mimic that of the UMA DVM interface.
+     * Oracle V3 on dispute and is constructed to mimic that of the UMA DVM interface.
      * @param identifier the identifier to fetch the price for.
      * @param time the time to fetch the price for.
      * @param ancillaryData ancillary data of the price being requested.
