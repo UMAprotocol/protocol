@@ -12,9 +12,9 @@ import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
 import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
 import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
 
-import "../../optimistic-asserter/implementation/ClaimData.sol";
-import "../../optimistic-asserter/interfaces/OptimisticAsserterInterface.sol";
-import "../../optimistic-asserter/interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
+import "../../optimistic-oracle-v3/implementation/ClaimData.sol";
+import "../../optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import "../../optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
@@ -25,7 +25,7 @@ import "../../common/interfaces/AddressWhitelistInterface.sol";
  * transactions that can be challenged by anyone. If the challenge is not resolved within a certain liveness period, the
  * transactions can be executed.
  */
-contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Module, Lockable {
+contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Module, Lockable {
     using SafeERC20 for IERC20;
 
     event OptimisticGovernorDeployed(address indexed owner, address indexed avatar, address target);
@@ -69,8 +69,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     uint64 public liveness; // The amount of time to dispute proposed transactions before they can be executed.
     uint256 public bondAmount; // Configured amount of collateral currency to make assertions for proposed transactions.
     string public rules; // Rules for the Optimistic Governor.
-    bytes32 public identifier; // Identifier used to request price from the DVM, compatible with Optimistic Asserter.
-    OptimisticAsserterInterface public optimisticAsserter; // Optimistic Asserter contract used to assert proposed transactions.
+    bytes32 public identifier; // Identifier used to request price from the DVM, compatible with Optimistic Oracle V3.
+    OptimisticOracleV3Interface public optimisticOracleV3; // Optimistic Oracle V3 contract used to assert proposed transactions.
     address public escalationManager; // Optional Escalation Manager contract to whitelist proposers / disputers.
 
     // Keys for assertion claim data.
@@ -102,7 +102,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @param _collateral Address of the ERC20 collateral used for bonds.
      * @param _bondAmount Amount of collateral currency to make assertions for proposed transactions
      * @param _rules Reference to the rules for the Optimistic Governor.
-     * @param _identifier The approved identifier to be used with the contract, compatible with Optimistic Asserter.
+     * @param _identifier The approved identifier to be used with the contract, compatible with Optimistic Oracle V3.
      * @param _liveness The period, in seconds, in which a proposal can be disputed.
      */
     constructor(
@@ -160,7 +160,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         collateral = _collateral;
 
         // Value of the bond posted for asserting the proposed transactions. If the minimum amount required by
-        // Optimistic Asserter is higher this contract will attempt to pull the required bond amount.
+        // Optimistic Oracle V3 is higher this contract will attempt to pull the required bond amount.
         bondAmount = _bondAmount;
         emit SetBond(_collateral, _bondAmount);
     }
@@ -213,8 +213,8 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     /**
-     * @notice This caches the most up-to-date Optimistic Asserter.
-     * @dev If a new Optimistic Asserter is added and this is run between a proposal's introduction and execution, the
+     * @notice This caches the most up-to-date Optimistic Oracle V3.
+     * @dev If a new Optimistic Oracle V3 is added and this is run between a proposal's introduction and execution, the
      * proposal will become unexecutable.
      */
     function sync() external nonReentrant {
@@ -226,7 +226,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @param _transactions the transactions being proposed.
      * @param _explanation Auxillary information that can be referenced to validate the proposal.
      * @dev Proposer must grant the contract collateral allowance at least to the bondAmount or result of getMinimumBond
-     * from the Optimistic Asserter, whichever is greater.
+     * from the Optimistic Oracle V3, whichever is greater.
      */
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) external nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
@@ -256,16 +256,16 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
         require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals not allowed");
 
-        // Get the bond from the proposer and approve the required bond to be used by the Optimistic Asserter.
+        // Get the bond from the proposer and approve the required bond to be used by the Optimistic Oracle V3.
         // This will fail if the proposer has not granted the Optimistic Governor contract an allowance
         // of the collateral token equal to or greater than the totalBond.
         uint256 totalBond = getProposalBond();
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
-        collateral.safeIncreaseAllowance(address(optimisticAsserter), totalBond);
+        collateral.safeIncreaseAllowance(address(optimisticOracleV3), totalBond);
 
-        // Assert that the proposal is correct at the Optimistic Asserter.
+        // Assert that the proposal is correct at the Optimistic Oracle V3.
         bytes32 assertionId =
-            optimisticAsserter.assertTruth(
+            optimisticOracleV3.assertTruth(
                 claim, // claim containing proposalHash, explanation and rules.
                 proposer, // asserter will receive back bond if the assertion is correct.
                 address(this), // callbackRecipient is set to this contract for automated proposal deletion on disputes.
@@ -303,7 +303,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored
         // proposal hash. This is possible when a) the transactions have not been proposed, b) transactions have already
-        // been executed, c) the proposal was disputed or d) the proposal was deleted after Optimistic Asserter upgrade.
+        // been executed, c) the proposal was disputed or d) the proposal was deleted after Optimistic Oracle V3 upgrade.
         require(proposalHashes[_proposalHash] != bytes32(0), "Proposal hash does not exist");
 
         // Get the original proposal assertionId.
@@ -315,7 +315,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
 
         // There is no need to check the assertion result as this point can be reached only for non-disputed assertions.
         // This will revert if the assertion has not been settled and can not currently be settled.
-        optimisticAsserter.settleAndGetAssertionResult(assertionId);
+        optimisticOracleV3.settleAndGetAssertionResult(assertionId);
 
         // Execute the transactions.
         for (uint256 i = 0; i < _transactions.length; i++) {
@@ -332,19 +332,19 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     /**
-     * @notice Function to delete a proposal on an Optimistic Asserter upgrade.
+     * @notice Function to delete a proposal on an Optimistic Oracle V3 upgrade.
      * @param _proposalHash the hash of the proposal to delete.
-     * @dev In case of an Optimistic Asserter upgrade, the proposal execution would be blocked as its related
-     * assertionId would not be recognized by the new Optimistic Asserter. This function allows the proposal to be
-     * deleted if detecting an Optimistic Asserter upgrade so that transactions can be re-proposed if needed.
+     * @dev In case of an Optimistic Oracle V3 upgrade, the proposal execution would be blocked as its related
+     * assertionId would not be recognized by the new Optimistic Oracle V3. This function allows the proposal to be
+     * deleted if detecting an Optimistic Oracle V3 upgrade so that transactions can be re-proposed if needed.
      */
     function deleteProposalOnUpgrade(bytes32 _proposalHash) public nonReentrant {
         require(_proposalHash != bytes32(0), "Invalid proposal hash");
         bytes32 assertionId = proposalHashes[_proposalHash];
         require(assertionId != bytes32(0), "Proposal hash does not exist");
 
-        // Detect Optimistic Asserter upgrade by checking if it has the matching assertionId.
-        require(optimisticAsserter.getAssertion(assertionId).asserter == address(0), "OA upgrade not detected");
+        // Detect Optimistic Oracle V3 upgrade by checking if it has the matching assertionId.
+        require(optimisticOracleV3.getAssertion(assertionId).asserter == address(0), "OOv3 upgrade not detected");
 
         // Remove proposal hash and assertionId so that transactions can be re-proposed if needed.
         delete proposalHashes[_proposalHash];
@@ -359,14 +359,14 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      */
     function assertionDisputedCallback(bytes32 assertionId) external {
         // In order to optimize for happy path, the assertionId is validated for potential spoofing only in the
-        // deleteProposalOnUpgrade call. Genuine Optimistic Asserter should always pass a valid assertionId that has a
+        // deleteProposalOnUpgrade call. Genuine Optimistic Oracle V3 should always pass a valid assertionId that has a
         // matching proposalHash in this contract.
         bytes32 proposalHash = assertionIds[assertionId];
 
-        // Callback should only be called by the Optimistic Asserter. Address would not match in case of contract
+        // Callback should only be called by the Optimistic Oracle V3. Address would not match in case of contract
         // upgrade, thus try deleting the proposal through deleteProposalOnUpgrade function that should revert if
-        // address mismatch was not caused by an Optimistic Asserter upgrade.
-        if (msg.sender == address(optimisticAsserter)) {
+        // address mismatch was not caused by an Optimistic Oracle V3 upgrade.
+        if (msg.sender == address(optimisticOracleV3)) {
             // Delete the disputed proposal and associated assertionId.
             delete proposalHashes[proposalHash];
             delete assertionIds[assertionId];
@@ -376,7 +376,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
     }
 
     /**
-     * @notice Callback function that is called by Optimistic Asserter when an assertion is resolved.
+     * @notice Callback function that is called by Optimistic Oracle V3 when an assertion is resolved.
      * @dev This function does nothing and is only here to satisfy the callback recipient interface.
      * @param assertionId The identifier of the assertion that was resolved.
      * @param assertedTruthfully Whether the assertion was resolved as truthful or not.
@@ -396,7 +396,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
      * @return The amount of bond required to propose a transaction.
      */
     function getProposalBond() public view returns (uint256) {
-        uint256 minimumBond = optimisticAsserter.getMinimumBond(address(collateral));
+        uint256 minimumBond = optimisticOracleV3.getMinimumBond(address(collateral));
         return minimumBond > bondAmount ? minimumBond : bondAmount;
     }
 
@@ -415,10 +415,10 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
-    // Caches the address of the Optimistic Asserter from the Finder.
+    // Caches the address of the Optimistic Oracle V3 from the Finder.
     function _sync() internal {
-        optimisticAsserter = OptimisticAsserterInterface(
-            finder.getImplementationAddress(OracleInterfaces.OptimisticAsserter)
+        optimisticOracleV3 = OptimisticOracleV3Interface(
+            finder.getImplementationAddress(OracleInterfaces.OptimisticOracleV3)
         );
     }
 
@@ -427,7 +427,7 @@ contract OptimisticGovernor is OptimisticAsserterCallbackRecipientInterface, Mod
         return addr.code.length > 0;
     }
 
-    // Constructs the claim that will be asserted at the Optimistic Asserter.
+    // Constructs the claim that will be asserted at the Optimistic Oracle V3.
     function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) internal view returns (bytes memory) {
         return
             abi.encodePacked(

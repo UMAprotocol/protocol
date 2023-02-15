@@ -11,7 +11,7 @@ import {
   GovernorHubEthers,
   GovernorRootTunnelEthers,
   GovernorSpokeEthers,
-  OptimisticAsserterEthers,
+  OptimisticOracleV3Ethers,
   ParentMessengerBaseEthers,
   ProposerEthers,
   RegistryEthers,
@@ -40,7 +40,7 @@ const getAddress = (contractName: string, networkId: number): Promise<string> =>
   return _getAddress(contractName as any, networkId);
 };
 
-const newContractName = interfaceName.OptimisticAsserter;
+const newContractName = interfaceName.OptimisticOracleV3;
 
 export {
   hre,
@@ -71,7 +71,7 @@ export {
   RelayTransaction,
   GovernorChildTunnelEthers,
   GovernorSpokeEthers,
-  OptimisticAsserterEthers,
+  OptimisticOracleV3Ethers,
   forkNetwork,
   ParamType,
 };
