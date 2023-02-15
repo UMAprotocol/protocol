@@ -43,7 +43,7 @@ contract GovernorV2 is MultiRole, Lockable {
     }
 
     // Reference to UMA finder, used to find addresses of other UMA ecosystem contracts.
-    FinderInterface private finder;
+    FinderInterface public immutable finder;
 
     // Array of all proposals.
     Proposal[] public proposals;

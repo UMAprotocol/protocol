@@ -21,9 +21,8 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
         Voter // Can vote through this contract.
     }
 
-    // Reference to the UMA Finder contract, allowing Voting upgrades to be performed
-    // without requiring any calls to this contract.
-    FinderInterface private finder;
+    // Reference to UMA Finder contract, allowing Voting upgrades to be without requiring any calls to this contract.
+    FinderInterface public immutable finder;
 
     /**
      * @notice Construct the DesignatedVotingV2 contract.
