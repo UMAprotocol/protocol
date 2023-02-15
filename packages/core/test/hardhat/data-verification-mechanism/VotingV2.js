@@ -5,6 +5,7 @@ const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const {
   RegistryRolesEnum,
   VotePhasesEnum,
+  didContractRevertWith,
   didContractThrow,
   getRandomSignedInt,
   decryptMessage,
@@ -5397,6 +5398,39 @@ describe("VotingV2", function () {
     assert.equal(
       (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       price.toString()
+    );
+  });
+  it("Increasing max rolls does not apply to existing requests that should be deleted", async function () {
+    // Consider if requests are not resolvable and should have been deleted based on a current maxRolls variable. If
+    // maxRolls value was extended this change should not apply retroactively and the contract should still delete
+    // these requests. To test this we will construct a price request, roll it 3 rounds forward without a vote and then
+    // extend maxRolls from its initial value of 2 to 3. The contract should delete the request as it was not
+    // resolvable before the maxRolls extension.
+
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    // Move to the round where price request should originally be voted on.
+    await moveToNextRound(voting, accounts[0]);
+
+    // Move 3 more rounds forward to make the request deletable based on the initial maxRolls of 2.
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+
+    // Extend maxRolls to 3.
+    await voting.methods.setMaxRolls(3).send({ from: accounts[0] });
+
+    // Verify that the request was deleted.
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberPendingPriceRequests, 0);
+    assert.equal((await voting.methods.getNumberOfPriceRequests().call()).numberResolvedPriceRequests, 0);
+    assert(
+      await didContractRevertWith(
+        voting.methods.getPrice(identifier, time).call({ from: registeredContract }),
+        "Price was never requested"
+      )
     );
   });
 
