@@ -394,7 +394,7 @@ contract OptimisticOracleV3 is OptimisticOracleV3Interface, Lockable, Ownable, M
         return
             AncillaryData.appendKeyValueAddress(
                 AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),
-                "oaAsserter",
+                "ooAsserter",
                 assertions[assertionId].asserter
             );
     }
