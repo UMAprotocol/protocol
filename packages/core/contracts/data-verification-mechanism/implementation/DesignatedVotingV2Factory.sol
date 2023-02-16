@@ -8,7 +8,7 @@ import "../../common/implementation/MultiCaller.sol";
  * @title Factory to deploy new instances of DesignatedVotingV2 and look up previously deployed instances.
  * @dev Allows off-chain infrastructure to look up a hot wallet's deployed DesignatedVoting contract.
  */
-contract DesignatedVotingV2Factory {
+contract DesignatedVotingV2Factory is MultiCaller {
     address private immutable finder; // Finder contract that stores addresses of UMA system contracts.
 
     event NewDesignatedVoting(address indexed voter, address indexed owner, address indexed designatedVoting);
