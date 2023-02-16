@@ -1,9 +1,9 @@
-const { getAbi, getAddress } = require("@uma/contracts-node");
+import { ContractName, getAbi, getAddress } from "@uma/contracts-node";
 import { Contract } from "ethers";
 import { Provider } from "@ethersproject/abstract-provider";
 
 export const getContractInstanceWithProvider = async <T extends Contract>(
-  contractName: string,
+  contractName: ContractName,
   provider: Provider,
   address?: string
 ): Promise<T> => {
