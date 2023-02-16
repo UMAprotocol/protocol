@@ -2,7 +2,7 @@ const { getHardhatConfig } = require("@uma/common");
 
 const path = require("path");
 const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
-const packageWkdir = path.dirname(require.resolve("@uma/optimistic-oracle/package.json"));
+const packageWkdir = path.dirname(require.resolve("@uma/optimistic-oracle-v2/package.json"));
 
 const configOverride = {
   paths: {
