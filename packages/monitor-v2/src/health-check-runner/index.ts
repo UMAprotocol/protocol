@@ -1,4 +1,4 @@
-const exec = require("child_process").exec;
+import { exec, ExecException } from "child_process";
 import { AugmentedLogger, Logger } from "@uma/financial-templates-lib";
 
 let logger: AugmentedLogger;
@@ -18,7 +18,7 @@ export async function run(): Promise<void> {
   logger.debug({ at: "HealthCheckRunner", message: "Running health check commands", healthCheckCommands });
 
   const outputs = await Promise.all(
-    healthCheckCommands.map(async (command: any) => execShellCommand(command, process.env))
+    healthCheckCommands.map(async (command: string) => execShellCommand(command, process.env))
   );
   const errorOutputs = outputs.filter((output) => output.error);
   const validOutputs = outputs.filter((output) => !output.error);
@@ -41,15 +41,16 @@ if (require.main === module) {
     });
 }
 
-export function execShellCommand(cmd: any, env: NodeJS.ProcessEnv) {
+export function execShellCommand(
+  cmd: string,
+  env: NodeJS.ProcessEnv
+): Promise<{ cmd: string; error: ExecException | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const { stdout, stderr } = exec(cmd, { env, stdio: "inherit" }, (error: any, stdout: any, stderr: any) => {
+    exec(cmd, { env }, (error: ExecException | null, stdout: string, stderr: string) => {
       stdout = _stripExecStdOut(stdout);
       stderr = _stripExecStdOut(stderr);
       resolve({ cmd, error, stdout, stderr });
     });
-    stdout.pipe(process.stdout);
-    stderr.pipe(process.stderr);
   });
 }
 
