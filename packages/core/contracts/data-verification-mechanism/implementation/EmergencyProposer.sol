@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import "./GovernorV2.sol";
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -17,7 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * includes three tiers of protection to ensure that abuse is extremely risky both from creating market volatility in
  * the underlying token and the threat of the locked tokens being slashed.
  */
-contract EmergencyProposer is Ownable, Lockable {
+contract EmergencyProposer is Ownable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
 
     /****************************************
