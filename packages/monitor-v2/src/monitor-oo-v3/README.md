@@ -6,7 +6,7 @@ where `OptimisticOracleV3` contract is deployed.
 The main entry point to Optimistic Oracle V3 monitor bots is running:
 
 ```
-node ./packages/monitor-v2/dist/monitor-oa/index.js
+node ./packages/monitor-v2/dist/monitor-oo-v3/index.js
 ```
 
 All the configuration should be provided with following environment variables:
