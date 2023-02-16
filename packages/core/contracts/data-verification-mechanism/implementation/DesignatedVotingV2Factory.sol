@@ -9,27 +9,28 @@ import "../../common/implementation/MultiCaller.sol";
  * @dev Allows off-chain infrastructure to look up a hot wallet's deployed DesignatedVoting contract.
  */
 contract DesignatedVotingV2Factory is MultiCaller {
-    address private finder;
-    event NewDesignatedVoting(address indexed voter, address indexed designatedVoting, address indexed owner);
+    address private immutable finder; // Finder contract that stores addresses of UMA system contracts.
+
+    event NewDesignatedVoting(address indexed voter, address indexed owner, address indexed designatedVoting);
 
     /**
      * @notice Construct the DesignatedVotingFactory contract.
-     * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
+     * @param _finder keeps track of all contracts within the system based on their interfaceName.
      */
-    constructor(address finderAddress) {
-        finder = finderAddress;
+    constructor(address _finder) {
+        finder = _finder;
     }
 
     /**
      * @notice Deploys a new `DesignatedVoting` contract.
-     * @param ownerAddress defines who will own the deployed instance of the designatedVoting contract.
-     * @param voterAddress defines who will be able to vote on behalf of the owner, using the designatedVoting contract.
+     * @param owner defines who will own the deployed instance of the designatedVoting contract.
+     * @param voter defines who will be able to vote on behalf of the owner, using the designatedVoting contract.
      * @return designatedVoting a new DesignatedVoting contract.
      */
-    function newDesignatedVoting(address ownerAddress, address voterAddress) external returns (DesignatedVotingV2) {
-        DesignatedVotingV2 designatedVoting = new DesignatedVotingV2(finder, ownerAddress, voterAddress);
+    function newDesignatedVoting(address owner, address voter) external returns (DesignatedVotingV2) {
+        DesignatedVotingV2 designatedVoting = new DesignatedVotingV2(finder, owner, voter);
 
-        emit NewDesignatedVoting(voterAddress, address(designatedVoting), ownerAddress);
+        emit NewDesignatedVoting(voter, owner, address(designatedVoting));
 
         return designatedVoting;
     }

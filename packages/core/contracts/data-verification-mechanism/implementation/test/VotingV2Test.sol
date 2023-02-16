@@ -44,7 +44,7 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
         bytes32 identifier,
         uint256 time,
         bytes32 hash
-    ) external virtual onlyIfNotMigrated() {
+    ) external virtual {
         commitVote(identifier, time, "", hash);
     }
 
