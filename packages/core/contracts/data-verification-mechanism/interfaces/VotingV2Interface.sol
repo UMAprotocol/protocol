@@ -108,7 +108,7 @@ abstract contract VotingV2Interface {
         bytes memory ancillaryData,
         bytes32 hash,
         bytes memory encryptedVote
-    ) public virtual;
+    ) external virtual;
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
@@ -133,12 +133,6 @@ abstract contract VotingV2Interface {
      * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
     function getPendingRequests() external virtual returns (PendingRequestAncillaryAugmented[] memory);
-
-    /**
-     * @notice Gets the requests that are being voted on this round after processing any resolvable price requests.
-     * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
-     */
-    function getPendingRequestsPostUpdate() external virtual returns (PendingRequestAncillaryAugmented[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.

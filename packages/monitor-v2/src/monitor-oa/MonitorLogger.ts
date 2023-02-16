@@ -1,6 +1,6 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
 import { utils } from "ethers";
-import { getCurrencyDecimals, getCurrencySymbol, Logger, OptimisticAsserterEthers, tryHexToUtf8String } from "./common";
+import { getCurrencyDecimals, getCurrencySymbol, Logger, OptimisticOracleV3Ethers, tryHexToUtf8String } from "./common";
 
 import type { MonitoringParams } from "./common";
 
@@ -10,7 +10,7 @@ export async function logAssertion(
     tx: string;
     assertionId: string;
     claim: string;
-    assertionData: Awaited<ReturnType<typeof OptimisticAsserterEthers.prototype.getAssertion>>;
+    assertionData: Awaited<ReturnType<typeof OptimisticOracleV3Ethers.prototype.getAssertion>>;
   },
   params: MonitoringParams
 ): Promise<void> {
@@ -46,7 +46,7 @@ export async function logDispute(
     tx: string;
     assertionId: string;
     claim: string;
-    assertionData: Awaited<ReturnType<typeof OptimisticAsserterEthers.prototype.getAssertion>>;
+    assertionData: Awaited<ReturnType<typeof OptimisticOracleV3Ethers.prototype.getAssertion>>;
   },
   params: MonitoringParams
 ): Promise<void> {
@@ -72,7 +72,7 @@ export async function logSettlement(
     tx: string;
     assertionId: string;
     claim: string;
-    assertionData: Awaited<ReturnType<typeof OptimisticAsserterEthers.prototype.getAssertion>>;
+    assertionData: Awaited<ReturnType<typeof OptimisticOracleV3Ethers.prototype.getAssertion>>;
   },
   params: MonitoringParams
 ): Promise<void> {

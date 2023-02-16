@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { web3, assertEventEmitted } = hre;
 const { getContract } = hre;
 const { utf8ToHex } = web3.utils;
-const { assert } = require("chai");
+const { assert, expect } = require("chai");
 
 const { didContractThrow, interfaceName } = require("@uma/common");
 
@@ -86,8 +86,7 @@ describe("Polygon_ChildMessenger", function () {
     const txn = await messenger.methods.processMessageFromRoot(fxRootTunnelAddress, data).send({ from: deployer });
 
     // Check that oracle spoke is called as expected
-    const processMessageFromParentCall = oracleSpokeSmocked.smocked.processMessageFromParent.calls[0];
-    assert.equal(processMessageFromParentCall.data, dataToSendToTarget);
+    expect(oracleSpokeSmocked.processMessageFromParent.getCall(0).args.data).is.equal(dataToSendToTarget);
 
     // Check events are emitted
     await assertEventEmitted(txn, messenger, "MessageReceivedFromParent", (ev) => {

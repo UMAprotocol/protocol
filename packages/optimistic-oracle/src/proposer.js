@@ -11,8 +11,6 @@ const {
   parseAncillaryData,
   createObjectFromDefaultProps,
   runTransaction,
-  OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
-  OPTIMISTIC_ORACLE_IGNORE,
   ZERO_ADDRESS,
 } = require("@uma/common");
 const { getAbi } = require("@uma/contracts-node");
@@ -34,6 +32,8 @@ class OptimisticOracleProposer {
     account,
     commonPriceFeedConfig,
     optimisticOracleProposerConfig,
+    ignoredIdentifiersPostExpiry,
+    ignoredIdentifiers,
   }) {
     this.logger = logger;
     this.account = account;
@@ -41,6 +41,8 @@ class OptimisticOracleProposer {
     this.web3 = this.optimisticOracleClient.web3;
     this.commonPriceFeedConfig = commonPriceFeedConfig;
     this.chainId = optimisticOracleClient.chainId;
+    this.ignoredIdentifiersPostExpiry = ignoredIdentifiersPostExpiry || [];
+    this.ignoredIdentifiers = ignoredIdentifiers || [];
 
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
@@ -163,7 +165,7 @@ class OptimisticOracleProposer {
   // Returns true if the price request should be ignored by the OO proposer + disputer for any reason, False otherwise.
   async _shouldIgnorePriceRequest(priceRequest) {
     // Ignore any identifier on the blacklist:
-    if (OPTIMISTIC_ORACLE_IGNORE.includes(priceRequest.identifier)) {
+    if (this.ignoredIdentifiers.includes(priceRequest.identifier)) {
       this.logger.debug({
         at: "OptimisticOracleProposer#Proposer",
         message: "Identifier is blacklisted",
@@ -175,7 +177,7 @@ class OptimisticOracleProposer {
     // If the price request is an expiry price request for a specific type of EMP
     // whose price resolution is self-referential pre-expiry and diferent post-expiry,
     // then skip the price request:
-    if (OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY.includes(priceRequest.identifier)) {
+    if (this.ignoredIdentifiersPostExpiry.includes(priceRequest.identifier)) {
       // Check if (1) contract is an EMP and (2) EMP has expired:
       try {
         // The requester should be an EMP contract if this is an expiry price request.
@@ -453,14 +455,6 @@ class OptimisticOracleProposer {
         transaction: settle,
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
-      console.log("receipt", receipt.events.Settle.returnValues);
-      console.log("skinny", this.optimisticOracleClient.oracleType);
-      console.log(
-        "select",
-        this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
-          ? receipt.events.Settle.returnValues.request.proposer
-          : receipt.events.Settle.returnValues.proposer
-      );
       const mrkdwn =
         createEtherscanLinkMarkdown(
           this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle

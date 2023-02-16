@@ -151,12 +151,10 @@ describe("DesignatedVotingV2", function () {
 
     const price = 420;
     const salt = getRandomSignedInt();
-    // Note: the "voter" address for this vote must be the designated voting contract since its the one that will ultimately
-    // "reveal" the vote. Only the voter can call reveal through the designated voting contract.
     const hash = computeVoteHashAncillary({
       price,
       salt,
-      account: voter,
+      account: designatedVoting.options.address,
       time,
       ancillaryData: ancillaryData,
       roundId,
@@ -217,7 +215,7 @@ describe("DesignatedVotingV2", function () {
     const hash1 = computeVoteHashAncillary({
       price: price1,
       salt: salt1,
-      account: voter,
+      account: designatedVoting.options.address,
       time: time1,
       ancillaryData: ancillaryData1,
       roundId,
@@ -230,7 +228,7 @@ describe("DesignatedVotingV2", function () {
     const hash2 = computeVoteHashAncillary({
       price: price2,
       salt: salt2,
-      account: voter,
+      account: designatedVoting.options.address,
       time: time2,
       ancillaryData: ancillaryData2,
       roundId,

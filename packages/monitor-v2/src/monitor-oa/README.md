@@ -1,9 +1,9 @@
-# Optimistic Asserter Monitoring
+# Optimistic Oracle V3 Monitoring
 
-Optimistic Asserter monitor bots can report on real time events based on the provided configuration for all the networks
-where `OptimisticAsserter` contract is deployed.
+Optimistic Oracle V3 monitor bots can report on real time events based on the provided configuration for all the networks
+where `OptimisticOracleV3` contract is deployed.
 
-The main entry point to Optimistic Asserter monitor bots is running:
+The main entry point to Optimistic Oracle V3 monitor bots is running:
 
 ```
 node ./packages/monitor-v2/dist/monitor-oa/index.js

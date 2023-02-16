@@ -65,7 +65,7 @@
     "address": "0x01eb880B005D7a3690A42246B5A8b7F384b45136"
   },
   {
-    "contractName": "OptimisticAsserter",
-    "address": "0x17d02b5CDb6fe2c681A447B119e9f6F5AB4E3018"
+    "contractName": "OptimisticOracleV3",
+    "address": "0xe1C2587C1789f7D00F22931D4DBAD537405DFe1f"
   }
 ]

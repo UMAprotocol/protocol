@@ -15,13 +15,7 @@ const {
   PriceFeedMockScaled,
 } = require("@uma/financial-templates-lib");
 const { OptimisticOracleProposer } = require("../src/proposer");
-const {
-  interfaceName,
-  getPrecisionForIdentifier,
-  OptimisticOracleRequestStatesEnum,
-  OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
-  OPTIMISTIC_ORACLE_IGNORE,
-} = require("@uma/common");
+const { interfaceName, getPrecisionForIdentifier, OptimisticOracleRequestStatesEnum } = require("@uma/common");
 
 const OptimisticOracle = getContract("OptimisticOracle");
 const OptimisticRequesterTest = getContract("OptimisticRequesterTest");
@@ -82,6 +76,9 @@ describe("OptimisticOracle: proposer.js", function () {
     padRight(utf8ToHex("TEST18DECIMALS"), 64),
     padRight(utf8ToHex("TEST18DECIMALS"), 64),
   ];
+
+  const ignoredIdentifiersPostExpiry = ["TESTBLACKLIST"];
+  const ignoredIdentifiers = ["IGNORE"];
   let collateralCurrenciesForIdentifier;
 
   const verifyState = async (state, identifier, ancillaryData = "0x", time = requestTime) => {
@@ -217,6 +214,8 @@ describe("OptimisticOracle: proposer.js", function () {
         account: botRunner,
         commonPriceFeedConfig,
         optimisticOracleProposerConfig,
+        ignoredIdentifiers,
+        ignoredIdentifiersPostExpiry,
       });
 
       // Update the bot to read the new OO state.
@@ -499,6 +498,8 @@ describe("OptimisticOracle: proposer.js", function () {
         account: botRunner,
         commonPriceFeedConfig,
         optimisticOracleProposerConfig: { disputePriceErrorPercent: 0.1, settleAllRequests: true },
+        ignoredIdentifiers,
+        ignoredIdentifiersPostExpiry,
       });
 
       // Make one proposal for bot to settle.
@@ -557,6 +558,8 @@ describe("OptimisticOracle: proposer.js", function () {
       gasEstimator,
       account: botRunner,
       commonPriceFeedConfig: invalidPriceFeedConfig,
+      ignoredIdentifiers,
+      ignoredIdentifiersPostExpiry,
     });
     await proposer.update();
 
@@ -603,6 +606,8 @@ describe("OptimisticOracle: proposer.js", function () {
       optimisticOracleClient: client,
       gasEstimator,
       account: botRunner,
+      ignoredIdentifiers,
+      ignoredIdentifiersPostExpiry,
     });
     await proposer.update();
     await proposer.sendProposals();
@@ -638,8 +643,8 @@ describe("OptimisticOracle: proposer.js", function () {
     const ancillaryData = collateralCurrency.options.address.toLowerCase();
     const ancillaryDataAddress = ancillaryData;
 
-    // Use the test blacklisted identifier, which we assume to be at index 0 in `OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY`:
-    const identifierToIgnore = padRight(utf8ToHex(OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY[0]), 64);
+    // Use the test blacklisted identifier.
+    const identifierToIgnore = padRight(utf8ToHex(ignoredIdentifiersPostExpiry[0]), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(identifierToIgnore).send({ from: owner });
 
     await optimisticRequester.methods
@@ -657,6 +662,8 @@ describe("OptimisticOracle: proposer.js", function () {
       gasEstimator,
       account: botRunner,
       commonPriceFeedConfig: { currentPrice: "1", historicalPrice: "2" },
+      ignoredIdentifiers,
+      ignoredIdentifiersPostExpiry,
     });
 
     // Update the bot to read the new OO state.
@@ -724,7 +731,7 @@ describe("OptimisticOracle: proposer.js", function () {
     const ancillaryData = collateralCurrency.options.address.toLowerCase();
     const ancillaryDataAddress = ancillaryData;
 
-    const identifierToIgnore = padRight(utf8ToHex(OPTIMISTIC_ORACLE_IGNORE[0]), 64);
+    const identifierToIgnore = padRight(utf8ToHex(ignoredIdentifiers[0]), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(identifierToIgnore).send({ from: owner });
 
     await optimisticOracle.methods
@@ -742,6 +749,8 @@ describe("OptimisticOracle: proposer.js", function () {
       gasEstimator,
       account: botRunner,
       commonPriceFeedConfig: { currentPrice: "1", historicalPrice: "2" },
+      ignoredIdentifiers,
+      ignoredIdentifiersPostExpiry,
     });
 
     // Update the bot to read the new OO state.

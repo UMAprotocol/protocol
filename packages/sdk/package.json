@@ -18,7 +18,7 @@
     "build": "node ./build.js",
     "build:web": "ENV_TYPE=web tsdx build --target web --format esm --name index",
     "build:node": "tsdx build --target node --format cjs --name index",
-    "test": "tsdx test",
+    "test": "jest",
     "test:e2e": "tsdx test --config jest-e2e-config.json",
     "test:watch": "tsdx test --watch",
     "eslint": "eslint './src/**/*.ts'",
@@ -35,6 +35,8 @@
     }
   ],
   "dependencies": {
+    "@ethersproject/providers": "^5.4.2",
+    "@ethersproject/abstract-signer": "^5.4.0",
     "@google-cloud/datastore": "^7.0.0",
     "@types/lodash-es": "^4.17.5",
     "@uma/contracts-frontend": "^0.4.9",
@@ -59,8 +61,11 @@
     "@types/bn.js": "^5.1.0",
     "@types/dotenv": "^8.2.0",
     "@types/highland": "^2.12.13",
+    "@types/jest": "^29.4.0",
     "dotenv": "^10.0.0",
+    "jest": "^29.4.1",
     "size-limit": "^4.10.2",
+    "ts-jest": "^29.0.5",
     "tsdx": "^0.14.1",
     "tslib": "^2.2.0"
   },
