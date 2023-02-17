@@ -6,7 +6,8 @@
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
-    "build": "tsc --build"
+    "build": "tsc --build",
+    "test": "hardhat test"
   },
   "dependencies": {
     "@ethersproject/abstract-provider": "^5.4.0",
