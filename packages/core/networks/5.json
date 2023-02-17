@@ -45,7 +45,7 @@
   },
   {
     "contractName": "VotingV2",
-    "address": "0x1755DD08108095C48509F5C91e071e0cb62eb27a"
+    "address": "0xc48F2d8491AffFc8eB21c85dEa1B4c0259c749a0"
   },
   {
     "contractName": "VotingToken",
@@ -53,7 +53,7 @@
   },
   {
     "contractName": "FixedSlashSlashingLibrary",
-    "address": "0xe8711717a8a010BeB257fb90898BB20eA5Ebf55F"
+    "address": "0x012b697170f53053E4810E58a4497896fd8a7Bd2"
   },
   {
     "contractName": "Registry",
@@ -61,7 +61,7 @@
   },
   {
     "contractName": "GovernorV2",
-    "address": "0xFf0E348389400d7D7510a230361Fc00904429e48"
+    "address": "0xaf5c7f4F07E3f7a9b92928FBb8a027F1adeF77a1"
   },
   {
     "contractName": "OptimisticOracleV2",
@@ -81,7 +81,7 @@
   },
   {
     "contractName": "ProposerV2",
-    "address": "0x235fa7590749C0c7240926E4CD0bB8EaecdbD3F3"
+    "address": "0x6772A8aB1Dd25d6A5975d5573030e117874b7b6c"
   },
   {
     "contractName": "TokenFactory",
