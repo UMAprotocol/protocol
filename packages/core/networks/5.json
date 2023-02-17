@@ -84,6 +84,10 @@
     "address": "0x6772A8aB1Dd25d6A5975d5573030e117874b7b6c"
   },
   {
+    "contractName": "EmergencyProposer",
+    "address": "0x931A43528779034ac9eb77df799d133557406176"
+  },
+  {
     "contractName": "TokenFactory",
     "address": "0x96deacEA7A33F76EFf3549458cAfDE5427D64A12"
   },
