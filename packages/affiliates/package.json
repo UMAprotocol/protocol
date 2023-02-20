@@ -1,14 +1,14 @@
 {
   "name": "@uma/affiliates",
-  "version": "1.15.20",
+  "version": "1.15.21",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@uma/common": "^2.29.1",
-    "@uma/contracts-node": "^0.4.9",
+    "@uma/common": "^2.30.0",
+    "@uma/contracts-node": "^0.4.10",
     "cli-progress": "^3.8.2",
-    "mkdirp": "^1.0.4",
     "minimist": "^1.2.7",
+    "mkdirp": "^1.0.4",
     "moment": "^2.29.1"
   },
   "devDependencies": {
