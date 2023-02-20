@@ -7,11 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/contracts-frontend
 
-
-
-
-
-
 ## [0.4.9](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.4.8...@uma/contracts-frontend@0.4.9) (2023-01-17)
 
 **Note:** Version bump only for package @uma/contracts-frontend

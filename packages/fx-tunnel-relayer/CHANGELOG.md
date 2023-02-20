@@ -7,11 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer
 
-
-
-
-
-
 ## [1.3.28](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.27...@uma/fx-tunnel-relayer@1.3.28) (2023-01-17)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer

@@ -7,11 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package health-check-runner
 
-
-
-
-
-
 ## [1.0.5](https://github.com/UMAprotocol/protocol/compare/health-check-runner@1.0.4...health-check-runner@1.0.5) (2023-01-17)
 
 **Note:** Version bump only for package health-check-runner

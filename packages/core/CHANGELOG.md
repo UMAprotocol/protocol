@@ -5,47 +5,40 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.49.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.48.0...@uma/core@2.49.0) (2023-02-20)
 
-
 ### Bug Fixes
 
-* **dvm2.0:** H-01 - Address slashing rounding errors ([#4411](https://github.com/UMAprotocol/protocol/issues/4411)) ([923f378](https://github.com/UMAprotocol/protocol/commit/923f378db029f272eba1317296d9aa0c395c64fd))
-* **dvm2.0:** H-02 - Address intra-round changes of the Slashing library ([#4414](https://github.com/UMAprotocol/protocol/issues/4414)) ([7dd0f9c](https://github.com/UMAprotocol/protocol/commit/7dd0f9c6933610e38fe94ce8f3c574489ac4a2a9))
-* **dvm2.0:** L-01 address intra-round changes to maxRolls ([#4417](https://github.com/UMAprotocol/protocol/issues/4417)) ([ffe8c11](https://github.com/UMAprotocol/protocol/commit/ffe8c11ac53f3b21ade453f744f27bcacc2df7eb))
-* **dvm2.0:** L-02 - Retroactively unstake cooldown ([#4430](https://github.com/UMAprotocol/protocol/issues/4430)) ([a4619e4](https://github.com/UMAprotocol/protocol/commit/a4619e4e943a1df6b50f122c60535842004b4d30))
-* **dvm2.0:** L-04: Add ability to change delegate during voting round ([#4418](https://github.com/UMAprotocol/protocol/issues/4418)) ([1f537c8](https://github.com/UMAprotocol/protocol/commit/1f537c8fb4b1c14bf6af455f13ac2993d9b914e4))
-* **dvm2.0:** L-05 - Add input validation ([#4421](https://github.com/UMAprotocol/protocol/issues/4421)) ([569caaf](https://github.com/UMAprotocol/protocol/commit/569caaffb6e5ed442d5da2beaa960ac84f1456ea))
-* **dvm2.0:** L-08 - Address missing emmitted props when setting unstake cooldown and emission rate in construction ([#4423](https://github.com/UMAprotocol/protocol/issues/4423)) ([ea07188](https://github.com/UMAprotocol/protocol/commit/ea071885e2a7279b058cf97ba671aff9f428846b))
-* **dvm2.0:** L-09 - Add missing docstrings ([#4428](https://github.com/UMAprotocol/protocol/issues/4428)) ([aecb335](https://github.com/UMAprotocol/protocol/commit/aecb3354234b02f81abf0886bcaec5eabd0a4c88))
-* **dvm2.0:** L-11 - Address duplicate code ([#4424](https://github.com/UMAprotocol/protocol/issues/4424)) ([9666ed4](https://github.com/UMAprotocol/protocol/commit/9666ed4836145f76ae1fd465ea1045fc0d1e8eb8))
-* **dvm2.0:** L-12 Remove redundant safe math ([#4425](https://github.com/UMAprotocol/protocol/issues/4425)) ([4ca1cef](https://github.com/UMAprotocol/protocol/commit/4ca1cef2f4955d859717ad88158d20c387cfd2a1))
-* **dvm2.0:** M-01 - Inaccurate function results ([#4415](https://github.com/UMAprotocol/protocol/issues/4415)) ([1609d08](https://github.com/UMAprotocol/protocol/commit/1609d08b77bfca412455cc8a63f8c19712cbbfb3))
-* **dvm2.0:** M-02 - Enable commit/reveal post migration to still enable requests to be settled if voted on during a migration ([#4416](https://github.com/UMAprotocol/protocol/issues/4416)) ([c7f60b4](https://github.com/UMAprotocol/protocol/commit/c7f60b4a9bb3c948cc3be2354030c4a375ac73af))
-* **dvm2.0:** N-01 Address interface inconsistancy ([#4426](https://github.com/UMAprotocol/protocol/issues/4426)) ([f74472a](https://github.com/UMAprotocol/protocol/commit/f74472adeef521347a39a1202e547f79b8cd269a))
-* **dvm2.0:** N-02 Make non-state modifying functions view ([#4427](https://github.com/UMAprotocol/protocol/issues/4427)) ([61fa46b](https://github.com/UMAprotocol/protocol/commit/61fa46ba56b6d324eaede9c822ab169dec9b9c36))
-* **dvm2.0:** N-03 Small gas optimizations ([#4429](https://github.com/UMAprotocol/protocol/issues/4429)) ([f1967f5](https://github.com/UMAprotocol/protocol/commit/f1967f55d5274034e3202a53b99529ecc9ab0946))
-* **dvm2.0:** N-06 - Address misleading documentation ([#4435](https://github.com/UMAprotocol/protocol/issues/4435)) ([56bb268](https://github.com/UMAprotocol/protocol/commit/56bb2682cc14eceaf86e59adb236c327f310f528))
-* **dvm2.0:** N-07 Ensure all external functions are marked as such ([#4432](https://github.com/UMAprotocol/protocol/issues/4432)) ([1b7d0d5](https://github.com/UMAprotocol/protocol/commit/1b7d0d5aa575c4a518057781a9961ff26a6bb0e7))
-* **dvm2.0:** N-08 - Address typographical errors ([#4436](https://github.com/UMAprotocol/protocol/issues/4436)) ([8974e1d](https://github.com/UMAprotocol/protocol/commit/8974e1d4f15dbb375e59d081df25d390884bb2e6))
-* **dvm2.0:** N-09 - Remove unused import ([#4437](https://github.com/UMAprotocol/protocol/issues/4437)) ([81fde31](https://github.com/UMAprotocol/protocol/commit/81fde31008581c24d96cdc431085287aa718b834))
-* **dvm2.0:** N-10 Mark all state variables that can be as immutable ([#4433](https://github.com/UMAprotocol/protocol/issues/4433)) ([3db808b](https://github.com/UMAprotocol/protocol/commit/3db808b05df0b571a02e41cea226867e58858da7))
-* fix core ci due to hardhat upgrade ([#4407](https://github.com/UMAprotocol/protocol/issues/4407)) ([a89e104](https://github.com/UMAprotocol/protocol/commit/a89e10472825ca31bfaaaa4e91dba9c1e43391fb))
-* **oa:** Add missing interface function for Optimistic Asseter ([#4405](https://github.com/UMAprotocol/protocol/issues/4405)) ([9ce0c62](https://github.com/UMAprotocol/protocol/commit/9ce0c62c0f4b5681619c1da042498705d9badfb0))
-
+- **dvm2.0:** H-01 - Address slashing rounding errors ([#4411](https://github.com/UMAprotocol/protocol/issues/4411)) ([923f378](https://github.com/UMAprotocol/protocol/commit/923f378db029f272eba1317296d9aa0c395c64fd))
+- **dvm2.0:** H-02 - Address intra-round changes of the Slashing library ([#4414](https://github.com/UMAprotocol/protocol/issues/4414)) ([7dd0f9c](https://github.com/UMAprotocol/protocol/commit/7dd0f9c6933610e38fe94ce8f3c574489ac4a2a9))
+- **dvm2.0:** L-01 address intra-round changes to maxRolls ([#4417](https://github.com/UMAprotocol/protocol/issues/4417)) ([ffe8c11](https://github.com/UMAprotocol/protocol/commit/ffe8c11ac53f3b21ade453f744f27bcacc2df7eb))
+- **dvm2.0:** L-02 - Retroactively unstake cooldown ([#4430](https://github.com/UMAprotocol/protocol/issues/4430)) ([a4619e4](https://github.com/UMAprotocol/protocol/commit/a4619e4e943a1df6b50f122c60535842004b4d30))
+- **dvm2.0:** L-04: Add ability to change delegate during voting round ([#4418](https://github.com/UMAprotocol/protocol/issues/4418)) ([1f537c8](https://github.com/UMAprotocol/protocol/commit/1f537c8fb4b1c14bf6af455f13ac2993d9b914e4))
+- **dvm2.0:** L-05 - Add input validation ([#4421](https://github.com/UMAprotocol/protocol/issues/4421)) ([569caaf](https://github.com/UMAprotocol/protocol/commit/569caaffb6e5ed442d5da2beaa960ac84f1456ea))
+- **dvm2.0:** L-08 - Address missing emmitted props when setting unstake cooldown and emission rate in construction ([#4423](https://github.com/UMAprotocol/protocol/issues/4423)) ([ea07188](https://github.com/UMAprotocol/protocol/commit/ea071885e2a7279b058cf97ba671aff9f428846b))
+- **dvm2.0:** L-09 - Add missing docstrings ([#4428](https://github.com/UMAprotocol/protocol/issues/4428)) ([aecb335](https://github.com/UMAprotocol/protocol/commit/aecb3354234b02f81abf0886bcaec5eabd0a4c88))
+- **dvm2.0:** L-11 - Address duplicate code ([#4424](https://github.com/UMAprotocol/protocol/issues/4424)) ([9666ed4](https://github.com/UMAprotocol/protocol/commit/9666ed4836145f76ae1fd465ea1045fc0d1e8eb8))
+- **dvm2.0:** L-12 Remove redundant safe math ([#4425](https://github.com/UMAprotocol/protocol/issues/4425)) ([4ca1cef](https://github.com/UMAprotocol/protocol/commit/4ca1cef2f4955d859717ad88158d20c387cfd2a1))
+- **dvm2.0:** M-01 - Inaccurate function results ([#4415](https://github.com/UMAprotocol/protocol/issues/4415)) ([1609d08](https://github.com/UMAprotocol/protocol/commit/1609d08b77bfca412455cc8a63f8c19712cbbfb3))
+- **dvm2.0:** M-02 - Enable commit/reveal post migration to still enable requests to be settled if voted on during a migration ([#4416](https://github.com/UMAprotocol/protocol/issues/4416)) ([c7f60b4](https://github.com/UMAprotocol/protocol/commit/c7f60b4a9bb3c948cc3be2354030c4a375ac73af))
+- **dvm2.0:** N-01 Address interface inconsistancy ([#4426](https://github.com/UMAprotocol/protocol/issues/4426)) ([f74472a](https://github.com/UMAprotocol/protocol/commit/f74472adeef521347a39a1202e547f79b8cd269a))
+- **dvm2.0:** N-02 Make non-state modifying functions view ([#4427](https://github.com/UMAprotocol/protocol/issues/4427)) ([61fa46b](https://github.com/UMAprotocol/protocol/commit/61fa46ba56b6d324eaede9c822ab169dec9b9c36))
+- **dvm2.0:** N-03 Small gas optimizations ([#4429](https://github.com/UMAprotocol/protocol/issues/4429)) ([f1967f5](https://github.com/UMAprotocol/protocol/commit/f1967f55d5274034e3202a53b99529ecc9ab0946))
+- **dvm2.0:** N-06 - Address misleading documentation ([#4435](https://github.com/UMAprotocol/protocol/issues/4435)) ([56bb268](https://github.com/UMAprotocol/protocol/commit/56bb2682cc14eceaf86e59adb236c327f310f528))
+- **dvm2.0:** N-07 Ensure all external functions are marked as such ([#4432](https://github.com/UMAprotocol/protocol/issues/4432)) ([1b7d0d5](https://github.com/UMAprotocol/protocol/commit/1b7d0d5aa575c4a518057781a9961ff26a6bb0e7))
+- **dvm2.0:** N-08 - Address typographical errors ([#4436](https://github.com/UMAprotocol/protocol/issues/4436)) ([8974e1d](https://github.com/UMAprotocol/protocol/commit/8974e1d4f15dbb375e59d081df25d390884bb2e6))
+- **dvm2.0:** N-09 - Remove unused import ([#4437](https://github.com/UMAprotocol/protocol/issues/4437)) ([81fde31](https://github.com/UMAprotocol/protocol/commit/81fde31008581c24d96cdc431085287aa718b834))
+- **dvm2.0:** N-10 Mark all state variables that can be as immutable ([#4433](https://github.com/UMAprotocol/protocol/issues/4433)) ([3db808b](https://github.com/UMAprotocol/protocol/commit/3db808b05df0b571a02e41cea226867e58858da7))
+- fix core ci due to hardhat upgrade ([#4407](https://github.com/UMAprotocol/protocol/issues/4407)) ([a89e104](https://github.com/UMAprotocol/protocol/commit/a89e10472825ca31bfaaaa4e91dba9c1e43391fb))
+- **oa:** Add missing interface function for Optimistic Asseter ([#4405](https://github.com/UMAprotocol/protocol/issues/4405)) ([9ce0c62](https://github.com/UMAprotocol/protocol/commit/9ce0c62c0f4b5681619c1da042498705d9badfb0))
 
 ### Features
 
-* add missing identifier in assertion event ([#4413](https://github.com/UMAprotocol/protocol/issues/4413)) ([eed3c65](https://github.com/UMAprotocol/protocol/commit/eed3c65d9b09a70b8b0483000b055084dcb70b1d))
-* add multicaller to dvm v2 contracts ([#4444](https://github.com/UMAprotocol/protocol/issues/4444)) ([3ad31b3](https://github.com/UMAprotocol/protocol/commit/3ad31b3aab3cf342f6a91dce54032fe0ee1b15c8))
-* add OOv3 deployments ([#4442](https://github.com/UMAprotocol/protocol/issues/4442)) ([92c054a](https://github.com/UMAprotocol/protocol/commit/92c054a1e4a17f1294b9e81b3763ebe8a080dc2b))
-* deploy optimistic asserter on production networks ([#4394](https://github.com/UMAprotocol/protocol/issues/4394)) ([6fddb23](https://github.com/UMAprotocol/protocol/commit/6fddb23c8a62542084d6d72fdfab00213ffdcd8d))
-* optimistic asserter deployment on goerli ([#4392](https://github.com/UMAprotocol/protocol/issues/4392)) ([df4e9b6](https://github.com/UMAprotocol/protocol/commit/df4e9b643f62d9f3a3fba2bd5f354b5e62cdb72a))
-* optimistic governor upgrade ([#4412](https://github.com/UMAprotocol/protocol/issues/4412)) ([42ceec4](https://github.com/UMAprotocol/protocol/commit/42ceec429385d6065110857e09504d4242493082))
-* rename Optimistic asserter to Optimistic Oracle V3 ([#4440](https://github.com/UMAprotocol/protocol/issues/4440)) ([e5fd755](https://github.com/UMAprotocol/protocol/commit/e5fd7556a1b88dc02c078f03e724b55a768decaa))
-
-
-
-
-
+- add missing identifier in assertion event ([#4413](https://github.com/UMAprotocol/protocol/issues/4413)) ([eed3c65](https://github.com/UMAprotocol/protocol/commit/eed3c65d9b09a70b8b0483000b055084dcb70b1d))
+- add multicaller to dvm v2 contracts ([#4444](https://github.com/UMAprotocol/protocol/issues/4444)) ([3ad31b3](https://github.com/UMAprotocol/protocol/commit/3ad31b3aab3cf342f6a91dce54032fe0ee1b15c8))
+- add OOv3 deployments ([#4442](https://github.com/UMAprotocol/protocol/issues/4442)) ([92c054a](https://github.com/UMAprotocol/protocol/commit/92c054a1e4a17f1294b9e81b3763ebe8a080dc2b))
+- deploy optimistic asserter on production networks ([#4394](https://github.com/UMAprotocol/protocol/issues/4394)) ([6fddb23](https://github.com/UMAprotocol/protocol/commit/6fddb23c8a62542084d6d72fdfab00213ffdcd8d))
+- optimistic asserter deployment on goerli ([#4392](https://github.com/UMAprotocol/protocol/issues/4392)) ([df4e9b6](https://github.com/UMAprotocol/protocol/commit/df4e9b643f62d9f3a3fba2bd5f354b5e62cdb72a))
+- optimistic governor upgrade ([#4412](https://github.com/UMAprotocol/protocol/issues/4412)) ([42ceec4](https://github.com/UMAprotocol/protocol/commit/42ceec429385d6065110857e09504d4242493082))
+- rename Optimistic asserter to Optimistic Oracle V3 ([#4440](https://github.com/UMAprotocol/protocol/issues/4440)) ([e5fd755](https://github.com/UMAprotocol/protocol/commit/e5fd7556a1b88dc02c078f03e724b55a768decaa))
 
 # [2.48.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.47.0...@uma/core@2.48.0) (2023-01-17)
 
