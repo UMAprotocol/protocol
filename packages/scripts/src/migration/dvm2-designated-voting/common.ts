@@ -10,9 +10,38 @@ interface EtherscanTransactionListResponse {
   functionName: string;
 }
 
+export interface DesignatedVotingOwnerWithBalance {
+  designatedVoting: string;
+  owner: string;
+  voter: string;
+  balance: BigNumber;
+}
+
+export interface GnosisPayload {
+  version: string;
+  chainId: string;
+  createdAt: number;
+  meta: {
+    name: string;
+    description: string;
+    txBuilderVersion: string;
+    createdFromSafeAddress: string;
+    createdFromOwnerAddress: string;
+    checksum: string;
+  };
+  transactions: GnosisTransaction[];
+}
+
+export interface GnosisTransaction {
+  to: string;
+  value: string;
+  contractMethod: { inputs: { internalType: string; name: string; type: string }[]; name: string; payable: boolean };
+  contractInputsValues: { [key: string]: string };
+}
+
 export async function getDesignatedVotingContractsOwnedByOwner(
   owner: string
-): Promise<{ designatedVoting: string; owner: string; hotWallet: string; balance: BigNumber }[]> {
+): Promise<DesignatedVotingOwnerWithBalance[]> {
   const factoryV1 = await getContractInstance<DesignatedVotingFactoryEthers>("DesignatedVotingFactory");
 
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
@@ -25,10 +54,10 @@ export async function getDesignatedVotingContractsOwnedByOwner(
       designatedVotingContracts.map(async (DesignatedVotingAddress) => {
         const contract = await getContractInstance<DesignatedVotingEthers>("DesignatedVoting", DesignatedVotingAddress);
         const contractOwner = await contract.getMember(0);
-        const hotWallet = await contract.getMember(1);
+        const voter = await contract.getMember(1);
         const balance = await votingToken.balanceOf(contract.address);
         // Typescript knows these values are all defined.
-        return { designatedVoting: contract.address, owner: contractOwner, hotWallet, balance };
+        return { designatedVoting: contract.address, owner: contractOwner, voter, balance };
       })
     )
   ).filter((contract) => contract.owner === owner);
@@ -65,9 +94,48 @@ async function _fetchDesignatedVotingContractsCreatedByFactory(
 }
 
 async function _runEtherscanApiCall(url: string): Promise<EtherscanTransactionListResponse[]> {
+  if (!process.env.ETHERSCAN_API_KEY) throw new Error("No ETHERSCAN_API_KEY");
   const response = await fetch(`${url}&apikey=${process.env.ETHERSCAN_API_KEY}}`, {
     method: "GET",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
   });
   return (await response.json()).result;
+}
+
+export function baseSafePayload(
+  chainId: number,
+  name: string,
+  description: string,
+  createdFromSafeAddress: string
+): GnosisPayload {
+  return {
+    version: "1.0",
+    chainId: chainId.toString(),
+    createdAt: Date.now(),
+    meta: {
+      name,
+      description,
+      txBuilderVersion: "1.13.2",
+      createdFromSafeAddress,
+      createdFromOwnerAddress: "",
+      checksum: "",
+    },
+    transactions: [],
+  };
+}
+
+export function appendTxToSafePayload(
+  payload: any,
+  to: string,
+  contractMethod: any,
+  contractInputsValues: any
+): GnosisPayload {
+  payload.transactions.push({
+    to,
+    value: "0",
+    data: null,
+    contractMethod,
+    contractInputsValues,
+  });
+  return payload;
 }

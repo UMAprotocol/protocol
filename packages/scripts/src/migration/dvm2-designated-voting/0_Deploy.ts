@@ -11,11 +11,10 @@ async function main() {
   const networkId = Number(await hre.getChainId());
   console.log("Running DesignatedVotingV2 deployments🔥\nChainId:", networkId);
 
-  // if (networkId != 1) throw new Error("Can only run on mainnet");
-  if (!process.env.ETHERSCAN_API_KEY) throw new Error("No ETHERSCAN_API_KEY");
+  if (networkId != 1) throw new Error("Can only run on mainnet");
   if (!process.env.OWNER_TO_MIGRATE) throw new Error("No OWNER_TO_MIGRATE set");
   const owner = process.env.OWNER_TO_MIGRATE || "";
-  const maxDesignatedVotingDeployedPerBatch = Number(process.env.MAX_CONTRACTS_PER_BATCH) || 10;
+  const maxDesignatedVotingDeployedPerBatch = Number(process.env.MAX_CONTRACTS_PER_BATCH) || 5;
 
   // Fetch all current DesignatedVoting contracts owned by the owner. Remove elements that have 0 balance.
   const designatedVotingData = (await getDesignatedVotingContractsOwnedByOwner(owner)).filter((e) => e.balance.gt(0));
@@ -23,7 +22,7 @@ async function main() {
   // Log all designated voting and the associated hot wallets. remove the owner element from the object to keep it short.
   console.log(`Found the following DesignatedVoting to migrate owned by ${owner}:`);
   console.table(
-    designatedVotingData.map((e: { designatedVoting: string; owner?: string; hotWallet: string; balance: any }) => {
+    designatedVotingData.map((e: { designatedVoting: string; owner?: string; voter: string; balance: any }) => {
       delete e.owner;
       const umaBalance = utils.formatEther(e.balance);
       e.balance = umaBalance.substring(0, umaBalance.indexOf("."));
@@ -36,24 +35,21 @@ async function main() {
     "DesignatedVotingV2Factory",
     "0xa024501191bdff069329cbdd064e39dc2aa3af6c"
   );
-  console.log("address", factoryV2.address);
-  // console.log(await factoryV2.finder)
-  const numberOfPayloadsToBuild = Math.ceil(maxDesignatedVotingDeployedPerBatch / designatedVotingData.length);
+  const numberOfPayloadsToBuild = Math.ceil(designatedVotingData.length / maxDesignatedVotingDeployedPerBatch);
   const multiCallPayloads: any[] = [];
   for (let i = 0; i < numberOfPayloadsToBuild; i++) {
     multiCallPayloads.push(
-      designatedVotingData.map((data) =>
-        factoryV2.interface.encodeFunctionData("newDesignatedVoting", [owner, data.hotWallet])
-      )
+      designatedVotingData
+        .slice(i * maxDesignatedVotingDeployedPerBatch, (i + 1) * maxDesignatedVotingDeployedPerBatch)
+        .map((data) => factoryV2.interface.encodeFunctionData("newDesignatedVoting", [owner, data.voter]))
     );
   }
 
-  console.log("multiCallPayload", multiCallPayload);
-
   const shouldDeploy = await yesno({
     question:
-      `Constructed multicall payloads to deploy ${designatedVotingData.length} contract.` +
-      `Are you ready to deploy? This Will send ${numberOfPayloadsToBuild} separate transactions. y/n`,
+      `Constructed multicall payloads to deploy ${designatedVotingData.length} contracts. ` +
+      `Are you ready to deploy? This Will send ${numberOfPayloadsToBuild} separate transactions,` +
+      ` each deploying up to ${maxDesignatedVotingDeployedPerBatch} designated voting contracts.`,
   });
 
   if (!shouldDeploy) process.exit(0);
@@ -65,7 +61,7 @@ async function main() {
     console.log(`Sending bundle ${i} to deploy ${multiCallPayloads[i].length} DesignatedVotingV2 Contracts...`);
     const tx = await factoryV2.multicall(multiCallPayloads[i]);
     tx.wait();
-    console.log("tx: https://etherscan.io/tx/", tx.hash);
+    console.log(`tx: https://etherscan.io/tx/${tx.hash}`);
   }
 }
 
