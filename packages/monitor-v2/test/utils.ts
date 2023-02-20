@@ -1,5 +1,6 @@
 import hre from "hardhat";
-import { ContractFactory, Signer, utils } from "ethers";
+import { ContractFactory, ContractTransaction, Signer, utils } from "ethers";
+import { Provider } from "@ethersproject/providers";
 import { ContractName, getAbi, getBytecode } from "@uma/contracts-node";
 import { time as hardhatTime } from "@nomicfoundation/hardhat-network-helpers";
 
@@ -15,4 +16,4 @@ export const formatBytes32String = utils.formatBytes32String;
 
 export const toUtf8Bytes = utils.toUtf8Bytes;
 
-export { hardhatTime, hre, Signer };
+export { ContractTransaction, hardhatTime, hre, Provider, Signer };

@@ -17,6 +17,7 @@
     "ethers": "^5.4.2"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.8"
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
+    "sinon": "^15.0.1"
   }
 }
