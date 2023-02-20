@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.50.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.49.0...@uma/core@2.50.0) (2023-02-20)
+
+
+### Features
+
+* add new dvm2.0 deployments goerli ([#4446](https://github.com/UMAprotocol/protocol/issues/4446)) ([23077bf](https://github.com/UMAprotocol/protocol/commit/23077bf88ac6b6520560db3caf67cfa14fd0e7ee))
+
+
+
+
+
 # [2.49.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.48.0...@uma/core@2.49.0) (2023-02-20)
 
 ### Bug Fixes
