@@ -15,5 +15,8 @@
     "@uma/contracts-node": "^0.4.9",
     "@uma/financial-templates-lib": "^2.32.4",
     "ethers": "^5.4.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8"
   }
 }
