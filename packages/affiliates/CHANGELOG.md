@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.15.21](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.20...@uma/affiliates@1.15.21) (2023-02-20)
+
+
+### Bug Fixes
+
+* remove most of affiliates and dependencies to fix build ([#4404](https://github.com/UMAprotocol/protocol/issues/4404)) ([429e2b1](https://github.com/UMAprotocol/protocol/commit/429e2b1fc9ae8c95cdff3ff2a0a6f49f9bbb84e9))
+
+
+
+
+
+
 ## [1.15.20](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.19...@uma/affiliates@1.15.20) (2023-01-17)
 
 **Note:** Version bump only for package @uma/affiliates

@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.14.5](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.14.4...@uma/serverless-orchestration@2.14.5) (2023-02-20)
+
+
+### Bug Fixes
+
+* address linter issue on master ([#4434](https://github.com/UMAprotocol/protocol/issues/4434)) ([be62cea](https://github.com/UMAprotocol/protocol/commit/be62ceae9d4e0053a9bd74a64ce3f9c9a5fdd7a0))
+* reorder lines to ensure the node url chain id mapping gets cached ([#4419](https://github.com/UMAprotocol/protocol/issues/4419)) ([1eff08d](https://github.com/UMAprotocol/protocol/commit/1eff08d6d2dfbb47b5a9f8bf5c2c0986e943d606))
+
+
+
+
+
+
 ## [2.14.4](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.14.3...@uma/serverless-orchestration@2.14.4) (2023-01-17)
 
 **Note:** Version bump only for package @uma/serverless-orchestration

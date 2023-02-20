@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.22.0...@uma/scripts@1.23.0) (2023-02-20)
+
+
+### Bug Fixes
+
+* **dvm2.0:** L-02 - Retroactively unstake cooldown ([#4430](https://github.com/UMAprotocol/protocol/issues/4430)) ([a4619e4](https://github.com/UMAprotocol/protocol/commit/a4619e4e943a1df6b50f122c60535842004b4d30))
+* chain specific block range for bots ([#4398](https://github.com/UMAprotocol/protocol/issues/4398)) ([de678e2](https://github.com/UMAprotocol/protocol/commit/de678e2726badfd5e4730122875b7411bb88cedb))
+
+
+### Features
+
+* add tolerance to slashingEvents checks ([#4438](https://github.com/UMAprotocol/protocol/issues/4438)) ([669d0a2](https://github.com/UMAprotocol/protocol/commit/669d0a22df7765f9498b79f4278e9c12b80ae71a))
+* implement optimistic asserter monitor ([#4396](https://github.com/UMAprotocol/protocol/issues/4396)) ([941ddc5](https://github.com/UMAprotocol/protocol/commit/941ddc5c6f1e87e700221eca3d8b22bf243e131a))
+* optimistic asserter admin proposals ([#4397](https://github.com/UMAprotocol/protocol/issues/4397)) ([e722591](https://github.com/UMAprotocol/protocol/commit/e7225914387b7b63fbbaf5bdee712e3d3bd2aef0))
+* redundant rpc in dvm-v2 monitor ([#4390](https://github.com/UMAprotocol/protocol/issues/4390)) ([5a38e1e](https://github.com/UMAprotocol/protocol/commit/5a38e1ec36f8c7462306b5b7a2093397057c234a))
+* rename Optimistic asserter to Optimistic Oracle V3 ([#4440](https://github.com/UMAprotocol/protocol/issues/4440)) ([e5fd755](https://github.com/UMAprotocol/protocol/commit/e5fd7556a1b88dc02c078f03e724b55a768decaa))
+
+
+
+
+
+
 # [1.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.21.0...@uma/scripts@1.22.0) (2023-01-17)
 
 ### Features
