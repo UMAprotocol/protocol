@@ -69,8 +69,8 @@ interface RewardTrackers {
 const zeroBigNumber: BigNumber = hre.ethers.BigNumber.from(0);
 
 // Constants hardcoded in the SlashingLibrary, needs to be updated here upon change.
-const wrongVoteSlashPerToken = parseEther("0.0016");
-const noVoteSlashPerToken = parseEther("0.0016");
+const wrongVoteSlashPerToken = parseEther("0.001");
+const noVoteSlashPerToken = parseEther("0.001");
 
 // Initial voter balances relative to GAT.
 const voter1RelativeGatFunding = parseEther("0.6");
