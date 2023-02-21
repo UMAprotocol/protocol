@@ -19,6 +19,7 @@ struct OwnableContracts {
     Ownable governorHub;
     Ownable bobaParentMessenger;
     Ownable optimismParentMessenger;
+    Ownable optimisticOracleV3;
 }
 
 // Multirole contracts to transfer ownership of
@@ -123,6 +124,7 @@ contract VotingUpgraderV2 {
         ownableContracts.governorHub.transferOwnership(newGovernor);
         ownableContracts.bobaParentMessenger.transferOwnership(newGovernor);
         ownableContracts.optimismParentMessenger.transferOwnership(newGovernor);
+        ownableContracts.optimisticOracleV3.transferOwnership(newGovernor);
 
         // Set the new governor as the owner of the old governor
         existingGovernor.resetMember(0, newGovernor);
