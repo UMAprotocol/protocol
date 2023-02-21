@@ -101,6 +101,7 @@ describe("DesignatedVotingV2", function () {
     );
     assert.equal(await votingToken.methods.balanceOf(designatedVoting.options.address).call(), tokenBalance);
     await designatedVoting.methods.stake(tokenBalance, voting.options.address).send({ from: tokenOwner });
+    await designatedVoting.methods.delegateToVoter().send({ from: tokenOwner });
     assert.equal(await votingToken.methods.balanceOf(designatedVoting.options.address).call(), 0);
     assert.equal(await votingToken.methods.balanceOf(voting.options.address).call(), tokenBalance);
 
@@ -138,6 +139,7 @@ describe("DesignatedVotingV2", function () {
     // voting contract from the designator. Nice and easy.
     await votingToken.methods.transfer(designatedVoting.options.address, tokenBalance).send({ from: tokenOwner });
     await designatedVoting.methods.stake(tokenBalance, voting.options.address).send({ from: tokenOwner });
+    await designatedVoting.methods.delegateToVoter().send({ from: tokenOwner });
     const stakeTime = await voting.methods.getCurrentTime().call();
 
     // Request a price.
@@ -196,6 +198,7 @@ describe("DesignatedVotingV2", function () {
   it("Batch commit and reveal", async function () {
     await votingToken.methods.transfer(designatedVoting.options.address, tokenBalance).send({ from: tokenOwner });
     await designatedVoting.methods.stake(tokenBalance, voting.options.address).send({ from: tokenOwner });
+    await designatedVoting.methods.delegateToVoter().send({ from: tokenOwner });
 
     // Request a price.
     const identifier = padRight(utf8ToHex("batch"), 64);

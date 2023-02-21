@@ -13,7 +13,8 @@
     "hardhat": "^2.12.6",
     "minimist": "^1.2.0",
     "web3": "^1.6.0",
-    "winston": "^3.2.1"
+    "winston": "^3.2.1",
+    "yesno": "^0.4.0"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
