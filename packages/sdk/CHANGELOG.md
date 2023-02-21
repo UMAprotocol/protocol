@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.5](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.4...@uma/sdk@0.32.5) (2023-02-20)
+
+### Bug Fixes
+
+- remove most of affiliates and dependencies to fix build ([#4404](https://github.com/UMAprotocol/protocol/issues/4404)) ([429e2b1](https://github.com/UMAprotocol/protocol/commit/429e2b1fc9ae8c95cdff3ff2a0a6f49f9bbb84e9))
+- run jest directly in verbose mode ([#4406](https://github.com/UMAprotocol/protocol/issues/4406)) ([42b83b2](https://github.com/UMAprotocol/protocol/commit/42b83b24385a54e349f3b62dae19517f6e9dfcb0))
+
 ## [0.32.4](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.3...@uma/sdk@0.32.4) (2023-01-17)
 
 **Note:** Version bump only for package @uma/sdk

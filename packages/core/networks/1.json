@@ -36,6 +36,10 @@
     "address": "0xDE7c02aD2b925587Bd16724810f994a2948c4a38"
   },
   {
+    "contractName": "DesignatedVotingV2Factory",
+    "address": "0xD63e84E190C93aD9f207E3DD1E763Ef9A3e2377B"
+  },
+  {
     "contractName": "WETH9",
     "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
   },

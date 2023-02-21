@@ -7,6 +7,7 @@ import "./Constants.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "./AdminIdentifierLib.sol";
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -14,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /**
  * @title Proposer contract that allows anyone to make governance proposals with a bond.
  */
-contract ProposerV2 is Ownable, Lockable {
+contract ProposerV2 is Ownable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     IERC20 public immutable token; // The ERC20 token that the bond is paid in.
     uint256 public bond; // The bond amount for making a proposal.
