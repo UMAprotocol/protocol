@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/scripts
 
-
-
-
-
 # [1.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.22.0...@uma/scripts@1.23.0) (2023-02-20)
 
 ### Bug Fixes

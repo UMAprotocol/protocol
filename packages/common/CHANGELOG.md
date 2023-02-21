@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/common
 
-
-
-
-
 # [2.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.29.1...@uma/common@2.30.0) (2023-02-20)
 
 ### Bug Fixes
