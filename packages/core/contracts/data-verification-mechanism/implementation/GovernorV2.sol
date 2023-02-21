@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
 import "../../common/implementation/MultiRole.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
@@ -14,7 +15,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
-contract GovernorV2 is MultiRole, Lockable {
+contract GovernorV2 is MultiRole, Lockable, MultiCaller {
     using Address for address;
 
     /****************************************

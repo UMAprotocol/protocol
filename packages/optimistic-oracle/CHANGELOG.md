@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.21...@uma/optimistic-oracle@2.15.0) (2023-02-20)
+
+### Features
+
+- move ignored identifiers to env ([#4400](https://github.com/UMAprotocol/protocol/issues/4400)) ([11fbfda](https://github.com/UMAprotocol/protocol/commit/11fbfda97a52f9954e1a056fec9a32c738263e56))
+
 ## [2.14.21](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.20...@uma/optimistic-oracle@2.14.21) (2023-01-17)
 
 **Note:** Version bump only for package @uma/optimistic-oracle
