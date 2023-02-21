@@ -35,4 +35,3 @@ contract DesignatedVotingV2Factory is MultiCaller {
         return designatedVoting;
     }
 }
-
