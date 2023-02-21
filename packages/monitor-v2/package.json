@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@ethersproject/abstract-provider": "^5.4.0",
-    "@uma/common": "^2.29.1",
-    "@uma/contracts-node": "^0.4.9",
-    "@uma/financial-templates-lib": "^2.32.4",
+    "@uma/common": "^2.30.0",
+    "@uma/contracts-node": "^0.4.10",
+    "@uma/financial-templates-lib": "^2.32.5",
     "ethers": "^5.4.2"
   }
 }
