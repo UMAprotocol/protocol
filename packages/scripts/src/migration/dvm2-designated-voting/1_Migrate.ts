@@ -68,13 +68,13 @@ async function main() {
   console.log("augmentedDesignedVotingData", augmentedDesignedVotingData);
 
   // Step 5: construct the gnosis payload to submit the migration process for each of the designated voting contracts.
-  const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
   let payload = baseSafePayload(
     chainId,
     "TokenMigration",
     `Migrates tokens from DesignatedVoting v1 to v2.` + `${augmentedDesignedVotingData.length} recipients migrated`,
     safe
   );
+  const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
   const erc20Address = votingToken.address;
   for (const data of augmentedDesignedVotingData) {
     const amount = data.balance.toString();
