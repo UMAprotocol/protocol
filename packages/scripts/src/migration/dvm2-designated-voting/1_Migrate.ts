@@ -3,12 +3,7 @@ import { utils } from "ethers";
 import { VotingTokenEthers, DesignatedVotingV2FactoryEthers, DesignatedVotingV2Ethers } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
 
-import {
-  getDesignatedVotingContractsOwnedByOwner,
-  baseSafePayload,
-  appendTxToSafePayload,
-  GnosisTransaction,
-} from "./common";
+import { getDesignatedVotingContractsOwnedByOwner, baseSafePayload, appendTxToSafePayload } from "./common";
 
 import fs from "fs";
 import path from "path";
