@@ -10,7 +10,7 @@ import "../../common/implementation/MultiCaller.sol";
 import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
 import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
 import "../../data-verification-mechanism/implementation/Constants.sol";
-import "../../optimistic-oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
+import "../../optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
 
