@@ -21,8 +21,9 @@ async function main() {
 
   // Log all designated voting and the associated hot wallets. remove the owner element from the object to keep it short.
   console.log(`Found the following DesignatedVoting to migrate owned by ${owner}:`);
+  const loggedObject = JSON.parse(JSON.stringify(designatedVotingData));
   console.table(
-    designatedVotingData.map((e: { designatedVoting: string; owner?: string; voter: string; balance: any }) => {
+    loggedObject.map((e: any) => {
       delete e.owner;
       const umaBalance = utils.formatEther(e.balance);
       e.balance = umaBalance.substring(0, umaBalance.indexOf("."));

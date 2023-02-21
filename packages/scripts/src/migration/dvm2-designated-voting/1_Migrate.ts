@@ -27,11 +27,8 @@ async function main() {
   // Step 1: fetch all current DesignatedVoting contracts owned by the owner. Remove elements that have 0 balance.
   const designatedVotingData = (await getDesignatedVotingContractsOwnedByOwner(owner)).filter((e) => e.balance.gt(0));
 
-  // Step 2: fetch all the deployed DesignatedVotingV2 contracts and append them to this datastructure.
-  const factoryV2 = await getContractInstance<DesignatedVotingV2FactoryEthers>(
-    "DesignatedVotingV2Factory",
-    "0xa024501191bdff069329cbdd064e39dc2aa3af6c"
-  );
+  // Step 2: fetch all the deployed DesignatedVotingV2 from the canonical factory and append them to this datastructure.
+  const factoryV2 = await getContractInstance<DesignatedVotingV2FactoryEthers>("DesignatedVotingV2Factory");
 
   // Step 3: fetch the newly deployed designated voting contracts and append this to the designated voting data.
   const newDesignatedVotingV2Events = await factoryV2.queryFilter(
@@ -63,7 +60,7 @@ async function main() {
   console.log(`The following augmented designated voting data has been loaded in for the owner owned by ${owner}:`);
   const loggedObject = JSON.parse(JSON.stringify(augmentedDesignedVotingData));
   console.table(
-    loggedObject.map((e: { designatedVoting: string; owner?: string; voter: string; balance: any }) => {
+    loggedObject.map((e: any) => {
       delete e.owner;
       const umaBalance = utils.formatEther(e.balance);
       e.balance = umaBalance.substring(0, umaBalance.indexOf("."));
@@ -97,7 +94,7 @@ async function main() {
   // entitled claim from their previous voting contract and b) deposit into their new voting contract.
 
   // 6.1: Verify that the number of transactions is correct.
-  if (payload.transactions.length != augmentedDesignedVotingData.length * 2) throw new Error("Payload is not valid");
+  if (payload.transactions.length !== augmentedDesignedVotingData.length * 2) throw new Error("Payload is not valid");
 
   // 6.2: Verify that each voter has two transactions associated with them and the contents are correct.
   for (const [index, transaction] of payload.transactions.entries()) {
