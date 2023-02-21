@@ -2,48 +2,36 @@
 pragma solidity 0.8.16;
 
 import "./DesignatedVotingV2.sol";
+import "../../common/implementation/MultiCaller.sol";
 
 /**
  * @title Factory to deploy new instances of DesignatedVotingV2 and look up previously deployed instances.
  * @dev Allows off-chain infrastructure to look up a hot wallet's deployed DesignatedVoting contract.
  */
-contract DesignatedVotingV2Factory {
+contract DesignatedVotingV2Factory is MultiCaller {
     address private immutable finder; // Finder contract that stores addresses of UMA system contracts.
 
-    // Mapping of hot wallet addresses to their designated voting contracts.
-    mapping(address => DesignatedVotingV2) public designatedVotingContracts;
-
-    event NewDesignatedVoting(address indexed designatedVoter, address indexed designatedVoting);
+    event NewDesignatedVoting(address indexed voter, address indexed owner, address indexed designatedVoting);
 
     /**
      * @notice Construct the DesignatedVotingFactory contract.
-     * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
+     * @param _finder keeps track of all contracts within the system based on their interfaceName.
      */
-    constructor(address finderAddress) {
-        finder = finderAddress;
+    constructor(address _finder) {
+        finder = _finder;
     }
 
     /**
      * @notice Deploys a new `DesignatedVoting` contract.
-     * @param ownerAddress defines who will own the deployed instance of the designatedVoting contract.
+     * @param owner defines who will own the deployed instance of the designatedVoting contract.
+     * @param voter defines who will be able to vote on behalf of the owner, using the designatedVoting contract.
      * @return designatedVoting a new DesignatedVoting contract.
      */
-    function newDesignatedVoting(address ownerAddress) external returns (DesignatedVotingV2) {
-        DesignatedVotingV2 designatedVoting = new DesignatedVotingV2(finder, ownerAddress, msg.sender);
-        designatedVotingContracts[msg.sender] = designatedVoting;
-        emit NewDesignatedVoting(msg.sender, address(designatedVoting));
+    function newDesignatedVoting(address owner, address voter) external returns (DesignatedVotingV2) {
+        DesignatedVotingV2 designatedVoting = new DesignatedVotingV2(finder, owner, voter);
+
+        emit NewDesignatedVoting(voter, owner, address(designatedVoting));
 
         return designatedVoting;
-    }
-
-    /**
-     * @notice Associates a `DesignatedVoting` instance with `msg.sender`.
-     * @param designatedVotingAddress address to designate voting to.
-     * @dev This is generally only used if the owner of a `DesignatedVoting` contract changes their `voter`
-     * address and wants that reflected here.
-     */
-    function setDesignatedVoting(address designatedVotingAddress) external {
-        designatedVotingContracts[msg.sender] = DesignatedVotingV2(designatedVotingAddress);
-        emit NewDesignatedVoting(msg.sender, designatedVotingAddress);
     }
 }

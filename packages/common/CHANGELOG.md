@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.29.1...@uma/common@2.30.0) (2023-02-20)
+
+### Bug Fixes
+
+- ignore decentralist identifier ([#4399](https://github.com/UMAprotocol/protocol/issues/4399)) ([4806b51](https://github.com/UMAprotocol/protocol/commit/4806b51d830466c445560f83196d5918af820a98))
+
+### Features
+
+- rename Optimistic asserter to Optimistic Oracle V3 ([#4440](https://github.com/UMAprotocol/protocol/issues/4440)) ([e5fd755](https://github.com/UMAprotocol/protocol/commit/e5fd7556a1b88dc02c078f03e724b55a768decaa))
+- **common:** match exact reverts with didContractRevertWith ([#4422](https://github.com/UMAprotocol/protocol/issues/4422)) ([ade94f7](https://github.com/UMAprotocol/protocol/commit/ade94f7a76899c6ae37fbb41553713795fa9ab62))
+- contract verification on boba ([#4395](https://github.com/UMAprotocol/protocol/issues/4395)) ([6c72fc3](https://github.com/UMAprotocol/protocol/commit/6c72fc374b5fbc54b159796617b21a8a4f9564f1))
+- move ignored identifiers to env ([#4400](https://github.com/UMAprotocol/protocol/issues/4400)) ([11fbfda](https://github.com/UMAprotocol/protocol/commit/11fbfda97a52f9954e1a056fec9a32c738263e56))
+- optimistic asserter deployment on goerli ([#4392](https://github.com/UMAprotocol/protocol/issues/4392)) ([df4e9b6](https://github.com/UMAprotocol/protocol/commit/df4e9b643f62d9f3a3fba2bd5f354b5e62cdb72a))
+- redundant rpc in dvm-v2 monitor ([#4390](https://github.com/UMAprotocol/protocol/issues/4390)) ([5a38e1e](https://github.com/UMAprotocol/protocol/commit/5a38e1ec36f8c7462306b5b7a2093397057c234a))
+
 ## [2.29.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.29.0...@uma/common@2.29.1) (2022-12-28)
 
 **Note:** Version bump only for package @uma/common
