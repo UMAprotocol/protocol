@@ -263,7 +263,7 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
       fs.appendFileSync(out, `  ${contractName}: "${relativePath}",\n`)
     );
     fs.appendFileSync(out, "} as const;\n");
-    fs.appendFileSync(out, "type ContractName = keyof typeof artifactPaths;\n");
+    fs.appendFileSync(out, "export type ContractName = keyof typeof artifactPaths;\n");
 
     // Use object to import the correct artifact for each contract name and return to the user.
     fs.appendFileSync(
@@ -290,7 +290,7 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
     fs.appendFileSync(out, "const addressFunctions = {\n");
     Object.keys(addresses).forEach((name) => fs.appendFileSync(out, `  ${name}: get${name}StaticAddress,\n`));
     fs.appendFileSync(out, "};\n");
-    fs.appendFileSync(out, "type DeploymentName = keyof typeof addressFunctions;\n");
+    fs.appendFileSync(out, "export type DeploymentName = keyof typeof addressFunctions;\n");
 
     // Creates a getAddress(name, chainId) function in nodejs that routes to the right get[name]Address function using
     // the above mapping.

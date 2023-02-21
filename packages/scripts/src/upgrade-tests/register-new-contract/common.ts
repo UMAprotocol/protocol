@@ -1,4 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
+import { ContractName, DeploymentName } from "@uma/contracts-node";
 import hre from "hardhat";
 
 import { BigNumberish } from "@ethersproject/bignumber";
@@ -40,7 +41,7 @@ const getAddress = (contractName: string, networkId: number): Promise<string> =>
   return _getAddress(contractName as any, networkId);
 };
 
-const newContractName = interfaceName.OptimisticOracleV3;
+const newContractName = interfaceName.OptimisticOracleV3 as ContractName | DeploymentName;
 
 export {
   hre,
