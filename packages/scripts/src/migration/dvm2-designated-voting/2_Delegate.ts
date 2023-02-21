@@ -1,6 +1,3 @@
-// This script constructs a gnosis safe transaction payload to pull tokens from DesignatedVoting to DesignatedVotingV2
-// on behalf of all voters who are delegates owned by the configured owner.
-
 const hre = require("hardhat");
 import { utils } from "ethers";
 import { VotingTokenEthers, DesignatedVotingV2FactoryEthers, DesignatedVotingV2Ethers } from "@uma/contracts-node";
@@ -12,7 +9,7 @@ import fs from "fs";
 import path from "path";
 
 async function main() {
-  console.log("Running Migration Gnosis payload builder 👷‍♀️");
+  console.log("Running Stake and Delegate to Voter Gnosis payload builder 👷‍♀️");
   const chainId = Number(await hre.getChainId());
   if (chainId != 1) throw new Error("Can only run on mainnet");
 
