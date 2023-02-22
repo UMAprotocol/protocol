@@ -47,7 +47,7 @@ const multiRoleABI = getAbi("MultiRole");
 const ownableABI = getAbi("Ownable");
 
 async function main() {
-  const networkId = Number(await hre.getChainId());
+  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
   const provider = hre.ethers.provider;
 
   const ownableContractsToMigrate = await getOwnableContracts(networkId);
@@ -90,6 +90,9 @@ async function main() {
   console.log(" 3. Validating deployed contracts multirole owner is set to governor v2...");
   assert.equal((await governor.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Old governor owner role correctly set!");
+
+  assert.equal((await governor.getMember(1)).toLowerCase(), governorV2.address.toLowerCase());
+  console.log("✅ Old governor proposer role correctly set!");
 
   assert.equal((await governorV2.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ New governor owner role correctly set!");

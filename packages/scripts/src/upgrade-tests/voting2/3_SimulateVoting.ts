@@ -688,7 +688,13 @@ async function main() {
   // It is assumed no other governance actions have been performed that would have changed Finder ownership in between.
   const oldGovernorAddress = (await finder.queryFilter(<EventFilter>"OwnershipTransferred")).reverse()[1].args[0];
   const oldGovernor = await getContractInstance<GovernorEthers>("Governor", oldGovernorAddress);
-  const oldProposerAddress = await oldGovernor.getMember(1);
+
+  // Find last ResetExclusiveMember event emitted by the old governor.
+  const lastResetExclusiveMemberEvent = (
+    await oldGovernor.queryFilter(oldGovernor.filters.ResetExclusiveMember(1, null, null))
+  ).reverse()[1];
+  const oldProposerAddress = lastResetExclusiveMemberEvent.args[1];
+
   console.log(
     formatIndentation(
       `

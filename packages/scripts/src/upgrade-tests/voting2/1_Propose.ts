@@ -218,20 +218,34 @@ async function main() {
     console.log(`2.j.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
   }
 
+  const resetProposerGovernorTx = await governor.populateTransaction.resetMember(1, governorV2.address);
+  if (!resetProposerGovernorTx.data) throw "resetProposerGovernorTx.data is null";
+  adminProposalTransactions.push({ to: governor.address, value: 0, data: resetProposerGovernorTx.data });
+  console.log("2.k.  Reset governor proposer to governor v2:", resetProposerGovernorTx.data);
+
+  if ((await governorV2.getMember(1)) != proposerV2.address) {
+    if (!process.env[TEST_DOWNGRADE]) throw "ProposerV2 is not registered in GovernorV2";
+    // This should only happen in the test downgrade script.
+    const resetProposerNewGovernorTx = await governorV2.populateTransaction.resetMember(1, proposerV2.address);
+    if (!resetProposerNewGovernorTx.data) throw "resetProposerNewGovernorTx.data is null";
+    adminProposalTransactions.push({ to: governorV2.address, value: 0, data: resetProposerNewGovernorTx.data });
+    console.log("2.k.a  Reset new governor proposer to proposer v2:", resetProposerNewGovernorTx.data);
+  }
+
   const resetMemberGovernorTx = await governor.populateTransaction.resetMember(0, votingUpgrader.address);
   if (!resetMemberGovernorTx.data) throw "resetMemberGovernorTx.data is null";
   adminProposalTransactions.push({ to: governor.address, value: 0, data: resetMemberGovernorTx.data });
-  console.log("2.k.  Reset governor owner to voting upgrader:", resetMemberGovernorTx.data);
+  console.log("2.l.  Reset governor owner to voting upgrader:", resetMemberGovernorTx.data);
 
   const resetMemberNewGovernorTx = await governorV2.populateTransaction.resetMember(0, votingUpgrader.address);
   if (!resetMemberNewGovernorTx.data) throw "resetMemberNewGovernorTx.data is null";
   adminProposalTransactions.push({ to: governorV2.address, value: 0, data: resetMemberNewGovernorTx.data });
-  console.log("2.l.  Reset new governor owner to voting upgrader:", resetMemberNewGovernorTx.data);
+  console.log("2.m.  Reset new governor owner to voting upgrader:", resetMemberNewGovernorTx.data);
 
   const upgraderExecuteUpgradeTx = await votingUpgrader.populateTransaction.upgrade();
   if (!upgraderExecuteUpgradeTx.data) throw "upgraderExecuteUpgradeTx.data is null";
   adminProposalTransactions.push({ to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx.data });
-  console.log("2.m. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
+  console.log("2.n. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
 
   const isGovernorV2 = await isGovernorV2Instance(governor.address);
 
