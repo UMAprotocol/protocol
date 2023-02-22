@@ -11,7 +11,7 @@ import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AncillaryData.sol";
 
 import "../../data-verification-mechanism/implementation/Constants.sol";
-import "../../optimistic-oracle/interfaces/OptimisticOracleInterface.sol";
+import "../../optimistic-oracle-v2/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
 import "./EmergencyShutdownable.sol";

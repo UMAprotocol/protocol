@@ -13,13 +13,13 @@ library OracleInterfaces {
     bytes32 public constant CollateralWhitelist = "CollateralWhitelist";
     bytes32 public constant OptimisticOracle = "OptimisticOracle";
     bytes32 public constant OptimisticOracleV2 = "OptimisticOracleV2";
+    bytes32 public constant OptimisticOracleV3 = "OptimisticOracleV3";
     bytes32 public constant Bridge = "Bridge";
     bytes32 public constant GenericHandler = "GenericHandler";
     bytes32 public constant SkinnyOptimisticOracle = "SkinnyOptimisticOracle";
     bytes32 public constant ChildMessenger = "ChildMessenger";
     bytes32 public constant OracleHub = "OracleHub";
     bytes32 public constant OracleSpoke = "OracleSpoke";
-    bytes32 public constant OptimisticOracleV3 = "OptimisticOracleV3";
 }
 
 /**

@@ -10,7 +10,7 @@ async function main() {
   const params = await initMonitoringParams(process.env);
 
   logger[startupLogLevel(params)]({
-    at: "OAMonitor",
+    at: "OOv3Monitor",
     message: "Optimistic Oracle V3 Monitor started 🔭",
     botModes: params.botModes,
   });
@@ -48,7 +48,7 @@ main().then(
   },
   async (error) => {
     logger.error({
-      at: "OAMonitor",
+      at: "OOv3Monitor",
       message: "Optimistic Oracle V3 Monitor execution error🚨",
       error,
     });

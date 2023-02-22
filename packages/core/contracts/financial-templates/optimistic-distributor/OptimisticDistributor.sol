@@ -10,7 +10,7 @@ import "../../merkle-distributor/implementation/MerkleDistributor.sol";
 import "../../data-verification-mechanism/implementation/Constants.sol";
 import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
 import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
-import "../../optimistic-oracle/interfaces/OptimisticOracleV2Interface.sol";
+import "../../optimistic-oracle-v2/interfaces/OptimisticOracleV2Interface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";

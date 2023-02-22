@@ -11,7 +11,7 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 
 import "../../data-verification-mechanism/interfaces/OracleInterface.sol";
-import "../../optimistic-oracle/interfaces/OptimisticOracleInterface.sol";
+import "../../optimistic-oracle-v2/interfaces/OptimisticOracleInterface.sol";
 import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
 import "../../data-verification-mechanism/implementation/Constants.sol";
 

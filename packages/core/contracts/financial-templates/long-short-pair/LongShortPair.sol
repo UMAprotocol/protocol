@@ -20,7 +20,7 @@ import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
 import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
 import "../../data-verification-mechanism/implementation/Constants.sol";
 
-import "../../optimistic-oracle/interfaces/OptimisticOracleV2Interface.sol";
+import "../../optimistic-oracle-v2/interfaces/OptimisticOracleV2Interface.sol";
 
 /**
  * @title Long Short Pair.

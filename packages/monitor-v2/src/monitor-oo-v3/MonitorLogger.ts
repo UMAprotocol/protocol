@@ -17,7 +17,7 @@ export async function logAssertion(
   const currencyDecimals = await getCurrencyDecimals(params.provider, assertion.assertionData.currency);
   const currencySymbol = await getCurrencySymbol(params.provider, assertion.assertionData.currency);
   logger.warn({
-    at: "OAMonitor",
+    at: "OOv3Monitor",
     message: "Assertion made 🙋",
     mrkdwn:
       createEtherscanLinkMarkdown(assertion.assertionData.asserter, params.chainId) +
@@ -51,7 +51,7 @@ export async function logDispute(
   params: MonitoringParams
 ): Promise<void> {
   logger.error({
-    at: "OAMonitor",
+    at: "OOv3Monitor",
     message: "Assertion disputed ❌",
     mrkdwn:
       createEtherscanLinkMarkdown(dispute.assertionData.disputer, params.chainId) +
@@ -77,7 +77,7 @@ export async function logSettlement(
   params: MonitoringParams
 ): Promise<void> {
   logger.info({
-    at: "OAMonitor",
+    at: "OOv3Monitor",
     message: "Assertion settled 🔗",
     mrkdwn:
       "Assertion with ID " +
