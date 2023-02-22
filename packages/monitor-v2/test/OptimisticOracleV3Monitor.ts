@@ -8,6 +8,7 @@ import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { optimisticOracleV3Fixture } from "./fixtures/OptimisticOracleV3.Fixture";
 import { MonitoringParams, BotModes } from "../src/monitor-oo-v3/common";
 import { monitorAssertions } from "../src/monitor-oo-v3/MonitorAssertions";
+import { monitorSettlements } from "../src/monitor-oo-v3/MonitorSettlements";
 
 const ethers = hre.ethers;
 
@@ -82,6 +83,7 @@ describe("OptimisticOracleV3Monitor", function () {
     const assertionBlockNumber = await getBlockNumber(assertionTx);
     const assertionId = await getAssertionId(assertionTx, optimisticOracleV3);
 
+    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorAssertions(spyLogger, await createMonitoringParams(assertionBlockNumber));
@@ -103,7 +105,22 @@ describe("OptimisticOracleV3Monitor", function () {
 
     // Settle assertion after the liveness period.
     await hardhatTime.increase(defaultLiveness);
-    await optimisticOracleV3.connect(asserter).settleAssertion(assertionId);
+    const settlementTx = await optimisticOracleV3.connect(asserter).settleAssertion(assertionId);
+    const settlementBlockNumber = await getBlockNumber(settlementTx);
+
+    // Call monitorSettlements directly for the block when the settlement was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorSettlements(spyLogger, await createMonitoringParams(settlementBlockNumber));
+
+    // When calling monitoring module directly there should be only one log (index 0) with the settlement caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "OOv3Monitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Assertion settled 🔗");
+    assert.equal(spyLogLevel(spy, 0), "info");
+    assert.isTrue(spyLogIncludes(spy, 0, assertionId));
+    assert.isTrue(spyLogIncludes(spy, 0, settlementTx.hash));
+    assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
+    assert.isTrue(spyLogIncludes(spy, 0, "Result: assertion was true"));
   });
   it("Monitor dispute", async function () {
     // Make assertion.
