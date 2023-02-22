@@ -8,6 +8,7 @@ import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { optimisticOracleV3Fixture } from "./fixtures/OptimisticOracleV3.Fixture";
 import { MonitoringParams, BotModes } from "../src/monitor-oo-v3/common";
 import { monitorAssertions } from "../src/monitor-oo-v3/MonitorAssertions";
+import { monitorDisputes } from "../src/monitor-oo-v3/MonitorDisputes";
 import { monitorSettlements } from "../src/monitor-oo-v3/MonitorSettlements";
 
 const ethers = hre.ethers;
@@ -130,7 +131,23 @@ describe("OptimisticOracleV3Monitor", function () {
     const assertionId = await getAssertionId(assertionTx, optimisticOracleV3);
 
     // Dispute assertion.
-    await optimisticOracleV3.connect(disputer).disputeAssertion(assertionId, await disputer.getAddress());
+    const disputeTx = await optimisticOracleV3
+      .connect(disputer)
+      .disputeAssertion(assertionId, await disputer.getAddress());
+    const disputeBlockNumber = await getBlockNumber(disputeTx);
+
+    // Call monitorDisputes directly for the block when the dispute was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorDisputes(spyLogger, await createMonitoringParams(disputeBlockNumber));
+
+    // When calling monitoring module directly there should be only one log (index 0) with the dispute caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "OOv3Monitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Assertion disputed ❌");
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, assertionId));
+    assert.isTrue(spyLogIncludes(spy, 0, disputeTx.hash));
+    assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
   });
   it("Monitor settlement of false assertion", async function () {
     // Make assertion.
