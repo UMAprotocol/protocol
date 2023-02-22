@@ -16,9 +16,9 @@ actively triaged for consideration and review. This document outlines the respon
   - If the PR has stalled, determine whose action is needed and tag them in a comment (or re-request a review if it's
     the reviewer). If a 3rd party's PR is ready and passing tests, merge it.
   - DCO is a common problem for many users, please help them by pointing them to the
-    [DCO docs](https://github.com/apps/dco). Note: DCO checks can be overriden for UMA org members because DCO is covered
+    [DCO docs](https://github.com/apps/dco). Note: DCO checks can be overridden for UMA org members because DCO is covered
     by other agreements, but 3rd party developers _must_ sign off on their commits.
   - For the full PR process, see [the contributing guidelines](./CONTRIBUTING.md).
 - For each _new_ issue:
-  - If it's a 3rd party issue, traige by assigning or tagging a relevant UMA team member.
+  - If it's a 3rd party issue, triage by assigning or tagging a relevant UMA team member.
   - If it was posted by an UMA org member, no action is required.
