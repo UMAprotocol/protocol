@@ -39,6 +39,8 @@ export const EMERGENCY_PROPOSAL = "EMERGENCY_PROPOSAL";
 
 export const EMERGENCY_EXECUTOR = "EMERGENCY_EXECUTOR";
 
+export const UPGRADER_WALLET = "UPGRADER_WALLET";
+
 export interface AdminProposalTransaction {
   to: string;
   value: BigNumberish;
@@ -109,6 +111,7 @@ export const checkEnvVariables = (): void => {
 };
 
 export const deployVotingUpgraderAndRunDowngradeOptionalTx = async (
+  upgraderWallet: string,
   adminProposalTransactions: AdminProposalTransaction[],
   governor: GovernorEthers,
   governorV2: GovernorEthers,
@@ -126,6 +129,7 @@ export const deployVotingUpgraderAndRunDowngradeOptionalTx = async (
   console.log("1.1 TEST MODE: DEPLOYING VOTING UPGRADER");
   const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
   const votingUpgrader = await votingUpgraderFactoryV2.deploy(
+    upgraderWallet,
     governor.address,
     governorV2.address,
     oldVoting.address,

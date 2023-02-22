@@ -87,6 +87,7 @@ async function main() {
 
   if (process.env[TEST_DOWNGRADE])
     votingUpgrader = await deployVotingUpgraderAndRunDowngradeOptionalTx(
+      (await hre.ethers.getSigners())[0].address,
       adminProposalTransactions,
       governor,
       governorV2,
@@ -106,19 +107,28 @@ async function main() {
 
   console.log("2. CRAFTING GOVERNOR TRANSACTIONS");
 
+  const votingUpgraderValidateTxSender = await votingUpgrader.populateTransaction.canRun();
+  if (!votingUpgraderValidateTxSender.data) throw "votingUpgraderValidateTxSender.data is null";
+  adminProposalTransactions.push({
+    to: votingUpgrader.address,
+    value: 0,
+    data: votingUpgraderValidateTxSender.data,
+  });
+  console.log("2.a Validate VotingUpgrader sender:", votingUpgraderValidateTxSender.data);
+
   // Add VotingV2 contract as a minter, so rewards can be minted in the existing token.
   // Note: this transaction must come before the owner is moved to the new Governor.
   const minter = "1";
   const addVotingV2AsTokenMinterTx = await votingToken.populateTransaction.addMember(minter, votingV2.address);
   if (!addVotingV2AsTokenMinterTx.data) throw "addVotingV2AsTokenMinterTx.data is null";
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addVotingV2AsTokenMinterTx.data });
-  console.log("2.a. Add minting roll to new voting contract:", addVotingV2AsTokenMinterTx.data);
+  console.log("2.b. Add minting roll to new voting contract:", addVotingV2AsTokenMinterTx.data);
 
   // Add new governor as the owner of the VotingToken contract.
   const addGovernorAsTokenOwnerTx = await votingToken.populateTransaction.resetMember("0", governorV2.address);
   if (!addGovernorAsTokenOwnerTx.data) throw "addGovernorAsTokenOwnerTx.data is null";
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addGovernorAsTokenOwnerTx.data });
-  console.log("2.b. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
+  console.log("2.c. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
 
   // transfer old governor voting tokens to new governor.
   const transferVotingTokensTx = await votingToken.populateTransaction.transfer(
@@ -127,12 +137,12 @@ async function main() {
   );
   if (!transferVotingTokensTx.data) throw "transferVotingTokensTx.data is null";
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: transferVotingTokensTx.data });
-  console.log("2.c. Transfer voting tokens to new governor contract:", transferVotingTokensTx.data);
+  console.log("2.d. Transfer voting tokens to new governor contract:", transferVotingTokensTx.data);
 
   const transferFinderOwnershipTx = await finder.populateTransaction.transferOwnership(votingUpgrader.address);
   if (!transferFinderOwnershipTx.data) throw "transferFinderOwnershipTx.data is null";
   adminProposalTransactions.push({ to: finder.address, value: 0, data: transferFinderOwnershipTx.data });
-  console.log("2.d. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
+  console.log("2.e. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
 
   const transferExistingVotingOwnershipTx = await oldVoting.populateTransaction.transferOwnership(
     votingUpgrader.address
@@ -143,7 +153,7 @@ async function main() {
     value: 0,
     data: transferExistingVotingOwnershipTx.data,
   });
-  console.log("2.e. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
+  console.log("2.f. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
 
   // Register GovernorV2 and ProposerV2 contracts in the registry if necessary
   const proposerV2Registered = await registry.isContractRegistered(proposerV2.address);
@@ -155,20 +165,20 @@ async function main() {
     );
     if (!addGovernorAsCreatorTx.data) throw new Error("addGovernorAsCreatorTx.data is empty");
     adminProposalTransactions.push({ to: registry.address, value: 0, data: addGovernorAsCreatorTx.data });
-    console.log("4.f.1 Temporarily add the Governor as a contract creator", addGovernorAsCreatorTx.data);
+    console.log("4.g.1 Temporarily add the Governor as a contract creator", addGovernorAsCreatorTx.data);
 
     if (!proposerV2Registered) {
       const registerProposerV2Tx = await registry.populateTransaction.registerContract([], proposerV2.address);
       if (!registerProposerV2Tx.data) throw new Error("registerProposerV2Tx.data is empty");
       adminProposalTransactions.push({ to: registry.address, value: 0, data: registerProposerV2Tx.data });
-      console.log("4.f.2 Register the ProposerV2 as a verified contract", registerProposerV2Tx.data);
+      console.log("4.h.2 Register the ProposerV2 as a verified contract", registerProposerV2Tx.data);
     }
 
     if (!governorV2Registered) {
       const registerGovernorV2Tx = await registry.populateTransaction.registerContract([], governorV2.address);
       if (!registerGovernorV2Tx.data) throw new Error("registerGovernorV2Tx.data is empty");
       adminProposalTransactions.push({ to: registry.address, value: 0, data: registerGovernorV2Tx.data });
-      console.log("4.f.3 Register the GovernorV2 as a verified contract", registerGovernorV2Tx.data);
+      console.log("4.h.3 Register the GovernorV2 as a verified contract", registerGovernorV2Tx.data);
     }
 
     const removeGovernorAsCreatorTx = await registry.populateTransaction.removeMember(
@@ -177,9 +187,9 @@ async function main() {
     );
     if (!removeGovernorAsCreatorTx.data) throw new Error("removeGovernorAsCreatorTx.data is empty");
     adminProposalTransactions.push({ to: registry.address, value: 0, data: removeGovernorAsCreatorTx.data });
-    console.log("4.f.4 Remove the Governor from being a contract creator", removeGovernorAsCreatorTx.data);
+    console.log("4.h.4 Remove the Governor from being a contract creator", removeGovernorAsCreatorTx.data);
   } else {
-    console.log("2.f ProposerV2 contract already registered in registry");
+    console.log("2.h ProposerV2 contract already registered in registry");
   }
 
   // Transfer Ownable contracts to VotingUpgraderV2
@@ -189,14 +199,14 @@ async function main() {
     const iface = new hre.ethers.utils.Interface(getAbi("Ownable"));
     const data = iface.encodeFunctionData("transferOwnership", [votingUpgrader.address]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
-    console.log(`2.g.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
+    console.log(`2.i.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
   }
 
   // Transfer proposer to VotingUpgrader
   const transferProposerOwnershipTx = await proposer.populateTransaction.transferOwnership(votingUpgrader.address);
   if (!transferProposerOwnershipTx.data) throw "transferProposerOwnershipTx.data is null";
   adminProposalTransactions.push({ to: proposer.address, value: 0, data: transferProposerOwnershipTx.data });
-  console.log("2.h. Transfer ownership of proposer to voting upgrader:", transferProposerOwnershipTx.data);
+  console.log("2.i. Transfer ownership of proposer to voting upgrader:", transferProposerOwnershipTx.data);
 
   // Transfer Multirole contracts to new VotingUpgraderV2
   for (const multiRoleToMigrate of Object.entries(multicallContractsToMigrate)) {
@@ -205,23 +215,23 @@ async function main() {
     const iface = new hre.ethers.utils.Interface(getAbi("MultiRole"));
     const data = iface.encodeFunctionData("resetMember", [0, votingUpgrader.address]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
-    console.log(`2.i.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
+    console.log(`2.j.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
   }
 
   const resetMemberGovernorTx = await governor.populateTransaction.resetMember(0, votingUpgrader.address);
   if (!resetMemberGovernorTx.data) throw "resetMemberGovernorTx.data is null";
   adminProposalTransactions.push({ to: governor.address, value: 0, data: resetMemberGovernorTx.data });
-  console.log("2.j.  Reset governor owner to voting upgrader:", resetMemberGovernorTx.data);
+  console.log("2.k.  Reset governor owner to voting upgrader:", resetMemberGovernorTx.data);
 
   const resetMemberNewGovernorTx = await governorV2.populateTransaction.resetMember(0, votingUpgrader.address);
   if (!resetMemberNewGovernorTx.data) throw "resetMemberNewGovernorTx.data is null";
   adminProposalTransactions.push({ to: governorV2.address, value: 0, data: resetMemberNewGovernorTx.data });
-  console.log("2.k.  Reset new governor owner to voting upgrader:", resetMemberNewGovernorTx.data);
+  console.log("2.l.  Reset new governor owner to voting upgrader:", resetMemberNewGovernorTx.data);
 
   const upgraderExecuteUpgradeTx = await votingUpgrader.populateTransaction.upgrade();
   if (!upgraderExecuteUpgradeTx.data) throw "upgraderExecuteUpgradeTx.data is null";
   adminProposalTransactions.push({ to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx.data });
-  console.log("2.l. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
+  console.log("2.m. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
 
   const isGovernorV2 = await isGovernorV2Instance(governor.address);
 

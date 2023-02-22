@@ -27,7 +27,7 @@ Then run:
 
 ```
 EMERGENCY_QUORUM=<EMERGENCY-QUORUM> \ # Decimal value between 5M and 10M
-EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
+UPGRADER_WALLET=<UPGRADER-WALLET> \ # Address of the wallet that will be used to upgrade the contracts.
 yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 ```
 

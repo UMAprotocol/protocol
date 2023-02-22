@@ -3,7 +3,7 @@
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
 // EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
-// EMERGENCY_QUORUM=<EMERGENCY-QUORUM> \ # Decimal value between 5M and 10M
+// UPGRADER_WALLET=<UPGRADER-WALLET> \ # Address of the wallet that will be used to upgrade the contracts.
 // yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 
 import hre from "hardhat";
@@ -16,6 +16,7 @@ import {
   getMultiRoleContracts,
   getOwnableContracts,
   NEW_CONTRACTS,
+  UPGRADER_WALLET,
   VOTING_UPGRADER_ADDRESS,
 } from "./migrationUtils";
 
@@ -36,7 +37,6 @@ async function main() {
   if (!process.env[EMERGENCY_EXECUTOR] && hre.network.name != "localhost") throw new Error("No emergency executor set");
 
   // Start DVM2.0 parameters
-
   const emergencyQuorum = hre.ethers.utils.parseUnits("5000000", "ether");
   const emergencyExecutor = process.env[EMERGENCY_EXECUTOR] || (await hre.ethers.getSigners())[0].address;
 
@@ -63,7 +63,9 @@ async function main() {
   // ProposerV2 default bond
   const proposerV2DefaultBond = hre.ethers.utils.parseUnits("5000", "ether");
 
-  // Log all the parameters
+  // DVM upgrader address
+  const votingUpgraderAddress = process.env[UPGRADER_WALLET] || (await hre.ethers.getSigners())[0].address;
+
   console.log("DVM2.0 Parameters:");
   console.table({
     emergencyQuorum: hre.ethers.utils.formatUnits(emergencyQuorum, "ether"),
@@ -78,6 +80,7 @@ async function main() {
     maxRolls,
     maxRequestsPerRound,
     proposerV2DefaultBond: hre.ethers.utils.formatUnits(proposerV2DefaultBond, "ether"),
+    votingUpgraderAddress,
   });
 
   // End DVM2.0 parameters
@@ -147,6 +150,7 @@ async function main() {
 
   const votingUpgraderFactoryV2 = await getContractFactory("VotingUpgraderV2");
   const votingUpgrader = await votingUpgraderFactoryV2.deploy(
+    votingUpgraderAddress,
     governor.address,
     governorV2.address,
     existingVoting.address,
