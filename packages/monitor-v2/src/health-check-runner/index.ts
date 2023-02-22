@@ -1,5 +1,5 @@
 import { exec, ExecException } from "child_process";
-import { AugmentedLogger, Logger } from "@uma/financial-templates-lib";
+import { AugmentedLogger, Logger, delay } from "@uma/financial-templates-lib";
 
 let logger: AugmentedLogger;
 
@@ -14,7 +14,7 @@ export async function run(): Promise<void> {
     logger.debug({ at: "HealthCheckRunner", message: "No health check commands to run. Closing" });
     return;
   }
-
+  logger.info({ at: "HealthCheckRunner", message: "hell world" });
   logger.debug({ at: "HealthCheckRunner", message: "Running health check commands", healthCheckCommands });
 
   const outputs = await Promise.all(
@@ -26,10 +26,12 @@ export async function run(): Promise<void> {
 
   logger[outputLogLevel]({
     at: "HealthCheckRunner",
-    message: `Health check command ${outputLogLevel == "error" ? "failed" : "succeeded"}!`,
+    message: `Health check command ${outputLogLevel == "error" ? "failed 🩺" : "succeeded"}!`,
     validOutputs: validOutputs.map((output) => output.cmd),
-    errorOutputs,
+    errorOutputs: errorOutputs.map((outputs) => outputs.stderr),
   });
+
+  await delay(5); // Wait for logs to flush.
 }
 
 if (require.main === module) {
