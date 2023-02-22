@@ -1,6 +1,7 @@
 import { defaultCurrency, defaultLiveness, defaultOptimisticOracleV3Identifier } from "../constants";
 import { getContractFactory, hre, Signer } from "../utils";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
+import { addGlobalHardhatTestingAddress } from "@uma/common";
 import { ExpandedERC20Ethers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 
 export interface OptimisticOracleV3Contracts {
@@ -39,12 +40,13 @@ export const deployOptimisticOracleV3 = hre.deployments.createFixture(
     // Adds default identifier for Optimistic Oracle V3 to the UMA identifierWhitelist.
     await parentFixture.identifierWhitelist.addSupportedIdentifier(defaultOptimisticOracleV3Identifier);
 
-    // Deploy Optimistic Oracle V3.
+    // Deploy Optimistic Oracle V3 and add it to global hardhatTestingAddresses.
     const optimisticOracleV3 = (await (await getContractFactory("OptimisticOracleV3", deployer)).deploy(
       parentFixture.finder.address,
       bondToken.address,
       defaultLiveness
     )) as OptimisticOracleV3Ethers;
+    addGlobalHardhatTestingAddress("OptimisticOracleV3", optimisticOracleV3.address);
 
     return { bondToken, optimisticOracleV3 };
   }
