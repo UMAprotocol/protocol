@@ -14,6 +14,7 @@ export async function run(): Promise<void> {
     logger.debug({ at: "HealthCheckRunner", message: "No health check commands to run. Closing" });
     return;
   }
+
   logger.debug({ at: "HealthCheckRunner", message: "Running health check commands", healthCheckCommands });
 
   const outputs = await Promise.all(
