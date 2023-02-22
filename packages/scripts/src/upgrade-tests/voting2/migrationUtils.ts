@@ -39,8 +39,6 @@ export const EMERGENCY_PROPOSAL = "EMERGENCY_PROPOSAL";
 
 export const EMERGENCY_EXECUTOR = "EMERGENCY_EXECUTOR";
 
-export const EMERGENCY_QUORUM = "EMERGENCY_QUORUM";
-
 export interface AdminProposalTransaction {
   to: string;
   value: BigNumberish;

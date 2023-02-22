@@ -16,7 +16,7 @@
 // PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
 // yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network <network>
 
-const hre = require("hardhat");
+import hre from "hardhat";
 
 import { RegistryRolesEnum } from "@uma/common";
 import {
@@ -49,16 +49,17 @@ import {
   TEST_DOWNGRADE,
   VOTING_UPGRADER_ADDRESS,
 } from "./migrationUtils";
-const { getAbi } = require("@uma/contracts-node");
+import { getAbi } from "@uma/contracts-node";
+import { Signer } from "ethers";
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
 async function main() {
   const adminProposalTransactions: AdminProposalTransaction[] = [];
 
-  const proposerSigner = await hre.ethers.getSigner(proposerWallet);
+  const proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
 
-  const networkId = Number(await hre.getChainId());
+  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
 
   // Check that the required environment variables are set.
   checkEnvVariables();
@@ -266,7 +267,7 @@ async function main() {
     console.log("3. SENDING PROPOSAL TXS TO GOVERNOR V2");
     tx = await (await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address))
       .connect(proposerSigner)
-      .propose(adminProposalTransactions, hre.web3.utils.utf8ToHex("Admin Proposal"));
+      .propose(adminProposalTransactions, hre.ethers.utils.toUtf8Bytes("Admin Proposal"));
   }
 
   console.log("Proposal done!🎉");

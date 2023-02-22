@@ -6,25 +6,12 @@
 // EMERGENCY_QUORUM=<EMERGENCY-QUORUM> \ # Decimal value between 5M and 10M
 // yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 
-const hre = require("hardhat");
+import hre from "hardhat";
 
-import {
-  EmergencyProposerEthers__factory,
-  FinderEthers,
-  GovernorEthers,
-  GovernorV2Ethers__factory,
-  ProposerEthers,
-  ProposerV2Ethers__factory,
-  FixedSlashSlashingLibraryEthers__factory,
-  VotingEthers,
-  VotingTokenEthers,
-  VotingUpgraderV2Ethers__factory,
-  VotingV2Ethers__factory,
-} from "@uma/contracts-node";
+import { FinderEthers, GovernorEthers, ProposerEthers, VotingEthers, VotingTokenEthers } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
 import {
   EMERGENCY_EXECUTOR,
-  EMERGENCY_QUORUM,
   formatIndentation,
   getMultiRoleContracts,
   getOwnableContracts,
@@ -37,7 +24,7 @@ const { getContractFactory } = hre.ethers;
 async function main() {
   console.log("Running VotingV2 Deployments🔥");
 
-  const networkId = Number(await hre.getChainId());
+  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
 
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
@@ -48,39 +35,81 @@ async function main() {
   // In localhost network we allow to not set the emergency executor address and default to the first account.
   if (!process.env[EMERGENCY_EXECUTOR] && hre.network.name != "localhost") throw new Error("No emergency executor set");
 
-  if (!process.env[EMERGENCY_QUORUM]) throw new Error("No emergency quorum set");
-  const tenMillion = hre.ethers.utils.parseUnits("10000000", "ether");
-  const fiveMillion = hre.ethers.utils.parseUnits("5000000", "ether");
-  const emergencyQuorum = hre.ethers.utils.parseUnits(process.env[EMERGENCY_QUORUM], "ether");
-  if (emergencyQuorum.gt(tenMillion) || emergencyQuorum.lt(fiveMillion)) throw new Error("Invalid emergency quorum");
+  // Start DVM2.0 parameters
 
-  console.log("1. DEPLOYING SLASHING LIBRARY");
-  const slashingLibraryFactory: FixedSlashSlashingLibraryEthers__factory = await getContractFactory(
-    "FixedSlashSlashingLibrary"
-  );
+  const emergencyQuorum = hre.ethers.utils.parseUnits("5000000", "ether");
+  const emergencyExecutor = process.env[EMERGENCY_EXECUTOR] || (await hre.ethers.getSigners())[0].address;
+
   // baseSlashAmount: amount slashed for missing a vote or voting wrong.
   const baseSlashAmount = hre.ethers.utils.parseUnits("0.001", "ether");
+
   // governanceSlashAmount: amount slashed for voting wrong in a governance vote.
   const governanceSlashAmount = hre.ethers.utils.parseUnits("0", "ether");
+
+  const emissionRate = "0"; // Initially set the emission rate to 0.
+  const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
+  const phaseLength = "86400"; // 1 day
+  const gat = hre.ethers.utils.parseUnits("5000000", "ether"); // Set the GAT to 5.0 million tokens.
+
+  // Set the SPAT to 50%. This is the percentage of staked tokens that must participate to resolve a vote.
+  const spat = hre.ethers.utils.parseUnits("0.5", "ether");
+
+  // A price request can roll, at maximum, 4 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
+  const maxRolls = 4;
+
+  // The maximum number of requests that can be placed within a single round. If exceeded, the request will auto roll.
+  const maxRequestsPerRound = 1000;
+
+  // ProposerV2 default bond
+  const proposerV2DefaultBond = hre.ethers.utils.parseUnits("5000", "ether");
+
+  // Log all the parameters
+  console.log("DVM2.0 Parameters:");
+  console.table({
+    emergencyQuorum: hre.ethers.utils.formatUnits(emergencyQuorum, "ether"),
+    emergencyExecutor,
+    baseSlashAmount: hre.ethers.utils.formatUnits(baseSlashAmount, "ether"),
+    governanceSlashAmount: hre.ethers.utils.formatUnits(governanceSlashAmount, "ether"),
+    emissionRate: hre.ethers.utils.formatUnits(emissionRate, "ether"),
+    unstakeCooldown,
+    phaseLength,
+    gat: hre.ethers.utils.formatUnits(gat, "ether"),
+    spat: hre.ethers.utils.formatUnits(spat, "ether"),
+    maxRolls,
+    maxRequestsPerRound,
+    proposerV2DefaultBond: hre.ethers.utils.formatUnits(proposerV2DefaultBond, "ether"),
+  });
+
+  // End DVM2.0 parameters
+
+  const readline = require("readline").createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const deployNewContracts = await new Promise((resolve) => {
+    readline.question(
+      formatIndentation(`Do you want to deploy the new contracts? (y/n) (default: y)`),
+      (answer: string) => {
+        readline.close();
+        resolve(answer === "y" || answer === "Y" || answer === "");
+      }
+    );
+  });
+
+  if (!deployNewContracts) {
+    console.log("Skipping new contracts deployment");
+    return;
+  }
+
+  console.log("1. DEPLOYING SLASHING LIBRARY");
+  const slashingLibraryFactory = await getContractFactory("FixedSlashSlashingLibrary");
   const slashingLibrary = await slashingLibraryFactory.deploy(baseSlashAmount, governanceSlashAmount);
 
   console.log("Deployed SlashingLibrary: ", slashingLibrary.address);
 
   console.log("2. DEPLOYING VOTING V2");
-  const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
-  const emissionRate = "0"; // Initially set the emission rate to 0.
-  const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
-  const phaseLength = "86400";
-  const gat = hre.ethers.utils.parseUnits("5500000", "ether"); // Set the GAT to 5.5 million tokens.
-
-  // Set the SPAT to 25%. This is the percentage of staked tokens that must participate to resolve a vote.
-  const spat = hre.ethers.utils.parseUnits("0.25", "ether");
-
-  // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
-  const maxRolls = 2;
-
-  // The maximum number of requests that can be placed within a single round. If exceeded, the request will auto roll.
-  const maxRequestsPerRound = 1000;
+  const votingV2Factory = await getContractFactory("VotingV2");
 
   const votingV2 = await votingV2Factory.deploy(
     emissionRate,
@@ -100,7 +129,7 @@ async function main() {
 
   console.log("3. DEPLOYING GOVERNOR V2");
 
-  const governorV2Factory: GovernorV2Ethers__factory = await getContractFactory("GovernorV2");
+  const governorV2Factory = await getContractFactory("GovernorV2");
 
   const governorStartingId = (await (await governor.numProposals()).add(1)).toNumber(); // Existing proposals plus the new one.
 
@@ -116,7 +145,7 @@ async function main() {
 
   const multicallContractsToMigrate = await getMultiRoleContracts(networkId);
 
-  const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
+  const votingUpgraderFactoryV2 = await getContractFactory("VotingUpgraderV2");
   const votingUpgrader = await votingUpgraderFactoryV2.deploy(
     governor.address,
     governorV2.address,
@@ -131,16 +160,18 @@ async function main() {
   console.log("Deployed VotingUpgrader: ", votingUpgrader.address);
 
   console.log("5. Deploying ProposerV2");
-
-  const defaultBond = hre.web3.utils.toWei("5000", "ether");
-
-  const proposerFactory: ProposerV2Ethers__factory = await getContractFactory("ProposerV2");
-  const proposerV2 = await proposerFactory.deploy(votingToken.address, defaultBond, governorV2.address, finder.address);
+  const proposerFactory = await getContractFactory("ProposerV2");
+  const proposerV2 = await proposerFactory.deploy(
+    votingToken.address,
+    proposerV2DefaultBond,
+    governorV2.address,
+    finder.address
+  );
   console.log("Deployed ProposerV2: ", proposerV2.address);
 
   console.log("6. Deploying EmergencyProposer");
-  const emergencyExecutor = process.env[EMERGENCY_EXECUTOR] || (await hre.ethers.getSigners())[0].address;
-  const emergencyProposerFactory: EmergencyProposerEthers__factory = await getContractFactory("EmergencyProposer");
+
+  const emergencyProposerFactory = await getContractFactory("EmergencyProposer");
   const emergencyProposer = await emergencyProposerFactory.deploy(
     votingToken.address,
     emergencyQuorum,

@@ -12,8 +12,8 @@
 // VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
 // yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost
 
-const hre = require("hardhat");
-const assert = require("assert").strict;
+import hre from "hardhat";
+import { strict as assert } from "assert";
 
 import {
   EmergencyProposerEthers,
