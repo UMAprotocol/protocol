@@ -155,6 +155,21 @@ describe("OptimisticOracleV3Monitor", function () {
       .pushPrice(oracleRequest.identifier, oracleRequest.time, oracleRequest.ancillaryData, 0);
 
     // Settle assertion.
-    await optimisticOracleV3.connect(disputer).settleAssertion(assertionId);
+    const settlementTx = await optimisticOracleV3.connect(disputer).settleAssertion(assertionId);
+    const settlementBlockNumber = await getBlockNumber(settlementTx);
+
+    // Call monitorSettlements directly for the block when the settlement was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorSettlements(spyLogger, await createMonitoringParams(settlementBlockNumber));
+
+    // When calling monitoring module directly there should be only one log (index 0) with the settlement caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "OOv3Monitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Assertion settled 🔗");
+    assert.equal(spyLogLevel(spy, 0), "info");
+    assert.isTrue(spyLogIncludes(spy, 0, assertionId));
+    assert.isTrue(spyLogIncludes(spy, 0, settlementTx.hash));
+    assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
+    assert.isTrue(spyLogIncludes(spy, 0, "Result: assertion was false"));
   });
 });
