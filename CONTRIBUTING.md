@@ -22,7 +22,7 @@ the process works smoothly and your contributions can be merged as quickly and e
 ## Issues
 
 - Issues should be used to open a discussion about something that you want to see changed.
-- Please tag individual maintainers if you would like thier input. If you don't know which maintainer to tag, just tag
+- Please tag individual maintainers if you would like their input. If you don't know which maintainer to tag, just tag
   @UMAprotocol/eng.
 - To make a change, add a feature, or fix a bug, one should start by opening an issue briefly describing what should be
   changed and why.
@@ -41,7 +41,7 @@ the process works smoothly and your contributions can be merged as quickly and e
   auto-select a second.
 - If you make updates and would like another round of reviews, use the cycle icon next to the reviewers names to
   request a follow-up review.
-- PRs should be narrow and focused. Making multiple, unrelated changes in the same PR makes things difficult on reviewers
+- PRs should be narrow and focused. Making multiple, unrelated changes in the same PR makes things difficult for reviewers
   and can often slow PR progress. If this is the case, you may be asked to split the PR up.
 - PRs must get approval from _at least_ one maintainer. However, it is considered best practice to make sure all
   comments are completely resolved before merging.
