@@ -1,8 +1,8 @@
-import hre from "hardhat";
-import { ContractFactory, ContractTransaction, Signer, utils } from "ethers";
 import { Provider } from "@ethersproject/providers";
-import { ContractName, getAbi, getBytecode } from "@uma/contracts-node";
+import { ContractFactory, ContractTransaction, Signer, utils } from "ethers";
 import { time as hardhatTime } from "@nomicfoundation/hardhat-network-helpers";
+import { ContractName, getAbi, getBytecode } from "@uma/contracts-node";
+import hre from "hardhat";
 
 export async function getContractFactory(contractName: ContractName, signer?: Signer): Promise<ContractFactory> {
   const contractAbi = getAbi(contractName);

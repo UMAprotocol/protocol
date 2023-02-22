@@ -1,5 +1,3 @@
-import { zeroRawValue } from "../constants";
-import { formatBytes32String, getContractFactory, hre, Signer } from "../utils";
 import { ZERO_ADDRESS } from "@uma/common";
 import {
   AddressWhitelistEthers,
@@ -8,6 +6,8 @@ import {
   MockOracleAncillaryEthers,
   StoreEthers,
 } from "@uma/contracts-node";
+import { zeroRawValue } from "../constants";
+import { formatBytes32String, getContractFactory, hre, Signer } from "../utils";
 
 export interface UmaEcosystemContracts {
   finder: FinderEthers;

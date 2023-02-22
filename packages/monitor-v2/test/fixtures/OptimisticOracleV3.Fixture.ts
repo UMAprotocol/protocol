@@ -1,8 +1,8 @@
-import { defaultCurrency, defaultLiveness, defaultOptimisticOracleV3Identifier } from "../constants";
-import { getContractFactory, hre, Signer } from "../utils";
-import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 import { addGlobalHardhatTestingAddress } from "@uma/common";
 import { ExpandedERC20Ethers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
+import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
+import { defaultCurrency, defaultLiveness, defaultOptimisticOracleV3Identifier } from "../constants";
+import { getContractFactory, hre, Signer } from "../utils";
 
 export interface OptimisticOracleV3Contracts {
   bondToken: ExpandedERC20Ethers;
