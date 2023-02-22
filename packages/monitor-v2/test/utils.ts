@@ -10,10 +10,6 @@ export async function getContractFactory(contractName: ContractName, signer?: Si
   return new ContractFactory(contractAbi, contractBytecode, signer);
 }
 
-export const parseUnits = utils.parseUnits;
-
-export const formatBytes32String = utils.formatBytes32String;
-
-export const toUtf8Bytes = utils.toUtf8Bytes;
+export const { formatBytes32String, parseUnits, toUtf8Bytes, toUtf8String } = utils;
 
 export { ContractTransaction, hardhatTime, hre, Provider, Signer };
