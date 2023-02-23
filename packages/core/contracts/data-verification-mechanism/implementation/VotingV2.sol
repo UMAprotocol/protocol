@@ -322,6 +322,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Gets the round ID that a request should be voted on.
+     * @param targetRoundId round ID to start searching for a round to vote on.
      * @return uint32 round ID that a request should be voted on.
      */
     function getRoundIdToVoteOnRequest(uint32 targetRoundId) public view returns (uint32) {
