@@ -34,6 +34,7 @@ From this point the scripts will log the next step to be executed. But below is 
 2.2 Propose migration transactions:
 
 ```
+GCKMS_WALLET=<OPTIONAL-GCKMS-WALLET> \ # If not provided, the script will use the first account in the node
 VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
 GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
