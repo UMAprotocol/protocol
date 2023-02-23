@@ -26,8 +26,6 @@ cd packages/scripts/
 Then run:
 
 ```
-EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
-UPGRADER_WALLET=<UPGRADER-WALLET> \ # Address of the wallet that will be used to upgrade the contracts.
 yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 ```
 

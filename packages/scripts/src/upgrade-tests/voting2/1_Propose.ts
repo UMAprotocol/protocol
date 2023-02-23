@@ -304,6 +304,8 @@ async function main() {
       .propose(adminProposalTransactions, hre.ethers.utils.toUtf8Bytes("Admin Proposal"));
   }
 
+  await tx.wait();
+
   console.log("Proposal done!🎉");
   console.log("\nProposal data:\n", tx.data);
 

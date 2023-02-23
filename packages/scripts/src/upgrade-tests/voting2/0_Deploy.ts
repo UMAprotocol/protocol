@@ -2,8 +2,6 @@
 // This script can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
-// EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
-// UPGRADER_WALLET=<UPGRADER-WALLET> \ # Address of the wallet that will be used to upgrade the contracts.
 // yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 
 const hre = require("hardhat");
@@ -24,7 +22,6 @@ import {
   getMultiRoleContracts,
   getOwnableContracts,
   NEW_CONTRACTS,
-  UPGRADER_WALLET,
   VOTING_UPGRADER_ADDRESS,
 } from "./migrationUtils";
 
@@ -46,7 +43,11 @@ async function main() {
 
   // Start DVM2.0 parameters
   const emergencyQuorum = hre.ethers.utils.parseUnits("5000000", "ether");
-  const emergencyExecutor = process.env[EMERGENCY_EXECUTOR] || (await hre.ethers.getSigners())[0].address;
+  const emergencyExecutor =
+    hre.network.name === "localhost"
+      ? (await hre.ethers.getSigners())[0].address
+      : "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"; // Dev wallet
+
   const emergencyMinimumWaitTime = 60 * 60 * 24 * 10; // 10 days
 
   // baseSlashAmount: amount slashed for missing a vote or voting wrong.
@@ -73,7 +74,10 @@ async function main() {
   const proposerV2DefaultBond = hre.ethers.utils.parseUnits("5000", "ether");
 
   // DVM upgrader address
-  const votingUpgraderAddress = process.env[UPGRADER_WALLET] || (await hre.ethers.getSigners())[0].address;
+  const votingUpgraderAddress =
+    hre.network.name === "localhost"
+      ? (await hre.ethers.getSigners())[0].address
+      : "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"; // Dev wallet
 
   console.log("DVM2.0 Parameters:");
   console.table({
@@ -198,17 +202,21 @@ async function main() {
   console.log("Deployed EmergencyProposer: ", emergencyProposer.address);
 
   console.log("7. Set ProposerV2 as the proposer of GovernorV2");
-  await governorV2.resetMember(1, proposerV2.address);
+  let tx = await governorV2.resetMember(1, proposerV2.address);
+  await tx.wait();
 
   console.log("8. Set the EmergencyProposer as the emergency proposer of the new governor");
-  await governorV2.resetMember(2, emergencyProposer.address);
+  tx = await governorV2.resetMember(2, emergencyProposer.address);
+  await tx.wait();
 
   console.log("9. Set the old governor as the owner of the new governor");
   // The new governor owner will be updated in the VotingUpgraderV2 contract.
-  await governorV2.resetMember(0, governor.address);
+  tx = await governorV2.resetMember(0, governor.address);
+  await tx.wait();
 
   console.log("10. Set the new governor as the owner of the new voting v2");
-  await votingV2.transferOwnership(governorV2.address);
+  tx = await votingV2.transferOwnership(governorV2.address);
+  await tx.wait();
 
   console.log("Deployment done!🎉");
 
