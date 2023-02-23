@@ -526,6 +526,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Gets the requests that are being voted on this round.
+     * @dev This view method returns requests with Active status that may be ahead of the stored contract state as this
+     * also filters out requests that would be resolvable or deleted if the resolvable requests were processed with the
+     * processResolvablePriceRequests() method.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
     function getPendingRequests() public view override returns (PendingRequestAncillaryAugmented[] memory) {
