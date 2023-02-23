@@ -100,6 +100,8 @@ contract EmergencyProposer is Ownable, Lockable, MultiCaller {
      * @param _quorum the tokens needed to propose an emergency action.
      * @param _governor the governor contract that this contract makes proposals to.
      * @param _executor the address that can execute an emergency proposal.
+     * @param _minimumWaitTime the minimum time that must elapse between from when a proposal is created to when it can
+     * be executed.
      */
     constructor(
         IERC20 _token,
