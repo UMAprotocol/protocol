@@ -322,6 +322,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Gets the round ID that a request should be voted on.
+     * @param targetRoundId round ID to start searching for a round to vote on.
      * @return uint32 round ID that a request should be voted on.
      */
     function getRoundIdToVoteOnRequest(uint32 targetRoundId) public view returns (uint32) {
@@ -525,6 +526,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Gets the requests that are being voted on this round.
+     * @dev This view method returns requests with Active status that may be ahead of the stored contract state as this
+     * also filters out requests that would be resolvable or deleted if the resolvable requests were processed with the
+     * processResolvablePriceRequests() method.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillaryAugmented.
      */
     function getPendingRequests() public view override returns (PendingRequestAncillaryAugmented[] memory) {
@@ -925,6 +929,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     // Returns the price for a given identifier. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
+    // This method considers actual request status that might be ahead of the stored contract state that gets updated
+    // only after processResolvablePriceRequests() is called.
     function _getPriceOrError(
         bytes32 identifier,
         uint256 time,
