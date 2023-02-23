@@ -86,4 +86,26 @@ describe("DMVMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, stakerAddress));
     assert.isTrue(spyLogIncludes(spy, 0, unstakeTx.hash));
   });
+  it("Monitor unstake below threshold", async function () {
+    const stakeAmount = parseUnits("100");
+    // Fund staker with voting tokens to stake.
+    await votingToken.transfer(await stakerAddress, stakeAmount);
+    await votingToken.connect(staker).approve(votingV2.address, stakeAmount);
+    await votingV2.connect(staker).stake(stakeAmount);
+
+    // Request unstake.
+    const unstakeTx = await votingV2.connect(staker).requestUnstake(stakeAmount);
+    const unstakeBlockNumber = await getBlockNumberFromTx(unstakeTx);
+
+    // Call monitorUnstakes directly for the block when the unstake request was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorUnstakes(spyLogger, {
+      ...(await createMonitoringParams(unstakeBlockNumber)),
+      unstakeThreshold: stakeAmount.add("1"),
+    });
+
+    // When calling monitoring module directly there should be no logs.
+    assert.equal(spy.callCount, 0);
+  });
 });
