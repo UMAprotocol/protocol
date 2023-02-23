@@ -7,6 +7,7 @@
 // yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 
 const hre = require("hardhat");
+const readline = require("readline");
 
 import {
   FinderEthers,
@@ -93,16 +94,16 @@ async function main() {
 
   // End DVM2.0 parameters
 
-  const readline = require("readline").createInterface({
+  const readlineInterface = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
   const deployNewContracts = await new Promise((resolve) => {
-    readline.question(
+    readlineInterface.question(
       formatIndentation(`Do you want to deploy the new contracts? (y/n) (default: y)`),
       (answer: string) => {
-        readline.close();
+        readlineInterface.close();
         resolve(answer === "y" || answer === "Y" || answer === "");
       }
     );
