@@ -16,6 +16,30 @@ async function main() {
   const owner = process.env.OWNER_TO_MIGRATE || "";
   const maxDesignatedVotingDeployedPerBatch = Number(process.env.MAX_CONTRACTS_PER_BATCH) || 5;
 
+  // Replace hot wallets based on provided env variable.
+  // Note: the env variable should be formatted as follows:
+  // HOT_WALLET_REPLACEMENTS="0x1234:0x5678,0x9abc:0xdef0"
+  const replacementPairs = process.env.HOT_WALLET_REPLACEMENTS?.split(",") || [];
+  const oldToNewWallet = Object.fromEntries(
+    replacementPairs.map((replacementPair) => {
+      // Split by ":".
+      const [originalWallet, replacementWallet] = replacementPair.split(":");
+      if (!originalWallet || !replacementWallet) throw new Error("Invalid HOT_WALLET_REPLACEMENTS provided");
+      // Ensure that the addresses are formatted consistently.
+      return [utils.getAddress(originalWallet), utils.getAddress(replacementWallet)];
+    })
+  );
+
+  if (Object.keys(oldToNewWallet).length > 0) {
+    console.log("Replacing the following hot wallets:");
+    console.table(
+      Object.entries(oldToNewWallet).map(([originalWallet, replacementWallet]) => ({
+        originalWallet,
+        replacementWallet,
+      }))
+    );
+  }
+
   // Fetch all current DesignatedVoting contracts owned by the owner. Remove elements that have 0 balance.
   const designatedVotingData = (await getDesignatedVotingContractsOwnedByOwner(owner)).filter((e) => e.balance.gt(0));
 
@@ -42,7 +66,13 @@ async function main() {
     multiCallPayloads.push(
       designatedVotingData
         .slice(i * maxDesignatedVotingDeployedPerBatch, (i + 1) * maxDesignatedVotingDeployedPerBatch)
-        .map((data) => factoryV2.interface.encodeFunctionData("newDesignatedVoting", [owner, data.voter]))
+        .map((data) =>
+          factoryV2.interface.encodeFunctionData("newDesignatedVoting", [
+            owner,
+            // Replace with the replacement wallet if it exists.
+            oldToNewWallet[utils.getAddress(data.voter)] || data.voter,
+          ])
+        )
     );
   }
 
