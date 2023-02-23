@@ -4,7 +4,7 @@
 // and then running this script with:
 // yarn hardhat run ./src/upgrade-tests/voting2/3_SimulateVoting.ts --network localhost
 
-import hre from "hardhat";
+const hre = require("hardhat");
 import { strict as assert } from "assert";
 
 const { formatBytes32String, formatEther, parseEther, parseUnits, toUtf8Bytes } = hre.ethers.utils;

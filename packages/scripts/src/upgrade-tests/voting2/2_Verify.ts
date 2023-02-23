@@ -12,7 +12,7 @@
 // VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
 // yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost
 
-import hre from "hardhat";
+const hre = require("hardhat");
 import { strict as assert } from "assert";
 
 import {
@@ -47,7 +47,7 @@ const multiRoleABI = getAbi("MultiRole");
 const ownableABI = getAbi("Ownable");
 
 async function main() {
-  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
+  const networkId = Number(await hre.getChainId());
   const provider = hre.ethers.provider;
 
   const ownableContractsToMigrate = await getOwnableContracts(networkId);

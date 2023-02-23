@@ -16,7 +16,7 @@
 // PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
 // yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network <network>
 
-import hre from "hardhat";
+const hre = require("hardhat");
 
 import { RegistryRolesEnum } from "@uma/common";
 import {
@@ -59,7 +59,7 @@ async function main() {
 
   const proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
 
-  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
+  const networkId = Number(await hre.getChainId());
 
   // Check that the required environment variables are set.
   checkEnvVariables();

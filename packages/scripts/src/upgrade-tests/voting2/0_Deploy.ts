@@ -6,9 +6,16 @@
 // UPGRADER_WALLET=<UPGRADER-WALLET> \ # Address of the wallet that will be used to upgrade the contracts.
 // yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 
-import hre from "hardhat";
+const hre = require("hardhat");
 
-import { FinderEthers, GovernorEthers, ProposerEthers, VotingEthers, VotingTokenEthers } from "@uma/contracts-node";
+import {
+  FinderEthers,
+  GovernorEthers,
+  ProposerEthers,
+  VotingEthers,
+  VotingTokenEthers,
+  EmergencyProposerEthers__factory,
+} from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
 import {
   EMERGENCY_EXECUTOR,
@@ -25,7 +32,7 @@ const { getContractFactory } = hre.ethers;
 async function main() {
   console.log("Running VotingV2 Deployments🔥");
 
-  const networkId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
+  const networkId = Number(await hre.getChainId());
 
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
@@ -39,6 +46,7 @@ async function main() {
   // Start DVM2.0 parameters
   const emergencyQuorum = hre.ethers.utils.parseUnits("5000000", "ether");
   const emergencyExecutor = process.env[EMERGENCY_EXECUTOR] || (await hre.ethers.getSigners())[0].address;
+  const emergencyMinimumWaitTime = 60 * 60 * 24 * 10; // 10 days
 
   // baseSlashAmount: amount slashed for missing a vote or voting wrong.
   const baseSlashAmount = hre.ethers.utils.parseUnits("0.001", "ether");
@@ -175,13 +183,18 @@ async function main() {
 
   console.log("6. Deploying EmergencyProposer");
 
-  const emergencyProposerFactory = await getContractFactory("EmergencyProposer");
+  const emergencyProposerFactory: EmergencyProposerEthers__factory = await getContractFactory("EmergencyProposer");
+
   const emergencyProposer = await emergencyProposerFactory.deploy(
     votingToken.address,
     emergencyQuorum,
     governorV2.address,
     emergencyExecutor
   );
+
+  const tx = await emergencyProposer.setMinimumWaitTime(emergencyMinimumWaitTime);
+  await tx.wait();
+
   console.log("Deployed EmergencyProposer: ", emergencyProposer.address);
 
   console.log("7. Set ProposerV2 as the proposer of GovernorV2");
