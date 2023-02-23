@@ -129,4 +129,23 @@ describe("DMVMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, stakerAddress));
     assert.isTrue(spyLogIncludes(spy, 0, stakeTx.hash));
   });
+  it("Monitor stake below threshold", async function () {
+    const stakeAmount = parseUnits("100");
+    // Fund staker with voting tokens to stake.
+    await votingToken.transfer(await stakerAddress, stakeAmount);
+    await votingToken.connect(staker).approve(votingV2.address, stakeAmount);
+    const stakeTx = await votingV2.connect(staker).stake(stakeAmount);
+    const stakeBlockNumber = await getBlockNumberFromTx(stakeTx);
+
+    // Call monitorStakes directly for the block when the stake was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorStakes(spyLogger, {
+      ...(await createMonitoringParams(stakeBlockNumber)),
+      stakeThreshold: stakeAmount.add("1"),
+    });
+
+    // When calling monitoring module directly there should be no logs.
+    assert.equal(spy.callCount, 0);
+  });
 });
