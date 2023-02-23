@@ -77,18 +77,19 @@ async function main() {
 
   console.log("DVM2.0 Parameters:");
   console.table({
-    emergencyQuorum: hre.ethers.utils.parseUnits(emergencyQuorum, "ether"),
+    emergencyQuorum: hre.ethers.utils.formatUnits(emergencyQuorum, "ether"),
     emergencyExecutor,
-    baseSlashAmount: hre.ethers.utils.parseUnits(baseSlashAmount, "ether"),
-    governanceSlashAmount: hre.ethers.utils.parseUnits(governanceSlashAmount, "ether"),
-    emissionRate: hre.ethers.utils.parseUnits(emissionRate, "ether"),
+    emergencyMinimumWaitTime,
+    baseSlashAmount: hre.ethers.utils.formatUnits(baseSlashAmount, "ether"),
+    governanceSlashAmount: hre.ethers.utils.formatUnits(governanceSlashAmount, "ether"),
+    emissionRate: hre.ethers.utils.formatUnits(emissionRate, "ether"),
     unstakeCooldown,
     phaseLength,
-    gat: hre.ethers.utils.parseUnits(gat, "ether"),
-    spat: hre.ethers.utils.parseUnits(spat, "ether"),
+    gat: hre.ethers.utils.formatUnits(gat, "ether"),
+    spat: hre.ethers.utils.formatUnits(spat, "ether"),
     maxRolls,
     maxRequestsPerRound,
-    proposerV2DefaultBond: hre.ethers.utils.parseUnits(proposerV2DefaultBond, "ether"),
+    proposerV2DefaultBond: hre.ethers.utils.formatUnits(proposerV2DefaultBond, "ether"),
     votingUpgraderAddress,
   });
 
@@ -190,11 +191,9 @@ async function main() {
     votingToken.address,
     emergencyQuorum,
     governorV2.address,
-    emergencyExecutor
+    emergencyExecutor,
+    emergencyMinimumWaitTime
   );
-
-  const tx = await emergencyProposer.setMinimumWaitTime(emergencyMinimumWaitTime);
-  await tx.wait();
 
   console.log("Deployed EmergencyProposer: ", emergencyProposer.address);
 

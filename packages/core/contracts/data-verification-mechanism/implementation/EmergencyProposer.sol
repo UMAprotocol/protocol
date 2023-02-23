@@ -105,15 +105,15 @@ contract EmergencyProposer is Ownable, Lockable, MultiCaller {
         IERC20 _token,
         uint256 _quorum,
         GovernorV2 _governor,
-        address _executor
+        address _executor,
+        uint64 _minimumWaitTime
     ) {
         token = _token;
         governor = _governor;
         setExecutor(_executor);
         setQuorum(_quorum);
 
-        // Start with a hardcoded value of 1 week.
-        setMinimumWaitTime(1 weeks);
+        setMinimumWaitTime(_minimumWaitTime);
         transferOwnership(address(_governor));
     }
 
