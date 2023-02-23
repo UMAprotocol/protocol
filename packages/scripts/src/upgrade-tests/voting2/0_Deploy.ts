@@ -148,7 +148,7 @@ async function main() {
 
   const governorV2Factory = await getContractFactory("GovernorV2");
 
-  const governorStartingId = (await (await governor.numProposals()).add(1)).toNumber(); // Existing proposals plus the new one.
+  const governorStartingId = (await governor.numProposals()).add(1).toNumber(); // Existing proposals plus the new one.
 
   console.log("Starting id for new Governor contract: ", governorStartingId);
 
