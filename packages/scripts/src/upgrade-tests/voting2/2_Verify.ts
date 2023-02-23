@@ -136,7 +136,7 @@ async function main() {
   console.log("✅ Proposer v2 registered in registry!");
 
   console.log(" 11. Governor v2 received all the voting tokens from Governor...");
-  assert((await votingToken.balanceOf(governorV2.address)).gt(hre.ethers.utils.formatUnits("30000000", "ether")));
+  assert((await votingToken.balanceOf(governorV2.address)).gt(hre.ethers.utils.parseUnits("30000000", "ether")));
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");
 
