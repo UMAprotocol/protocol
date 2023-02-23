@@ -13,7 +13,7 @@
 // yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost
 
 const hre = require("hardhat");
-const assert = require("assert").strict;
+import { strict as assert } from "assert";
 
 import {
   EmergencyProposerEthers,
@@ -25,6 +25,7 @@ import {
   VotingEthers,
   VotingV2Ethers,
   VotingTokenEthers,
+  FixedSlashSlashingLibraryEthers__factory,
 } from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
@@ -91,6 +92,9 @@ async function main() {
   assert.equal((await governor.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Old governor owner role correctly set!");
 
+  assert.equal((await governor.getMember(1)).toLowerCase(), governorV2.address.toLowerCase());
+  console.log("✅ Old governor proposer role correctly set!");
+
   assert.equal((await governorV2.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ New governor owner role correctly set!");
 
@@ -133,7 +137,7 @@ async function main() {
   console.log("✅ Proposer v2 registered in registry!");
 
   console.log(" 11. Governor v2 received all the voting tokens from Governor...");
-  assert((await votingToken.balanceOf(governorV2.address)).gt(hre.web3.utils.toWei("30000000", "ether")));
+  assert((await votingToken.balanceOf(governorV2.address)).gt(hre.ethers.utils.parseUnits("30000000", "ether")));
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");
 
@@ -161,13 +165,55 @@ async function main() {
     assert.equal((await emergencyProposer.executor()).toLowerCase(), process.env[EMERGENCY_EXECUTOR]?.toLowerCase());
     console.log("✅ EmergencyProposer executor role correctly set!");
 
-    console.log(" 16. EmergencyProposer has the emergency proposer role in GovernorV2 ...");
+    console.log(" 16. EmergencyProposer minimumWaitTime is set correctly...");
+    assert((await emergencyProposer.minimumWaitTime()).eq(10 * 60 * 60 * 24)); // 10 days
+    console.log("✅ EmergencyProposer minimumWaitTime correctly set!");
+
+    console.log(" 17. EmergencyProposer quorum is set correctly...");
+    assert((await emergencyProposer.quorum()).eq(hre.ethers.utils.parseUnits("5000000", "ether")));
+    console.log("✅ EmergencyProposer minimumWaitTime correctly set!");
+
+    console.log(" 18. EmergencyProposer has the emergency proposer role in GovernorV2 ...");
     assert.equal((await governorV2.getMember(2)).toLowerCase(), emergencyProposer.address.toLowerCase());
     console.log("✅ EmergencyProposer has the emergency proposer role in GovernorV2!");
 
-    console.log(" 17. New voting keeps track of old voting contract...");
+    console.log(" 19. New voting keeps track of old voting contract...");
     assert.equal((await votingV2.previousVotingContract()).toLowerCase(), oldVoting.address.toLowerCase());
     console.log("✅ New voting keeps track of old voting contract!");
+
+    console.log(" 20. VotingV2 emmisionRate is set correctly...");
+    assert((await votingV2.emissionRate()).eq(0));
+    console.log("✅ VotingV2 emmisionRate correctly set!");
+
+    console.log(" 21. VotingV2 unstakeCoolDown is set correctly...");
+    assert((await votingV2.unstakeCoolDown()).eq(7 * 24 * 60 * 60)); // 7 days
+    console.log("✅ VotingV2 unstakeCoolDown correctly set!");
+
+    console.log(" 22. VotingV2 spat is set correctly...");
+    assert((await votingV2.spat()).eq(hre.ethers.utils.parseUnits("0.5", "ether"))); // 50%
+    console.log("✅ VotingV2 spat correctly set!");
+
+    console.log(" 23. VotingV2 gat is set correctly...");
+    assert((await votingV2.gat()).eq(hre.ethers.utils.parseUnits("5000000", "ether"))); // 5M tokens
+    console.log("✅ VotingV2 gat correctly set!");
+
+    console.log(" 24. VotingV2 maxRolls is set correctly...");
+    assert((await votingV2.maxRolls()) == 4);
+    console.log("✅ VotingV2 maxRolls correctly set!");
+
+    const slashingLibraryFactory: FixedSlashSlashingLibraryEthers__factory = await hre.ethers.getContractFactory(
+      "FixedSlashSlashingLibrary"
+    );
+
+    const slashingLibrary = slashingLibraryFactory.attach(await votingV2.slashingLibrary());
+
+    console.log(" 25. Slashing library baseSlashAmount is set correctly...");
+    assert((await slashingLibrary.baseSlashAmount()).eq(hre.ethers.utils.parseUnits("0.001", "ether"))); // 0.1%
+    console.log("✅ Slashing library baseSlashAmount correctly set!");
+
+    console.log(" 26. Slashing library governanceSlashAmount is set correctly...");
+    assert((await slashingLibrary.governanceSlashAmount()).eq(0)); // 0%
+    console.log("✅ Slashing library governanceSlashAmount correctly set!");
   }
 
   if (!(await isVotingV2Instance(votingV2.address))) {

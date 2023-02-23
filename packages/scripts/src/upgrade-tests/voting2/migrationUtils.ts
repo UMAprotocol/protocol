@@ -39,8 +39,6 @@ export const EMERGENCY_PROPOSAL = "EMERGENCY_PROPOSAL";
 
 export const EMERGENCY_EXECUTOR = "EMERGENCY_EXECUTOR";
 
-export const EMERGENCY_QUORUM = "EMERGENCY_QUORUM";
-
 export interface AdminProposalTransaction {
   to: string;
   value: BigNumberish;
@@ -56,6 +54,7 @@ export interface OwnableContracts {
   governorHub: string;
   bobaParentMessenger: string;
   optimismParentMessenger: string;
+  optimisticOracleV3: string;
 }
 
 export const formatIndentation = (str: string): string => str.replace(/  +/g, "");
@@ -71,6 +70,7 @@ export const getOwnableContracts = async (networkId: number): Promise<OwnableCon
     governorHub: await getAddress("GovernorHub", networkId),
     bobaParentMessenger: await getAddress("Boba_ParentMessenger", networkId),
     optimismParentMessenger: await getAddress("Optimism_ParentMessenger", networkId),
+    optimisticOracleV3: await getAddress("OptimisticOracleV3", networkId),
   };
 };
 
@@ -109,6 +109,7 @@ export const checkEnvVariables = (): void => {
 };
 
 export const deployVotingUpgraderAndRunDowngradeOptionalTx = async (
+  upgraderWallet: string,
   adminProposalTransactions: AdminProposalTransaction[],
   governor: GovernorEthers,
   governorV2: GovernorEthers,
@@ -126,6 +127,7 @@ export const deployVotingUpgraderAndRunDowngradeOptionalTx = async (
   console.log("1.1 TEST MODE: DEPLOYING VOTING UPGRADER");
   const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
   const votingUpgrader = await votingUpgraderFactoryV2.deploy(
+    upgraderWallet,
     governor.address,
     governorV2.address,
     oldVoting.address,
@@ -190,7 +192,7 @@ export const isProposerV1Instance = async (address: string): Promise<boolean> =>
 };
 
 export const isVotingV2Instance = async (address: string): Promise<boolean> => {
-  return await isContractInstance(address, "stake(uint256)");
+  return await isContractInstance(address, "stake(uint128)");
 };
 
 export const proposeEmergency = async (

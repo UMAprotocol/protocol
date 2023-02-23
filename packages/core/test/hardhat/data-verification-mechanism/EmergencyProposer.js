@@ -50,7 +50,8 @@ describe("EmergencyProposer", function () {
       quorum,
       governor.options.address,
       executor,
-      timer.options.address
+      timer.options.address,
+      7 * 24 * 60 * 60 // 7 days
     ).send({ from: owner });
     regularProposer = await ProposerV2.new(
       votingToken.options.address,

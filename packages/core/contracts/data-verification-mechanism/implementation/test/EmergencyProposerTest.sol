@@ -10,8 +10,9 @@ contract EmergencyProposerTest is EmergencyProposer, Testable {
         uint256 _quorum,
         GovernorV2 _governor,
         address _executor,
-        address _timerAddress
-    ) EmergencyProposer(_token, _quorum, _governor, _executor) Testable(_timerAddress) {}
+        address _timerAddress,
+        uint64 _minimumWaitTime
+    ) EmergencyProposer(_token, _quorum, _governor, _executor, _minimumWaitTime) Testable(_timerAddress) {}
 
     function getCurrentTime() public view override(EmergencyProposer, Testable) returns (uint256) {
         return Testable.getCurrentTime();
