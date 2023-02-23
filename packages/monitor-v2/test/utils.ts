@@ -17,6 +17,6 @@ export const getBlockNumberFromTx = async (tx: ContractTransaction): Promise<num
   return blockNumber;
 };
 
-export const { formatBytes32String, parseUnits, toUtf8Bytes, toUtf8String } = utils;
+export const { formatBytes32String, parseBytes32String, parseUnits, toUtf8Bytes, toUtf8String } = utils;
 
 export { ContractTransaction, hardhatTime, hre, Provider, Signer };

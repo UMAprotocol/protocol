@@ -23,7 +23,7 @@ import {
   totalSupply,
   unstakeCooldown,
 } from "../constants";
-import { getContractFactory, hre, Signer } from "../utils";
+import { formatBytes32String, getContractFactory, hre, Signer } from "../utils";
 
 export interface DVM2Contracts {
   votingV2: VotingV2Ethers;
@@ -99,6 +99,10 @@ export const deployDVM2 = hre.deployments.createFixture(
 
     // Configure EmergencyProposer contract.
     // await emergencyProposer.setMinimumWaitTime(minimumWaitTime);
+
+    // Transfer VotingV2 ownership and register it as Oracle with the Finder.
+    await votingV2.transferOwnership(governorV2.address);
+    await parentFixture.finder.changeImplementationAddress(formatBytes32String("Oracle"), votingV2.address);
 
     // Add contracts to global hardhatTestingAddresses.
     addGlobalHardhatTestingAddress("VotingV2", votingV2.address);
