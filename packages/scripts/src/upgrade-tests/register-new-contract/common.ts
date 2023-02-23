@@ -2,11 +2,14 @@ import "@nomiclabs/hardhat-ethers";
 import { ContractName, DeploymentName } from "@uma/contracts-node";
 import hre from "hardhat";
 
+import { Provider } from "@ethersproject/abstract-provider";
+
 import { BigNumberish } from "@ethersproject/bignumber";
 import { BytesLike } from "@ethersproject/bytes";
 
 import {
   FinderEthers,
+  getAddress as _getAddress,
   GovernorChildTunnelEthers,
   GovernorEthers,
   GovernorHubEthers,
@@ -16,20 +19,19 @@ import {
   ParentMessengerBaseEthers,
   ProposerEthers,
   RegistryEthers,
-  getAddress as _getAddress,
 } from "@uma/contracts-node";
-import { BaseContract, PopulatedTransaction, Signer } from "ethers";
+import { BaseContract, PopulatedTransaction, Signer, Wallet } from "ethers";
 import { getContractInstance, getContractInstanceByUrl } from "../../utils/contracts";
 import {
-  fundArbitrumParentMessengerForRelays,
-  relayGovernanceMessages,
   decodeData,
   decodeRelayMessages,
+  fundArbitrumParentMessengerForRelays,
   ProposedTransaction,
+  relayGovernanceMessages,
   RelayTransaction,
 } from "../../utils/relay";
 
-import { interfaceName, RegistryRolesEnum } from "@uma/common";
+import { getGckmsSigner, interfaceName, RegistryRolesEnum } from "@uma/common";
 
 import { strict as assert } from "assert";
 
@@ -75,4 +77,7 @@ export {
   OptimisticOracleV3Ethers,
   forkNetwork,
   ParamType,
+  Provider,
+  getGckmsSigner,
+  Wallet,
 };

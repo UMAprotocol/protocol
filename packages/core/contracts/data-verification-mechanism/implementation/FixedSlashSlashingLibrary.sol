@@ -10,8 +10,8 @@ import "../interfaces/SlashingLibraryInterface.sol";
  */
 
 contract FixedSlashSlashingLibrary is SlashingLibraryInterface {
-    uint256 public immutable baseSlashAmount;
-    uint256 public immutable governanceSlashAmount;
+    uint256 public immutable baseSlashAmount; // Slash amount per token for missed votes and wrong non-governance votes.
+    uint256 public immutable governanceSlashAmount; // Slash amount per token for wrong governance votes.
 
     /**
      * @notice Construct the FixedSlashSlashingLibrary contract.

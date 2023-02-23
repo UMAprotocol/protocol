@@ -19,6 +19,7 @@ struct OwnableContracts {
     Ownable governorHub;
     Ownable bobaParentMessenger;
     Ownable optimismParentMessenger;
+    Ownable optimisticOracleV3;
 }
 
 // Multirole contracts to transfer ownership of
@@ -34,6 +35,9 @@ struct MultiroleContracts {
  * the ones that need to be performed atomically.
  */
 contract VotingUpgraderV2 {
+    // The only one who can initiate the upgrade.
+    address public immutable upgrader;
+
     // Existing governor is the only one who can initiate the upgrade.
     MultiRole public immutable existingGovernor;
 
@@ -72,6 +76,7 @@ contract VotingUpgraderV2 {
      * @param _multiroleContracts additional multirole contracts to transfer ownership of.
      */
     constructor(
+        address _upgrader,
         address _existingGovernor,
         address _newGovernor,
         address _existingVoting,
@@ -81,6 +86,7 @@ contract VotingUpgraderV2 {
         OwnableContracts memory _ownableContracts,
         MultiroleContracts memory _multiroleContracts
     ) {
+        upgrader = _upgrader;
         existingGovernor = MultiRole(_existingGovernor);
         newGovernor = _newGovernor;
         existingVoting = Voting(_existingVoting);
@@ -89,6 +95,15 @@ contract VotingUpgraderV2 {
         finder = Finder(_finder);
         ownableContracts = _ownableContracts;
         multiroleContracts = _multiroleContracts;
+    }
+
+    /**
+     * @notice Checks if the caller is the upgrader.
+     * @dev This is used as the first transaction in the upgrade process to block any other transactions from being
+     * executed if the upgrade is not initiated by the upgrader.
+     */
+    function canRun() public view {
+        require(tx.origin == upgrader);
     }
 
     /**
@@ -123,6 +138,7 @@ contract VotingUpgraderV2 {
         ownableContracts.governorHub.transferOwnership(newGovernor);
         ownableContracts.bobaParentMessenger.transferOwnership(newGovernor);
         ownableContracts.optimismParentMessenger.transferOwnership(newGovernor);
+        ownableContracts.optimisticOracleV3.transferOwnership(newGovernor);
 
         // Set the new governor as the owner of the old governor
         existingGovernor.resetMember(0, newGovernor);

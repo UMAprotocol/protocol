@@ -1,3 +1,6 @@
+// This script deploys DesignatedVotingV2 contracts for each hot wallet that is a delegate of the set owner. Used as the
+// first step in a larger migration process.
+
 const hre = require("hardhat");
 import { utils } from "ethers";
 import yesno from "yesno";

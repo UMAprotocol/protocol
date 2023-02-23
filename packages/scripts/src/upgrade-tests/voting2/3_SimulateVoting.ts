@@ -5,7 +5,7 @@
 // yarn hardhat run ./src/upgrade-tests/voting2/3_SimulateVoting.ts --network localhost
 
 const hre = require("hardhat");
-const assert = require("assert").strict;
+import { strict as assert } from "assert";
 
 const { formatBytes32String, formatEther, parseEther, parseUnits, toUtf8Bytes } = hre.ethers.utils;
 
@@ -69,11 +69,11 @@ interface RewardTrackers {
 const zeroBigNumber: BigNumber = hre.ethers.BigNumber.from(0);
 
 // Constants hardcoded in the SlashingLibrary, needs to be updated here upon change.
-const wrongVoteSlashPerToken = parseEther("0.0016");
-const noVoteSlashPerToken = parseEther("0.0016");
+const wrongVoteSlashPerToken = parseEther("0.001");
+const noVoteSlashPerToken = parseEther("0.001");
 
 // Initial voter balances relative to GAT.
-const voter1RelativeGatFunding = parseEther("0.6");
+const voter1RelativeGatFunding = parseEther("1.1"); // Voter 1 reaches GAT and SPAT.
 const voter2RelativeGatFunding = parseEther("0.55");
 const voter3RelativeGatFunding = parseEther("0.5");
 
@@ -370,17 +370,17 @@ async function main() {
   console.log(" ✅ Verified the first data request can be voted in the current round.");
 
   console.log(" 6. Not reaching quorum on the first data request...");
-  // Only the Voter 1 participates, below GAT.
-  const voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
-  await _commitVote(voter1Signer, voter1FirstRequestVote);
-  console.log(" ✅ Voter 1 committed.");
+  // Only the Voter 2 participates, below GAT.
+  const voter2FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter2Signer.address, "90");
+  await _commitVote(voter2Signer, voter2FirstRequestVote);
+  console.log(" ✅ Voter 2 committed.");
 
   await increaseEvmTime(SECONDS_PER_DAY);
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  await _revealVote(voter1Signer, voter1FirstRequestVote);
-  console.log(" ✅ Voter 1 revealed.");
+  await _revealVote(voter2Signer, voter2FirstRequestVote);
+  console.log(" ✅ Voter 2 revealed.");
 
   await increaseEvmTime(SECONDS_PER_DAY);
   currentTime = await votingV2.getCurrentTime();
@@ -465,7 +465,13 @@ async function main() {
   await (await votingV2.connect(voter3Signer as Signer).stake(voter3Balance)).wait();
   console.log(" ✅ Voters have restaked original balances.");
 
-  console.log(" 12. Waiting until the start of the next voting cycle...");
+  console.log(" 12. Move 3 rounds forward so that the first request is deleted for having rolled too many times....");
+  await increaseEvmTime(
+    Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
+  );
+  await increaseEvmTime(
+    Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
+  );
   await increaseEvmTime(
     Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
@@ -682,7 +688,13 @@ async function main() {
   // It is assumed no other governance actions have been performed that would have changed Finder ownership in between.
   const oldGovernorAddress = (await finder.queryFilter(<EventFilter>"OwnershipTransferred")).reverse()[1].args[0];
   const oldGovernor = await getContractInstance<GovernorEthers>("Governor", oldGovernorAddress);
-  const oldProposerAddress = await oldGovernor.getMember(1);
+
+  // Find last ResetExclusiveMember event emitted by the old governor.
+  const lastResetExclusiveMemberEvent = (
+    await oldGovernor.queryFilter(oldGovernor.filters.ResetExclusiveMember(1, null, null))
+  ).reverse()[1];
+  const oldProposerAddress = lastResetExclusiveMemberEvent.args[1];
+
   console.log(
     formatIndentation(
       `
