@@ -1,10 +1,11 @@
-import { ZERO_ADDRESS } from "@uma/common";
+import { addGlobalHardhatTestingAddress, ZERO_ADDRESS } from "@uma/common";
 import {
   AddressWhitelistEthers,
   FinderEthers,
   IdentifierWhitelistEthers,
   MockOracleAncillaryEthers,
   StoreEthers,
+  VotingTokenEthers,
 } from "@uma/contracts-node";
 import { zeroRawValue } from "../constants";
 import { formatBytes32String, getContractFactory, hre, Signer } from "../utils";
@@ -14,6 +15,7 @@ export interface UmaEcosystemContracts {
   collateralWhitelist: AddressWhitelistEthers;
   identifierWhitelist: IdentifierWhitelistEthers;
   store: StoreEthers;
+  votingToken: VotingTokenEthers;
   mockOracle: MockOracleAncillaryEthers;
 }
 
@@ -35,6 +37,7 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
       zeroRawValue,
       ZERO_ADDRESS
     )) as StoreEthers;
+    const votingToken = (await (await getContractFactory("VotingToken", deployer)).deploy()) as VotingTokenEthers;
     const mockOracle = (await (await getContractFactory("MockOracleAncillary", deployer)).deploy(
       finder.address,
       ZERO_ADDRESS
@@ -46,11 +49,15 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
     await finder.changeImplementationAddress(formatBytes32String("IdentifierWhitelist"), identifierWhitelist.address);
     await finder.changeImplementationAddress(formatBytes32String("Oracle"), mockOracle.address);
 
+    // Add voting token to global hardhatTestingAddresses.
+    addGlobalHardhatTestingAddress("VotingToken", votingToken.address);
+
     return {
       finder,
       collateralWhitelist,
       identifierWhitelist,
       store,
+      votingToken,
       mockOracle,
     };
   }
