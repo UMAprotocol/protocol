@@ -929,6 +929,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     // Returns the price for a given identifier. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
+    // This method considers actual request status that might be ahead of the stored contract state that gets updated
+    // only after processResolvablePriceRequests() is called.
     function _getPriceOrError(
         bytes32 identifier,
         uint256 time,
