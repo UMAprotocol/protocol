@@ -4,6 +4,7 @@ import {
   FinderEthers,
   IdentifierWhitelistEthers,
   MockOracleAncillaryEthers,
+  RegistryEthers,
   StoreEthers,
   VotingTokenEthers,
 } from "@uma/contracts-node";
@@ -14,6 +15,7 @@ export interface UmaEcosystemContracts {
   finder: FinderEthers;
   collateralWhitelist: AddressWhitelistEthers;
   identifierWhitelist: IdentifierWhitelistEthers;
+  registry: RegistryEthers;
   store: StoreEthers;
   votingToken: VotingTokenEthers;
   mockOracle: MockOracleAncillaryEthers;
@@ -32,6 +34,7 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
     const identifierWhitelist = (await (
       await getContractFactory("IdentifierWhitelist", deployer)
     ).deploy()) as IdentifierWhitelistEthers;
+    const registry = (await (await getContractFactory("Registry", deployer)).deploy()) as RegistryEthers;
     const store = (await (await getContractFactory("Store", deployer)).deploy(
       zeroRawValue,
       zeroRawValue,
@@ -45,6 +48,7 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
 
     // Register the UMA ecosystem contracts with the Finder.
     await finder.changeImplementationAddress(formatBytes32String("Store"), store.address);
+    await finder.changeImplementationAddress(formatBytes32String("Registry"), registry.address);
     await finder.changeImplementationAddress(formatBytes32String("CollateralWhitelist"), collateralWhitelist.address);
     await finder.changeImplementationAddress(formatBytes32String("IdentifierWhitelist"), identifierWhitelist.address);
     await finder.changeImplementationAddress(formatBytes32String("Oracle"), mockOracle.address);
@@ -56,6 +60,7 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
       finder,
       collateralWhitelist,
       identifierWhitelist,
+      registry,
       store,
       votingToken,
       mockOracle,

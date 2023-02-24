@@ -1,18 +1,31 @@
 import {
   //   EmergencyProposerEthers,
   //   GovernorV2Ethers,
+  IdentifierWhitelistEthers,
   ProposerV2Ethers,
+  RegistryEthers,
   VotingTokenEthers,
   VotingV2Ethers,
 } from "@uma/contracts-node";
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import sinon from "sinon";
-import { governanceProposalBond } from "./constants";
-import { getBlockNumberFromTx, hre, parseBytes32String, parseUnits, Provider, Signer, toUtf8Bytes } from "./utils";
+import { governanceProposalBond, maxRolls, phaseLength } from "./constants";
+import {
+  formatBytes32String,
+  getBlockNumberFromTx,
+  hardhatTime,
+  hre,
+  parseBytes32String,
+  parseUnits,
+  Provider,
+  Signer,
+  toUtf8Bytes,
+} from "./utils";
 import { dvm2Fixture } from "./fixtures/DVM2.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { MonitoringParams, BotModes } from "../src/monitor-dvm/common";
+import { monitorDeletion } from "../src/monitor-dvm/MonitorDeletion";
 import { monitorGovernance } from "../src/monitor-dvm/MonitorGovernance";
 import { monitorStakes } from "../src/monitor-dvm/MonitorStakes";
 import { monitorUnstakes } from "../src/monitor-dvm/MonitorUnstakes";
@@ -51,23 +64,34 @@ describe("DMVMonitor", function () {
   // let governorV2: GovernorV2Ethers;
   let proposerV2: ProposerV2Ethers;
   // let emergencyProposer: EmergencyProposerEthers;
+  let registry: RegistryEthers;
+  let identifierWhitelist: IdentifierWhitelistEthers;
+  let deployer: Signer;
   let staker: Signer;
   let proposer: Signer;
+  let requester: Signer;
+  let deployerAddress: string;
   let stakerAddress: string;
   let proposerAddress: string;
+  let requesterAddress: string;
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.
-    [, staker, proposer] = (await ethers.getSigners()) as Signer[];
+    [deployer, staker, proposer, requester] = (await ethers.getSigners()) as Signer[];
+    deployerAddress = await deployer.getAddress();
     stakerAddress = await staker.getAddress();
     proposerAddress = await proposer.getAddress();
+    requesterAddress = await requester.getAddress();
 
     // Get contract instances.
-    votingToken = (await umaEcosystemFixture()).votingToken;
-    const parentFixture = await dvm2Fixture();
-    votingV2 = parentFixture.votingV2;
-    // governorV2 = parentFixture.governorV2;
-    proposerV2 = parentFixture.proposerV2;
-    // emergencyProposer = parentFixture.emergencyProposer;
+    const umaEcosystemContracts = await umaEcosystemFixture();
+    votingToken = umaEcosystemContracts.votingToken;
+    registry = umaEcosystemContracts.registry;
+    identifierWhitelist = umaEcosystemContracts.identifierWhitelist;
+    const dvm2Contracts = await dvm2Fixture();
+    votingV2 = dvm2Contracts.votingV2;
+    // governorV2 = dvm2Contracts.governorV2;
+    proposerV2 = dvm2Contracts.proposerV2;
+    // emergencyProposer = dvm2Contracts.emergencyProposer;
   });
   it("Monitor unstake", async function () {
     const stakeAmount = parseUnits("100");
@@ -180,5 +204,39 @@ describe("DMVMonitor", function () {
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(spyLogIncludes(spy, 0, adminIdentifier));
     assert.isTrue(spyLogIncludes(spy, 0, proposalTx.hash));
+  });
+  it("Monitor deleted request", async function () {
+    const identifier = formatBytes32String("TEST_IDENTIFIER");
+    const time = Math.floor(Date.now() / 1000);
+    const ancillaryData = toUtf8Bytes("Test ancillary data");
+
+    // Register requester and approve price identifier.
+    await registry.addMember(1, deployerAddress);
+    await registry.registerContract([], requesterAddress);
+    await registry.removeMember(1, deployerAddress);
+    await identifierWhitelist.addSupportedIdentifier(identifier);
+
+    // Initiate request.
+    await votingV2.connect(requester)["requestPrice(bytes32,uint256,bytes)"](identifier, time, ancillaryData);
+
+    // Advance time past maxRolls.
+    const endOfCurrentRound = await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId());
+    await hardhatTime.setNextBlockTimestamp(endOfCurrentRound.toNumber() + phaseLength * 2 * (maxRolls + 1));
+
+    // Process resolvable price requests to triger deletion.
+    const deletionTx = await votingV2.processResolvablePriceRequests();
+    const deletionBlockNumber = await getBlockNumberFromTx(deletionTx);
+
+    // Call monitorDeletion directly for the block when the deletion was triggered.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorDeletion(spyLogger, await createMonitoringParams(deletionBlockNumber));
+
+    // When calling monitoring module directly there should be only one log (index 0) with the deletion caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "DVMMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Request deleted as spam 🔇");
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, parseBytes32String(identifier)));
+    assert.isTrue(spyLogIncludes(spy, 0, deletionTx.hash));
   });
 });
