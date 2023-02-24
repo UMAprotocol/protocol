@@ -421,4 +421,21 @@ describe("DMVMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, deployerAddress));
     assert.isTrue(spyLogIncludes(spy, 0, mintTx.hash));
   });
+  it("Monitor mint below threshold", async function () {
+    // Mint tokens to deployer.
+    const mintAmount = parseUnits("100");
+    const mintTx = await votingToken.mint(deployerAddress, mintAmount);
+    const mintBlockNumber = await getBlockNumberFromTx(mintTx);
+
+    // Call monitorMints directly for the block when the mint was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorMints(spyLogger, {
+      ...(await createMonitoringParams(mintBlockNumber)),
+      mintsThreshold: mintAmount.add("1"),
+    });
+
+    // When calling monitoring module directly there should be no logs.
+    assert.equal(spy.callCount, 0);
+  });
 });
