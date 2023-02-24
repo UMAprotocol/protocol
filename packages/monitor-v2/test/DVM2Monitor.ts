@@ -1,5 +1,5 @@
 import {
-  //   EmergencyProposerEthers,
+  EmergencyProposerEthers,
   //   GovernorV2Ethers,
   IdentifierWhitelistEthers,
   ProposerV2Ethers,
@@ -10,7 +10,7 @@ import {
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import sinon from "sinon";
-import { governanceProposalBond, maxRolls, phaseLength } from "./constants";
+import { emergencyQuorum, governanceProposalBond, maxRolls, phaseLength } from "./constants";
 import {
   formatBytes32String,
   getBlockNumberFromTx,
@@ -26,6 +26,7 @@ import { dvm2Fixture } from "./fixtures/DVM2.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { MonitoringParams, BotModes } from "../src/monitor-dvm/common";
 import { monitorDeletion } from "../src/monitor-dvm/MonitorDeletion";
+import { monitorEmergency } from "../src/monitor-dvm/MonitorEmergency";
 import { monitorGovernance } from "../src/monitor-dvm/MonitorGovernance";
 import { monitorStakes } from "../src/monitor-dvm/MonitorStakes";
 import { monitorUnstakes } from "../src/monitor-dvm/MonitorUnstakes";
@@ -63,7 +64,7 @@ describe("DMVMonitor", function () {
   let votingV2: VotingV2Ethers;
   // let governorV2: GovernorV2Ethers;
   let proposerV2: ProposerV2Ethers;
-  // let emergencyProposer: EmergencyProposerEthers;
+  let emergencyProposer: EmergencyProposerEthers;
   let registry: RegistryEthers;
   let identifierWhitelist: IdentifierWhitelistEthers;
   let deployer: Signer;
@@ -91,7 +92,7 @@ describe("DMVMonitor", function () {
     votingV2 = dvm2Contracts.votingV2;
     // governorV2 = dvm2Contracts.governorV2;
     proposerV2 = dvm2Contracts.proposerV2;
-    // emergencyProposer = dvm2Contracts.emergencyProposer;
+    emergencyProposer = dvm2Contracts.emergencyProposer;
   });
   it("Monitor unstake", async function () {
     const stakeAmount = parseUnits("100");
@@ -238,5 +239,37 @@ describe("DMVMonitor", function () {
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.isTrue(spyLogIncludes(spy, 0, parseBytes32String(identifier)));
     assert.isTrue(spyLogIncludes(spy, 0, deletionTx.hash));
+  });
+  it("Monitor emergency proposal", async function () {
+    // Fund and approve emergency proposal bond.
+    await votingToken.transfer(await proposerAddress, emergencyQuorum);
+    await votingToken.connect(proposer).approve(emergencyProposer.address, emergencyQuorum);
+
+    // Create a emergency proposal with one empty transaction.
+    const transaction = { to: proposerAddress, value: 0, data: toUtf8Bytes("") };
+    const emergencyProposalTx = await emergencyProposer.connect(proposer).emergencyPropose([transaction]);
+    const emergencyProposalBlockNumber = await getBlockNumberFromTx(emergencyProposalTx);
+
+    // Get proposal id and proposer from the first EmergencyTransactionsProposed event in the proposal transaction.
+    const { id, caller } = (
+      await emergencyProposer.queryFilter(
+        emergencyProposer.filters.EmergencyTransactionsProposed(),
+        emergencyProposalBlockNumber,
+        emergencyProposalBlockNumber
+      )
+    )[0].args;
+
+    // Call monitorEmergency directly for the block when the emergency proposal was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorEmergency(spyLogger, await createMonitoringParams(emergencyProposalBlockNumber));
+
+    // When calling monitoring module directly there should be only one log (index 0) with the proposal caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "DVMMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "New emergency proposal created 🚨");
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, caller));
+    assert.isTrue(spyLogIncludes(spy, 0, "emergency proposal #" + id.toString()));
+    assert.isTrue(spyLogIncludes(spy, 0, emergencyProposalTx.hash));
   });
 });
