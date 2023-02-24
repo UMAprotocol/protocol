@@ -319,7 +319,7 @@ async function main() {
     ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
     ${NEW_CONTRACTS.governor}=${governor.address} \\
     ${NEW_CONTRACTS.proposer}=${proposer.address} \\
-    EXECUTOR=${await votingUpgrader.upgrader()} \\
+    EXECUTOR_ADDRESS=${await votingUpgrader.upgrader()} \\
     NODE_URL_1=http://127.0.0.1:9545/ \\
     yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost`)
     );

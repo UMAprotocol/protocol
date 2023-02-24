@@ -36,6 +36,7 @@ From this point the scripts will log the next step to be executed. But below is 
 ```
 GCKMS_WALLET=<OPTIONAL-GCKMS-WALLET> \ # If not provided, the script will use the first account in the node
 VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+VOTING_UPGRADER_ADDRESS=<VOTING-UPGRADER-ADDRESS> \
 GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
 EMERGENCY_PROPOSER_ADDRESS=<EMERGENCY-PROPOSER-ADDRESS> \
@@ -66,6 +67,7 @@ or if during the test of the downgrade and voting with voting v2 with:
 VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
 GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
+EXECUTOR_ADDRESS=<VOTING-UPGRADER-V2-UPGRADER-ADDRESS> \
 NODE_URL_1=http://127.0.0.1:9545/ \
 yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost
 ```

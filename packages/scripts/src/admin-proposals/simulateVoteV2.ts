@@ -19,6 +19,7 @@ const assert = require("assert").strict;
 // NODE_URL_1=http://localhost:9545 node ./packages/scripts/src/admin-proposals/simulateVoteV2.ts --network localhost
 // VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
 // GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
+// EXECUTOR_ADDRESS=<EXECUTOR-ADDRESS> \  Optional. If not provided, the first signer will be used.
 // NODE_URL_1=http://127.0.0.1:9545/ \
 // yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost
 
@@ -27,7 +28,7 @@ async function simulateVoteV2() {
 
   const governorV2Address = process.env["GOVERNOR_V2_ADDRESS"];
   const votingV2Address = process.env["VOTING_V2_ADDRESS"];
-  const executor = process.env["EXECUTOR"];
+  const executor = process.env["EXECUTOR_ADDRESS"];
   let executorSigner;
   if (executor) {
     await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [executor] });
