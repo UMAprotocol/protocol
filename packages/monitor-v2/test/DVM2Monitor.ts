@@ -357,4 +357,49 @@ describe("DMVMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, proposerAddress));
     assert.isTrue(spyLogIncludes(spy, 0, transferTx.hash));
   });
+  it("Monitor transfers from governor below threshold", async function () {
+    // Fund the governor first.
+    const transferAmount = parseUnits("100");
+    await votingToken.transfer(governorV2.address, transferAmount);
+
+    // Fund and approve emergency proposal bond.
+    await votingToken.transfer(await proposerAddress, emergencyQuorum);
+    await votingToken.connect(proposer).approve(emergencyProposer.address, emergencyQuorum);
+
+    // Create emergency proposal to transfer funds from governor to proposer.
+    const transaction = {
+      to: votingToken.address,
+      value: 0,
+      data: votingToken.interface.encodeFunctionData("transfer", [proposerAddress, transferAmount]),
+    };
+    const emergencyProposalTx = await emergencyProposer.connect(proposer).emergencyPropose([transaction]);
+    const emergencyProposalBlockNumber = await getBlockNumberFromTx(emergencyProposalTx);
+
+    // Get proposal id from the first EmergencyTransactionsProposed event in the proposal transaction.
+    const id = (
+      await emergencyProposer.queryFilter(
+        emergencyProposer.filters.EmergencyTransactionsProposed(),
+        emergencyProposalBlockNumber,
+        emergencyProposalBlockNumber
+      )
+    )[0].args.id;
+
+    // Advance time past minimumWaitTime
+    await hardhatTime.increase(minimumWaitTime);
+
+    // Execute emergency proposal.
+    const transferTx = await emergencyProposer.executeEmergencyProposal(id);
+    const transferBlockNumber = await getBlockNumberFromTx(transferTx);
+
+    // Call monitorGovernorTransfers directly for the block when the transfer was executed.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorGovernorTransfers(spyLogger, {
+      ...(await createMonitoringParams(transferBlockNumber)),
+      governorTransfersThreshold: transferAmount.add("1"),
+    });
+
+    // When calling monitoring module directly there should be no logs.
+    assert.equal(spy.callCount, 0);
+  });
 });
