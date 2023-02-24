@@ -26,8 +26,6 @@ cd packages/scripts/
 Then run:
 
 ```
-EMERGENCY_QUORUM=<EMERGENCY-QUORUM> \ # Decimal value between 5M and 10M
-EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
 yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 ```
 
@@ -36,6 +34,7 @@ From this point the scripts will log the next step to be executed. But below is 
 2.2 Propose migration transactions:
 
 ```
+GCKMS_WALLET=<OPTIONAL-GCKMS-WALLET> \ # If not provided, the script will use the first account in the node
 VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
 GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
