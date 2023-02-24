@@ -30,6 +30,7 @@ import { monitorDeletion } from "../src/monitor-dvm/MonitorDeletion";
 import { monitorEmergency } from "../src/monitor-dvm/MonitorEmergency";
 import { monitorGovernance } from "../src/monitor-dvm/MonitorGovernance";
 import { monitorGovernorTransfers } from "../src/monitor-dvm/MonitorGovernorTransfers";
+import { monitorMints } from "../src/monitor-dvm/MonitorMints";
 import { monitorRolled } from "../src/monitor-dvm/MonitorRolled";
 import { monitorStakes } from "../src/monitor-dvm/MonitorStakes";
 import { monitorUnstakes } from "../src/monitor-dvm/MonitorUnstakes";
@@ -401,5 +402,23 @@ describe("DMVMonitor", function () {
 
     // When calling monitoring module directly there should be no logs.
     assert.equal(spy.callCount, 0);
+  });
+  it("Monitor mint", async function () {
+    // Mint tokens to deployer.
+    const mintAmount = parseUnits("100");
+    const mintTx = await votingToken.mint(deployerAddress, mintAmount);
+    const mintBlockNumber = await getBlockNumberFromTx(mintTx);
+
+    // Call monitorMints directly for the block when the mint was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorMints(spyLogger, await createMonitoringParams(mintBlockNumber));
+
+    // When calling monitoring module directly there should be only one log (index 0) with the mint caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "DVMMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Large UMA minting 💸");
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, deployerAddress));
+    assert.isTrue(spyLogIncludes(spy, 0, mintTx.hash));
   });
 });
