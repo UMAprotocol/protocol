@@ -17,7 +17,7 @@ import {
   governorStartingId,
   maxRequestsPerRound,
   maxRolls,
-  // minimumWaitTime,
+  minimumWaitTime,
   phaseLength,
   spat,
   totalSupply,
@@ -90,15 +90,13 @@ export const deployDVM2 = hre.deployments.createFixture(
       parentFixture.votingToken.address,
       emergencyQuorum,
       governorV2.address,
-      await deployer.getAddress()
+      await deployer.getAddress(),
+      minimumWaitTime
     )) as EmergencyProposerEthers;
 
     // Configure GovernorV2 contract.
     await governorV2.resetMember(1, proposerV2.address);
     await governorV2.resetMember(2, emergencyProposer.address);
-
-    // Configure EmergencyProposer contract.
-    // await emergencyProposer.setMinimumWaitTime(minimumWaitTime);
 
     // Transfer VotingV2 ownership and register it as Oracle with the Finder.
     await votingV2.transferOwnership(governorV2.address);
