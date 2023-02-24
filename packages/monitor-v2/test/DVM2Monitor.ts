@@ -1,6 +1,6 @@
 import {
   EmergencyProposerEthers,
-  //   GovernorV2Ethers,
+  GovernorV2Ethers,
   IdentifierWhitelistEthers,
   ProposerV2Ethers,
   RegistryEthers,
@@ -10,7 +10,7 @@ import {
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import sinon from "sinon";
-import { emergencyQuorum, governanceProposalBond, maxRolls, phaseLength } from "./constants";
+import { emergencyQuorum, governanceProposalBond, maxRolls, minimumWaitTime, phaseLength } from "./constants";
 import {
   formatBytes32String,
   getBlockNumberFromTx,
@@ -29,6 +29,7 @@ import { MonitoringParams, BotModes } from "../src/monitor-dvm/common";
 import { monitorDeletion } from "../src/monitor-dvm/MonitorDeletion";
 import { monitorEmergency } from "../src/monitor-dvm/MonitorEmergency";
 import { monitorGovernance } from "../src/monitor-dvm/MonitorGovernance";
+import { monitorGovernorTransfers } from "../src/monitor-dvm/MonitorGovernorTransfers";
 import { monitorRolled } from "../src/monitor-dvm/MonitorRolled";
 import { monitorStakes } from "../src/monitor-dvm/MonitorStakes";
 import { monitorUnstakes } from "../src/monitor-dvm/MonitorUnstakes";
@@ -64,7 +65,7 @@ const createMonitoringParams = async (blockNumber: number): Promise<MonitoringPa
 describe("DMVMonitor", function () {
   let votingToken: VotingTokenEthers;
   let votingV2: VotingV2Ethers;
-  // let governorV2: GovernorV2Ethers;
+  let governorV2: GovernorV2Ethers;
   let proposerV2: ProposerV2Ethers;
   let emergencyProposer: EmergencyProposerEthers;
   let registry: RegistryEthers;
@@ -92,7 +93,7 @@ describe("DMVMonitor", function () {
     identifierWhitelist = umaEcosystemContracts.identifierWhitelist;
     const dvm2Contracts = await dvm2Fixture();
     votingV2 = dvm2Contracts.votingV2;
-    // governorV2 = dvm2Contracts.governorV2;
+    governorV2 = dvm2Contracts.governorV2;
     proposerV2 = dvm2Contracts.proposerV2;
     emergencyProposer = dvm2Contracts.emergencyProposer;
   });
@@ -309,5 +310,51 @@ describe("DMVMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, parseBytes32String(identifier)));
     assert.isTrue(spyLogIncludes(spy, 0, rolledTx.hash));
     assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(ancillaryData)));
+  });
+  it("Monitor transfers from governor", async function () {
+    // Fund the governor first.
+    const transferAmount = parseUnits("100");
+    await votingToken.transfer(governorV2.address, transferAmount);
+
+    // Fund and approve emergency proposal bond.
+    await votingToken.transfer(await proposerAddress, emergencyQuorum);
+    await votingToken.connect(proposer).approve(emergencyProposer.address, emergencyQuorum);
+
+    // Create emergency proposal to transfer funds from governor to proposer.
+    const transaction = {
+      to: votingToken.address,
+      value: 0,
+      data: votingToken.interface.encodeFunctionData("transfer", [proposerAddress, transferAmount]),
+    };
+    const emergencyProposalTx = await emergencyProposer.connect(proposer).emergencyPropose([transaction]);
+    const emergencyProposalBlockNumber = await getBlockNumberFromTx(emergencyProposalTx);
+
+    // Get proposal id from the first EmergencyTransactionsProposed event in the proposal transaction.
+    const id = (
+      await emergencyProposer.queryFilter(
+        emergencyProposer.filters.EmergencyTransactionsProposed(),
+        emergencyProposalBlockNumber,
+        emergencyProposalBlockNumber
+      )
+    )[0].args.id;
+
+    // Advance time past minimumWaitTime
+    await hardhatTime.increase(minimumWaitTime);
+
+    // Execute emergency proposal.
+    const transferTx = await emergencyProposer.executeEmergencyProposal(id);
+    const transferBlockNumber = await getBlockNumberFromTx(transferTx);
+
+    // Call monitorGovernorTransfers directly for the block when the transfer was executed.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorGovernorTransfers(spyLogger, await createMonitoringParams(transferBlockNumber));
+
+    // When calling monitoring module directly there should be only one log (index 0) with the transfer caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "DVMMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Large governor transfer 📤");
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, proposerAddress));
+    assert.isTrue(spyLogIncludes(spy, 0, transferTx.hash));
   });
 });
