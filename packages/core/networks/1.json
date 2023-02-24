@@ -164,5 +164,29 @@
   {
     "contractName": "OptimisticOracleV3",
     "address": "0xfb55F43fB9F48F63f9269DB7Dde3BbBe1ebDC0dE"
+  },
+  {
+    "contractName": "FixedSlashingLibrary",
+    "address": "0x9a406ba5a99983250fd663947b3c968d387ce5cd"
+  },
+  {
+    "contractName": "VotingV2",
+    "address": "0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac"
+  },
+  {
+    "contractName": "GovernorV2",
+    "address": "0x7b292034084A41B9D441B71b6E3557Edd0463fa8"
+  },
+  {
+    "contractName": "ProposerV2",
+    "address": "0x50efaC9619225d7fB4703C5872da978849B6E7cC"
+  },
+  {
+    "contractName": "EmergencyProposer",
+    "address": "0x91F1804aCaf87C2D34A34A70be1bb16bB85D6748"
+  },
+  {
+    "contractName": "VotingUpgraderV2",
+    "address": "0x13852D4AF390d8C3404c0577fd8B8E43389A290b"
   }
 ]
