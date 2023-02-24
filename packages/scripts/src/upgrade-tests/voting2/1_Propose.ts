@@ -96,9 +96,10 @@ async function main() {
 
   let votingUpgrader;
 
-  if (process.env[TEST_DOWNGRADE])
+  if (process.env[TEST_DOWNGRADE]) {
+    if (!process.env[EMERGENCY_EXECUTOR]) throw new Error("Must provide EMERGENCY_EXECUTOR");
     votingUpgrader = await deployVotingUpgraderAndRunDowngradeOptionalTx(
-      process.env[EMERGENCY_EXECUTOR] || "",
+      process.env[EMERGENCY_EXECUTOR],
       adminProposalTransactions,
       governor,
       governorV2,
@@ -110,7 +111,7 @@ async function main() {
       ownableContractsToMigrate,
       multicallContractsToMigrate
     );
-  else {
+  } else {
     const votingUpgraderAddress = process.env[VOTING_UPGRADER_ADDRESS];
     if (!votingUpgraderAddress) throw new Error("Must provide VOTING_UPGRADER_ADDRESS");
     votingUpgrader = await getContractInstance<VotingUpgraderV2Ethers>("VotingUpgraderV2", votingUpgraderAddress);
