@@ -98,7 +98,7 @@ async function main() {
 
   if (process.env[TEST_DOWNGRADE])
     votingUpgrader = await deployVotingUpgraderAndRunDowngradeOptionalTx(
-      (await hre.ethers.getSigners())[0].address,
+      process.env[EMERGENCY_EXECUTOR] || "",
       adminProposalTransactions,
       governor,
       governorV2,
