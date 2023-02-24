@@ -99,7 +99,7 @@ async function main() {
   if (process.env[TEST_DOWNGRADE]) {
     if (!process.env[EMERGENCY_EXECUTOR]) throw new Error("Must provide EMERGENCY_EXECUTOR");
     votingUpgrader = await deployVotingUpgraderAndRunDowngradeOptionalTx(
-      process.env[EMERGENCY_EXECUTOR],
+      String(process.env[EMERGENCY_EXECUTOR]),
       adminProposalTransactions,
       governor,
       governorV2,
