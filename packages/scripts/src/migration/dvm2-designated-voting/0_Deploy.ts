@@ -35,10 +35,7 @@ async function main() {
   );
 
   // Construct payload to deploy new DesignatedVotingV2 contracts for each hot wallet.
-  const factoryV2 = await getContractInstance<DesignatedVotingV2FactoryEthers>(
-    "DesignatedVotingV2Factory",
-    "0xa024501191bdff069329cbdd064e39dc2aa3af6c"
-  );
+  const factoryV2 = await getContractInstance<DesignatedVotingV2FactoryEthers>("DesignatedVotingV2Factory");
   const numberOfPayloadsToBuild = Math.ceil(designatedVotingData.length / maxDesignatedVotingDeployedPerBatch);
   const multiCallPayloads: any[] = [];
   for (let i = 0; i < numberOfPayloadsToBuild; i++) {
@@ -53,7 +50,7 @@ async function main() {
     question:
       `Constructed multicall payloads to deploy ${designatedVotingData.length} contracts. ` +
       `Are you ready to deploy? This Will send ${numberOfPayloadsToBuild} separate transactions,` +
-      ` each deploying up to ${maxDesignatedVotingDeployedPerBatch} designated voting contracts.`,
+      ` each deploying up to ${maxDesignatedVotingDeployedPerBatch} designated voting contracts. (y/n)`,
   });
 
   if (!shouldDeploy) process.exit(0);

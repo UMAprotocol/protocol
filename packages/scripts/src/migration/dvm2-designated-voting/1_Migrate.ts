@@ -3,6 +3,7 @@
 
 const hre = require("hardhat");
 import { utils } from "ethers";
+import yesno from "yesno";
 import { VotingTokenEthers, DesignatedVotingV2FactoryEthers, DesignatedVotingV2Ethers } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
 
@@ -65,7 +66,12 @@ async function main() {
       return e;
     })
   );
-  console.log("augmentedDesignedVotingData", augmentedDesignedVotingData);
+
+  const shouldBuildPayload = await yesno({
+    question: "Does this look correct and should we continue to build the payload? (y/n)",
+  });
+
+  if (!shouldBuildPayload) process.exit(0);
 
   // Step 5: construct the gnosis payload to submit the migration process for each of the designated voting contracts.
   let payload = baseSafePayload(
