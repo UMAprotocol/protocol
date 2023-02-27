@@ -63,7 +63,7 @@ const createMonitoringParams = async (blockNumber: number): Promise<MonitoringPa
   };
 };
 
-describe("DMVMonitor", function () {
+describe("DVMMonitor", function () {
   let votingToken: VotingTokenEthers;
   let votingV2: VotingV2Ethers;
   let governorV2: GovernorV2Ethers;
