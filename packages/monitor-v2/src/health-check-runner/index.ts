@@ -6,7 +6,7 @@ let logger: AugmentedLogger;
 export async function run(): Promise<void> {
   logger = Logger;
 
-  logger.debug({ at: "HealthCheckRunner", message: "Starting health check runner 🩺" });
+  logger.debug({ at: "HealthCheckRunner", message: "Health check runner started 🩺" });
 
   const healthCheckCommands = process.env.HEALTH_CHECK_COMMANDS ? JSON.parse(process.env.HEALTH_CHECK_COMMANDS) : [];
 
