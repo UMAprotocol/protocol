@@ -96,9 +96,10 @@ async function main() {
 
   let votingUpgrader;
 
-  if (process.env[TEST_DOWNGRADE])
+  if (process.env[TEST_DOWNGRADE]) {
+    if (!process.env[EMERGENCY_EXECUTOR]) throw new Error("Must provide EMERGENCY_EXECUTOR");
     votingUpgrader = await deployVotingUpgraderAndRunDowngradeOptionalTx(
-      (await hre.ethers.getSigners())[0].address,
+      String(process.env[EMERGENCY_EXECUTOR]),
       adminProposalTransactions,
       governor,
       governorV2,
@@ -110,7 +111,7 @@ async function main() {
       ownableContractsToMigrate,
       multicallContractsToMigrate
     );
-  else {
+  } else {
     const votingUpgraderAddress = process.env[VOTING_UPGRADER_ADDRESS];
     if (!votingUpgraderAddress) throw new Error("Must provide VOTING_UPGRADER_ADDRESS");
     votingUpgrader = await getContractInstance<VotingUpgraderV2Ethers>("VotingUpgraderV2", votingUpgraderAddress);
@@ -318,6 +319,7 @@ async function main() {
     ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
     ${NEW_CONTRACTS.governor}=${governor.address} \\
     ${NEW_CONTRACTS.proposer}=${proposer.address} \\
+    EXECUTOR_ADDRESS=${await votingUpgrader.upgrader()} \\
     NODE_URL_1=http://127.0.0.1:9545/ \\
     yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost`)
     );
