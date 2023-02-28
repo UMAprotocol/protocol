@@ -259,6 +259,44 @@ async function main() {
   const unstakeCoolDown = await votingV2.unstakeCoolDown();
   const finalFee = (await store.computeFinalFee(votingToken.address)).rawValue;
 
+  console.log(" 1. Unstake from all preexisting voters...");
+  await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [await votingV2.owner()] });
+  await hre.network.provider.send("hardhat_setBalance", [
+    await votingV2.owner(),
+    hre.ethers.utils.parseEther("10.0").toHexString(),
+  ]);
+  const govSigner = (await hre.ethers.getSigner(await votingV2.owner())) as Signer;
+
+  const initialCooldDownPeriod = await votingV2.unstakeCoolDown();
+
+  // Set the cool down period to 0 so that we can unstake immediately.
+  await (await votingV2.connect(govSigner).setUnstakeCoolDown(0)).wait();
+
+  // Get all Staked events from the VotingV2 contract
+  const stakedEvents = await votingV2.queryFilter(votingV2.filters.Staked(null, null));
+
+  const uniqueAddresses = new Set<string>();
+  stakedEvents.forEach((event) => {
+    uniqueAddresses.add(event.args?.voter);
+  });
+
+  for (const address of uniqueAddresses) {
+    await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [address] });
+    const signer = (await hre.ethers.getSigner(address)) as Signer;
+    await hre.network.provider.send("hardhat_setBalance", [address, hre.ethers.utils.parseEther("10.0").toHexString()]);
+    const stake = await votingV2.callStatic.getVoterStakePostUpdate(address);
+    if (stake.isZero()) continue;
+    await (
+      await votingV2.connect(signer).requestUnstake(await votingV2.callStatic.getVoterStakePostUpdate(address))
+    ).wait();
+    await (await votingV2.connect(signer).executeUnstake()).wait();
+  }
+
+  // Reset the cool down period to its original value.
+  await (await votingV2.connect(govSigner).setUnstakeCoolDown(initialCooldDownPeriod)).wait();
+
+  console.log("All voters have been unstaked!");
+
   let foundationBalance = await votingToken.balanceOf(FOUNDATION_WALLET);
   console.log(` 1. Foundation has ${formatEther(foundationBalance)} UMA, funding requester and voters...`);
 
