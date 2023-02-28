@@ -47,7 +47,7 @@ async function main() {
 async function fetchClaimPayload(address: string) {
   const response = await fetch(`https://voter-dapp-v2-seven.vercel.app/api/past-rewards`, {
     method: "POST",
-    body: JSON.stringify({ chainId: 5, address }),
+    body: JSON.stringify({ chainId: 1, address }),
     headers: { Accept: "application/json", "Content-Type": "application/json" },
   });
   return await response.json();
