@@ -2,13 +2,14 @@
 
 const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
-const abi = require("./abi/abi");
+const { binaryAdapterAbi, ctfAdapterAbi } = require("./abi/abi");
 const { getAddress, getAbi } = require("@uma/contracts-node");
 const { TransactionDataDecoder, aggregateTransactionsAndCall } = require("@uma/financial-templates-lib");
 const { MIN_INT_VALUE } = require("@uma/common");
 const assert = require("assert");
 
-const polymarketContract = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
+const binaryAdapterAddress = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
+const ctfAdapterAddress = "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74";
 const multicallAddress = "0x11ce4B23bD875D7F5C6a31084f55fDe1e9A87507";
 
 class PolymarketNotifier {
@@ -29,7 +30,9 @@ class PolymarketNotifier {
     this.maxTimeAfterProposal = maxTimeAfterProposal;
     this.minAcceptedPrice = minAcceptedPrice;
     // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
-    TransactionDataDecoder.getInstance().abiDecoder.addABI(abi);
+    const decoder = TransactionDataDecoder.getInstance();
+    decoder.abiDecoder.addABI(binaryAdapterAbi);
+    decoder.abiDecoder.addABI(ctfAdapterAbi);
   }
 
   // Main function to check recent proposals against Polymarket API data.
@@ -46,8 +49,8 @@ class PolymarketNotifier {
     const questionData = await this.getQuestionData();
 
     // gets the most updated OO contract
-    const optimisticOracleAddress = await getAddress("OptimisticOracle", 137);
-    const optimisticOracleAbi = await getAbi("OptimisticOracle");
+    const optimisticOracleAddress = await getAddress("OptimisticOracleV2", 137);
+    const optimisticOracleAbi = await getAbi("OptimisticOracleV2");
     const contract = await new this.web3.eth.Contract(optimisticOracleAbi, optimisticOracleAddress);
 
     // gets all ProposePrice events using ethers query filter api
@@ -82,7 +85,7 @@ class PolymarketNotifier {
           !contract.proposedPrice ||
           contract.outcome1Price === undefined ||
           contract.outcome2Price === undefined ||
-          contract.requester != polymarketContract
+          (contract.requester !== binaryAdapterAddress && contract.requester !== ctfAdapterAddress)
         ) {
           return null;
         }
@@ -151,17 +154,23 @@ class PolymarketNotifier {
 
   // gets Polymarket API data that can be used to compare against proposals
   async getQuestionData() {
-    const polymarketConditionalContract = await new this.web3.eth.Contract(abi, polymarketContract);
+    const binaryAdapterContract = await new this.web3.eth.Contract(binaryAdapterAbi, binaryAdapterAddress);
+    const ctfAdapterContract = await new this.web3.eth.Contract(ctfAdapterAbi, ctfAdapterAddress);
 
     // Polymarket API
-    const apiUrl = this.apiEndpoint + "?_limit=-1&active=true&closed=false&_sort=created_at:desc";
+    const apiUrl = this.apiEndpoint + "?_limit=-1&active=true&_sort=created_at:desc";
     const polymarketContracts = await this.networker.getJson(apiUrl, { method: "get" });
     assert(polymarketContracts && polymarketContracts.length, "Requires polymarket api data");
 
-    const transactions = polymarketContracts.map((polymarketContract) => ({
-      target: polymarketConditionalContract.options.address,
-      callData: polymarketConditionalContract.methods.questions(polymarketContract.questionID).encodeABI(),
-    }));
+    const transactions = polymarketContracts.map((polymarketContract) => {
+      const resolutionContract =
+        polymarketContract.resolved_by === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
+
+      return {
+        target: resolutionContract.options.address,
+        callData: resolutionContract.methods.questions(polymarketContract.questionID).encodeABI(),
+      };
+    });
 
     // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
     const ancillaryData = (await aggregateTransactionsAndCall(multicallAddress, this.web3, transactions)).map(
