@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.51.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.50.0...@uma/core@2.51.0) (2023-02-28)
+
+### Bug Fixes
+
+- dvm-v2 contract comments ([#4457](https://github.com/UMAprotocol/protocol/issues/4457)) ([9d3ebde](https://github.com/UMAprotocol/protocol/commit/9d3ebde763c5d83f58767b88327e70888608be8a))
+- rename optimistic-governor directory structure ([#4452](https://github.com/UMAprotocol/protocol/issues/4452)) ([e3d93f7](https://github.com/UMAprotocol/protocol/commit/e3d93f7107bba79d9f1e232ef505fb4663fddfce))
+
+### Features
+
+- add dvm2.0 addresses ([#4458](https://github.com/UMAprotocol/protocol/issues/4458)) ([4d3ae1f](https://github.com/UMAprotocol/protocol/commit/4d3ae1fa968018fc0536b2710fbd97a1ff8dc89a))
+- dvm2.0 upgrade scripts updates ([#4451](https://github.com/UMAprotocol/protocol/issues/4451)) ([2fb75fb](https://github.com/UMAprotocol/protocol/commit/2fb75fbbb67c9ac7a46776f35caa1b8cdd539963))
+
 # [2.50.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.49.0...@uma/core@2.50.0) (2023-02-20)
 
 ### Features

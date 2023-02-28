@@ -1,11 +1,11 @@
 {
   "name": "@uma/affiliates",
-  "version": "1.15.22",
+  "version": "1.15.23",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@uma/common": "^2.30.1",
-    "@uma/contracts-node": "^0.4.11",
+    "@uma/common": "^2.31.0",
+    "@uma/contracts-node": "^0.4.12",
     "cli-progress": "^3.8.2",
     "minimist": "^1.2.7",
     "mkdirp": "^1.0.4",

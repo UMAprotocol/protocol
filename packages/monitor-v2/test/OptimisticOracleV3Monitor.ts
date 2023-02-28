@@ -3,7 +3,16 @@ import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma
 import { assert } from "chai";
 import sinon from "sinon";
 import { defaultLiveness } from "./constants";
-import { ContractTransaction, hardhatTime, hre, Provider, Signer, toUtf8Bytes, toUtf8String } from "./utils";
+import {
+  ContractTransaction,
+  getBlockNumberFromTx,
+  hardhatTime,
+  hre,
+  Provider,
+  Signer,
+  toUtf8Bytes,
+  toUtf8String,
+} from "./utils";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { optimisticOracleV3Fixture } from "./fixtures/OptimisticOracleV3.Fixture";
 import { MonitoringParams, BotModes } from "../src/monitor-oo-v3/common";
@@ -22,13 +31,6 @@ const getAssertionId = async (
   return (
     await optimisticOracleV3.queryFilter(optimisticOracleV3.filters.AssertionMade(), tx.blockNumber, tx.blockNumber)
   )[0].args.assertionId;
-};
-
-// Get block number from transaction (or 0 if transaction is not mined).
-const getBlockNumber = async (tx: ContractTransaction): Promise<number> => {
-  await tx.wait();
-  const blockNumber = tx.blockNumber ? tx.blockNumber : 0;
-  return blockNumber;
 };
 
 // Create monitoring params for single block to pass to monitor modules.
@@ -81,7 +83,7 @@ describe("OptimisticOracleV3Monitor", function () {
     const assertionTx = await optimisticOracleV3
       .connect(asserter)
       .assertTruthWithDefaults(claim, await asserter.getAddress());
-    const assertionBlockNumber = await getBlockNumber(assertionTx);
+    const assertionBlockNumber = await getBlockNumberFromTx(assertionTx);
     const assertionId = await getAssertionId(assertionTx, optimisticOracleV3);
 
     // Call monitorAssertions directly for the block when the assertion was made.
@@ -107,7 +109,7 @@ describe("OptimisticOracleV3Monitor", function () {
     // Settle assertion after the liveness period.
     await hardhatTime.increase(defaultLiveness);
     const settlementTx = await optimisticOracleV3.connect(asserter).settleAssertion(assertionId);
-    const settlementBlockNumber = await getBlockNumber(settlementTx);
+    const settlementBlockNumber = await getBlockNumberFromTx(settlementTx);
 
     // Call monitorSettlements directly for the block when the settlement was made.
     const spy = sinon.spy();
@@ -134,7 +136,7 @@ describe("OptimisticOracleV3Monitor", function () {
     const disputeTx = await optimisticOracleV3
       .connect(disputer)
       .disputeAssertion(assertionId, await disputer.getAddress());
-    const disputeBlockNumber = await getBlockNumber(disputeTx);
+    const disputeBlockNumber = await getBlockNumberFromTx(disputeTx);
 
     // Call monitorDisputes directly for the block when the dispute was made.
     const spy = sinon.spy();
@@ -173,7 +175,7 @@ describe("OptimisticOracleV3Monitor", function () {
 
     // Settle assertion.
     const settlementTx = await optimisticOracleV3.connect(disputer).settleAssertion(assertionId);
-    const settlementBlockNumber = await getBlockNumber(settlementTx);
+    const settlementBlockNumber = await getBlockNumberFromTx(settlementTx);
 
     // Call monitorSettlements directly for the block when the settlement was made.
     const spy = sinon.spy();
