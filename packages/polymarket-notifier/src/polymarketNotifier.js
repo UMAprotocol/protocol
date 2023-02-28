@@ -48,13 +48,19 @@ class PolymarketNotifier {
     const notifiedProposals = await this.getNotifiedProposals();
     const questionData = await this.getQuestionData();
 
-    // gets the most updated OO contract
-    const optimisticOracleAddress = await getAddress("OptimisticOracleV2", 137);
-    const optimisticOracleAbi = await getAbi("OptimisticOracleV2");
-    const contract = await new this.web3.eth.Contract(optimisticOracleAbi, optimisticOracleAddress);
+    // gets the most updated OO contracts
+    const optimisticOracleAddressV1 = await getAddress("OptimisticOracle", 137);
+    const optimisticOracleAbiV1 = await getAbi("OptimisticOracle");
+    const optimisticOracleV1 = await new this.web3.eth.Contract(optimisticOracleAbiV1, optimisticOracleAddressV1);
 
-    // gets all ProposePrice events using ethers query filter api
-    const events = await contract.getPastEvents("ProposePrice", { fromBlock: 0 });
+    const optimisticOracleAddressV2 = await getAddress("OptimisticOracleV2", 137);
+    const optimisticOracleAbiV2 = await getAbi("OptimisticOracleV2");
+    const optimisticOracleV2 = await new this.web3.eth.Contract(optimisticOracleAbiV2, optimisticOracleAddressV2);
+
+    // gets all ProposePrice events using ethers query filter api. fromBlock is set to block of the latest OO deployment.
+    const optimisticOracleEventsV1 = await optimisticOracleV1.getPastEvents("ProposePrice", { fromBlock: 16783346 });
+    const optimisticOracleEventsV2 = await optimisticOracleV2.getPastEvents("ProposePrice", { fromBlock: 29786052 });
+    const events = [...optimisticOracleEventsV1, ...optimisticOracleEventsV2];
 
     // creates array for each event
     const proposalEvents = events.map((request) => ({
