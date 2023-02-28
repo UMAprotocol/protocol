@@ -27,7 +27,8 @@ contract CommonDataVerificationMechanismForkTest is CommonTestBase {
         if (!shouldRunForkedTest) return; // Exit early if we are not executing forked tests.
 
         // TODO: look into a way to not have to hard code these addresses. Ok for now as we wont be changing them.
-        address votingAddress = chainId == 1 ? address(0) : 0xBc3683DEf184ad64f6162024BD401e8D49d0E517;
+        address votingAddress =
+            chainId == 1 ? 0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac : 0xBc3683DEf184ad64f6162024BD401e8D49d0E517;
 
         voting = VotingV2(votingAddress);
 
