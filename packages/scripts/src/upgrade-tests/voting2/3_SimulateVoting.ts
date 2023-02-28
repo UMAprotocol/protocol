@@ -253,6 +253,7 @@ async function main() {
   if (!(await isVotingV2Instance(votingV2Address))) throw new Error("Oracle is not VotingV2 instance!");
 
   const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", votingV2Address);
+  const governorV2Address = await votingV2.owner();
 
   const emissionRate = await votingV2.emissionRate();
   const gat = await votingV2.gat();
@@ -260,12 +261,12 @@ async function main() {
   const finalFee = (await store.computeFinalFee(votingToken.address)).rawValue;
 
   console.log(" 1. Unstake from all preexisting voters...");
-  await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [await votingV2.owner()] });
+  await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [governorV2Address] });
   await hre.network.provider.send("hardhat_setBalance", [
-    await votingV2.owner(),
+    governorV2Address,
     hre.ethers.utils.parseEther("10.0").toHexString(),
   ]);
-  const govSigner = (await hre.ethers.getSigner(await votingV2.owner())) as Signer;
+  const govSigner = (await hre.ethers.getSigner(governorV2Address)) as Signer;
 
   const initialCooldDownPeriod = await votingV2.unstakeCoolDown();
 
@@ -714,7 +715,6 @@ async function main() {
   );
 
   const oldVotingAddress = await votingV2.previousVotingContract();
-  const governorV2Address = await votingV2.owner();
   const governorV2 = await getContractInstance<GovernorV2Ethers>("GovernorV2", governorV2Address);
   const proposerV2Address = await governorV2.getMember(1);
   const emergencyProposerAddress = await governorV2.getMember(2);
