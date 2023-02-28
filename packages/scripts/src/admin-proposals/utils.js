@@ -24,6 +24,7 @@ const VotingInterface = getContract("VotingInterface");
 const AddressWhitelist = getContract("AddressWhitelist");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Store = getContract("Store");
+const Multicall2 = getContract("Multicall2");
 
 const L2_ADMIN_NETWORKS = [137, 42161, 10, 288];
 
@@ -148,6 +149,8 @@ const setupMainnet = async (web3) => {
     await _getContractAddressByName("IdentifierWhitelist", 1)
   );
 
+  const multicall = new web3.eth.Contract(Multicall2.abi, await _getContractAddressByName("Multicall2", 1));
+
   const store = new web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", 1));
   console.group("\nℹ️  DVM infrastructure on L1:");
   console.log(`- Finder @ ${finder.options.address}`);
@@ -161,6 +164,7 @@ const setupMainnet = async (web3) => {
   console.log(`- Store @ ${store.options.address}`);
   console.log(`- GovernorHub @ ${governorHub.options.address}`);
   console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
+  console.log(`- Multicall2 @ ${multicall.options.address}`);
   console.groupEnd();
   return {
     finder,
@@ -174,6 +178,7 @@ const setupMainnet = async (web3) => {
     identifierWhitelist,
     store,
     proposer,
+    multicall,
   };
 };
 

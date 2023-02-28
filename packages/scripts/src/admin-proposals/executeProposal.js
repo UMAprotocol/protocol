@@ -17,6 +17,11 @@ const argv = require("minimist")(process.argv.slice(), {
     // proposal ID to execute
     "id",
   ],
+  boolean: [
+    // set to True to use multicall to execute all transactions in a single tx
+    "multicall",
+  ],
+  default: { multicall: false },
 });
 
 async function run() {
@@ -39,17 +44,38 @@ async function run() {
   const proposal = await mainnetContracts.governor.methods.getProposal(id.toString()).call();
   const currentNonce = await web3.eth.getTransactionCount(accounts[0]);
   let nonceIncrement = 0;
-  for (let j = 0; j < proposal.transactions.length; j++) {
-    console.log(`- Submitting transaction #${j + 1} from proposal #${id}`);
-    try {
-      let txn = await mainnetContracts.governor.methods
-        .executeProposal(id.toString(), j.toString())
-        .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice(), nonce: currentNonce + nonceIncrement });
-      console.log(`    - Success, receipt: ${txn.transactionHash}`);
-      nonceIncrement += 1;
-    } catch (err) {
-      console.error("    - Failure: Txn was likely executed previously, skipping to next one");
-      continue;
+
+  if (argv.multicall) {
+    console.log("Submitting proposal execution with multicall");
+
+    const calls = Array.from(Array(proposal.transactions.length).keys()).map((id) => {
+      console.log(`- Submitting transaction #${id + 1} from proposal #${id}`);
+      console.log(
+        mainnetContracts.governor.options.address,
+        mainnetContracts.governor.methods.executeProposal(id.toString(), id.toString()).encodeABI()
+      );
+      return {
+        target: mainnetContracts.governor.options.address,
+        callData: mainnetContracts.governor.methods.executeProposal(id.toString(), id.toString()).encodeABI(),
+      };
+    });
+    const txn = await mainnetContracts.multicall.methods
+      .aggregate(calls)
+      .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
+    console.log(`    - Success, receipt: ${txn.transactionHash}`);
+  } else {
+    for (let j = 0; j < proposal.transactions.length; j++) {
+      console.log(`- Submitting transaction #${j + 1} from proposal #${id}`);
+      try {
+        let txn = await mainnetContracts.governor.methods
+          .executeProposal(id.toString(), j.toString())
+          .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice(), nonce: currentNonce + nonceIncrement });
+        console.log(`    - Success, receipt: ${txn.transactionHash}`);
+        nonceIncrement += 1;
+      } catch (err) {
+        console.error("    - Failure: Txn was likely executed previously, skipping to next one");
+        continue;
+      }
     }
   }
 
