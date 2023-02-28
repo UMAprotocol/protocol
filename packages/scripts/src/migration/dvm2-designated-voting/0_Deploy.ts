@@ -59,10 +59,6 @@ async function main() {
   console.log("Deploying contracts...");
 
   for (let i = 0; i < numberOfPayloadsToBuild; i++) {
-    if (i != 5) {
-      console.log("SKIPPING");
-      continue;
-    }
     console.log(`Sending bundle ${i} to deploy ${multiCallPayloads[i].length} DesignatedVotingV2 Contracts...`);
     const tx = await factoryV2.multicall(multiCallPayloads[i]);
     tx.wait();
