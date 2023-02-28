@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.30.1...@uma/common@2.31.0) (2023-02-28)
+
+### Features
+
+- update getGckmsSigner to be used in hardhat scripts ([#4401](https://github.com/UMAprotocol/protocol/issues/4401)) ([807517d](https://github.com/UMAprotocol/protocol/commit/807517de126aee27191125531e70407b13874795))
+
 ## [2.30.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.30.0...@uma/common@2.30.1) (2023-02-20)
 
 **Note:** Version bump only for package @uma/common
