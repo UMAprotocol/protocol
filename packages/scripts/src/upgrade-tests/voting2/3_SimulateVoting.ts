@@ -261,7 +261,7 @@ async function main() {
   const unstakeCoolDown = await votingV2.unstakeCoolDown();
   const finalFee = (await store.computeFinalFee(votingToken.address)).rawValue;
 
-  console.log(" 1. Unstake from all preexisting voters...");
+  console.log(" 0. Unstake from all preexisting voters...");
   const uniqueVoters = await getUniqueVoters(votingV2);
 
   for (const address of uniqueVoters) {
