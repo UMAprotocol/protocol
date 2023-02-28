@@ -14,7 +14,7 @@ import {
   getVotingContracts,
   updateTrackers,
   votingV2VotingBalanceWithoutExternalTransfers,
-} from "./common";
+} from "../utils/votingv2-utils";
 const { ethers } = hre;
 
 async function main() {
