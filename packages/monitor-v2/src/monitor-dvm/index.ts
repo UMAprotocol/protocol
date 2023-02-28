@@ -15,7 +15,7 @@ const logger = Logger;
 async function main() {
   const params = await initMonitoringParams(process.env);
 
-  logger[startupLogLevel(params)]({ at: "DMVMonitor", message: "DVM Monitor started 🔭", botModes: params.botModes });
+  logger[startupLogLevel(params)]({ at: "DVMMonitor", message: "DVM Monitor started 🔭", botModes: params.botModes });
 
   const cmds = {
     unstakesEnabled: monitorUnstakes,
@@ -55,7 +55,7 @@ main().then(
   },
   async (error) => {
     logger.error({
-      at: "DMVMonitor",
+      at: "DVMMonitor",
       message: "DVM Monitor execution error🚨",
       error,
     });
