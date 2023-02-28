@@ -14,7 +14,7 @@ import {
   unstakeFromStakedAccount,
   updateTrackers,
   votingV2VotingBalanceWithoutExternalTransfers,
-} from "./common";
+} from "../utils/votingv2-utils";
 
 async function main() {
   const { votingV2, votingToken } = await getVotingContracts();

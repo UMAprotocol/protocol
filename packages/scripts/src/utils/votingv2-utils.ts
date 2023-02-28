@@ -1,8 +1,8 @@
 import { VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { TypedEventFilter } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/commons";
 import { BigNumber } from "ethers";
-import { getContractInstance } from "../utils/contracts";
-import { forkNetwork, getForkChainId, increaseEvmTime } from "../utils/utils";
+import { getContractInstance } from "./contracts";
+import { forkNetwork, getForkChainId, increaseEvmTime } from "./utils";
 
 const hre = require("hardhat");
 const { ethers } = hre;

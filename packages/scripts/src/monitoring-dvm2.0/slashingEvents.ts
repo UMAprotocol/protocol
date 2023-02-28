@@ -13,7 +13,7 @@ import {
   getUniqueVoters,
   getVotingContracts,
   updateTrackers,
-} from "./common";
+} from "../utils/votingv2-utils";
 
 async function main() {
   const { votingV2 } = await getVotingContracts();
