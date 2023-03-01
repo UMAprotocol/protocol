@@ -48,17 +48,14 @@ async function run() {
   if (argv.multicall) {
     console.log("Submitting proposal execution with multicall");
 
-    const calls = Array.from(Array(proposal.transactions.length).keys()).map((id) => {
-      console.log(`- Submitting transaction #${id + 1} from proposal #${id}`);
-      console.log(
-        mainnetContracts.governor.options.address,
-        mainnetContracts.governor.methods.executeProposal(id.toString(), id.toString()).encodeABI()
-      );
-      return {
+    const calls = [];
+    for (let j = 0; j < proposal.transactions.length; j++) {
+      console.log(`- Aggregating transaction #${j + 1} from proposal #${id}`);
+      calls.push({
         target: mainnetContracts.governor.options.address,
-        callData: mainnetContracts.governor.methods.executeProposal(id.toString(), id.toString()).encodeABI(),
-      };
-    });
+        callData: mainnetContracts.governor.methods.executeProposal(id, j).encodeABI(),
+      });
+    }
     const txn = await mainnetContracts.multicall.methods
       .aggregate(calls)
       .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
