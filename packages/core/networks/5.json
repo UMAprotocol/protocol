@@ -126,5 +126,9 @@
   {
     "contractName": "OptimisticOracleV3",
     "address": "0x9923D42eF695B5dd9911D05Ac944d4cAca3c4EAB"
+  },
+  {
+    "contractName": "DesignatedVotingV2Factory",
+    "address": "0x2eb5def5cF9635F9D926788a26D424287a045b92"
   }
 ]
