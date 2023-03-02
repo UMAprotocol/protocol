@@ -4,8 +4,14 @@
 
 const hre = require("hardhat");
 
-import { VotingTokenEthers, DesignatedVotingV2FactoryEthers, VotingV2Ethers } from "@uma/contracts-node";
+import {
+  VotingTokenEthers,
+  DesignatedVotingV2FactoryEthers,
+  VotingV2Ethers,
+  DesignatedVotingV2Ethers,
+} from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
+import { utils } from "ethers";
 
 import { baseSafePayload, appendTxToSafePayload } from "./common";
 
@@ -22,6 +28,20 @@ async function main() {
 
   if (!process.env.GNOSIS_SAFE) throw new Error("No GNOSIS_SAFE set");
   const safe = process.env.GNOSIS_SAFE || "";
+
+  // Replace hot wallets based on provided env variable.
+  // Note: the env variable should be formatted as follows:
+  // HOT_WALLET_REPLACEMENTS="0x1234:0x5678,0x9abc:0xdef0"
+  const replacementPairs = process.env.HOT_WALLET_REPLACEMENTS?.split(",") || [];
+  const oldToNewHotWallet = Object.fromEntries(
+    replacementPairs.map((replacementPair) => {
+      // Split by ":".
+      const [originalWallet, replacementWallet] = replacementPair.split(":");
+      if (!originalWallet || !replacementWallet) throw new Error("Invalid HOT_WALLET_REPLACEMENTS provided");
+      // Ensure that the addresses are formatted consistently.
+      return [utils.getAddress(originalWallet), utils.getAddress(replacementWallet)];
+    })
+  );
 
   // Step 1: fetch all the deployed DesignatedVotingV2 deployed from the factory.
   const factoryV2 = await getContractInstance<DesignatedVotingV2FactoryEthers>("DesignatedVotingV2Factory");
@@ -44,6 +64,14 @@ async function main() {
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
   for (const designatedVoting of designatedVotingContracts) {
     const amount = await votingToken.balanceOf(designatedVoting);
+    const dvContract = await getContractInstance<DesignatedVotingV2Ethers>("DesignatedVotingV2", designatedVoting);
+    const currentVoter = utils.getAddress(await dvContract.getMember(1));
+    const updatedHotWallet = oldToNewHotWallet[currentVoter];
+    if (updatedHotWallet)
+      payload = appendTxToSafePayload(payload, designatedVoting, updateVoter, {
+        roleId: 1,
+        newMember: updatedHotWallet,
+      });
     payload = appendTxToSafePayload(payload, designatedVoting, stakeInput, { amount, address: votingV2.address });
     payload = appendTxToSafePayload(payload, designatedVoting, delegateToVoter, {});
   }
@@ -62,6 +90,15 @@ main().then(
     process.exit(1);
   }
 );
+
+const updateVoter = {
+  inputs: [
+    { internalType: "uint256", name: "roleId", type: "uint256" },
+    { internalType: "address", name: "newMember", type: "address" },
+  ],
+  name: "resetMember",
+  payable: false,
+};
 
 const stakeInput = {
   inputs: [

@@ -73,6 +73,8 @@ async function main() {
 
   if (!shouldBuildPayload) process.exit(0);
 
+  console.log("Constructing payload...");
+
   // Step 5: construct the gnosis payload to submit the migration process for each of the designated voting contracts.
   let payload = baseSafePayload(
     chainId,
@@ -93,6 +95,8 @@ async function main() {
       amount,
     });
   }
+
+  console.log("Payload constructed!\n Verifying...");
 
   // Step 6: Verify the payload once again. Each voter should have two actions associated with them: a) pulling of their
   // entitled claim from their previous voting contract and b) deposit into their new voting contract.
@@ -135,9 +139,13 @@ async function main() {
     }
   }
 
+  console.log("Payload verified! \n Saving to disk under /out/1_migration_payload.json");
+
   // Step 7: save json file.
   const savePath = `${path.resolve(__dirname)}/out/1_migration_payload.json`;
   fs.writeFileSync(savePath, JSON.stringify(payload, null, 4));
+
+  console.log("Payload saved!");
 }
 
 main().then(
