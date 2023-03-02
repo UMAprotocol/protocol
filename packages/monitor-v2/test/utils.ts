@@ -10,6 +10,12 @@ export async function getContractFactory(contractName: ContractName, signer?: Si
   return new ContractFactory(contractAbi, contractBytecode, signer);
 }
 
-export const { formatBytes32String, parseUnits, toUtf8Bytes, toUtf8String } = utils;
+// Get block number from transaction (or 0 if transaction is not mined).
+export const getBlockNumberFromTx = async (tx: ContractTransaction): Promise<number> => {
+  await tx.wait();
+  return tx.blockNumber !== undefined ? tx.blockNumber : 0;
+};
+
+export const { formatBytes32String, parseBytes32String, parseUnits, toUtf8Bytes, toUtf8String } = utils;
 
 export { ContractTransaction, hardhatTime, hre, Provider, Signer };

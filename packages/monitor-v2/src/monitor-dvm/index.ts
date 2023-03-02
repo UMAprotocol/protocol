@@ -15,7 +15,7 @@ const logger = Logger;
 async function main() {
   const params = await initMonitoringParams(process.env);
 
-  logger[startupLogLevel(params)]({ at: "DMVMonitor", message: "DVM Monitor started 🔭", botModes: params.botModes });
+  logger[startupLogLevel(params)]({ at: "DVMMonitor", message: "DVM Monitor started 🔭", botModes: params.botModes });
 
   const cmds = {
     unstakesEnabled: monitorUnstakes,
@@ -44,7 +44,10 @@ async function main() {
     await Promise.all(runCmds);
 
     // If polling delay is 0 then we are running in serverless mode and should exit after one iteration.
-    if (params.pollingDelay === 0) break;
+    if (params.pollingDelay === 0) {
+      await delay(5); // Set a delay to let the transports flush fully.
+      break;
+    }
     params.blockRange = await waitNextBlockRange(params);
   }
 }
@@ -55,7 +58,7 @@ main().then(
   },
   async (error) => {
     logger.error({
-      at: "DMVMonitor",
+      at: "DVMMonitor",
       message: "DVM Monitor execution error🚨",
       error,
     });

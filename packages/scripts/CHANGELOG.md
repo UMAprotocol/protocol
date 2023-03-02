@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.23.1...@uma/scripts@1.24.0) (2023-02-28)
+
+### Features
+
+- add ability to replace wallets in DV migration ([#4456](https://github.com/UMAprotocol/protocol/issues/4456)) ([5c34358](https://github.com/UMAprotocol/protocol/commit/5c34358245e2a0e68529eab640b5e85052bdd238))
+- Add stake and delegate payload constuction for gnosis multisig for DesignatedVoting migration ([#4453](https://github.com/UMAprotocol/protocol/issues/4453)) ([7ff1a34](https://github.com/UMAprotocol/protocol/commit/7ff1a348542860770ea7060f12c3ecb673573411))
+- dvm2.0 upgrade scripts updates ([#4451](https://github.com/UMAprotocol/protocol/issues/4451)) ([2fb75fb](https://github.com/UMAprotocol/protocol/commit/2fb75fbbb67c9ac7a46776f35caa1b8cdd539963))
+- update downgrade upgrader ([#4459](https://github.com/UMAprotocol/protocol/issues/4459)) ([050a1b4](https://github.com/UMAprotocol/protocol/commit/050a1b49fa719a6274f4c76d4f7332cc6be91ee8))
+- update getGckmsSigner to be used in hardhat scripts ([#4401](https://github.com/UMAprotocol/protocol/issues/4401)) ([807517d](https://github.com/UMAprotocol/protocol/commit/807517de126aee27191125531e70407b13874795))
+
 ## [1.23.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.23.0...@uma/scripts@1.23.1) (2023-02-20)
 
 **Note:** Version bump only for package @uma/scripts

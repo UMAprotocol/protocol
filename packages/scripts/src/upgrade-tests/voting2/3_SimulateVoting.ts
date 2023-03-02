@@ -41,6 +41,7 @@ import {
   isVotingV2Instance,
   TEST_DOWNGRADE,
 } from "./migrationUtils";
+import { getUniqueVoters, unstakeFromStakedAccount } from "../../utils/votingv2-utils";
 
 interface VotingPriceRequest {
   identifier: BytesLike;
@@ -253,11 +254,21 @@ async function main() {
   if (!(await isVotingV2Instance(votingV2Address))) throw new Error("Oracle is not VotingV2 instance!");
 
   const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", votingV2Address);
+  const governorV2Address = await votingV2.owner();
 
   const emissionRate = await votingV2.emissionRate();
   const gat = await votingV2.gat();
   const unstakeCoolDown = await votingV2.unstakeCoolDown();
   const finalFee = (await store.computeFinalFee(votingToken.address)).rawValue;
+
+  console.log(" 0. Unstake from all preexisting voters...");
+  const uniqueVoters = await getUniqueVoters(votingV2);
+
+  for (const address of uniqueVoters) {
+    await unstakeFromStakedAccount(votingV2, address);
+  }
+
+  console.log("All voters have been unstaked!");
 
   let foundationBalance = await votingToken.balanceOf(FOUNDATION_WALLET);
   console.log(` 1. Foundation has ${formatEther(foundationBalance)} UMA, funding requester and voters...`);
@@ -676,7 +687,6 @@ async function main() {
   );
 
   const oldVotingAddress = await votingV2.previousVotingContract();
-  const governorV2Address = await votingV2.owner();
   const governorV2 = await getContractInstance<GovernorV2Ethers>("GovernorV2", governorV2Address);
   const proposerV2Address = await governorV2.getMember(1);
   const emergencyProposerAddress = await governorV2.getMember(2);

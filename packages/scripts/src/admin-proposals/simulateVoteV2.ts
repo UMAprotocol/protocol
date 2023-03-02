@@ -13,17 +13,29 @@ require("dotenv").config();
 const assert = require("assert").strict;
 
 // Run:
-// - Check out README.md in this folder for setup instructions and simulating votes between the Propose and Verify
-//   steps.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
-// - Vote Simulate: NODE_URL_1=http://localhost:9545 node ./packages/scripts/src/admin-proposals/simulateVoteV2.ts --network localhost
+// - Vote Simulate:
+// NODE_URL_1=http://localhost:9545 node ./packages/scripts/src/admin-proposals/simulateVoteV2.ts --network localhost
+// VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+// GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
+// EXECUTOR_ADDRESS=<EXECUTOR-ADDRESS> \  Optional. If not provided, the first signer will be used.
+// NODE_URL_1=http://127.0.0.1:9545/ \
+// yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost
 
 async function simulateVoteV2() {
   const foundationSigner = await ethers.getSigner(FOUNDATION_WALLET);
 
   const governorV2Address = process.env["GOVERNOR_V2_ADDRESS"];
   const votingV2Address = process.env["VOTING_V2_ADDRESS"];
+  const executor = process.env["EXECUTOR_ADDRESS"];
+  let executorSigner;
+  if (executor) {
+    await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [executor] });
+    executorSigner = (await hre.ethers.getSigner(executor)) as Signer;
+  } else {
+    executorSigner = (await hre.ethers.getSigners())[0];
+  }
 
   const governorV2 = await getContractInstance<GovernorV2Ethers>("GovernorV2", governorV2Address);
   const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", votingV2Address);
@@ -184,7 +196,7 @@ async function simulateVoteV2() {
     for (let j = 0; j < proposal.transactions.length; j++) {
       console.log(`- Submitting transaction #${j + 1} from proposal #${proposalId}`);
       try {
-        const txn = await governorV2.executeProposal(proposalId.toString(), j.toString());
+        const txn = await governorV2.connect(executorSigner).executeProposal(proposalId.toString(), j.toString());
         console.log(`    - Success, receipt: ${txn.hash}`);
       } catch (err) {
         console.error("    - Failure: Txn was likely executed previously, skipping to next one");
