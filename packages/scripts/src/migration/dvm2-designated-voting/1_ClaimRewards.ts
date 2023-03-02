@@ -30,8 +30,7 @@ async function main() {
     if (claimPayload.totalRewards != "0") {
       console.log("\t- Account has rewards to claim! Account has", claimPayload.multicallPayload.length, "rounds");
       claimData.push(claimPayload.multicallPayload);
-    }
-    console.log("\t - Account has no rewards to claim. Skipping");
+    } else console.log("\t - Account has no rewards to claim. Skipping");
   }
 
   // Step 3 join elements to form one flattened array. This is the payload that will be sent to the multicall.
