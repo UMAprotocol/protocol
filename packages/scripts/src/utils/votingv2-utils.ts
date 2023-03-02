@@ -85,6 +85,9 @@ export const votingV2VotingBalanceWithoutExternalTransfers = async (
 };
 
 export const unstakeFromStakedAccount = async (votingV2: VotingV2Ethers, voter: string): Promise<void> => {
+  // Set the balance of the voter to 10 ETH so that they can unstake.
+  await hre.network.provider.send("hardhat_setBalance", [voter, hre.ethers.utils.parseEther("10.0").toHexString()]);
+
   let stakeBalance = await votingV2.callStatic.getVoterStakePostUpdate(voter);
 
   if (stakeBalance.gt(ethers.BigNumber.from(0))) {
