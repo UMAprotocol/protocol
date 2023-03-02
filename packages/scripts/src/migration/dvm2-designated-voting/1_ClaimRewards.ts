@@ -53,7 +53,7 @@ async function main() {
 }
 
 async function fetchClaimPayload(address: string) {
-  const response = await fetch(`http://localhost:3000/api/past-rewards`, {
+  const response = await fetch(`http://vote.uma.xyz/api/past-rewards`, {
     method: "POST",
     body: JSON.stringify({ chainId: 1, address }),
     headers: { Accept: "application/json", "Content-Type": "application/json" },
