@@ -21,34 +21,44 @@ async function main() {
   const designatedVotingData = (await getDesignatedVotingContractsOwnedByOwner(owner)).filter((e) => e.balance.gt(0));
 
   // Step 2: for each contract see if there is a past reward to claim.
-  console.log("ADR");
-  designatedVotingData.map((data) => console.log(data.designatedVoting));
+  const claimData = [];
 
-  const claimData = await (
-    await Promise.all(designatedVotingData.map((data) => fetchClaimPayload(data.designatedVoting)))
-  ).filter((data) => data.totalRewards != "0");
+  for (const [index, designatedVotingContact] of designatedVotingData.entries()) {
+    console.log("\n" + index, "-> fetching claim payload for", designatedVotingContact.designatedVoting);
+    const claimPayload = await fetchClaimPayload(designatedVotingContact.designatedVoting);
 
-  console.log("claimData", claimData);
+    if (claimPayload.totalRewards != "0") {
+      console.log("\t- Account has rewards to claim! Account has", claimPayload.multicallPayload.length, "rounds");
+      claimData.push(claimPayload.multicallPayload);
+    }
+    console.log("\t - Account has no rewards to claim. Skipping");
+  }
+
+  // Step 3 join elements to form one flattened array. This is the payload that will be sent to the multicall.
+  const flattenedClaimPayload = claimData.flat();
+
+  if (flattenedClaimPayload.length == 0) return;
 
   const shouldClaim = await yesno({
     question:
-      `Found a total of ${claimData.length} DesignatedVoting contracts with rewards to claim.` +
+      `Found a total of ${flattenedClaimPayload.length} DesignatedVoting contracts with rewards to claim. ` +
       `Do you want to claim these rewards? (y/n)`,
   });
 
   if (!shouldClaim) process.exit(1);
   console.log(`Sending ClaimTx to VotingV2 multicall...`);
   const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2");
-  const tx = await votingV2.multicall(claimData);
+  const tx = await votingV2.multicall(flattenedClaimPayload);
   tx.wait();
   console.log(`tx: https://etherscan.io/tx/${tx.hash}`);
 }
 
 async function fetchClaimPayload(address: string) {
-  const response = await fetch(`https://voter-dapp-v2-seven.vercel.app/api/past-rewards`, {
+  const response = await fetch(`http://localhost:3000/api/past-rewards`, {
     method: "POST",
     body: JSON.stringify({ chainId: 1, address }),
     headers: { Accept: "application/json", "Content-Type": "application/json" },
+    timeout: 30000,
   });
   return await response.json();
 }
