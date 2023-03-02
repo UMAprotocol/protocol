@@ -15,7 +15,7 @@
 //   - MULTICALL set to 1 if all proposal transactions should be executed through Multicall2 contract.
 //   - TRACE set to 1 if the simulated execution transactions should be traced.
 // - Run with hardhat (only mainnet and localhost networks are supported):
-//   yarn hardhat run .src/admin-proposals/executeProposalV2.ts --network localhost
+//   yarn hardhat run ./src/admin-proposals/executeProposalV2.ts --network localhost
 
 import { strict as assert } from "assert";
 import { Signer } from "ethers";
