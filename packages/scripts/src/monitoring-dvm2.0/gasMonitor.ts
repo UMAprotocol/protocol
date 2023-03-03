@@ -11,7 +11,7 @@ async function main() {
   const tx = await votingV2.processResolvablePriceRequests();
   const result = await tx.wait();
   if (result.gasUsed.gt(process.env.MAX_RESOLUTION_GAS || 1000000))
-    throw new Error(`Gas used for processResolvablePriceRequests is very high at ${result.gasUsed.Tostring()}!`);
+    throw new Error(`Gas used for processResolvablePriceRequests is very high at ${result.gasUsed.toString()}!`);
 
   // Step2. Verify the cost of updating gas trackers for voters, one at a time, post price resolution.
   const uniqueVoters = await getUniqueVoters(votingV2);
