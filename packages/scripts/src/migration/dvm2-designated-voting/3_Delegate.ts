@@ -67,12 +67,21 @@ async function main() {
     const dvContract = await getContractInstance<DesignatedVotingV2Ethers>("DesignatedVotingV2", designatedVoting);
     const currentVoter = utils.getAddress(await dvContract.getMember(1));
     const updatedHotWallet = oldToNewHotWallet[currentVoter];
-    if (updatedHotWallet)
+    if (amount.isZero()) {
+      console.log("Skipping", currentVoter, "as it has no tokens to stake");
+      continue;
+    }
+    if (updatedHotWallet) {
+      console.log("Updating voter", currentVoter, "to", updatedHotWallet, "for", designatedVoting);
       payload = appendTxToSafePayload(payload, designatedVoting, updateVoter, {
-        roleId: 1,
+        roleId: "1",
         newMember: updatedHotWallet,
       });
-    payload = appendTxToSafePayload(payload, designatedVoting, stakeInput, { amount, address: votingV2.address });
+    }
+    payload = appendTxToSafePayload(payload, designatedVoting, stakeInput, {
+      amount: amount.toString(),
+      votingContract: votingV2.address,
+    });
     payload = appendTxToSafePayload(payload, designatedVoting, delegateToVoter, {});
   }
 
@@ -102,7 +111,7 @@ const updateVoter = {
 
 const stakeInput = {
   inputs: [
-    { internalType: "uint256", name: "amount", type: "uint256" },
+    { internalType: "uint128", name: "amount", type: "uint128" },
     { internalType: "address", name: "votingContract", type: "address" },
   ],
   name: "stake",
