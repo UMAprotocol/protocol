@@ -33,6 +33,11 @@ async function main() {
     // to be greater than the ending block if there were no new blocks in the last polling delay. In this case we should
     // wait for the next block range before running the commands.
     if (params.blockRange.start > params.blockRange.end) {
+      // In serverless it is possible for start block to be larger than end block if no new blocks were mined since last run.
+      if (params.pollingDelay === 0) {
+        await delay(5); // Set a delay to let the transports flush fully.
+        break;
+      }
       params.blockRange = await waitNextBlockRange(params);
       continue;
     }

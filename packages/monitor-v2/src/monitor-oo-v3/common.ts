@@ -50,7 +50,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const latestBlockNumber: number = await provider.getBlockNumber();
   const startingBlock = env[STARTING_BLOCK_KEY] ? Number(env[STARTING_BLOCK_KEY]) : latestBlockNumber;
   const endingBlock = env[ENDING_BLOCK_KEY] ? Number(env[ENDING_BLOCK_KEY]) : latestBlockNumber;
-  if (startingBlock > endingBlock) {
+  // In serverless it is possible for start block to be larger than end block if no new blocks were mined since last run.
+  if (startingBlock > endingBlock && pollingDelay !== 0) {
     throw new Error(`${STARTING_BLOCK_KEY} must be less than or equal to ${ENDING_BLOCK_KEY}`);
   }
 
