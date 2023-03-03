@@ -98,6 +98,7 @@ describe("OptimisticOracleV3Monitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, assertionTx.hash));
     assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
   });
   it("Monitor truthful settlement", async function () {
     // Make assertion.
@@ -124,6 +125,7 @@ describe("OptimisticOracleV3Monitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, settlementTx.hash));
     assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
     assert.isTrue(spyLogIncludes(spy, 0, "Result: assertion was true"));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
   });
   it("Monitor dispute", async function () {
     // Make assertion.
@@ -150,6 +152,7 @@ describe("OptimisticOracleV3Monitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, disputeTx.hash));
     assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
   });
   it("Monitor settlement of false assertion", async function () {
     // Make assertion.
@@ -190,5 +193,6 @@ describe("OptimisticOracleV3Monitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, settlementTx.hash));
     assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
     assert.isTrue(spyLogIncludes(spy, 0, "Result: assertion was false"));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
   });
 });

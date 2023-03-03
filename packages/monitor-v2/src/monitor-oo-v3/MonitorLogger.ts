@@ -37,6 +37,7 @@ export async function logAssertion(
       currencySymbol +
       ". The assertion can be disputed till " +
       new Date(Number(assertion.assertionData.expirationTime) * 1000).toUTCString(),
+    notificationPath: "optimistic-oracle",
   });
 }
 
@@ -63,6 +64,7 @@ export async function logDispute(
       tryHexToUtf8String(dispute.claim) +
       ". Identifier: " +
       utils.parseBytes32String(dispute.assertionData.identifier),
+    notificationPath: "optimistic-oracle",
   });
 }
 
@@ -90,5 +92,6 @@ export async function logSettlement(
       utils.parseBytes32String(settlement.assertionData.identifier) +
       ". Result: assertion was " +
       (settlement.assertionData.settlementResolution ? "true" : "false"),
+    notificationPath: "optimistic-oracle",
   });
 }
