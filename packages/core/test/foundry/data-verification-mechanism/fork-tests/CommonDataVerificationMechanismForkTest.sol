@@ -26,10 +26,9 @@ contract CommonDataVerificationMechanismForkTest is CommonTestBase {
         shouldRunForkedTest = (chainId == 1 || chainId == 5);
         if (!shouldRunForkedTest) return; // Exit early if we are not executing forked tests.
 
-        address votingAddress =
-            chainId == 1 ? 0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac : 0xBc3683DEf184ad64f6162024BD401e8D49d0E517;
-
-        voting = VotingV2(votingAddress);
+        voting = chainId == 1
+            ? VotingV2(0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac)
+            : VotingV2(0xBc3683DEf184ad64f6162024BD401e8D49d0E517);
 
         registeredRequester = chainId == 1
             ? 0xA0Ae6609447e57a42c51B50EAe921D701823FFAe
