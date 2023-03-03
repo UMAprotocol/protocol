@@ -28,7 +28,7 @@ contract CommonDataVerificationMechanismForkTest is CommonTestBase {
 
         voting = chainId == 1
             ? VotingV2(0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac)
-            : VotingV2(0xBc3683DEf184ad64f6162024BD401e8D49d0E517);
+            : VotingV2(0xc48F2d8491AffFc8eB21c85dEa1B4c0259c749a0);
 
         registeredRequester = chainId == 1
             ? 0xA0Ae6609447e57a42c51B50EAe921D701823FFAe
