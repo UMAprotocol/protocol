@@ -19,7 +19,7 @@ async function main() {
     const tx = await votingV2.updateTrackers(voter);
     const result = await tx.wait();
     if (result.gasUsed.gt(process.env.MAX_TRACKER_UPDATE_GAS || 1000000))
-      throw new Error(`Gas used for updateTrackers is very high at ${result.gasUsed.Tostring()}!`);
+      throw new Error(`Gas used for updateTrackers is very high at ${result.gasUsed.toString()}!`);
   }
 
   console.log("Gas usage checks passed! All gas usage is within bounds");
