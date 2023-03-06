@@ -244,7 +244,7 @@ describe("DVMMonitor", function () {
   });
   it("Monitor deleted request", async function () {
     const identifier = formatBytes32String("TEST_IDENTIFIER");
-    const time = Math.floor(Date.now() / 1000);
+    const time = await votingV2.getCurrentTime();
     const ancillaryData = toUtf8Bytes("Test ancillary data");
 
     // Register requester and approve price identifier.
@@ -279,7 +279,7 @@ describe("DVMMonitor", function () {
   });
   it("Monitor rolled request", async function () {
     const identifier = formatBytes32String("TEST_IDENTIFIER");
-    const time = Math.floor(Date.now() / 1000);
+    const time = await votingV2.getCurrentTime();
     const ancillaryData = toUtf8Bytes("Test ancillary data");
 
     // Register requester and approve price identifier.
