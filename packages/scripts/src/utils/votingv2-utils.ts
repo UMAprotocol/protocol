@@ -8,9 +8,14 @@ const hre = require("hardhat");
 const { ethers } = hre;
 
 export const getVotingContracts = async (): Promise<{ votingV2: VotingV2Ethers; votingToken: VotingTokenEthers }> => {
-  if (!process.env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
-  await forkNetwork(process.env.CUSTOM_NODE_URL);
-  const chainId = await getForkChainId(process.env.CUSTOM_NODE_URL);
+  let chainId: number;
+  if (hre.network.name === "localhost") {
+    chainId = (await ethers.provider.getNetwork()).chainId;
+  } else {
+    if (!process.env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
+    await forkNetwork(process.env.CUSTOM_NODE_URL);
+    chainId = await getForkChainId(process.env.CUSTOM_NODE_URL);
+  }
 
   if (!chainId || (chainId != 1 && chainId != 5)) throw new Error("This script should be run on mainnet or goerli");
 
