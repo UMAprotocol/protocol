@@ -1,6 +1,7 @@
 import { strict as assert } from "assert";
-import { Signer } from "ethers";
+import { Signer, Wallet } from "ethers";
 import hre from "hardhat";
+import { Provider } from "@ethersproject/abstract-provider";
 import { getGckmsSigner } from "@uma/common";
 import { ProposerV2Ethers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { getContractInstance } from "../utils/contracts";
