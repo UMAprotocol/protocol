@@ -60,7 +60,7 @@ async function proposeEmissionRate(): Promise<void> {
   const ancillaryData =
     "title: Admin proposal setting emission rate to " +
     process.env.EMISSION_RATE +
-    " UMA, umip: " +
+    " UMA/second, umip: " +
     `"https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-${process.env.UMIP}.md"`;
   const txn = await proposerV2
     .connect(proposerSigner)
