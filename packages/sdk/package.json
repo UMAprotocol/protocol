@@ -50,7 +50,7 @@
     "lodash-es": "^4.17.21"
   },
   "peerDependencies": {
-    "@eth-optimism/contracts": "^0.5.37",
+    "@eth-optimism/contracts": "^0.5.40",
     "@eth-optimism/core-utils": "^0.10.1",
     "ethers": "^5.7.2"
   },
