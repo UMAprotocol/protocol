@@ -51,7 +51,10 @@ async function main() {
   // VotingV2 cumulativeStake should be 0 with a tolerance of numberSlashedEvents, as every slash can result in 1 WEI of
   // imprecision due to rounding.
   const cumulativeStake = await votingV2.cumulativeStake();
-  if (cumulativeStake.gt(numberSlashedEvents)) throw new Error("VotingV2 cumulativeStake is not 0");
+  if (cumulativeStake.gt(numberSlashedEvents))
+    throw new Error(
+      `VotingV2 cumulativeStake should be between 0 and ${numberSlashedEvents} but is ${cumulativeStake}`
+    );
 
   console.log("Unstake health check passed! All voters have been unstaked successfully");
 }
