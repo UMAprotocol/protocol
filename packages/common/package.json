@@ -36,7 +36,7 @@
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.5",
     "@nomiclabs/hardhat-web3": "^2.0.0",
-    "@truffle/contract": "^4.6.5",
+    "@truffle/contract": "4.6.5",
     "@truffle/hdwallet-provider": "eip1559-beta",
     "@types/ethereum-protocol": "^1.0.0",
     "@uniswap/v3-core": "^1.0.0-rc.2",
@@ -60,6 +60,7 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
+    "@machinomy/types-truffle-contract": "^0.2.0",
     "@tsconfig/node14": "^1.0.0",
     "@types/lodash.uniqby": "^4.7.6",
     "@types/mocha": "^5.2.7",
