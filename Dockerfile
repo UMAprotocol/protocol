@@ -19,7 +19,7 @@ RUN yarn
 
 # Clean and run all package build steps, but exclude dapps (to save time).
 RUN yarn clean
-RUN yarn qbuild
+RUN yarn build
 
 # Set up additional UMA packages installed in this docker container.
 # Configuer the across v2 relayer as a "across-relayer" base package.
