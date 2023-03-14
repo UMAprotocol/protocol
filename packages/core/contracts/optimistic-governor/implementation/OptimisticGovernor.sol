@@ -158,6 +158,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         // ERC20 token to be used as collateral (must be approved by UMA governance).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "Bond token not supported");
         collateral = _collateral;
+        emit SetCollateral(_collateral);
 
         // Value of the bond posted for asserting the proposed transactions. If the minimum amount required by
         // Optimistic Oracle V3 is higher this contract will attempt to pull the required bond amount.
