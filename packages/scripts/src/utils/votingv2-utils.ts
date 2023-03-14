@@ -1,5 +1,4 @@
-import { VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
-import { TypedEventFilter } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/commons";
+import { VotingTokenEthers, VotingV2Ethers, TypedEventFilterEthers as TypedEventFilter } from "@uma/contracts-node";
 import { BigNumber } from "ethers";
 import { getContractInstance } from "./contracts";
 import { forkNetwork, getForkChainId, increaseEvmTime } from "./utils";

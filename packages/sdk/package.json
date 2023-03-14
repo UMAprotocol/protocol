@@ -47,11 +47,11 @@
     "decimal.js": "^10.3.1",
     "highland": "^2.13.5",
     "immer": "^9.0.7",
-    "lodash-es": "^4.17.21"
+    "lodash-es": "^4.17.21",
+    "@eth-optimism/core-utils": "^0.7.7"
   },
   "peerDependencies": {
     "@eth-optimism/contracts": "^0.5.40",
-    "@eth-optimism/core-utils": "^0.10.1",
     "ethers": "^5.7.2"
   },
   "devDependencies": {
