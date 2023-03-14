@@ -10,23 +10,6 @@ export async function logTransactions(
     proposer: string;
     proposalTime: BigNumber;
     assertionId: string;
-    proposal: [
-      ([string, number, BigNumber, string] & {
-        to: string;
-        operation: number;
-        value: BigNumber;
-        data: string;
-      })[],
-      BigNumber
-    ] & {
-      transactions: ([string, number, BigNumber, string] & {
-        to: string;
-        operation: number;
-        value: BigNumber;
-        data: string;
-      })[];
-      requestTime: BigNumber;
-    };
     proposalHash: string;
     explanation: string;
     rules: string;

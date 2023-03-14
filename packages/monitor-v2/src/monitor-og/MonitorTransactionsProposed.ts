@@ -17,7 +17,6 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         proposer: transaction.args.proposer,
         proposalTime: transaction.args.proposalTime,
         assertionId: transaction.args.assertionId,
-        proposal: transaction.args.proposal,
         proposalHash: transaction.args.proposalHash,
         explanation: transaction.args.explanation,
         rules: transaction.args.rules,

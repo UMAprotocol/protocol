@@ -54,9 +54,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   }
 
   const botModes = {
-    assertionsEnabled: env.ASSERTIONS_ENABLED === "true",
-    disputesEnabled: env.DISPUTES_ENABLED === "true",
-    settlementsEnabled: env.SETTLEMENTS_ENABLED === "true",
+    transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
   };
 
   return {

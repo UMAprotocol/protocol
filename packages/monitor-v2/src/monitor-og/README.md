@@ -1,7 +1,7 @@
 # Optimistic Governor Monitoring
 
 Optimistic Governor monitor bots can report on real time events based on the provided configuration for all the networks
-where `OptimisticOracleV3` contract is deployed.
+where `OptimisticGovernor` contract is deployed.
 
 The main entry point to Optimistic Governor monitor bots is running:
 
@@ -22,8 +22,4 @@ All the configuration should be provided with following environment variables:
   in serverless mode will exit after the loop.
 - `STARTING_BLOCK_NUMBER` and `ENDING_BLOCK_NUMBER` defines block range to look for events on the `CHAIN_ID` network.
   These are mandatory when `POLLING_DELAY=0`.
-- `ASSERTIONS_ENABLED` is boolean enabling/disabling monitoring assertions made (`false` by default).
-- `DISPUTES_ENABLED` is boolean enabling/disabling monitoring disputes on assertions (`false` by default).
-- `SETTLEMENTS_ENABLED` is boolean enabling/disabling monitoring settlement of assertions (`false` by default).
-- `BOT_IDENTIFIER` identifies the application name in the logs.
-- `SLACK_CONFIG` is a JSON object containing `defaultWebHookUrl` for the default Slack webhook URL.
+- `TRANSACTIONS_PROPOSED_ENABLED` is boolean enabling/disabling monitoring transactions proposed (`false` by default).
