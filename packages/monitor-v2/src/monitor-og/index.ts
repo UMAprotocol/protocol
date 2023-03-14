@@ -1,6 +1,17 @@
 import { delay } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel, waitNextBlockRange } from "./common";
-import { monitorTransactionsProposed } from "./MonitorTransactionsProposed";
+import {
+  monitorProposalDeleted,
+  monitorProposalExecuted,
+  monitorSetBond,
+  monitorSetCollateral,
+  monitorSetEscalationManager,
+  monitorSetIdentifier,
+  monitorSetLiveness,
+  monitorSetRules,
+  monitorTransactionsExecuted,
+  monitorTransactionsProposed,
+} from "./MonitorEvents";
 
 const logger = Logger;
 
@@ -15,6 +26,15 @@ async function main() {
 
   const cmds = {
     transactionsProposedEnabled: monitorTransactionsProposed,
+    transactionsExecutedEnabled: monitorTransactionsExecuted,
+    proposalExecutedEnabled: monitorProposalExecuted,
+    proposalDeletedEnabled: monitorProposalDeleted,
+    setBondEnabled: monitorSetBond,
+    setCollateralEnabled: monitorSetCollateral,
+    setRulesEnabled: monitorSetRules,
+    setLivenessEnabled: monitorSetLiveness,
+    setIdentifierEnabled: monitorSetIdentifier,
+    setEscalationManagerEnabled: monitorSetEscalationManager,
   };
 
   for (;;) {

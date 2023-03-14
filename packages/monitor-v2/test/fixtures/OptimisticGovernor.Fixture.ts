@@ -68,8 +68,10 @@ export const deployOptimisticGovernor = hre.deployments.createFixture(
     // Deploy Optimistic Governor and add it to global hardhatTestingAddresses.
     const rules = "https://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi.ipfs.dweb.link/";
     const identifier = formatBytes32String("ZODIAC");
+    const identifierTest = formatBytes32String("TEST");
 
     await parentFixture.identifierWhitelist.addSupportedIdentifier(identifier);
+    await parentFixture.identifierWhitelist.addSupportedIdentifier(identifierTest);
 
     const liveness = 7200;
     const optimisticGovernor = (await (await getContractFactory("OptimisticGovernorTest", deployer)).deploy(

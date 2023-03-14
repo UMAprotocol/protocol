@@ -12,6 +12,15 @@ export { getContractInstanceWithProvider } from "../utils/contracts";
 
 export interface BotModes {
   transactionsProposedEnabled: boolean;
+  transactionsExecutedEnabled: boolean;
+  proposalExecutedEnabled: boolean;
+  proposalDeletedEnabled: boolean;
+  setBondEnabled: boolean;
+  setCollateralEnabled: boolean;
+  setRulesEnabled: boolean;
+  setLivenessEnabled: boolean;
+  setIdentifierEnabled: boolean;
+  setEscalationManagerEnabled: boolean;
 }
 
 export interface BlockRange {
@@ -55,6 +64,15 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const botModes = {
     transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
+    transactionsExecutedEnabled: env.TRANSACTIONS_EXECUTED_ENABLED === "true",
+    proposalExecutedEnabled: env.PROPOSAL_EXECUTED_ENABLED === "true",
+    proposalDeletedEnabled: env.PROPOSAL_DELETED_ENABLED === "true",
+    setBondEnabled: env.SET_BOND_ENABLED === "true",
+    setCollateralEnabled: env.SET_COLLATERAL_ENABLED === "true",
+    setRulesEnabled: env.SET_RULES_ENABLED === "true",
+    setLivenessEnabled: env.SET_LIVENESS_ENABLED === "true",
+    setIdentifierEnabled: env.SET_IDENTIFIER_ENABLED === "true",
+    setEscalationManagerEnabled: env.SET_ESCALATION_MANAGER_ENABLED === "true",
   };
 
   return {
