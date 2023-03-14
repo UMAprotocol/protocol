@@ -49,10 +49,11 @@ export const deployOptimisticGovernor = hre.deployments.createFixture(
     await parentFixture.identifierWhitelist.addSupportedIdentifier(defaultOptimisticOracleV3Identifier);
 
     // Deploy Optimistic Oracle V3 and add it to global hardhatTestingAddresses.
-    const optimisticOracleV3 = (await (await getContractFactory("OptimisticOracleV3", deployer)).deploy(
+    const optimisticOracleV3 = (await (await getContractFactory("OptimisticOracleV3Test", deployer)).deploy(
       parentFixture.finder.address,
       bondToken.address,
-      defaultLiveness
+      defaultLiveness,
+      parentFixture.timer.address
     )) as OptimisticOracleV3Ethers;
 
     await parentFixture.finder.changeImplementationAddress(
@@ -81,6 +82,8 @@ export const deployOptimisticGovernor = hre.deployments.createFixture(
       liveness,
       parentFixture.timer.address
     )) as OptimisticGovernorTestEthers;
+
+    await avatar.setModule(optimisticGovernor.address);
 
     addGlobalHardhatTestingAddress("OptimisticGovernor", optimisticGovernor.address);
 

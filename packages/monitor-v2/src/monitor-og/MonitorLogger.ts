@@ -40,3 +40,52 @@ export async function logTransactions(
     notificationPath: "optimistic-governor",
   });
 }
+
+export async function logTransactionsExecuted(
+  logger: typeof Logger,
+  transaction: {
+    assertionId: string;
+    proposalHash: string;
+    transactionIndex: BigNumber;
+    tx: string;
+  },
+  params: MonitoringParams
+): Promise<void> {
+  logger.warn({
+    at: "OptimisticGovernorMonitor",
+    message: "Transactions Executed ✅",
+    mrkdwn:
+      " Transactions with hash " +
+      transaction.proposalHash +
+      " and assertion ID " +
+      transaction.assertionId +
+      " have been executed in transaction " +
+      createEtherscanLinkMarkdown(transaction.tx, params.chainId) +
+      " with trasaaction index " +
+      transaction.transactionIndex.toString(),
+    notificationPath: "optimistic-governor",
+  });
+}
+
+export async function logProposalExecuted(
+  logger: typeof Logger,
+  transaction: {
+    assertionId: string;
+    proposalHash: string;
+    tx: string;
+  },
+  params: MonitoringParams
+): Promise<void> {
+  logger.warn({
+    at: "OptimisticGovernorMonitor",
+    message: "Proposal Executed ✅",
+    mrkdwn:
+      " Proposal with hash " +
+      transaction.proposalHash +
+      " and assertion ID " +
+      transaction.assertionId +
+      " has been executed in transaction " +
+      createEtherscanLinkMarkdown(transaction.tx, params.chainId),
+    notificationPath: "optimistic-governor",
+  });
+}
