@@ -136,7 +136,11 @@ export const getCurrencySymbol = async (provider: Provider, currencyAddress: str
   }
 };
 
-export const runQueryFilter = async (contract: any, filter: string, blockRange: BlockRange): Promise<any> => {
+export const runQueryFilter = async (
+  contract: OptimisticGovernorEthers,
+  filter: any,
+  blockRange: BlockRange
+): Promise<any> => {
   return contract.queryFilter(filter, blockRange.start, blockRange.end);
 };
 
