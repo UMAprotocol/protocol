@@ -110,11 +110,7 @@ export async function monitorSetBond(logger: typeof Logger, params: MonitoringPa
   for (const transaction of transactions) {
     await logSetBond(
       logger,
-      {
-        bond: transaction.args.bondAmount,
-        collateral: transaction.args.collateral,
-        tx: transaction.transactionHash,
-      },
+      { bond: transaction.args.bondAmount, collateral: transaction.args.collateral, tx: transaction.transactionHash },
       params
     );
   }
@@ -123,14 +119,11 @@ export async function monitorSetBond(logger: typeof Logger, params: MonitoringPa
 export async function monitorSetCollateral(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
 
-  const transactions = await og.queryFilter(og.filters.SetCollateral(), params.blockRange.start, params.blockRange.end);
+  const transactions = await og.queryFilter(og.filters.SetCollateral(), 0, params.blockRange.end);
   for (const transaction of transactions) {
     await logSetCollateral(
       logger,
-      {
-        collateral: transaction.args.collateral,
-        tx: transaction.transactionHash,
-      },
+      { collateral: transaction.args.collateral, tx: transaction.transactionHash },
       params
     );
   }
@@ -141,14 +134,7 @@ export async function monitorSetRules(logger: typeof Logger, params: MonitoringP
 
   const transactions = await og.queryFilter(og.filters.SetRules(), params.blockRange.start, params.blockRange.end);
   for (const transaction of transactions) {
-    await logSetRules(
-      logger,
-      {
-        rules: transaction.args.rules,
-        tx: transaction.transactionHash,
-      },
-      params
-    );
+    await logSetRules(logger, { rules: transaction.args.rules, tx: transaction.transactionHash }, params);
   }
 }
 
@@ -157,14 +143,7 @@ export async function monitorSetLiveness(logger: typeof Logger, params: Monitori
 
   const transactions = await og.queryFilter(og.filters.SetLiveness(), params.blockRange.start, params.blockRange.end);
   for (const transaction of transactions) {
-    await logSetLiveness(
-      logger,
-      {
-        liveness: transaction.args.liveness,
-        tx: transaction.transactionHash,
-      },
-      params
-    );
+    await logSetLiveness(logger, { liveness: transaction.args.liveness, tx: transaction.transactionHash }, params);
   }
 }
 
@@ -175,10 +154,7 @@ export async function monitorSetIdentifier(logger: typeof Logger, params: Monito
   for (const transaction of transactions) {
     await logSetIdentifier(
       logger,
-      {
-        identifier: transaction.args.identifier,
-        tx: transaction.transactionHash,
-      },
+      { identifier: transaction.args.identifier, tx: transaction.transactionHash },
       params
     );
   }
@@ -195,10 +171,7 @@ export async function monitorSetEscalationManager(logger: typeof Logger, params:
   for (const transaction of transactions) {
     await logSetEscalationManager(
       logger,
-      {
-        escalationManager: transaction.args.escalationManager,
-        tx: transaction.transactionHash,
-      },
+      { escalationManager: transaction.args.escalationManager, tx: transaction.transactionHash },
       params
     );
   }

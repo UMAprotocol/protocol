@@ -43,12 +43,7 @@ export async function logTransactions(
 
 export async function logTransactionsExecuted(
   logger: typeof Logger,
-  transaction: {
-    assertionId: string;
-    proposalHash: string;
-    transactionIndex: BigNumber;
-    tx: string;
-  },
+  transaction: { assertionId: string; proposalHash: string; transactionIndex: BigNumber; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -69,11 +64,7 @@ export async function logTransactionsExecuted(
 
 export async function logProposalExecuted(
   logger: typeof Logger,
-  transaction: {
-    assertionId: string;
-    proposalHash: string;
-    tx: string;
-  },
+  transaction: { assertionId: string; proposalHash: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -92,11 +83,7 @@ export async function logProposalExecuted(
 
 export async function logProposalDeleted(
   logger: typeof Logger,
-  transaction: {
-    assertionId: string;
-    proposalHash: string;
-    tx: string;
-  },
+  transaction: { assertionId: string; proposalHash: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -115,11 +102,7 @@ export async function logProposalDeleted(
 
 export async function logSetBond(
   logger: typeof Logger,
-  transaction: {
-    bond: BigNumber;
-    collateral: string;
-    tx: string;
-  },
+  transaction: { bond: BigNumber; collateral: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -138,10 +121,7 @@ export async function logSetBond(
 
 export async function logSetCollateral(
   logger: typeof Logger,
-  transaction: {
-    collateral: string;
-    tx: string;
-  },
+  transaction: { collateral: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -158,10 +138,7 @@ export async function logSetCollateral(
 
 export async function logSetRules(
   logger: typeof Logger,
-  transaction: {
-    rules: string;
-    tx: string;
-  },
+  transaction: { rules: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -178,10 +155,7 @@ export async function logSetRules(
 
 export async function logSetLiveness(
   logger: typeof Logger,
-  transaction: {
-    liveness: BigNumber;
-    tx: string;
-  },
+  transaction: { liveness: BigNumber; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -198,10 +172,7 @@ export async function logSetLiveness(
 
 export async function logSetIdentifier(
   logger: typeof Logger,
-  transaction: {
-    identifier: string;
-    tx: string;
-  },
+  transaction: { identifier: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -218,10 +189,7 @@ export async function logSetIdentifier(
 
 export async function logSetEscalationManager(
   logger: typeof Logger,
-  transaction: {
-    escalationManager: string;
-    tx: string;
-  },
+  transaction: { escalationManager: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
