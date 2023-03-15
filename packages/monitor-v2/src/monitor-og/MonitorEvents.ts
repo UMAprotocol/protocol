@@ -1,4 +1,4 @@
-import { Logger, MonitoringParams, runQueryFilter, createOg } from "./common";
+import { Logger, MonitoringParams, runQueryFilter, getOg } from "./common";
 import { logProposalDeleted, logProposalExecuted, logSetBond, logSetCollateral, logSetRules } from "./MonitorLogger";
 import {
   logSetIdentifier,
@@ -9,7 +9,7 @@ import {
 } from "./MonitorLogger";
 
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.TransactionsProposed(), params.blockRange);
   for (const transaction of transactions) {
     await logTransactions(
@@ -30,7 +30,7 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
 }
 
 export async function monitorTransactionsExecuted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.TransactionExecuted(), params.blockRange);
   for (const transaction of transactions) {
     await logTransactionsExecuted(
@@ -47,7 +47,7 @@ export async function monitorTransactionsExecuted(logger: typeof Logger, params:
 }
 
 export async function monitorProposalExecuted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.ProposalExecuted(), params.blockRange);
   for (const transaction of transactions) {
     await logProposalExecuted(
@@ -63,7 +63,7 @@ export async function monitorProposalExecuted(logger: typeof Logger, params: Mon
 }
 
 export async function monitorProposalDeleted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.ProposalDeleted(), params.blockRange);
   for (const transaction of transactions) {
     await logProposalDeleted(
@@ -79,7 +79,7 @@ export async function monitorProposalDeleted(logger: typeof Logger, params: Moni
 }
 
 export async function monitorSetBond(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.SetBond(), params.blockRange);
   for (const transaction of transactions) {
     await logSetBond(
@@ -91,7 +91,7 @@ export async function monitorSetBond(logger: typeof Logger, params: MonitoringPa
 }
 
 export async function monitorSetCollateral(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.SetCollateral(), params.blockRange);
   for (const transaction of transactions) {
     await logSetCollateral(
@@ -103,7 +103,7 @@ export async function monitorSetCollateral(logger: typeof Logger, params: Monito
 }
 
 export async function monitorSetRules(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.SetRules(), params.blockRange);
   for (const transaction of transactions) {
     await logSetRules(logger, { rules: transaction.args.rules, tx: transaction.transactionHash }, params);
@@ -111,7 +111,7 @@ export async function monitorSetRules(logger: typeof Logger, params: MonitoringP
 }
 
 export async function monitorSetLiveness(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.SetLiveness(), params.blockRange);
   for (const transaction of transactions) {
     await logSetLiveness(logger, { liveness: transaction.args.liveness, tx: transaction.transactionHash }, params);
@@ -119,7 +119,7 @@ export async function monitorSetLiveness(logger: typeof Logger, params: Monitori
 }
 
 export async function monitorSetIdentifier(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.SetIdentifier(), params.blockRange);
   for (const transaction of transactions) {
     await logSetIdentifier(
@@ -131,7 +131,7 @@ export async function monitorSetIdentifier(logger: typeof Logger, params: Monito
 }
 
 export async function monitorSetEscalationManager(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await createOg(params);
+  const og = await getOg(params);
   const transactions = await runQueryFilter(og, og.filters.SetEscalationManager(), params.blockRange);
   for (const transaction of transactions) {
     await logSetEscalationManager(

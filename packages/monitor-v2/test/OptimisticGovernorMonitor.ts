@@ -36,30 +36,6 @@ import {
 
 const ethers = hre.ethers;
 
-// Create monitoring params for single block to pass to monitor modules.
-const createMonitoringParams = async (blockNumber: number): Promise<MonitoringParams> => {
-  // Bot modes are not used as we are calling monitor modules directly.
-  const botModes: BotModes = {
-    transactionsProposedEnabled: false,
-    transactionsExecutedEnabled: false,
-    proposalExecutedEnabled: false,
-    proposalDeletedEnabled: false,
-    setBondEnabled: false,
-    setCollateralEnabled: false,
-    setRulesEnabled: false,
-    setLivenessEnabled: false,
-    setIdentifierEnabled: false,
-    setEscalationManagerEnabled: false,
-  };
-  return {
-    provider: ethers.provider as Provider,
-    chainId: (await ethers.provider.getNetwork()).chainId,
-    blockRange: { start: blockNumber, end: blockNumber },
-    pollingDelay: 0,
-    botModes,
-  };
-};
-
 describe("OptimisticGovernorMonitor", function () {
   let bondToken: ExpandedERC20Ethers;
   let optimisticOracleV3: OptimisticOracleV3Ethers;
@@ -69,6 +45,31 @@ describe("OptimisticGovernorMonitor", function () {
   let random: Signer;
   let proposer: Signer;
   let timer: TimerEthers;
+
+  // Create monitoring params for single block to pass to monitor modules.
+  const createMonitoringParams = async (blockNumber: number): Promise<MonitoringParams> => {
+    // Bot modes are not used as we are calling monitor modules directly.
+    const botModes: BotModes = {
+      transactionsProposedEnabled: false,
+      transactionsExecutedEnabled: false,
+      proposalExecutedEnabled: false,
+      proposalDeletedEnabled: false,
+      setBondEnabled: false,
+      setCollateralEnabled: false,
+      setRulesEnabled: false,
+      setLivenessEnabled: false,
+      setIdentifierEnabled: false,
+      setEscalationManagerEnabled: false,
+    };
+    return {
+      ogAddress: optimisticGovernor.address,
+      provider: ethers.provider as Provider,
+      chainId: (await ethers.provider.getNetwork()).chainId,
+      blockRange: { start: blockNumber, end: blockNumber },
+      pollingDelay: 0,
+      botModes,
+    };
+  };
 
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.

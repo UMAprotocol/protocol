@@ -11,6 +11,7 @@ node ./packages/monitor-v2/dist/monitor-og/index.js
 
 All the configuration should be provided with following environment variables:
 
+- `OG_ADDRESS` is the address of the deployed Optimistic Governor that this bot will monitor.
 - `CHAIN_ID` is network number.
 - `NODE_URLS_X` is an array of RPC node URLs replacing `X` in variable name with network number from `CHAIN_ID`.
 - `NODE_URL_X` is a single RPC node URL replacing `X` in variable name with network number from `CHAIN_ID`. This is

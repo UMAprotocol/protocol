@@ -30,6 +30,7 @@ export interface BlockRange {
 }
 
 export interface MonitoringParams {
+  ogAddress: string;
   provider: Provider;
   chainId: number;
   blockRange: BlockRange;
@@ -38,6 +39,9 @@ export interface MonitoringParams {
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
+  if (!env.OG_ADDRESS) throw new Error("OG_ADDRESS must be defined in env");
+  const ogAddress = String(env.OG_ADDRESS);
+
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
@@ -77,6 +81,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   };
 
   return {
+    ogAddress,
     provider,
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
@@ -135,6 +140,10 @@ export const runQueryFilter = async (contract: any, filter: string, blockRange: 
   return contract.queryFilter(filter, blockRange.start, blockRange.end);
 };
 
-export const createOg = async (params: MonitoringParams): Promise<OptimisticGovernorEthers> => {
-  return await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
+export const getOg = async (params: MonitoringParams): Promise<OptimisticGovernorEthers> => {
+  return await getContractInstanceWithProvider<OptimisticGovernorEthers>(
+    "OptimisticGovernor",
+    params.provider,
+    params.ogAddress
+  );
 };

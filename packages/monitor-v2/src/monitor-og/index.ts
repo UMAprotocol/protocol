@@ -76,8 +76,7 @@ main().then(
       message: "Optimistic Oracle V3 Monitor execution error🚨",
       error,
     });
-    // Wait 5 seconds to allow logger to flush.
-    await delay(5);
+    await delay(5); // Wait 5 seconds to allow logger to flush.
     process.exit(1);
   }
 );

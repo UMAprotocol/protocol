@@ -87,8 +87,6 @@ export const deployOptimisticGovernor = hre.deployments.createFixture(
 
     await avatar.setModule(optimisticGovernor.address);
 
-    addGlobalHardhatTestingAddress("OptimisticGovernor", optimisticGovernor.address);
-
     return { bondToken, optimisticOracleV3, optimisticGovernor, avatar };
   }
 );
