@@ -3,6 +3,7 @@ import { ERC20Ethers } from "@uma/contracts-node";
 import { delay } from "@uma/financial-templates-lib";
 import { utils } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
+import { OptimisticGovernorEthers } from "./common";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 
@@ -128,4 +129,12 @@ export const getCurrencySymbol = async (provider: Provider, currencyAddress: str
       return "";
     }
   }
+};
+
+export const runQueryFilter = async (contract: any, filter: string, blockRange: BlockRange): Promise<any> => {
+  return contract.queryFilter(filter, blockRange.start, blockRange.end);
+};
+
+export const createOg = async (params: MonitoringParams): Promise<OptimisticGovernorEthers> => {
+  return await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
 };

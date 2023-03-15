@@ -1,26 +1,16 @@
-import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticGovernorEthers } from "./common";
+import { Logger, MonitoringParams, runQueryFilter, createOg } from "./common";
+import { logProposalDeleted, logProposalExecuted, logSetBond, logSetCollateral, logSetRules } from "./MonitorLogger";
 import {
-  logProposalDeleted,
-  logProposalExecuted,
-  logSetBond,
-  logSetCollateral,
-  logSetEscalationManager,
   logSetIdentifier,
   logSetLiveness,
-  logSetRules,
   logTransactions,
   logTransactionsExecuted,
+  logSetEscalationManager,
 } from "./MonitorLogger";
 
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(
-    og.filters.TransactionsProposed(),
-    params.blockRange.start,
-    params.blockRange.end
-  );
-
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.TransactionsProposed(), params.blockRange);
   for (const transaction of transactions) {
     await logTransactions(
       logger,
@@ -40,13 +30,8 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
 }
 
 export async function monitorTransactionsExecuted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(
-    og.filters.TransactionExecuted(),
-    params.blockRange.start,
-    params.blockRange.end
-  );
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.TransactionExecuted(), params.blockRange);
   for (const transaction of transactions) {
     await logTransactionsExecuted(
       logger,
@@ -62,13 +47,8 @@ export async function monitorTransactionsExecuted(logger: typeof Logger, params:
 }
 
 export async function monitorProposalExecuted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(
-    og.filters.ProposalExecuted(),
-    params.blockRange.start,
-    params.blockRange.end
-  );
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.ProposalExecuted(), params.blockRange);
   for (const transaction of transactions) {
     await logProposalExecuted(
       logger,
@@ -83,13 +63,8 @@ export async function monitorProposalExecuted(logger: typeof Logger, params: Mon
 }
 
 export async function monitorProposalDeleted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(
-    og.filters.ProposalDeleted(),
-    params.blockRange.start,
-    params.blockRange.end
-  );
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.ProposalDeleted(), params.blockRange);
   for (const transaction of transactions) {
     await logProposalDeleted(
       logger,
@@ -104,9 +79,8 @@ export async function monitorProposalDeleted(logger: typeof Logger, params: Moni
 }
 
 export async function monitorSetBond(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(og.filters.SetBond(), params.blockRange.start, params.blockRange.end);
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.SetBond(), params.blockRange);
   for (const transaction of transactions) {
     await logSetBond(
       logger,
@@ -117,9 +91,8 @@ export async function monitorSetBond(logger: typeof Logger, params: MonitoringPa
 }
 
 export async function monitorSetCollateral(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(og.filters.SetCollateral(), 0, params.blockRange.end);
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.SetCollateral(), params.blockRange);
   for (const transaction of transactions) {
     await logSetCollateral(
       logger,
@@ -130,27 +103,24 @@ export async function monitorSetCollateral(logger: typeof Logger, params: Monito
 }
 
 export async function monitorSetRules(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(og.filters.SetRules(), params.blockRange.start, params.blockRange.end);
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.SetRules(), params.blockRange);
   for (const transaction of transactions) {
     await logSetRules(logger, { rules: transaction.args.rules, tx: transaction.transactionHash }, params);
   }
 }
 
 export async function monitorSetLiveness(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(og.filters.SetLiveness(), params.blockRange.start, params.blockRange.end);
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.SetLiveness(), params.blockRange);
   for (const transaction of transactions) {
     await logSetLiveness(logger, { liveness: transaction.args.liveness, tx: transaction.transactionHash }, params);
   }
 }
 
 export async function monitorSetIdentifier(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(og.filters.SetIdentifier(), params.blockRange.start, params.blockRange.end);
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.SetIdentifier(), params.blockRange);
   for (const transaction of transactions) {
     await logSetIdentifier(
       logger,
@@ -161,13 +131,8 @@ export async function monitorSetIdentifier(logger: typeof Logger, params: Monito
 }
 
 export async function monitorSetEscalationManager(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>("OptimisticGovernor", params.provider);
-
-  const transactions = await og.queryFilter(
-    og.filters.SetEscalationManager(),
-    params.blockRange.start,
-    params.blockRange.end
-  );
+  const og = await createOg(params);
+  const transactions = await runQueryFilter(og, og.filters.SetEscalationManager(), params.blockRange);
   for (const transaction of transactions) {
     await logSetEscalationManager(
       logger,
