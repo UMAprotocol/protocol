@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.24.0...@uma/scripts@1.25.0) (2023-03-16)
+
+
+### Bug Fixes
+
+* add preexisting unstaking step to simulation script ([#4466](https://github.com/UMAprotocol/protocol/issues/4466)) ([b2df930](https://github.com/UMAprotocol/protocol/commit/b2df930ecd234ade067741417f8b9aee1621947d))
+* address small migration nits after running initial script and addition of reward claiming script. ([#4461](https://github.com/UMAprotocol/protocol/issues/4461)) ([3ca0ee0](https://github.com/UMAprotocol/protocol/commit/3ca0ee02a81f58105bfdacebf9564742430b999d))
+* fix a few bugs in 3_Delegate.ts ([#4472](https://github.com/UMAprotocol/protocol/issues/4472)) ([ee37420](https://github.com/UMAprotocol/protocol/commit/ee37420959e2ce328b2229a40938a265cf97602f))
+* unstake health check ([#4471](https://github.com/UMAprotocol/protocol/issues/4471)) ([60cc184](https://github.com/UMAprotocol/protocol/commit/60cc1848a7ccb5919c89a174300f8bc101ed17f3))
+* unstake health check tolerance ([#4481](https://github.com/UMAprotocol/protocol/issues/4481)) ([7a93650](https://github.com/UMAprotocol/protocol/commit/7a93650a7494eaee83756382a18ecf11314499cf))
+
+
+### Features
+
+* add gas limit monitor health check for resolution and settlement ([#4477](https://github.com/UMAprotocol/protocol/issues/4477)) ([b4ddf96](https://github.com/UMAprotocol/protocol/commit/b4ddf96b83f0a0beca8a6ada93519fcd1102b205))
+* add multicall option for execution in simulate and execute scripts ([#4467](https://github.com/UMAprotocol/protocol/issues/4467)) ([3545c05](https://github.com/UMAprotocol/protocol/commit/3545c0530caa41ba45ffab3999ea2bf6dd610ffc))
+* add script for proposing emission rate ([#4479](https://github.com/UMAprotocol/protocol/issues/4479)) ([cfc4bc7](https://github.com/UMAprotocol/protocol/commit/cfc4bc78a5133caa5d0a5e56574c2f22d7871aec))
+* implement proposal execution with ethers ([#4470](https://github.com/UMAprotocol/protocol/issues/4470)) ([09d4865](https://github.com/UMAprotocol/protocol/commit/09d48657384a9ec54398b0a6940f59a08ecaf46a))
+* monitor rollable request timing ([#4478](https://github.com/UMAprotocol/protocol/issues/4478)) ([27baba9](https://github.com/UMAprotocol/protocol/commit/27baba95705cbaf93b9d9bbfb6592ed894270364))
+
+
+
+
+
 # [1.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.23.1...@uma/scripts@1.24.0) (2023-02-28)
 
 ### Features

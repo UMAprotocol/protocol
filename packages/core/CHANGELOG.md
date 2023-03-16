@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.52.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.51.0...@uma/core@2.52.0) (2023-03-16)
+
+
+### Bug Fixes
+
+* add updated deployment addresses and fix stake size for foundry fork test ([#4473](https://github.com/UMAprotocol/protocol/issues/4473)) ([c2ebbfe](https://github.com/UMAprotocol/protocol/commit/c2ebbfe1e5f7fc2adf24edcc7f35f98f228155d5))
+
+
+### Features
+
+* add designated voting factory on goerli ([#4469](https://github.com/UMAprotocol/protocol/issues/4469)) ([4be0810](https://github.com/UMAprotocol/protocol/commit/4be081063bc1008867c6a6e033eddb3c30397622))
+* Add Multicall3 ([#4484](https://github.com/UMAprotocol/protocol/issues/4484)) ([bb4bd22](https://github.com/UMAprotocol/protocol/commit/bb4bd225c33476a4245ec48f7614d10a9474aa65))
+* add optimistic governor monitoring scripts ([#4483](https://github.com/UMAprotocol/protocol/issues/4483)) ([19ed495](https://github.com/UMAprotocol/protocol/commit/19ed495312d304e6c9a63f9afd1d91b77ccf6df0))
+
+
+
+
+
 # [2.51.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.50.0...@uma/core@2.51.0) (2023-02-28)
 
 ### Bug Fixes

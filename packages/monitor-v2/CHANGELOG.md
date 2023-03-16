@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.1.0](https://github.com/UMAprotocol/protocol/compare/monitor-v2@1.0.1...monitor-v2@1.1.0) (2023-03-16)
+
+
+### Bug Fixes
+
+* monitor-v2 block range in serverless ([#4476](https://github.com/UMAprotocol/protocol/issues/4476)) ([34c0fc3](https://github.com/UMAprotocol/protocol/commit/34c0fc355b793bf061185e839646cb64d5ef1d5a))
+* request timing in dvm2 monitor tests ([#4474](https://github.com/UMAprotocol/protocol/issues/4474)) ([fb23b88](https://github.com/UMAprotocol/protocol/commit/fb23b88d03d66c1077a14f2fe43f87904c18a239))
+
+
+### Features
+
+* add notification path for oov3 monitor ([#4475](https://github.com/UMAprotocol/protocol/issues/4475)) ([7ea0dda](https://github.com/UMAprotocol/protocol/commit/7ea0dda53baf733299e3b9ecc29cf9d0d702c368))
+* add optimistic governor monitoring scripts ([#4483](https://github.com/UMAprotocol/protocol/issues/4483)) ([19ed495](https://github.com/UMAprotocol/protocol/commit/19ed495312d304e6c9a63f9afd1d91b77ccf6df0))
+
+
+
+
+
 ## [1.0.1](https://github.com/UMAprotocol/protocol/compare/monitor-v2@1.0.0...monitor-v2@1.0.1) (2023-02-28)
 
 ### Bug Fixes
