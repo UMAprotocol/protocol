@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/financial-templates-lib
 
-
-
-
-
 ## [2.32.7](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.6...@uma/financial-templates-lib@2.32.7) (2023-02-28)
 
 **Note:** Version bump only for package @uma/financial-templates-lib

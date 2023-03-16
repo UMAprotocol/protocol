@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [1.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.23...@uma/affiliates@1.16.0) (2023-03-16)
 
-
 ### Features
 
-* Feb gas rebates ([#4480](https://github.com/UMAprotocol/protocol/issues/4480)) ([d29220c](https://github.com/UMAprotocol/protocol/commit/d29220c043e970461345d759bb7a7265a2b40996))
-
-
-
-
+- Feb gas rebates ([#4480](https://github.com/UMAprotocol/protocol/issues/4480)) ([d29220c](https://github.com/UMAprotocol/protocol/commit/d29220c043e970461345d759bb7a7265a2b40996))
 
 ## [1.15.23](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.22...@uma/affiliates@1.15.23) (2023-02-28)
 

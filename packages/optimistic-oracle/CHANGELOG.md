@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/optimistic-oracle
 
-
-
-
-
 ## [2.15.2](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.15.1...@uma/optimistic-oracle@2.15.2) (2023-02-28)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

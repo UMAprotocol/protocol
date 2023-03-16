@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/monitors
 
-
-
-
-
 ## [2.14.12](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.14.11...@uma/monitors@2.14.12) (2023-02-28)
 
 **Note:** Version bump only for package @uma/monitors
