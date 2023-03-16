@@ -22,8 +22,9 @@ const FxRoot = getContract("FxRootMock");
 // This function should return a bytes string.
 type customPayloadFn = () => Promise<string>;
 interface MaticPosClient {
-  posRootChainManager: {
-    customPayload: customPayloadFn;
+  exitUtil: {
+    buildPayloadForExit: customPayloadFn;
+    isCheckPointed: () => Promise<boolean>;
   };
 }
 describe("Relayer unit tests", function () {
@@ -103,11 +104,12 @@ describe("Relayer unit tests", function () {
     await gasEstimator.update();
     // Construct Matic PoS client that always successfully constructs a proof
     maticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
+      exitUtil: {
+        buildPayloadForExit: async () =>
           new Promise((resolve) => {
             resolve(utf8ToHex("Test proof"));
           }),
+        isCheckPointed: async () => new Promise((resolve) => resolve(true)),
       },
     };
 
@@ -116,7 +118,7 @@ describe("Relayer unit tests", function () {
     deployments.save("OracleRootTunnel", { address: oracleChild.options.address, abi: getAbi("OracleRootTunnel") });
 
     // Construct Relayer that should relay messages without fail.
-    relayer = new Relayer(spyLogger, owner, gasEstimator, maticPosClient, oracleChild, oracleRoot, web3, 0);
+    relayer = new Relayer(spyLogger, owner, gasEstimator, maticPosClient, oracleChild, oracleRoot, web3, 0, 100);
   });
 
   it("exits without error if no MessageSent events emitted", async function () {
@@ -141,10 +143,7 @@ describe("Relayer unit tests", function () {
     assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
   });
   it("ignores events older than earliest polygon block to query", async function () {
-    // Save block number for event so that we can configure Relayer to ignore it.
-    const txn = await oracleChild.methods
-      .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
-      .send({ from: owner });
+    await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
     const messageBytes = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes"],
       [testIdentifier, testTimestamp, expectedStampedAncillaryData]
@@ -162,7 +161,8 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
-      Number(txn.blockNumber + 1)
+      100,
+      101
     );
     // Relay message and check that it ignores events as expected.
     await _relayer.fetchAndRelayMessages();
@@ -173,11 +173,12 @@ describe("Relayer unit tests", function () {
   it("logs error when it fails to construct a proof", async function () {
     // Construct PosClient that always fails to construct a proof.
     const _maticPosClient: MaticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
-          new Promise((resolve, reject) => {
+      exitUtil: {
+        buildPayloadForExit: async () =>
+          new Promise((_, reject) => {
             reject(new Error("This error is always thrown"));
           }),
+        isCheckPointed: async () => new Promise((resolve) => resolve(true)),
       },
     };
     const _relayer: any = new Relayer(
@@ -188,7 +189,8 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
-      0
+      0,
+      100
     );
 
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
@@ -199,15 +201,14 @@ describe("Relayer unit tests", function () {
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Failed to derive proof for MessageSent transaction hash"));
   });
-  it("does not log error when proof fails to be constructed because it has not been checkpointed to mainnet yet", async function () {
-    // Relayer emit DEBUG level logs for any errors thrown on proof construction that reference the transaction not
-    // being checkpointed yet.
+  it("block is not checkpointed yet", async function () {
     const _maticPosClient: MaticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
-          new Promise((resolve, reject) => {
-            reject(new Error("transaction has not been checkpointed"));
+      exitUtil: {
+        buildPayloadForExit: async () =>
+          new Promise((resolve) => {
+            resolve(utf8ToHex("Test proof"));
           }),
+        isCheckPointed: async () => new Promise((resolve) => resolve(false)),
       },
     };
     const _relayer: any = new Relayer(
@@ -218,7 +219,8 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
-      0
+      0,
+      100
     );
 
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
@@ -227,7 +229,7 @@ describe("Relayer unit tests", function () {
     await _relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 0);
-    assert.isTrue(lastSpyLogIncludes(spy, "Failed to derive proof for MessageSent transaction hash"));
+    assert.isTrue(lastSpyLogIncludes(spy, "block not checkpointed"));
   });
   it("logs error when submitting proof to RootTunnel reverts unexpectedly", async function () {
     // Manually override RootTunnelMock such that receiveMessage() always reverts.
@@ -251,10 +253,9 @@ describe("Relayer unit tests", function () {
     // Emit a MessageSent event and instruct relayer to relay the event.
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
 
-    // Bot should attempt to submit a transaction to the RootTunnelMock that will revert
+    // Bot should attempt to submit a transaction to the RootTunnelMock that will revert but not log anything.
     await relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 0);
-    assert.isTrue(lastSpyLogIncludes(spy, "Failed to submit proof to root tunnel"));
   });
 });

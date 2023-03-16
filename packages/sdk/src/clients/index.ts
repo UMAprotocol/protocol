@@ -10,3 +10,5 @@ export * as bridgePool from "./bridgePool";
 export * as etherchain from "./etherchain";
 export * as rateModelStore from "./rateModelStore";
 export * as optimisticOracle from "./optimisticOracle";
+export * as skinnyOptimisticOracle from "./skinnyOptimisticOracle";
+export * as optimisticOracleV2 from "./optimisticOracleV2";

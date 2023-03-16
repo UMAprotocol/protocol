@@ -1,15 +1,19 @@
-import { OptimisticOracleEthers, OptimisticOracleEthers__factory, getOptimisticOracleAbi } from "@uma/contracts-node";
+import {
+  OptimisticOracleInterfaceEthers,
+  OptimisticOracleInterfaceEthers__factory,
+  getOptimisticOracleInterfaceAbi,
+} from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
-import { Event, BigNumberish, utils } from "ethers";
+import { Event, BigNumberish, utils, BigNumber } from "ethers";
 
-export type Instance = OptimisticOracleEthers;
-const Factory = OptimisticOracleEthers__factory;
+export type Instance = OptimisticOracleInterfaceEthers;
+const Factory = OptimisticOracleInterfaceEthers__factory;
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);
 }
 
-export const contractInterface = new utils.Interface(getOptimisticOracleAbi());
+export const contractInterface = new utils.Interface(getOptimisticOracleInterfaceAbi());
 
 export type RequestPrice = GetEventType<Instance, "RequestPrice">;
 export type ProposePrice = GetEventType<Instance, "ProposePrice">;
@@ -41,15 +45,15 @@ export type Request = RequestKey &
     currency: string;
     settled: boolean;
     refundOnDispute: boolean;
-    proposedPrice: string;
-    resolvedPrice: string;
-    expirationTime: number;
-    reward: string;
-    finalFee: string;
-    bond: string;
-    customLiveness: string;
-    price: string;
-    payout: string;
+    proposedPrice: BigNumber;
+    resolvedPrice: BigNumber;
+    expirationTime: BigNumber;
+    reward: BigNumber;
+    finalFee: BigNumber;
+    bond: BigNumber;
+    customLiveness: BigNumber;
+    price: BigNumber;
+    payout: BigNumber;
     state: RequestState;
     // metadata about the transaction that triggered the state changes
     requestTx: string;
@@ -81,14 +85,14 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const request: Request = state.requests[id] || {
         requester,
         identifier,
-        timestamp: timestamp.toNumber(),
+        timestamp,
         ancillaryData,
       };
       state.requests[id] = {
         ...request,
         currency,
-        reward: reward.toString(),
-        finalFee: finalFee.toString(),
+        reward,
+        finalFee,
         state: RequestState.Requested,
         requestTx: event.transactionHash,
         requestBlockNumber: event.blockNumber,
@@ -112,15 +116,15 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const request: Request = state.requests[id] || {
         requester,
         identifier,
-        timestamp: timestamp.toNumber(),
+        timestamp,
         ancillaryData,
       };
       state.requests[id] = {
         ...request,
         currency,
         proposer,
-        proposedPrice: proposedPrice.toString(),
-        expirationTime: expirationTimestamp.toNumber(),
+        proposedPrice,
+        expirationTime: expirationTimestamp,
         state: RequestState.Proposed,
         proposeTx: event.transactionHash,
         proposeBlockNumber: event.blockNumber,
@@ -135,14 +139,14 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const request: Request = state.requests[id] || {
         requester,
         identifier,
-        timestamp: timestamp.toNumber(),
+        timestamp,
         ancillaryData,
       };
       state.requests[id] = {
         ...request,
         proposer,
         disputer,
-        proposedPrice: proposedPrice.toString(),
+        proposedPrice,
         state: RequestState.Disputed,
         disputeTx: event.transactionHash,
         disputeBlockNumber: event.blockNumber,
@@ -157,7 +161,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const request: Request = state.requests[id] || {
         requester,
         identifier,
-        timestamp: timestamp.toNumber(),
+        timestamp,
         ancillaryData,
       };
       state.requests[id] = {
@@ -165,8 +169,8 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         requester,
         proposer,
         disputer,
-        price: price.toString(),
-        payout: payout.toString(),
+        price,
+        payout,
         state: RequestState.Settled,
         settleTx: event.transactionHash,
         settleBlockNumber: event.blockNumber,

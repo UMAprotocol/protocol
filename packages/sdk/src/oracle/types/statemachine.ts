@@ -18,6 +18,8 @@ export enum ContextType {
   pollNewEvents = "pollNewEvents",
   setActiveRequestByTransaction = "setActiveRequestByTransaction",
   settle = "settle",
+  updateActiveRequest = "updateActiveRequest",
+  fetchEventBased = "fetchEventBased",
 }
 
 export type ContextProps = {

@@ -44,6 +44,10 @@ export function getNodeUrl(networkName: string, useHttps = false, chainId: numbe
     // Note: Neither Boba nor xDai currently has no infura support.
     if (name === "boba") return overrideUrl || "https://mainnet.boba.network/";
     if (name === "xdai") return overrideUrl || "https://rpc.xdaichain.com/";
+    if (name === "sx") return overrideUrl || "https://rpc.sx.technology";
+    if (name === "avalanche") return overrideUrl || "https://api.avax.network/ext/bc/C/rpc";
+    if (name === "evmos") return overrideUrl || "https://evmos-json-rpc.stakely.io";
+    if (name === "meter") return overrideUrl || "https://rpc.meter.io";
     return (
       overrideUrl ||
       (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
@@ -164,9 +168,14 @@ export function getWeb3ByChainId(chainId: number): Web3 {
 export function getRetryWeb3sByChainId(chainId: number): Web3[] {
   const retryConfigJson = process.env[`RETRY_CONFIG_${chainId}`] || "[]";
   const retryConfig: RetryConfig[] = JSON.parse(retryConfigJson);
-  const nodeUrl = process.env[`NODE_URL_${chainId}`];
-  // Construct a new web3 object for each URL that isn't a duplicate of NODE_URL_{chainId}.
-  return retryConfig.filter((config) => config.url !== nodeUrl).map((config) => new Web3(config.url));
+
+  if (retryConfig.length === 0) {
+    const providerUrl = process.env[`NODE_URL_${chainId}`];
+    if (!providerUrl) throw new Error(`No providers found for chain id ${chainId}`);
+    return [new Web3(providerUrl)];
+  }
+
+  return retryConfig.map((config) => new Web3(createBasicProvider([config])));
 }
 
 /**

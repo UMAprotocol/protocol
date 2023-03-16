@@ -7,6 +7,11 @@ import { createConsoleTransport } from "./ConsoleTransport";
 import { createJsonTransport } from "./JsonTransport";
 import { createSlackTransport } from "./SlackTransport";
 import { PagerDutyTransport } from "./PagerDutyTransport";
+import {
+  PagerDutyV2Transport,
+  Config as PagerDutyV2Config,
+  createConfig as pagerDutyV2CreateConfig,
+} from "./PagerDutyV2Transport";
 import { DiscordTransport } from "./DiscordTransport";
 import type Transport from "winston-transport";
 import dotenv from "dotenv";
@@ -26,6 +31,7 @@ interface TransportsConfig {
   discordConfig?: DiscordConfig;
   pdApiToken?: string;
   pagerDutyConfig?: PagerDutyConfig;
+  pagerDutyV2Config?: PagerDutyV2Config;
 }
 
 export function createTransports(transportsConfig: TransportsConfig = {}): Transport[] {
@@ -76,6 +82,16 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
           transportsConfig.pagerDutyConfig ?? JSON.parse(process.env.PAGER_DUTY_CONFIG || "null")
         )
       );
+    }
+
+    if (transportsConfig.pagerDutyV2Config || process.env.PAGER_DUTY_V2_CONFIG) {
+      // to disable pdv2, pass in a "disabled=true" in configs or env.
+      const { disabled = false, ...pagerDutyV2Config } =
+        transportsConfig.pagerDutyV2Config ?? JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null");
+      // this will throw an error if an invalid configuration is present
+      if (!disabled) {
+        transports.push(new PagerDutyV2Transport({ level: "warn" }, pagerDutyV2CreateConfig(pagerDutyV2Config)));
+      }
     }
   }
   return transports;

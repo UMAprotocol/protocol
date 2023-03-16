@@ -65,7 +65,7 @@ export function create<P, M extends Memory>(
     id: uid(type + "_"),
     state: "start",
     done: false,
-    updated: now,
+    updated: undefined,
     created: now,
     type,
     // override any part of the context, not recommended for most cases

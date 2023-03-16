@@ -110,7 +110,11 @@ describe("ServerlessHub.js", function () {
       hubTestPort, // port to run the hub on
       `http://localhost:${spokeTestPort}`, // URL to execute spokes on
       network.config.url, // custom node URL to enable the hub to query block numbers.
-      { printHubConfig: true } // set hub config to print config before execution.
+      { printHubConfig: true }, // set hub config to print config before execution.
+      {
+        small: `http://localhost:${spokeTestPort}`, // URL to execute spokes on
+        large: `http://localhost:${spokeTestPort}`, // URL to execute spokes on
+      }
     );
 
     // Start the serverless spoke instance with the spy logger injected.
@@ -214,6 +218,67 @@ describe("ServerlessHub.js", function () {
     assert.isTrue(spyLogIncludes(hubSpy, -3, startingBlockNumber), "should return block information for chain");
     assert.isTrue(spyLogIncludes(hubSpy, -3, defaultChainId), "should return chain ID");
     assert.isTrue(spyLogIncludes(hubSpy, -4, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
+  });
+  it("ServerlessHub can correctly execute bot with named spokes", async function () {
+    // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
+    // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
+    // used by a user running the hub-spoke on their local machine.
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const defaultConfig = {
+      serverlessCommand: "yarn --silent monitors --network test",
+      environmentVariables: {
+        CUSTOM_NODE_URL: network.config.url,
+        POLLING_DELAY: 0,
+        EMP_ADDRESS: emp.options.address,
+        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
+        MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+      },
+    };
+    const hubConfig = {
+      // no named spoke
+      testDefaultInstance: defaultConfig,
+      // one named spoke
+      testSmallInstance: { ...defaultConfig, spokeUrlName: "small" },
+      // other named spoke
+      testLargeInstance: { ...defaultConfig, spokeUrlName: "large" },
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
+    const validResponse = await sendHubRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // no error code
+    assert.isTrue(spyLogIncludes(hubSpy, 4, "serverless spoke using named spoke small"), "should run small instance");
+    assert.isTrue(spyLogIncludes(hubSpy, 5, "serverless spoke using named spoke large"), "should run large instance");
+  });
+  it("ServerlessHub correctly fails with an invalid named spoke", async function () {
+    // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
+    // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
+    // used by a user running the hub-spoke on their local machine.
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const defaultConfig = {
+      serverlessCommand: "yarn --silent monitors --network test",
+      environmentVariables: {
+        CUSTOM_NODE_URL: network.config.url,
+        POLLING_DELAY: 0,
+        EMP_ADDRESS: emp.options.address,
+        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
+        MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+      },
+    };
+    const hubConfig = { testInvalidInstance: { ...defaultConfig, spokeUrlName: "invalid" } };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
+    const response = await sendHubRequest(validBody);
+    assert.equal(response.res.statusCode, 500); // no error code
   });
   it("ServerlessHub correctly deals with rejected spoke calls", async function () {
     // valid config to send but set the spoke to be off-line
@@ -331,24 +396,24 @@ describe("ServerlessHub.js", function () {
           MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
-      testServerlessLiquidator: {
-        serverlessCommand: "yarn --silent liquidator --network test",
+      testServerlessMonitor2: {
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.options.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
-      testServerlessDisputer: {
-        serverlessCommand: "yarn --silent disputer --network test",
+      testServerlessMonitor3: {
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.options.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
     };
@@ -491,24 +556,24 @@ describe("ServerlessHub.js", function () {
           MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
-      testServerlessLiquidator: {
-        serverlessCommand: "yarn --silent liquidator --network test",
+      testServerlessMonitor2: {
+        serverlessCommand: "yarn --silent monitor --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.options.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
-      testServerlessDisputer: {
-        serverlessCommand: "yarn --silent disputer --network test",
+      testServerlessMonitor3: {
+        serverlessCommand: "yarn --silent monitor --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.options.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
         },
       },
     };

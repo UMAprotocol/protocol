@@ -11,9 +11,12 @@
  * 1) PORT: local port to run the hub on. if not specified will default to 8080
  * 2) SPOKE_URL: http url to a serverless spoke instance. This could be local host (if running locally) or a GCP
  * cloud run/cloud function URL which will spin up new instances for each parallel bot execution.
- * 3) CUSTOM_NODE_URL: an ethereum node used to fetch the latest block number when the script runs.
- 4 ) HUB_CONFIG: JSON object configuring configRetrieval to define where to pull configs from, saveQueriedBlock to 
- * define where to save last queried block numbers and spokeRunner to define the execution environment for the spoke process. 
+ * 3) SPOKE_URLS: An optional argument in the form of a stringified JSON Object in the form of Record<string,string>
+ * Keys are a name for the spoke, and values are the spoke urls. This is only needed when we want to specificy
+ * different spoke urls for each configuration. Select by using the parameter "spokeUrlName" on the config file for each bot.
+ * 4) CUSTOM_NODE_URL: an ethereum node used to fetch the latest block number when the script runs.
+ * 5) HUB_CONFIG: JSON object configuring configRetrieval to define where to pull configs from, saveQueriedBlock to
+ * define where to save last queried block numbers and spokeRunner to define the execution environment for the spoke process.
  * This script assumes the caller is providing a HTTP POST with a body formatted as:
  * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
  */
@@ -23,6 +26,7 @@ const hub = express();
 hub.use(express.json()); // Enables json to be parsed by the express process.
 require("dotenv").config();
 const fetch = require("node-fetch");
+const fetchWithRetry = require("fetch-retry")(fetch);
 const { URL } = require("url");
 const lodash = require("lodash");
 
@@ -30,7 +34,22 @@ const lodash = require("lodash");
 const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run & cloud functions.
 const auth = new GoogleAuth();
 const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
-const storage = new Storage();
+
+const { WAIT_FOR_LOGGER_DELAY, GCP_STORAGE_CONFIG } = process.env;
+
+// Enabling retry in case of transient timeout issues.
+const DEFAULT_RETRIES = 1;
+
+// Allows the environment to customize the config that's used to interact with google cloud storage.
+// Relevant options can be found here: https://googleapis.dev/nodejs/storage/latest/global.html#StorageOptions.
+// Specific fields of interest:
+// - timeout: allows the env to set the timeout for all http requests.
+// - retryOptions: object that allows the caller to specify how the library retries.
+const storageConfig = GCP_STORAGE_CONFIG
+  ? JSON.parse(GCP_STORAGE_CONFIG)
+  : { autoRetry: true, maxRetries: DEFAULT_RETRIES };
+const storage = new Storage(storageConfig);
+
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
 const { createBasicProvider } = require("@uma/common");
@@ -41,8 +60,33 @@ const Web3 = require("web3");
 const { delay, createNewLogger } = require("@uma/financial-templates-lib");
 let customLogger;
 let spokeUrl;
+// spokeUrlTable is an optional table populated through the env var SPOKE_URLS. SPOKE_URLS is expected to be a
+// stringified JSON object in the form Record<string:string>. Where keys are a name for the spoke url
+// and the values are the spoke urls. The env gets parsed into spokeUrlTable.  Bots can select a size with
+// the spokeUrlName="large" on the configuration object.
+// For Example:
+// {
+//   large:"https://large-spoke-url",
+//   small:"https://small-spoke-url",
+// }
+let spokeUrlTable = {};
 let customNodeUrl;
 let hubConfig = {};
+
+// Lets us specify spoke url by a name or fallback to default spoke pool url.
+// this should allow us to create multiple levels of spoke pool hardware (small,medium,large)
+// and switch between urls based on the bot config.
+function getSpokeUrl(name) {
+  if (name) {
+    // this will check if you have specified a name, and do a lookup. If a name is specified but does not exist this
+    // will be an error
+    const url = spokeUrlTable?.[name];
+    if (!url) throw new Error("No valid spoke url available for name: " + name);
+    return url;
+    // if no name specified just return spokeUrl. This may possibly be undefined, but this is compatible with past
+    // behavior.
+  } else return spokeUrl;
+}
 
 const defaultHubConfig = {
   configRetrieval: "localStorage",
@@ -51,7 +95,7 @@ const defaultHubConfig = {
   rejectSpokeDelay: 120, // 2 min.
 };
 
-const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
+const waitForLoggerDelay = WAIT_FOR_LOGGER_DELAY || 5;
 
 hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
@@ -64,6 +108,11 @@ hub.post("/", async (req, res) => {
     if (!req.body.bucket || !req.body.configFile) {
       throw new Error("Body missing json bucket or file parameters!");
     }
+
+    // Allow the request to override the spoke rejection timeout.
+    const spokeRejectionTimeout =
+      req.body.rejectSpokeDelay !== undefined ? parseInt(req.body.rejectSpokeDelay) : hubConfig.rejectSpokeDelay;
+
     // Get the config file from the GCP bucket if running in production mode. Else, pull the config from env.
     const configObject = await _fetchConfig(req.body.bucket, req.body.configFile);
     if (!configObject)
@@ -74,6 +123,7 @@ hub.post("/", async (req, res) => {
       at: "ServerlessHub",
       message: "Executing Serverless query from config file",
       spokeUrl,
+      spokeUrlTable,
       botsExecuted: Object.keys(configObject),
       configObject: hubConfig.printHubConfig ? configObject : "REDACTED",
     });
@@ -94,18 +144,43 @@ hub.post("/", async (req, res) => {
     for (const botName in configObject) {
       // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
       const [botWeb3, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
+
       const chainId = await _getChainId(botWeb3);
+
+      // Cache the chain id for this node url.
       nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
 
-      // If we've seen this chain ID already we can skip it:
+      // If we've seen this chain ID already we can skip it.
       if (blockNumbersForChain[chainId]) continue;
 
-      // Fetch last seen block for this chain:
-      let lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile, chainId, logger);
+      // If STORE_MULTI_CHAIN_BLOCK_NUMBERS is set then this bot requires to know a number of last seen blocks across
+      // a set of chainIds. Construct a batch promise to evaluate the latest block number for each chainId.
+      if (configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS) {
+        const multiChainIds = configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS;
+        let promises = [];
+        for (const chainId of multiChainIds) {
+          promises.push(
+            _getLastQueriedBlockNumber(req.body.configFile, chainId, logger),
+            _getBlockNumberOnChainIdMultiChain(configObject[botName], chainId)
+          );
+        }
+        let results = await Promise.all(promises);
+        results.forEach((_, index) => {
+          if (index % 2 !== 0) return;
+          const chainId = multiChainIds[Math.floor(index / 2)];
+          blockNumbersForChain[chainId] = {
+            lastQueriedBlockNumber: results[index + 1],
+            latestBlockNumber: results[index],
+          };
+        });
+      }
 
-      // Next, get the head block for the chosen chain, which we'll use to override the last queried block number
+      // Fetch last seen block for this chain and get the head block for the chosen chain, which we'll use to override the last queried block number
       // stored in GCP at the end of this hub execution.
-      let latestBlockNumber = await _getLatestBlockNumber(botWeb3);
+      let [lastQueriedBlockNumber, latestBlockNumber] = await Promise.all([
+        _getLastQueriedBlockNumber(req.body.configFile, chainId, logger),
+        _getLatestBlockNumber(botWeb3),
+      ]);
 
       // If the last queried block number stored on GCP Data Store is undefined, then its possible that this is
       // the first time that the hub is being run for this chain. Therefore, try setting it to the head block number
@@ -145,17 +220,25 @@ hub.post("/", async (req, res) => {
     for (const botName in configObject) {
       const [, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
       const chainId = nodeUrlToChainIdCache[spokeCustomNodeUrl];
-      const lastQueriedBlockNumber = blockNumbersForChain[chainId].lastQueriedBlockNumber;
-      const latestBlockNumber = blockNumbersForChain[chainId].latestBlockNumber;
 
       // Execute the spoke's command:
-      const botConfig = _appendEnvVars(configObject[botName], botName, lastQueriedBlockNumber, latestBlockNumber);
+      const botConfig = _appendEnvVars(
+        configObject[botName],
+        botName,
+        chainId,
+        blockNumbersForChain,
+        configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS
+      );
       botConfigs[botName] = botConfig;
+      // Gets a spoke url based on execution size or fallback to default spoke url if non specified
+      if (botConfig.spokeUrlName)
+        logger.debug({
+          at: "ServerlessHub",
+          message: `Attempting to execute ${botName} serverless spoke using named spoke ${botConfig.spokeUrlName}`,
+        });
+      const spokeUrl = getSpokeUrl(botConfig.spokeUrlName);
       promiseArray.push(
-        Promise.race([
-          _executeServerlessSpoke(spokeUrl, botConfig),
-          _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName),
-        ])
+        Promise.race([_executeServerlessSpoke(spokeUrl, botConfig), _rejectAfterDelay(spokeRejectionTimeout, botName)])
       );
     }
     logger.debug({ at: "ServerlessHub", message: "Executing Serverless spokes", botConfigs });
@@ -188,10 +271,11 @@ hub.post("/", async (req, res) => {
       });
       let rejectedRetryPromiseArray = [];
       retriedOutputs.forEach((botName) => {
+        const spokeUrl = getSpokeUrl(botConfigs[botName].spokeUrlName);
         rejectedRetryPromiseArray.push(
           Promise.race([
             _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
-            _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName),
+            _rejectAfterDelay(spokeRejectionTimeout, botName),
           ])
         );
       });
@@ -286,7 +370,7 @@ const _executeServerlessSpoke = async (url, body) => {
 const _fetchConfig = async (bucket, file) => {
   let config;
   if (hubConfig.configRetrieval == "git") {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://api.github.com/repos/${hubConfig.gitSettings.organization}/${hubConfig.gitSettings.repoName}/contents/${bucket}/${file}`,
       {
         method: "GET",
@@ -296,6 +380,7 @@ const _fetchConfig = async (bucket, file) => {
           Accept: "application/vnd.github.v3.raw",
           "Accept-Charset": "utf-8",
         },
+        retries: DEFAULT_RETRIES,
       }
     );
     config = await response.json(); // extract JSON from the http response
@@ -333,9 +418,8 @@ const _fetchConfig = async (bucket, file) => {
   return config;
 };
 
-// Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entity kind and
-// `configIdentifier` is the entity ID. Each entity has a column "<chainID>" which stores the latest block
-// seen for a network.
+// Save a the last blocknumber seen by the hub to GCP datastore. BlockNumberLog is the entity kind and configIdentifier
+// is the entity ID. Each entity has a column "<chainID>" which stores the latest block seen for a network.
 async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain, logger) {
   // Sometimes the GCP datastore can be flaky and return errors when fetching data. Use re-try logic to re-run on error.
   await retry(
@@ -408,6 +492,20 @@ function _getWeb3AndUrlForBot(botConfig) {
   }
 }
 
+function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
+  const urls = botConfig?.environmentVariables?.[`NODE_URLS_${chainId}`]
+    ? botConfig.environmentVariables[`NODE_URLS_${chainId}`]
+    : botConfig?.environmentVariables?.[`NODE_URL_${chainId}`];
+  if (!urls)
+    throw new Error(
+      `ServerlessHub::_getBlockNumberOnChainIdMultiChain NODE_URLS_${chainId} or NODE_URL_${chainId} in botConfig: ${botConfig}`
+    );
+
+  const retryConfig = lodash.castArray(urls).map((url) => ({ url }));
+  const retryWeb3 = new Web3(createBasicProvider(retryConfig));
+  return retryWeb3.eth.getBlockNumber();
+}
+
 // Get the latest block number from either `overrideNodeUrl` or `CUSTOM_NODE_URL`. Used to update the `
 // lastSeenBlockNumber` after each run.
 async function _getLatestBlockNumber(web3) {
@@ -419,11 +517,18 @@ async function _getChainId(web3) {
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
-function _appendEnvVars(config, botName, lastQueriedBlockNumber, latestBlockNumber) {
+function _appendEnvVars(config, botName, chainId, blockNumbersForChain, multiChainBlocks) {
   // The starting block number should be one block after the last queried block number to not double report that block.
-  config.environmentVariables["STARTING_BLOCK_NUMBER"] = Number(lastQueriedBlockNumber) + 1;
-  config.environmentVariables["ENDING_BLOCK_NUMBER"] = latestBlockNumber;
+  config.environmentVariables["STARTING_BLOCK_NUMBER"] =
+    Number(blockNumbersForChain[chainId].lastQueriedBlockNumber) + 1;
+  config.environmentVariables["ENDING_BLOCK_NUMBER"] = blockNumbersForChain[chainId].latestBlockNumber;
   config.environmentVariables["BOT_IDENTIFIER"] = botName;
+  if (multiChainBlocks)
+    multiChainBlocks.forEach((chainId) => {
+      config.environmentVariables[`STARTING_BLOCK_NUMBER_${chainId}`] =
+        Number(blockNumbersForChain[chainId].lastQueriedBlockNumber) + 1;
+      config.environmentVariables[`ENDING_BLOCK_NUMBER_${chainId}`] = blockNumbersForChain[chainId].latestBlockNumber;
+    });
   return config;
 }
 
@@ -496,7 +601,7 @@ const _rejectAfterDelay = (seconds, childProcessIdentifier) =>
   });
 
 // Start the hub's async listening process. Enables injection of a logging instance & port for testing.
-async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig) {
+async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig, spokeURLS) {
   customLogger = _customLogger;
   // The Serverless hub should have a configured URL to define the remote instance & a local node URL to boot.
   if (!_spokeURL || !_CustomNodeUrl) {
@@ -510,6 +615,8 @@ async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubC
 
   // Set configs to be used in the sererless execution.
   spokeUrl = _spokeURL;
+  // This should be specified as an object Record<size:string,url:string>
+  spokeUrlTable = spokeURLS;
   customNodeUrl = _CustomNodeUrl;
   if (_hubConfig) hubConfig = { ...defaultHubConfig, ..._hubConfig };
   else hubConfig = defaultHubConfig;
@@ -519,6 +626,7 @@ async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubC
       at: "ServerlessHub",
       message: "Serverless hub initialized",
       spokeUrl,
+      spokeUrlTable,
       customNodeUrl,
       hubConfig,
       port,
@@ -529,15 +637,22 @@ async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubC
 // If called directly by node, start the Poll process. If imported as a module then do nothing.
 if (require.main === module) {
   // add the logger, port, protocol runnerURL and custom node URL as params.
-  hubConfig;
+  let hubConfig;
   try {
     hubConfig = process.env.HUB_CONFIG ? JSON.parse(process.env.HUB_CONFIG) : null;
   } catch (error) {
     console.error("Malformed hub config!", hubConfig);
     process.exit(1);
   }
+  let spokeURLS;
+  try {
+    spokeURLS = process.env.SPOKE_URLS ? JSON.parse(process.env.SPOKE_URLS) : {};
+  } catch (error) {
+    console.error("Malformed SPOKE_URLS env!");
+    process.exit(1);
+  }
 
-  Poll(null, process.env.PORT, process.env.SPOKE_URL, process.env.CUSTOM_NODE_URL, hubConfig).then(() => {});
+  Poll(null, process.env.PORT, process.env.SPOKE_URL, process.env.CUSTOM_NODE_URL, hubConfig, spokeURLS).then(() => {});
 }
 
 hub.Poll = Poll;

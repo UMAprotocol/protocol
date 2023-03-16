@@ -1,7 +1,7 @@
 # UMA Protocol
 
 <p align="center">
-  <img alt="UMA Logo" src="https://umaproject.org/assets/images/logo.svg" width="440">
+  <img alt="UMA Logo" src="https://raw.githubusercontent.com/UMAprotocol/website/master/documents/press-kit/logos/02_SVG/Orange.svg" width="440">
 </p>
 
 [![<UMAprotocol>](https://circleci.com/gh/UMAprotocol/protocol.svg?style=shield)](https://app.circleci.com/pipelines/github/UMAprotocol/protocol)
@@ -116,8 +116,8 @@ yarn lint
 
 ### Packages 📦
 
-Because this repo is a monorepo, it conatains many different npm packages. More will be discussed about these packages in the
-following sections. However, the basic structure is that each pacakge is listed in the `packages/` directory. Each package has
+Because this repo is a monorepo, it contains many different npm packages. More will be discussed about these packages in the
+following sections. However, the basic structure is that each package is listed in the `packages/` directory. Each package has
 its own scripts and dependencies and operates (mostly) independently from the others.
 
 ### Adding dependencies 👩‍👦

@@ -46,6 +46,9 @@ type Block = SectionBlock | DividerBlock; // Add more | types here to add more t
 interface SlackFormatterResponse {
   blocks: Block[];
 }
+
+export const SLACK_MAX_CHAR_LIMIT = 3000;
+
 // Note: info is any because it comes directly from winston.
 function slackFormatter(info: any): SlackFormatterResponse {
   try {
@@ -68,7 +71,14 @@ function slackFormatter(info: any): SlackFormatterResponse {
     // sub points. This is also expanded as a sub indented section.
     for (const key in info) {
       // these keys have been printed in the previous block or should not be included in slack messages.
-      if (key == "at" || key == "level" || key == "message" || key == "bot-identifier" || key == "notificationPath")
+      if (
+        key == "at" ||
+        key == "level" ||
+        key == "message" ||
+        key == "bot-identifier" ||
+        key == "notificationPath" ||
+        key == "discordPaths"
+      )
         continue;
 
       // If the key is `mrkdwn` then simply return only the markdown as the txt object. This assumes all formatting has
@@ -174,34 +184,12 @@ class SlackHook extends Transport {
     payload.blocks = layout.blocks || undefined;
     let errorThrown = false;
     // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
-    if (JSON.stringify(payload).length < 3000) {
+    if (JSON.stringify(payload).length < SLACK_MAX_CHAR_LIMIT) {
       const response = await this.axiosInstance.post(webhookUrl, payload);
       if (response.status != 200) errorThrown = true;
     } else {
-      // If it's more than 3000 chars then we need to split the message sent to slack API into multiple calls.
-      let messageIndex = 0;
-      const processedBlocks: Block[][] = [[]];
-      for (let block of payload.blocks) {
-        if (JSON.stringify(block).length > 3000) {
-          // If the block (one single part of a message) is larger than 3000 chars then we must redact part of the message.
-          const stringifiedBlock = JSON.stringify(block);
-          const redactedBlock =
-            stringifiedBlock.substr(0, 1400) +
-            "-MESSAGE REDACTED DUE TO LENGTH-" +
-            stringifiedBlock.substr(stringifiedBlock.length - 1400, stringifiedBlock.length);
-          block = JSON.parse(redactedBlock);
-        }
-        if (JSON.stringify([...processedBlocks[messageIndex], block]).length > 3000) {
-          // If the set blocks is larger than 3000 then we must increment the message index, to enable sending the set
-          // of messages over multiple calls to the slack API. The amounts to splitting up one Winston log into multiple
-          // slack messages with no single slack message exceeding the 3000 char limit.
-          messageIndex += 1;
-        }
-        if (!processedBlocks[messageIndex]) processedBlocks[messageIndex] = [];
-        processedBlocks[messageIndex].push(block);
-      }
       // Iterate over each message to send and generate a axios call for each message.
-      for (const processedBlock of processedBlocks) {
+      for (const processedBlock of processMessageBlocks(payload.blocks)) {
         payload.blocks = processedBlock;
         const response = await this.axiosInstance.post(webhookUrl, payload);
         if (response.status != 200) errorThrown = true;
@@ -210,6 +198,73 @@ class SlackHook extends Transport {
     callback();
     if (errorThrown) console.error("slack transport error!");
   }
+}
+
+function processMessageBlocks(blocks: Block[]): Block[][] {
+  // If it's more than 3000 chars then we need to split the message sent to slack API into multiple calls.
+  let messageIndex = 0;
+
+  // Split any block that's longer than 3000 chars by new line (\n) if possible.
+  const splitBlocks = [];
+  for (const block of blocks) {
+    // If any of the smaller blocks is still larger than 3000 chars then we must redact part of the message.
+    for (let smallerBlock of splitByNewLine(block)) {
+      if (JSON.stringify(smallerBlock).length > SLACK_MAX_CHAR_LIMIT) {
+        const stringifiedBlock = JSON.stringify(smallerBlock);
+        const redactedBlock =
+          stringifiedBlock.substr(0, 1400) +
+          "-MESSAGE REDACTED DUE TO LENGTH-" +
+          stringifiedBlock.substr(stringifiedBlock.length - 1400, stringifiedBlock.length);
+        smallerBlock = JSON.parse(redactedBlock);
+      }
+      splitBlocks.push(smallerBlock);
+    }
+  }
+
+  const processedBlocks: Block[][] = [[]];
+  for (const block of splitBlocks) {
+    if (JSON.stringify([...processedBlocks[messageIndex], block]).length > SLACK_MAX_CHAR_LIMIT) {
+      // If the set blocks is larger than 3000 then we must increment the message index, to enable sending the set
+      // of messages over multiple calls to the slack API. The amounts to splitting up one Winston log into multiple
+      // slack messages with no single slack message exceeding the 3000 char limit.
+      messageIndex += 1;
+    }
+    if (!processedBlocks[messageIndex]) processedBlocks[messageIndex] = [];
+    processedBlocks[messageIndex].push(block);
+  }
+
+  return processedBlocks;
+}
+
+export function splitByNewLine(block: Block): Block[] {
+  // No need to split if the block is already under limit.
+  if (block.type === "divider" || JSON.stringify(block).length <= SLACK_MAX_CHAR_LIMIT) {
+    return [block];
+  }
+
+  const lines = block.text.text.split("\n");
+  const smallerBlocks = [createSectionBlock("")];
+  for (let line of lines) {
+    // Skip empty lines.
+    if (line.length == 0) continue;
+
+    // Add a new block if the previous block's content + current line exceed the char limit.
+    line += "\n";
+    const newBlock = createSectionBlock(smallerBlocks[smallerBlocks.length - 1].text.text + line);
+    if (JSON.stringify(newBlock).length + line.length > SLACK_MAX_CHAR_LIMIT) {
+      smallerBlocks.push(createSectionBlock(line));
+    } else {
+      smallerBlocks[smallerBlocks.length - 1].text.text += line;
+    }
+  }
+  return smallerBlocks;
+}
+
+function createSectionBlock(text: string): SectionBlock {
+  return {
+    type: "section",
+    text: { type: "mrkdwn", text },
+  };
 }
 
 export function createSlackTransport(transportConfig: Options["transportConfig"]): SlackHook {

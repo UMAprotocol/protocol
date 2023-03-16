@@ -14,8 +14,10 @@ import * as pollActiveRequest from "./pollActiveRequest";
 import * as pollActiveUser from "./pollActiveUser";
 import * as fetchPastEvents from "./fetchPastEvents";
 import * as pollNewEvents from "./pollNewEvents";
-import * as setActiveRequestByTransaction from "./setActiveRequestByTransaction";
+import * as updateActiveRequest from "./updateActiveRequest";
 import * as settle from "./settle";
+import * as setActiveRequestByTransaction from "./setActiveRequestByTransaction";
+import * as fetchEventBased from "./fetchEventBased";
 
 /**
  * StateMachine. This class will be used to handle all change requests by the user, including setting state which
@@ -53,6 +55,8 @@ export class StateMachine {
       setActiveRequestByTransaction.Memory
     >;
     [ContextType.settle]: ContextManager<settle.Params, settle.Memory>;
+    [ContextType.updateActiveRequest]: ContextManager<updateActiveRequest.Params, updateActiveRequest.Memory>;
+    [ContextType.fetchEventBased]: ContextManager<fetchEventBased.Params, fetchEventBased.Memory>;
   };
   constructor(private store: Store) {
     // need to initizlie state types here manually for each new context type
@@ -136,6 +140,18 @@ export class StateMachine {
         ContextType.settle,
         settle.Handlers(store),
         settle.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.updateActiveRequest]: new ContextManager<updateActiveRequest.Params, updateActiveRequest.Memory>(
+        ContextType.updateActiveRequest,
+        updateActiveRequest.Handlers(store),
+        updateActiveRequest.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.fetchEventBased]: new ContextManager<fetchEventBased.Params, fetchEventBased.Memory>(
+        ContextType.fetchEventBased,
+        fetchEventBased.Handlers(store),
+        fetchEventBased.initMemory,
         this.handleCreate
       ),
     };
@@ -269,11 +285,27 @@ export class StateMachine {
           );
           break;
         }
+        case ContextType.updateActiveRequest: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<updateActiveRequest.Params, updateActiveRequest.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.fetchEventBased: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<fetchEventBased.Params, fetchEventBased.Memory>,
+            now
+          );
+          break;
+        }
         default: {
           throw new Error("Unable to handle type: " + context.type);
         }
       }
-      if (!next.done) this.push(next);
+      if (!next.done) {
+        this.push(next);
+      }
       this.saveContext(next);
     }
 

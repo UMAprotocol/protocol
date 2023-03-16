@@ -16,6 +16,23 @@ const moveFile = (from, to, filename) => {
   fs.renameSync(path.resolve(...from), path.resolve(...to));
 };
 
+// A deep deletion function for node like `rm -rf` which works for versions older than v14.14
+const rimraf = function (directoryPath) {
+  if (fs.existsSync(directoryPath)) {
+    fs.readdirSync(directoryPath).forEach((file) => {
+      const curPath = path.join(directoryPath, file);
+      if (fs.lstatSync(curPath).isDirectory()) {
+        // recurse
+        rimraf(curPath);
+      } else {
+        // delete file
+        fs.unlinkSync(curPath);
+      }
+    });
+    fs.rmdirSync(directoryPath);
+  }
+};
+
 console.log("Building web version...");
 
 // running web build
@@ -54,7 +71,7 @@ moveFile("dist", "dist-node", "index.cjs.production.min.js.map");
 moveFile("dist", "dist-node", "index.js");
 
 // finally we delete the folder with all node-typings
-fs.rmSync(path.resolve("dist"), { recursive: true });
+rimraf(path.resolve("dist"));
 // now we can move 'dist-node' to 'dist/node' again
 fs.mkdirSync(path.resolve("dist"));
 moveFile("dist-node", "dist/node");

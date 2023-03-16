@@ -143,3 +143,9 @@ export type OrchestratorServices = {
   contracts: services.Contracts;
   prices: services.Prices;
 };
+
+export type ChainId = number;
+export const CHAIN_IDs = {
+  mainnet: 1,
+  polygon_matic: 137,
+};

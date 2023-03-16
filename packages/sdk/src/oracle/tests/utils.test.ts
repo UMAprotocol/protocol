@@ -57,4 +57,21 @@ describe("Oracle Utils", function () {
     rangeState = utils.rangeSuccessDescending(rangeState);
     assert.ok(rangeState.done);
   });
+  test("rangeDescending.maxRange", function () {
+    const startBlock = 0;
+    const endBlock = 14083360;
+    const maxRange = 100;
+
+    let rangeState = utils.rangeStart({ startBlock, endBlock, maxRange });
+
+    assert.equal(rangeState.currentStart, endBlock - maxRange);
+    assert.equal(rangeState.currentEnd, endBlock);
+    assert.equal(rangeState.currentRange, maxRange);
+    assert.ok(!rangeState.done);
+
+    rangeState = utils.rangeSuccessDescending(rangeState);
+    assert.equal(rangeState.currentStart, endBlock - maxRange * 2);
+    assert.equal(rangeState.currentEnd, endBlock - maxRange);
+    assert.ok(!rangeState.done);
+  });
 });

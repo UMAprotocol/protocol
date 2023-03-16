@@ -54,7 +54,7 @@ class OptimisticOracleContractMonitor {
       },
       optimisticOracleUIBaseUrl: {
         // Base URL for the Optimistic Oracle UI.
-        value: "https://placeholder.umaproject.org/",
+        value: "https://oracle.umaproject.org",
         isValid: (x) => typeof x === "string",
       },
     };
@@ -101,40 +101,35 @@ class OptimisticOracleContractMonitor {
 
     for (let event of latestEvents) {
       const convertCollateralDecimals = await this._getCollateralDecimalsConverted(
-        this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+        this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
       );
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
         `. \nCollateral currency address is ${
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
         }. Reward amount is ${this.formatDecimalString(
           convertCollateralDecimals(
-            this.oracleType === OptimisticOracleType.OptimisticOracle ? event.reward : event.request.reward
+            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.reward : event.request.reward
           )
         )} and the final fee is ${this.formatDecimalString(
           convertCollateralDecimals(
-            this.oracleType === OptimisticOracleType.OptimisticOracle ? event.finalFee : event.request.finalFee
+            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.finalFee : event.request.finalFee
           )
-        )}. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
-
-      const logLevel =
-        this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "error");
+        )}. tx: ${createEtherscanLinkMarkdown(
+          event.transactionHash,
+          this.contractProps.networkId
+        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
-      this.logger[logLevel]({
+      this.logger[
+        this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "error")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Request Alert 👮🏻!`,
         mrkdwn,
-        notificationPath: "optimistic-oracle",
-      });
-
-      // UI link is sent separately because it can break slack message limits.
-      this.logger[logLevel === "error" ? "info" : logLevel]({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Request Alert 👮🏻!`,
-        mrkdwn: this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData),
+        discordPaths: ["oo-events"],
         notificationPath: "optimistic-oracle",
       });
     }
@@ -157,41 +152,38 @@ class OptimisticOracleContractMonitor {
     for (let event of latestEvents) {
       const mrkdwn =
         createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer,
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer,
           this.contractProps.networkId
         ) +
         ` proposed a price for the request made by ${createEtherscanLinkMarkdown(event.requester)} at the timestamp ${
           event.timestamp
         } for the identifier: ${event.identifier}. ` +
         `\nThe proposal price of ${this.formatDecimalString(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
+            ? event.proposedPrice
+            : event.request.proposedPrice
         )} will expire at ${
-          this.oracleType === OptimisticOracleType.OptimisticOracle
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
             ? event.expirationTimestamp
             : event.request.expirationTime
         }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
         `.\n Collateral currency address is ${createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
         )}. ` +
-        `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
-
-      const logLevel =
-        this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error");
+        `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}. ${this._generateUILink(
+          event.transactionHash,
+          this.contractProps.networkId
+        )}.`;
 
       // The default log level should be reduced to "info" for funding rate identifiers:
-      this.logger[logLevel]({
+      this.logger[
+        this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
         mrkdwn,
-        notificationPath: "optimistic-oracle",
-      });
-
-      // UI link is sent separately because it can break slack message limits.
-      this.logger[logLevel === "error" ? "info" : logLevel]({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
-        mrkdwn: this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData),
+        discordPaths: ["oo-fact-checking", "oo-events"],
         notificationPath: "optimistic-oracle",
       });
     }
@@ -214,34 +206,29 @@ class OptimisticOracleContractMonitor {
     for (let event of latestEvents) {
       const mrkdwn =
         createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer,
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.disputer : event.request.disputer,
           this.contractProps.networkId
         ) +
         ` disputed a price for the request made by ${createEtherscanLinkMarkdown(event.requester)} at the timestamp ${
           event.timestamp
         } for the identifier: ${event.identifier}. ` +
         `The proposer ${createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer
         )} proposed a price of ${this.formatDecimalString(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
+            ? event.proposedPrice
+            : event.request.proposedPrice
         )}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        `. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
+        `. tx: ${createEtherscanLinkMarkdown(
+          event.transactionHash,
+          this.contractProps.networkId
+        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
 
-      const logLevel = this.logOverrides.disputedPrice || "error";
-
-      this.logger[logLevel]({
+      this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Dispute Alert ⛔️!`,
         mrkdwn,
-        notificationPath: "optimistic-oracle",
-      });
-
-      // UI link is sent separately because it can break slack message limits.
-      this.logger[logLevel === "error" ? "info" : logLevel]({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Dispute Alert ⛔️!`,
-        mrkdwn: this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData),
         notificationPath: "optimistic-oracle",
       });
     }
@@ -263,10 +250,10 @@ class OptimisticOracleContractMonitor {
 
     for (let event of latestEvents) {
       const convertCollateralDecimals = await this._getCollateralDecimalsConverted(
-        this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+        this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
       );
       let payout, isDispute;
-      if (this.oracleType === OptimisticOracleType.OptimisticOracle) {
+      if (this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle) {
         payout = event.payout;
         isDispute = Boolean(event.disputer !== ZERO_ADDRESS);
       } else {
@@ -286,36 +273,31 @@ class OptimisticOracleContractMonitor {
           event.requester
         )} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposer was ${createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer
         )} and the disputer was ${createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.disputer : event.request.disputer
         )}. ` +
         `The settlement price is ${this.formatDecimalString(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.price : event.request.resolvedPrice
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.price : event.request.resolvedPrice
         )}. ` +
         `The payout was ${this.formatDecimalString(convertCollateralDecimals(payout))} made to the ${
           isDispute ? "winner of the dispute" : "proposer"
         }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        `. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
-
-      const logLevel =
-        this.logOverrides.settledPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "info");
+        `. tx: ${createEtherscanLinkMarkdown(
+          event.transactionHash,
+          this.contractProps.networkId
+        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
-      this.logger[logLevel]({
+      this.logger[
+        this.logOverrides.settledPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "info")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Settlement Alert 🏧!`,
         mrkdwn,
         notificationPath: "optimistic-oracle",
-      });
-
-      // UI link is sent separately because it can break slack message limits.
-      this.logger[logLevel === "error" ? "info" : logLevel]({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Settlement Alert 🏧!`,
-        mrkdwn: this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData),
-        notificationPath: "optimistic-oracle",
+        discordPaths: null,
       });
     }
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -355,11 +337,20 @@ class OptimisticOracleContractMonitor {
     }
   }
 
-  _generateUILink(requester, identifier, timestamp, ancillaryData) {
-    const hexIdentifier = this.padRight(this.utf8ToHex(identifier), 64);
-    return `<${this.optimisticOracleUIBaseUrl}?chainId=${this.contractProps.chainId}&requester=${this.toChecksumAddress(
-      requester
-    )}&identifier=${hexIdentifier}&timestamp=${timestamp}&ancillaryData=${ancillaryData}|View this request in the UI.>`;
+  _generateUILink(transactionHash, chainId) {
+    let oracleType;
+    switch (this.oracleType) {
+      case OptimisticOracleType.OptimisticOracle:
+        oracleType = "Optimistic";
+        break;
+      case OptimisticOracleType.OptimisticOracleV2:
+        oracleType = "OptimisticV2";
+        break;
+      case OptimisticOracleType.SkinnyOptimisticOracle:
+        oracleType = "Skinny";
+        break;
+    }
+    return `<${this.optimisticOracleUIBaseUrl}/request?transactionHash=${transactionHash}&chainId=${chainId}&oracleType=${oracleType}|View in UI>`;
   }
 }
 

@@ -18,8 +18,6 @@ export class RelayerConfig {
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
-    this.lookback = LOOKBACK ? Number(LOOKBACK) : 172800; // 2 days. Polygon Infura node cannot look back more than
-    // 100,000 blocks and 172,800 seconds divided by an average block time of 2.4 seconds = 72,000 blocks, safely under
-    // the limit.
+    this.lookback = LOOKBACK ? Number(LOOKBACK) : 172800; // ~2 days
   }
 }

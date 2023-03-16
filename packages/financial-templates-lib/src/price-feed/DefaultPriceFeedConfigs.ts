@@ -337,6 +337,8 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
   },
   BTCDOM: { type: "domfi", pair: "BTCDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
   ALTDOM: { type: "domfi", pair: "ALTDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
+  ETHDOM: { type: "domfi", pair: "ETHDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
+  USDTDOM: { type: "domfi", pair: "USDTDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
   AMPLUSD: {
     type: "medianizer",
     lookback: 7200,
@@ -708,8 +710,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
-      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "gateio", pair: "oceanusdt" },
     ],
   },
   OCEANUSD: {
@@ -718,8 +719,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
-      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "gateio", pair: "oceanusdt" },
     ],
   },
   USDBTC_18DEC: {
@@ -1014,8 +1014,8 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
   uSPAC10: {
     type: "uSPAC",
     lookback: 7200,
-    correctionFactor: "1.0",
-    symbols: ["DWAC", "IRDM", "PRIM", "TGLS", "MP", "LCID", "GDYN", "SMPL", "ENVX", "QS"],
+    correctionFactor: "0.95951",
+    symbols: ["DWAC", "IRDM", "MP", "PRIM", "WSC", "SMPL", "TGLS", "CERE", "KW", "HPK"],
   },
 };
 

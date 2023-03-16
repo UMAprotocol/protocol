@@ -3,6 +3,202 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.7](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.6...@uma/sdk@0.32.7) (2023-02-28)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.32.6](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.5...@uma/sdk@0.32.6) (2023-02-20)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.32.5](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.4...@uma/sdk@0.32.5) (2023-02-20)
+
+### Bug Fixes
+
+- remove most of affiliates and dependencies to fix build ([#4404](https://github.com/UMAprotocol/protocol/issues/4404)) ([429e2b1](https://github.com/UMAprotocol/protocol/commit/429e2b1fc9ae8c95cdff3ff2a0a6f49f9bbb84e9))
+- run jest directly in verbose mode ([#4406](https://github.com/UMAprotocol/protocol/issues/4406)) ([42b83b2](https://github.com/UMAprotocol/protocol/commit/42b83b24385a54e349f3b62dae19517f6e9dfcb0))
+
+## [0.32.4](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.3...@uma/sdk@0.32.4) (2023-01-17)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.32.3](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.2...@uma/sdk@0.32.3) (2023-01-11)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.32.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.1...@uma/sdk@0.32.2) (2023-01-09)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.32.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.0...@uma/sdk@0.32.1) (2022-12-28)
+
+**Note:** Version bump only for package @uma/sdk
+
+# [0.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.31.2...@uma/sdk@0.32.0) (2022-12-20)
+
+### Features
+
+- cleanup protocol repo by removing old packages ([#4309](https://github.com/UMAprotocol/protocol/issues/4309)) ([74855fc](https://github.com/UMAprotocol/protocol/commit/74855fcef11644db0bf4f135e7907c9f6078e189))
+
+## [0.31.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.31.1...@uma/sdk@0.31.2) (2022-11-23)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.31.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.31.0...@uma/sdk@0.31.1) (2022-11-23)
+
+**Note:** Version bump only for package @uma/sdk
+
+# [0.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.5...@uma/sdk@0.31.0) (2022-11-23)
+
+### Features
+
+- add event based fetching for all requests ([#4259](https://github.com/UMAprotocol/protocol/issues/4259)) ([33f0020](https://github.com/UMAprotocol/protocol/commit/33f0020c305867c4b8b36eb1cd3061c364b5bc92))
+
+# [0.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.5...@uma/sdk@0.30.0) (2022-11-23)
+
+### Features
+
+- add event based fetching for all requests ([#4259](https://github.com/UMAprotocol/protocol/issues/4259)) ([33f0020](https://github.com/UMAprotocol/protocol/commit/33f0020c305867c4b8b36eb1cd3061c364b5bc92))
+
+## [0.29.5](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.4...@uma/sdk@0.29.5) (2022-11-02)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.29.4](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.3...@uma/sdk@0.29.4) (2022-11-01)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.29.3](https://github.com/mrice32/protocol/compare/@uma/sdk@0.29.2...@uma/sdk@0.29.3) (2022-10-06)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.29.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.1...@uma/sdk@0.29.2) (2022-10-05)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.29.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.0...@uma/sdk@0.29.1) (2022-09-22)
+
+**Note:** Version bump only for package @uma/sdk
+
+# [0.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.28.1...@uma/sdk@0.29.0) (2022-09-12)
+
+### Bug Fixes
+
+- **sdk:** fix failing lookup for skinny oo by tx hash ([#4169](https://github.com/UMAprotocol/protocol/issues/4169)) ([b4c7cb7](https://github.com/UMAprotocol/protocol/commit/b4c7cb76f587b5b005b46158876476864a5cd712))
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+
+## [0.28.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.28.0...@uma/sdk@0.28.1) (2022-08-24)
+
+### Bug Fixes
+
+- **coingecko:** Remove getContractPrices usd constraint ([#4134](https://github.com/UMAprotocol/protocol/issues/4134)) ([297f2b4](https://github.com/UMAprotocol/protocol/commit/297f2b400370a9814f18fd0f51f1e5a46903b63f))
+- **sdk:** properly convert config to be used as chain data in MM ([#4124](https://github.com/UMAprotocol/protocol/issues/4124)) ([36532ae](https://github.com/UMAprotocol/protocol/commit/36532ae911c377a816d5704084055bf8a944fd04))
+- **sdk,api:** configure datastore to accept longer strings on props ([#4136](https://github.com/UMAprotocol/protocol/issues/4136)) ([4fbcff7](https://github.com/UMAprotocol/protocol/commit/4fbcff734edf12c74e8496720a0ef837cd436eb1))
+
+# [0.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.27.1...@uma/sdk@0.28.0) (2022-08-16)
+
+- fix(sdk)!: fix missing bond on oo v2 request (#4113) ([56c66b9](https://github.com/UMAprotocol/protocol/commit/56c66b982fce5bd12b799a3ca26bd89c1b213dbb)), closes [#4113](https://github.com/UMAprotocol/protocol/issues/4113)
+
+### BREAKING CHANGES
+
+- Request object shape has been modified to normalize v1 and v2 request data
+
+## [0.27.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.27.0...@uma/sdk@0.27.1) (2022-08-09)
+
+**Note:** Version bump only for package @uma/sdk
+
+# [0.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.26.0...@uma/sdk@0.27.0) (2022-08-02)
+
+### Features
+
+- **sdk:** add oov2 client and service ([#4059](https://github.com/UMAprotocol/protocol/issues/4059)) ([f049324](https://github.com/UMAprotocol/protocol/commit/f049324e58d4bbe7d32f0f62aa984892517d44ec))
+
+# [0.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.25.0...@uma/sdk@0.26.0) (2022-07-13)
+
+- feat(sdk)!: add skinny oo client and separate factories (#4009) ([2bc8ad7](https://github.com/UMAprotocol/protocol/commit/2bc8ad7827b843ae4769d0800b93e29f4036ed1e)), closes [#4009](https://github.com/UMAprotocol/protocol/issues/4009)
+- chore(sdk)!: create oracle client interface for new oo contract integrations (#3989) ([72e6235](https://github.com/UMAprotocol/protocol/commit/72e623575c667f864dd7cefa2ad2059a2779c082)), closes [#3989](https://github.com/UMAprotocol/protocol/issues/3989)
+
+### BREAKING CHANGES
+
+- instanciating oracle client now requires selecting skinny or optimistic
+- improve(sdk): changed naming and improved readme
+- this slightly changes the request type which is used by the UI, app will need to be
+  adjusted to accomodate.
+- fix: update failing tests
+
+# [0.25.0](https://github.com-uma/UMAprotocol/protocol/compare/@uma/sdk@0.23.3...@uma/sdk@0.25.0) (2022-06-27)
+
+### Bug Fixes
+
+- fix BlockFinder concurrency issue ([#3948](https://github.com-uma/UMAprotocol/protocol/issues/3948)) ([e04ad54](https://github.com-uma/UMAprotocol/protocol/commit/e04ad54dc3e0f1f82ba0054b22229762132423ac))
+
+### Features
+
+- rename new OO contracts ([#3959](https://github.com-uma/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com-uma/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- Round realized LP fee % to match UMIP ([#3898](https://github.com-uma/UMAprotocol/protocol/issues/3898)) ([675eaa7](https://github.com-uma/UMAprotocol/protocol/commit/675eaa73dab1389c6cdf649b1d3197aa22ad640a))
+- **sdk:** add basic skinny oo client ([#3952](https://github.com-uma/UMAprotocol/protocol/issues/3952)) ([42da906](https://github.com-uma/UMAprotocol/protocol/commit/42da9063831d732b2a857aeb8337697c3d41c624))
+
+### Reverts
+
+- Revert "feat: Round realized LP fee % to match UMIP (#3898)" (#3966) ([c6b6faf](https://github.com-uma/UMAprotocol/protocol/commit/c6b6faff84930a93076952413f08a124330b72e4)), closes [#3898](https://github.com-uma/UMAprotocol/protocol/issues/3898) [#3966](https://github.com-uma/UMAprotocol/protocol/issues/3966)
+
+# [0.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.4...@uma/sdk@0.24.0) (2022-06-23)
+
+### Features
+
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- Round realized LP fee % to match UMIP ([#3898](https://github.com/UMAprotocol/protocol/issues/3898)) ([675eaa7](https://github.com/UMAprotocol/protocol/commit/675eaa73dab1389c6cdf649b1d3197aa22ad640a))
+- **sdk:** add basic skinny oo client ([#3952](https://github.com/UMAprotocol/protocol/issues/3952)) ([42da906](https://github.com/UMAprotocol/protocol/commit/42da9063831d732b2a857aeb8337697c3d41c624))
+
+### Reverts
+
+- Revert "feat: Round realized LP fee % to match UMIP (#3898)" (#3966) ([c6b6faf](https://github.com/UMAprotocol/protocol/commit/c6b6faff84930a93076952413f08a124330b72e4)), closes [#3898](https://github.com/UMAprotocol/protocol/issues/3898) [#3966](https://github.com/UMAprotocol/protocol/issues/3966)
+
+## [0.23.4](https://github.com/mrice32/protocol/compare/@uma/sdk@0.23.3...@uma/sdk@0.23.4) (2022-05-27)
+
+### Bug Fixes
+
+- fix BlockFinder concurrency issue ([#3948](https://github.com/mrice32/protocol/issues/3948)) ([e04ad54](https://github.com/mrice32/protocol/commit/e04ad54dc3e0f1f82ba0054b22229762132423ac))
+
+## [0.23.3](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.2...@uma/sdk@0.23.3) (2022-05-13)
+
+### Bug Fixes
+
+- **sdk/across:** scope query events to user ([#3906](https://github.com/UMAprotocol/protocol/issues/3906)) ([b0c3ad2](https://github.com/UMAprotocol/protocol/commit/b0c3ad204271a290e526287d99157cd833bbbb71))
+
+## [0.23.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.1...@uma/sdk@0.23.2) (2022-05-05)
+
+### Bug Fixes
+
+- add v1 OO interface for backcompat for downstream users ([#3890](https://github.com/UMAprotocol/protocol/issues/3890)) ([f258069](https://github.com/UMAprotocol/protocol/commit/f258069fff4080a1b1ad26b3efcb1fe628e3f1a7))
+
+## [0.23.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.0...@uma/sdk@0.23.1) (2022-04-27)
+
+### Bug Fixes
+
+- **sdk:** replace rmSync for better compatibility ([#3887](https://github.com/UMAprotocol/protocol/issues/3887)) ([af7deb8](https://github.com/UMAprotocol/protocol/commit/af7deb86916fcb131363617b2a339b54b263c819))
+
+# [0.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.2...@uma/sdk@0.23.0) (2022-04-22)
+
+### Bug Fixes
+
+- improve oracle data loading ([#3883](https://github.com/UMAprotocol/protocol/issues/3883)) ([1348aab](https://github.com/UMAprotocol/protocol/commit/1348aabb5693a225551473696bdd874863e78711))
+- **sdk:** syncronize oo client index and details page ([#3882](https://github.com/UMAprotocol/protocol/issues/3882)) ([39769a7](https://github.com/UMAprotocol/protocol/commit/39769a70767029c40cc7d21d3b5dce69c42d3d99))
+- fallback to mainnet prices for L2 ERC20 tokens ([#3872](https://github.com/UMAprotocol/protocol/issues/3872)) ([cde12d9](https://github.com/UMAprotocol/protocol/commit/cde12d92368aed64e7c4767c214f34c1b221eedc))
+
+### Features
+
+- add ability to define chains other than ethereum in calls ([#3876](https://github.com/UMAprotocol/protocol/issues/3876)) ([858331f](https://github.com/UMAprotocol/protocol/commit/858331ffabde7806283c968d773ea0d41a8e02b3))
+
+## [0.22.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.1...@uma/sdk@0.22.2) (2022-04-01)
+
+### Bug Fixes
+
+- **across-cross-domain-finalizer:** increase Optimism State commitment delay constant ([#3849](https://github.com/UMAprotocol/protocol/issues/3849)) ([0b294df](https://github.com/UMAprotocol/protocol/commit/0b294df2083c31e87eafa071ad1ca97cd3e4745a))
+
 ## [0.22.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.0...@uma/sdk@0.22.1) (2022-02-28)
 
 ### Bug Fixes

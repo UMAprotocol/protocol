@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 import "./interfaces/ChildMessengerInterface.sol";
 
-import "../oracle/implementation/Constants.sol";
+import "../data-verification-mechanism/implementation/Constants.sol";
 import "../common/implementation/HasFinder.sol";
 
 /**

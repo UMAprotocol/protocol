@@ -13,6 +13,12 @@ type CoinGeckoAssetPlatform = {
   shortname: string;
 };
 
+type CoinGeckoPrice = {
+  address: string;
+  timestamp: number;
+  price: number;
+};
+
 class Coingecko {
   private host: string;
   constructor(host = "https://api.coingecko.com/api/v3") {
@@ -34,18 +40,22 @@ class Coingecko {
     if (result.prices) return result.prices;
     throw new Error("Something went wrong fetching coingecko prices!");
   }
-  async getContractDetails(contract_address: string, id = "ethereum") {
-    return this.call(`coins/${id}/contract/${contract_address.toLowerCase()}`);
+  async getContractDetails(contract_address: string, platform_id = "ethereum") {
+    return this.call(`coins/${platform_id}/contract/${contract_address.toLowerCase()}`);
   }
-  async getCurrentPriceByContract(contract_address: string, currency = "usd") {
-    const result = await this.getContractDetails(contract_address);
+  async getCurrentPriceByContract(contract_address: string, currency = "usd", platform_id = "ethereum") {
+    const result = await this.getContractDetails(contract_address, platform_id);
     const price = get(result, ["market_data", "current_price", currency], null);
     assert(price !== null, "No current price available for: " + contract_address);
     return [result.last_updated, price];
   }
   // Return an array of spot prices for an array of collateral addresses in one async call. Note we might in future
   // This was adapted from packages/merkle-distributor/kpi-options-helpers/calculate-uma-tvl.ts
-  async getContractPrices(addresses: Array<string>, currency = "usd", platform_id = "ethereum") {
+  async getContractPrices(
+    addresses: Array<string>,
+    currency = "usd",
+    platform_id = "ethereum"
+  ): Promise<CoinGeckoPrice[]> {
     // Generate a unique set with no repeated. join the set with the required coingecko delimiter.
     const contract_addresses = Array.from(new Set(addresses.filter((n) => n).values()));
     assert(contract_addresses.length > 0, "Must supply at least 1 contract address");
@@ -58,7 +68,7 @@ class Coingecko {
     // annoying, but have to type this to iterate over entries
     type Result = {
       [address: string]: {
-        usd: number;
+        [currency: string]: number; // usd, eth, ...
         last_updated_at: number;
       };
     };
@@ -68,7 +78,7 @@ class Coingecko {
       )}&vs_currencies=${currency}&include_last_updated_at=true`
     );
     return Object.entries(result).map(([key, value]) => {
-      return { address: lookup[key], timestamp: value.last_updated_at, price: value.usd };
+      return { address: lookup[key], timestamp: value.last_updated_at, price: value[currency] };
     });
   }
 

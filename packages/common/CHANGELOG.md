@@ -3,6 +3,147 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.30.1...@uma/common@2.31.0) (2023-02-28)
+
+### Features
+
+- update getGckmsSigner to be used in hardhat scripts ([#4401](https://github.com/UMAprotocol/protocol/issues/4401)) ([807517d](https://github.com/UMAprotocol/protocol/commit/807517de126aee27191125531e70407b13874795))
+
+## [2.30.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.30.0...@uma/common@2.30.1) (2023-02-20)
+
+**Note:** Version bump only for package @uma/common
+
+# [2.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.29.1...@uma/common@2.30.0) (2023-02-20)
+
+### Bug Fixes
+
+- ignore decentralist identifier ([#4399](https://github.com/UMAprotocol/protocol/issues/4399)) ([4806b51](https://github.com/UMAprotocol/protocol/commit/4806b51d830466c445560f83196d5918af820a98))
+
+### Features
+
+- rename Optimistic asserter to Optimistic Oracle V3 ([#4440](https://github.com/UMAprotocol/protocol/issues/4440)) ([e5fd755](https://github.com/UMAprotocol/protocol/commit/e5fd7556a1b88dc02c078f03e724b55a768decaa))
+- **common:** match exact reverts with didContractRevertWith ([#4422](https://github.com/UMAprotocol/protocol/issues/4422)) ([ade94f7](https://github.com/UMAprotocol/protocol/commit/ade94f7a76899c6ae37fbb41553713795fa9ab62))
+- contract verification on boba ([#4395](https://github.com/UMAprotocol/protocol/issues/4395)) ([6c72fc3](https://github.com/UMAprotocol/protocol/commit/6c72fc374b5fbc54b159796617b21a8a4f9564f1))
+- move ignored identifiers to env ([#4400](https://github.com/UMAprotocol/protocol/issues/4400)) ([11fbfda](https://github.com/UMAprotocol/protocol/commit/11fbfda97a52f9954e1a056fec9a32c738263e56))
+- optimistic asserter deployment on goerli ([#4392](https://github.com/UMAprotocol/protocol/issues/4392)) ([df4e9b6](https://github.com/UMAprotocol/protocol/commit/df4e9b643f62d9f3a3fba2bd5f354b5e62cdb72a))
+- redundant rpc in dvm-v2 monitor ([#4390](https://github.com/UMAprotocol/protocol/issues/4390)) ([5a38e1e](https://github.com/UMAprotocol/protocol/commit/5a38e1ec36f8c7462306b5b7a2093397057c234a))
+
+## [2.29.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.29.0...@uma/common@2.29.1) (2022-12-28)
+
+**Note:** Version bump only for package @uma/common
+
+# [2.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.4...@uma/common@2.29.0) (2022-12-20)
+
+### Features
+
+- restructure core contracts directory ([#4207](https://github.com/UMAprotocol/protocol/issues/4207)) ([40b5b2c](https://github.com/UMAprotocol/protocol/commit/40b5b2cbc1591201d99f2545a2b22b744b01e663))
+
+* **common:** add MerkleTree improvements made in across-protocol/contracts-v2 ([#4318](https://github.com/UMAprotocol/protocol/issues/4318)) ([3eaa911](https://github.com/UMAprotocol/protocol/commit/3eaa9119345f268acb7693e5708e5f1e2b71d6cd))
+
+## [2.28.4](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.3...@uma/common@2.28.4) (2022-11-23)
+
+**Note:** Version bump only for package @uma/common
+
+## [2.28.3](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.2...@uma/common@2.28.3) (2022-11-23)
+
+**Note:** Version bump only for package @uma/common
+
+## [2.28.2](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.0...@uma/common@2.28.2) (2022-11-23)
+
+**Note:** Version bump only for package @uma/common
+
+## [2.28.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.28.0...@uma/common@2.28.1) (2022-11-23)
+
+**Note:** Version bump only for package @uma/common
+
+# [2.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.27.0...@uma/common@2.28.0) (2022-10-05)
+
+### Bug Fixes
+
+- ignore NUMERICAL identifier ([#4191](https://github.com/UMAprotocol/protocol/issues/4191)) ([f3027d3](https://github.com/UMAprotocol/protocol/commit/f3027d34ab2a7fe4883e150733effab8690c9094))
+
+### Features
+
+- export get[name]StaticAddress() from contracts-node ([#4185](https://github.com/UMAprotocol/protocol/issues/4185)) ([60a17bd](https://github.com/UMAprotocol/protocol/commit/60a17bd2593b6918570f3a241db701e40c9d9c98))
+
+# [2.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.26.0...@uma/common@2.27.0) (2022-09-12)
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+- add hardhat tracer ([#4140](https://github.com/UMAprotocol/protocol/issues/4140)) ([42b79ae](https://github.com/UMAprotocol/protocol/commit/42b79ae06f3913bfbc4cfe1c3ac980e84dadedc4))
+
+# [2.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.25.0...@uma/common@2.26.0) (2022-08-16)
+
+### Bug Fixes
+
+- [C01] Address issue with intra voting round slashing tracker updates ([#4067](https://github.com/UMAprotocol/protocol/issues/4067)) ([855e3c7](https://github.com/UMAprotocol/protocol/commit/855e3c740938f8c6a5675387225d3e059b6c1d70))
+
+### Features
+
+- bump solidity to 0.8.16 ([#4108](https://github.com/UMAprotocol/protocol/issues/4108)) ([efdf885](https://github.com/UMAprotocol/protocol/commit/efdf885512fb2eead3d51492efaa93912420791a))
+
+# [2.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.24.0...@uma/common@2.25.0) (2022-08-09)
+
+### Bug Fixes
+
+- [N09]: Address inconsistent Events ([#4088](https://github.com/UMAprotocol/protocol/issues/4088)) ([ea466a0](https://github.com/UMAprotocol/protocol/commit/ea466a044976120777b2bf203a97cd6f6ab6259b))
+- Upgrade all dependent contracts to use the OOv2 and show they work in unit tests ([#4061](https://github.com/UMAprotocol/protocol/issues/4061)) ([63f1891](https://github.com/UMAprotocol/protocol/commit/63f18912921af3f35c3e92edfc5696318f9fbd74))
+
+### Features
+
+- [L09] Unlocked Solidity version pragma ([#4075](https://github.com/UMAprotocol/protocol/issues/4075)) ([ea641e0](https://github.com/UMAprotocol/protocol/commit/ea641e0cc2f5b6e1bd65df104467a5e66f7b6c65))
+
+# [2.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.23.0...@uma/common@2.24.0) (2022-08-02)
+
+### Bug Fixes
+
+- **common:** upgrade google cloud kms and storage ([#3979](https://github.com/UMAprotocol/protocol/issues/3979)) ([2cfe5c5](https://github.com/UMAprotocol/protocol/commit/2cfe5c51fb4ebda2d68266f7bcacfa455f3fc7d4))
+
+### Features
+
+- add gckms get signer util ([#3990](https://github.com/UMAprotocol/protocol/issues/3990)) ([d95cca2](https://github.com/UMAprotocol/protocol/commit/d95cca21fffe0e512047722fb5aa3894a1fb091c))
+- **voting-v2:** add some variable packing to save gas ([#4046](https://github.com/UMAprotocol/protocol/issues/4046)) ([232bc20](https://github.com/UMAprotocol/protocol/commit/232bc2034d8a343fb66b4573298da2dd4cf381d2))
+- DVM2.0 add additional todo logic and update `_resolvePriceRequest`, offset the `nextRequestIndexToConsider` for a voter and remove `fromIndex` when evaluating slashing ([#4040](https://github.com/UMAprotocol/protocol/issues/4040)) ([aa4ebfb](https://github.com/UMAprotocol/protocol/commit/aa4ebfb8ac33cae17fa123fdbc9e185b4e5ae989))
+
+# [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.22.0...@uma/common@2.23.0) (2022-07-13)
+
+### Bug Fixes
+
+- **common:** blacklist uSPAC10 ([#4007](https://github.com/UMAprotocol/protocol/issues/4007)) ([f3a7df5](https://github.com/UMAprotocol/protocol/commit/f3a7df571f96be7136dc1fb543e2b7185c5ac4a5))
+
+### Features
+
+- add meter network ([#4012](https://github.com/UMAprotocol/protocol/issues/4012)) ([cac209d](https://github.com/UMAprotocol/protocol/commit/cac209d288db5b852fb3e5148b200872471aaac0))
+- DVM2.0 add special governance price request tx flow ([#4000](https://github.com/UMAprotocol/protocol/issues/4000)) ([99b0e66](https://github.com/UMAprotocol/protocol/commit/99b0e66418e405241adf9f59e752399c3712e951))
+- **pid-utils:** Have OO bots ignore Zodiac identifier ([#3996](https://github.com/UMAprotocol/protocol/issues/3996)) ([dc5c118](https://github.com/UMAprotocol/protocol/commit/dc5c118482df826b27063f583b47d76178599ac6))
+- add evmos hardhat config and deployment addresses ([#3977](https://github.com/UMAprotocol/protocol/issues/3977)) ([28b17f5](https://github.com/UMAprotocol/protocol/commit/28b17f5d844c3ee8ca7f59a6e613ffc7101105db))
+
+# [2.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.20.0...@uma/common@2.22.0) (2022-06-27)
+
+### Features
+
+- add avalanche and sx to networks ([#3945](https://github.com/UMAprotocol/protocol/issues/3945)) ([9e8e00e](https://github.com/UMAprotocol/protocol/commit/9e8e00e09520949bfe88a16315451c67f9343164))
+- UMA2.0 Slashing mechanism ([#3981](https://github.com/UMAprotocol/protocol/issues/3981)) ([f415d66](https://github.com/UMAprotocol/protocol/commit/f415d6646ab68e132dbe6e7d208b90f77679b050))
+
+# [2.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.20.0...@uma/common@2.21.0) (2022-06-23)
+
+### Features
+
+- add avalanche and sx to networks ([#3945](https://github.com/UMAprotocol/protocol/issues/3945)) ([9e8e00e](https://github.com/UMAprotocol/protocol/commit/9e8e00e09520949bfe88a16315451c67f9343164))
+
+# [2.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.19.0...@uma/common@2.20.0) (2022-04-27)
+
+### Bug Fixes
+
+- add gckms utils to common export ([#3888](https://github.com/UMAprotocol/protocol/issues/3888)) ([053e4a5](https://github.com/UMAprotocol/protocol/commit/053e4a52effff025be364dd12d2873a585a8f23c))
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+- fix error printing bugs in [#3852](https://github.com/UMAprotocol/protocol/issues/3852) ([#3855](https://github.com/UMAprotocol/protocol/issues/3855)) ([06d4178](https://github.com/UMAprotocol/protocol/commit/06d41781f8ed665c4949aedc4bdbc8d419d31613))
+
+### Features
+
+- add better provider logging and retries to redundant event calls ([#3852](https://github.com/UMAprotocol/protocol/issues/3852)) ([dabce64](https://github.com/UMAprotocol/protocol/commit/dabce643f6a2936d06d5273ef7861884ddd542d0))
+
 # [2.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.18.0...@uma/common@2.19.0) (2022-02-28)
 
 ### Features

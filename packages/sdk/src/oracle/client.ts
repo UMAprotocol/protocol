@@ -2,12 +2,14 @@ import assert from "assert";
 import { ethers } from "ethers";
 import Store, { Emit } from "./store";
 import type { state } from "./types";
+import type { FallbackProvider } from "./types/ethers";
 import { InputRequest, User } from "./types/state";
 import { Update } from "./services/update";
+import { SortedRequests } from "./services/sortedRequests";
 import { StateMachine, setActiveRequestByTransaction } from "./services/statemachines";
 import { loop } from "../utils";
 import { toWei } from "../across/utils";
-import { defaultConfig } from "./utils";
+import { NewOracle } from "./types/interfaces";
 
 export class Client {
   private intervalStarted = false;
@@ -31,10 +33,14 @@ export class Client {
     const identifier = params.identifier.toLowerCase();
     const chainId = Number(params.chainId);
     const timestamp = Number(params.timestamp);
-    return this.sm.types.setActiveRequest.create({ requester, ancillaryData, identifier, chainId, timestamp });
+    const result = this.sm.types.setActiveRequest.create({ requester, ancillaryData, identifier, chainId, timestamp });
+    this.sm.types.updateActiveRequest.create(undefined);
+    return result;
   }
   setActiveRequestByTransaction(params: setActiveRequestByTransaction.Params): string {
-    return this.sm.types.setActiveRequestByTransaction.create(params);
+    const result = this.sm.types.setActiveRequestByTransaction.create(params);
+    this.sm.types.updateActiveRequest.create(undefined);
+    return result;
   }
   approveCollateral(): string {
     const { checkTxIntervalSec } = this.store.read().chainConfig();
@@ -158,18 +164,37 @@ export class Client {
   }
 }
 
-export function factory(config: state.PartialConfig, emit: Emit): Client {
+function makeProvider(rpcUrls: string[]): FallbackProvider {
+  const providers = rpcUrls.map((url) => {
+    const provider = ethers.getDefaultProvider(url);
+    // turn off all polling, we will poll manually
+    provider.polling = false;
+    return provider;
+  });
+  const provider = new ethers.providers.FallbackProvider(providers, 1);
+  // turn off all polling, we will poll manually
+  provider.polling = false;
+  return provider;
+}
+export function factory(
+  config: state.Config,
+  emit: Emit,
+  OptimisticOracle: NewOracle,
+  sortedRequests: SortedRequests
+): Client {
   const store = new Store(emit);
-  const fullConfig = defaultConfig(config);
   store.write((write) => {
-    write.config(fullConfig);
+    write.config(config);
     // maintains queryable ordered list of requests across all chains
-    write.sortedRequestsService();
-    for (const chain of Object.values(fullConfig.chains)) {
+    write.sortedRequestsService(sortedRequests);
+    for (const chain of Object.values(config.chains)) {
+      const provider = makeProvider(chain.rpcUrls);
       write.chains(chain.chainId).optimisticOracle().address(chain.optimisticOracleAddress);
-      write.services(chain.chainId).provider(chain.rpcUrls);
+      write.services(chain.chainId).provider(provider);
       write.services(chain.chainId).multicall2(chain.multicall2Address);
-      write.services(chain.chainId).optimisticOracle(chain.optimisticOracleAddress);
+      write
+        .services(chain.chainId)
+        .optimisticOracle(new OptimisticOracle(provider, chain.optimisticOracleAddress, chain.chainId));
     }
   });
   const update = new Update(store);
@@ -180,12 +205,24 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
   const poller = new StateMachine(store);
 
   // start the request list checkers
-  for (const [chainId, config] of Object.entries(fullConfig.chains)) {
-    poller.types.fetchPastEvents.create({ chainId: Number(chainId), startBlock: config.earliestBlockNumber }, "poller");
+  for (const [chainId, chainConfig] of Object.entries(config.chains)) {
+    poller.types.fetchPastEvents.create(
+      {
+        chainId: Number(chainId),
+        startBlock: chainConfig.earliestBlockNumber,
+        maxRange: chainConfig.maxEventRangeQuery,
+      },
+      "poller"
+    );
     // long running poller which only looks for new events
-    poller.types.pollNewEvents.create({ chainId: Number(chainId) }, "poller");
+    poller.types.pollNewEvents.create(
+      { chainId: Number(chainId), pollRateSec: chainConfig.checkTxIntervalSec },
+      "poller"
+    );
+    // updates event based data on all requests
+    if (!chainConfig.disableFetchEventBased)
+      poller.types.fetchEventBased.create({ chainId: Number(chainId) }, "poller");
   }
-
   // create active request poller for all chains. Should only have one of these
   poller.types.pollActiveRequest.create(undefined, "poller");
   // polls user for balances/approvals on the current chain, in case it changes external to app

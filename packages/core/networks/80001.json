@@ -28,6 +28,10 @@
     "address": "0xAB75727d4e89A7f7F04f57C00234a35950527115"
   },
   {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x60E6140330F8FE31e785190F39C1B5e5e833c2a9"
+  },
+  {
     "contractName": "TokenFactory",
     "address": "0x56f2c8353049270d3553773E680B0d6c632544b6"
   },
@@ -41,7 +45,7 @@
   },
   {
     "contractName": "OracleChildTunnel",
-    "address": "0xAb955711ECd766Ce70dc2DbF2D9e0E8e4b431232"
+    "address": "0x1Ae1d80e1725A478f5e653bF79f8Ee4aB5B34719"
   },
   {
     "contractName": "GovernorChildTunnel",
@@ -69,7 +73,7 @@
   },
   {
     "contractName": "MockOracleAncillary",
-    "address": "0xe1C367e2b576Ac421a9f46C9cC624935730c36aa"
+    "address": "0x2664447836a0d94Ed610cB76D85784Db291BFB5f"
   },
   {
     "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",

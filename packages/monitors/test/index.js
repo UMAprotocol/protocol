@@ -128,6 +128,7 @@ describe("index.js", function () {
           level: "debug",
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
+        spyLogger.isFlushed = true; // exit instantly when requested to do so.
 
         // Create a new synthetic token
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
@@ -283,6 +284,7 @@ describe("index.js", function () {
           level: "debug",
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
+        spyLogger.isFlushed = true; // exit instantly when requested to do so.
 
         collateralToken = await Token.new("USDC", "USDC", 6).send({ from: contractCreator });
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6).send({ from: contractCreator });
@@ -324,6 +326,7 @@ describe("index.js", function () {
           level: "debug",
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
+        spyLogger.isFlushed = true; // exit instantly when requested to do so.
 
         await Poll.run({
           logger: spyLogger,
@@ -354,6 +357,7 @@ describe("index.js", function () {
           level: "debug",
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
+        spyLogger.isFlushed = true; // exit instantly when requested to do so.
 
         let didThrowError = false;
         let errorString;
@@ -409,6 +413,7 @@ describe("index.js", function () {
           level: "debug",
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
+        spyLogger.isFlushed = true; // exit instantly when requested to do so.
 
         errorRetries = 3; // set execution retries to 3 to validate.
         // Note both the token and medanizer price feeds are the same config. This is done so that createReferencePriceFeedForFinancialContract
@@ -445,6 +450,6 @@ describe("index.js", function () {
         assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
         assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
       });
-    });
+    }).timeout(10000);
   });
 });

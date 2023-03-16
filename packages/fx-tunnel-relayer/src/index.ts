@@ -3,6 +3,7 @@ import Web3 from "web3";
 import retry from "async-retry";
 import { config } from "dotenv";
 import MaticJs from "@maticnetwork/maticjs";
+import { Web3ClientPlugin } from "@maticnetwork/maticjs-web3";
 import { averageBlockTimeSeconds, getWeb3, getWeb3ByChainId } from "@uma/common";
 import { getAddress, getAbi } from "@uma/contracts-node";
 import { GasEstimator, Logger, delay } from "@uma/financial-templates-lib";
@@ -33,16 +34,24 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     const gasEstimator = new GasEstimator(logger);
 
     // Setup Polygon client:
-    const maticPOSClient = new MaticJs.MaticPOSClient({
-      network: "mainnet",
-      version: "v1",
-      maticProvider: polygonWeb3.currentProvider,
-      parentProvider: web3.currentProvider,
+    MaticJs.use(Web3ClientPlugin);
+    const maticPOSClient = new MaticJs.POSClient();
+    await maticPOSClient.init({
+      network: polygonNetworkId === 137 ? "mainnet" : "testnet",
+      version: polygonNetworkId === 137 ? "v1" : "mumbai",
+      parent: {
+        provider: web3.currentProvider,
+        defaultConfig: {
+          from: accounts[0],
+        },
+      },
+      child: {
+        provider: polygonWeb3.currentProvider,
+        defaultConfig: {
+          from: accounts[0],
+        },
+      },
     });
-    // Note: we use a private member of maticPosClient, so we cast to get rid of the error.
-    const castedMaticPOSClient = (maticPOSClient as unknown) as {
-      posRootChainManager: typeof maticPOSClient["posRootChainManager"];
-    };
 
     // Construct contracts that we'll pass to the Relayer bot.
     const oracleChildTunnel = new polygonWeb3.eth.Contract(
@@ -62,17 +71,19 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       oracleChildTunnel: oracleChildTunnel.options.address,
       oracleRootTunnel: oracleRootTunnel.options.address,
       polygonEarliestBlockToQuery: polygonEarliestBlockToQuery,
+      polygonLatestBlockToQuery: polygonCurrentBlock.number,
     });
 
     const relayer = new Relayer(
       logger,
       accounts[0],
       gasEstimator,
-      castedMaticPOSClient,
+      maticPOSClient,
       oracleChildTunnel,
       oracleRootTunnel,
       web3,
-      polygonEarliestBlockToQuery
+      polygonEarliestBlockToQuery,
+      polygonCurrentBlock.number
     );
 
     for (;;) {

@@ -35,20 +35,16 @@ function pruneCompanionNetworks(config: {
 export function getHardhatConfig(
   configOverrides: any,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _workingDir = "./",
-  includeTruffle = true
+  _workingDir = "./"
 ): Partial<HardhatConfig> {
   const mnemonic = getMnemonic();
-  // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
-  // get access to the plugins as well.
-  if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
   require("@nomiclabs/hardhat-web3");
   require("@nomiclabs/hardhat-etherscan");
   require("@nomiclabs/hardhat-ethers");
   require("hardhat-deploy");
   require("hardhat-gas-reporter");
-  require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
+  require("hardhat-tracer");
 
   // Custom tasks.
   require("./hardhat");
@@ -57,13 +53,18 @@ export function getHardhatConfig(
   require("./hardhat/plugins/ExtendedWeb3");
 
   // Solc version defined here so etherscan-verification has access to it.
-  const solcVersion = "0.8.9";
+  const solcVersion = "0.8.16";
 
   // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
   // limit.
   const LARGE_CONTRACT_COMPILER_SETTINGS = {
     version: solcVersion,
     settings: { optimizer: { enabled: true, runs: 200 } },
+  };
+
+  const EXTRA_LARGE_CONTRACT_COMPILER_SETTINGS = {
+    version: solcVersion,
+    settings: { optimizer: { enabled: true, runs: 1 } },
   };
 
   // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
@@ -79,8 +80,10 @@ export function getHardhatConfig(
         "contracts/financial-templates/perpetual-multiparty/PerpetualLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/perpetual-multiparty/PerpetualLiquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/expiring-multiparty/Liquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-        "contracts/oracle/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-        "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/data-verification-mechanism/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/data-verification-mechanism/implementation/VotingV2.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/data-verification-mechanism/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/data-verification-mechanism/implementation/test/VotingV2Test.sol": EXTRA_LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/insured-bridge/BridgePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
@@ -93,6 +96,7 @@ export function getHardhatConfig(
         blockGasLimit: 15_000_000,
         timeout: 1800000,
         testBlacklist,
+        allowUnlimitedContractSize: true,
       },
       localhost: {
         url: "http://127.0.0.1:9545",
@@ -147,12 +151,43 @@ export function getHardhatConfig(
         url: getNodeUrl("arbitrum-rinkeby", true, 421611),
         accounts: { mnemonic },
       },
+      sx: {
+        chainId: 416,
+        url: getNodeUrl("sx", true, 416),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "matic" },
+      },
+      avalanche: {
+        chainId: 43114,
+        url: getNodeUrl("avalanche", true, 416),
+        accounts: { mnemonic },
+      },
+      evmos: {
+        chainId: 9001,
+        url: getNodeUrl("evmos", true, 9001),
+        accounts: { mnemonic },
+      },
+      meter: {
+        chainId: 82,
+        url: getNodeUrl("meter", true, 82),
+        accounts: { mnemonic },
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {
       // Your API key for Etherscan
       // Obtain one at https://etherscan.io/
       apiKey: process.env.ETHERSCAN_API_KEY,
+      customChains: [
+        {
+          network: "boba",
+          chainId: 288,
+          urls: {
+            apiURL: "https://api.bobascan.com/api",
+            browserURL: "https://bobascan.com",
+          },
+        },
+      ],
     },
     namedAccounts: { deployer: 0 },
   } as unknown) as HardhatConfig; // Cast to allow extra properties.

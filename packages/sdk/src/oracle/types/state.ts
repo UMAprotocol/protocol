@@ -1,16 +1,9 @@
 import { JsonRpcSigner, BigNumber, Web3Provider, FallbackProvider } from "./ethers";
-import type { erc20, optimisticOracle, sortedRequests } from "../services";
+import type { erc20, sortedRequests } from "../services";
+import { Request, OracleInterface } from "./interfaces";
 import type Multicall2 from "../../multicall2";
 import { Context, Memory } from "./statemachine";
-import {
-  RequestState,
-  RequestKey,
-  Request as RequestByEvent,
-  RequestPrice,
-  ProposePrice,
-  DisputePrice,
-  Settle,
-} from "../../clients/optimisticOracle";
+import { RequestState, RequestKey } from "../../clients/optimisticOracle";
 
 // create partial picker: https://stackoverflow.com/questions/43159887/make-a-single-property-optional-in-typescript
 type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
@@ -22,7 +15,7 @@ export type ChainServices = {
   multicall2: Multicall2;
   provider: FallbackProvider;
   erc20s: Record<string, erc20.Erc20>;
-  optimisticOracle: optimisticOracle.OptimisticOracle;
+  optimisticOracle: OracleInterface;
 };
 
 export type Services = {
@@ -51,23 +44,34 @@ export type ChainConfig = ChainMetadata & {
   // specify a block number which we do not care about blocks before this. This effectively prevents listing
   // requests older than this. If not specified, we will lookback to block 0 when considering request history.
   earliestBlockNumber?: number;
+  maxEventRangeQuery?: number;
+  disableFetchEventBased?: boolean;
 };
 
+export type InputRequestWithOracleType = InputRequest & { oracleType: OracleType };
+export type RequestWithOracleType = Request & { oracleType: OracleType };
+export type RequestsWithOracleType = RequestWithOracleType[];
 // partial config lets user omit some fields which we can infer internally using contracts-frontend
-export type PartialChainConfig = PartialBy<
-  ChainConfig,
-  "optimisticOracleAddress" | "chainId" | "checkTxIntervalSec" | "earliestBlockNumber"
->;
+export type PartialChainConfig = PartialBy<ChainConfig, "chainId" | "checkTxIntervalSec" | "earliestBlockNumber">;
 
+export enum OracleType {
+  Optimistic = "Optimistic",
+  Skinny = "Skinny",
+  OptimisticV2 = "OptimisticV2",
+}
 // config definition
 export type Config = {
   chains: Record<number, ChainConfig>;
+  oracleType: OracleType;
 };
 
 export type PartialConfig = {
   chains: Record<number, PartialChainConfig>;
 };
 
+export type PartialConfigTable = {
+  [key in OracleType]?: PartialConfig;
+};
 export type Balances = Record<string, BigNumber>;
 
 export type User = {
@@ -118,43 +122,10 @@ export type Erc20 = {
 
 export { RequestState };
 
-export type Request = {
-  proposer: string;
-  disputer: string;
-  currency: string;
-  settled: boolean;
-  refundOnDispute: boolean;
-  proposedPrice: BigNumber;
-  resolvedPrice: BigNumber;
-  expirationTime: BigNumber;
-  reward: BigNumber;
-  finalFee: BigNumber;
-  bond: BigNumber;
-  customLiveness: BigNumber;
-  state: RequestState;
-};
-
-export type OptimisticOracleEvent = RequestPrice | ProposePrice | DisputePrice | Settle;
-
-export type RequestIndex = RequestByEvent & { chainId: number };
-export type RequestIndexes = RequestIndex[];
-export type { RequestPrice, ProposePrice, DisputePrice, Settle };
-
-// combine all request data into a mega request object
-export type FullRequest = InputRequest &
-  // we cant assume any of these props will exist if we get event before query contract
-  Partial<Request> &
-  // take the more specific types from the Request type by omitting overlapping properties
-  Omit<
-    RequestIndex,
-    "proposedPrice" | "resolvedPrice" | "expirationTime" | "reward" | "finalFee" | "bond" | "customLiveness"
-  >;
-
 export type OptimisticOracle = {
   address: string;
   defaultLiveness: BigNumber;
-  requests: Record<string, FullRequest>;
-  events: OptimisticOracleEvent[];
+  requests: Record<string, Request>;
 };
 
 export type Chain = {
@@ -170,5 +141,5 @@ export type State = Partial<{
   config: Config;
   services: Services;
   commands: Record<string, Context<unknown, unknown & Memory>>;
-  descendingRequests: RequestIndexes;
+  descendingRequests: Request[];
 }>;

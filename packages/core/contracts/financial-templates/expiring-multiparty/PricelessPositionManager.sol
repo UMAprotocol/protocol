@@ -10,10 +10,10 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 
-import "../../oracle/interfaces/OracleInterface.sol";
-import "../../oracle/interfaces/OptimisticOracleInterface.sol";
-import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../oracle/implementation/Constants.sol";
+import "../../data-verification-mechanism/interfaces/OracleInterface.sol";
+import "../../optimistic-oracle-v2/interfaces/OptimisticOracleInterface.sol";
+import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
+import "../../data-verification-mechanism/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
 import "../common/financial-product-libraries/expiring-multiparty-libraries/FinancialProductLibrary.sol";

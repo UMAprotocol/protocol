@@ -1,3 +1,0 @@
-describe("RateModelStore", function () {
-  // TODO:
-});

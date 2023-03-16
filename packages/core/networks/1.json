@@ -36,6 +36,10 @@
     "address": "0xDE7c02aD2b925587Bd16724810f994a2948c4a38"
   },
   {
+    "contractName": "DesignatedVotingV2Factory",
+    "address": "0x6B46a05f7f9F73d927abD99F5CB5c5652944C94F"
+  },
+  {
     "contractName": "WETH9",
     "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
   },
@@ -60,6 +64,10 @@
     "address": "0xc43767f4592df265b4a9f1a398b97ff24f38c6a6"
   },
   {
+    "contractName": "OptimisticOracleV2",
+    "address": "0xA0Ae6609447e57a42c51B50EAe921D701823FFAe"
+  },
+  {
     "contractName": "PerpetualLib",
     "address": "0x026ed73A36b37B871Be7bfd25D1C62B9bfB358b5"
   },
@@ -81,7 +89,7 @@
   },
   {
     "contractName": "OracleRootTunnel",
-    "address": "0xe7b0d6a9943bb8cd8cd323368450ad74474bb1b7"
+    "address": "0x34dF79AB1F3Cb70445834e71D725f83A6d3e03eb"
   },
   {
     "contractName": "GovernorRootTunnel",
@@ -120,19 +128,6 @@
     "address": "0x67DE29D1A34FF2ea2b8C390B326456F4CBBE628F"
   },
   {
-    "contractName": "Arbitrum_Messenger",
-    "address": "0x0d8563d3b8b3fec542aae50a530c606dac4d1c4f"
-  },
-  {
-    "contractName": "Optimism_Messenger",
-    "address": "0xe59283f44c29c43c0c23e71c906077e49df714b5 "
-  },
-  {
-    "contractName": "Optimism_Messenger",
-    "deploymentName": "Boba_Messenger",
-    "address": "0x0cd4998978F6cd06f8DbD227A802018A3c227ACC"
-  },
-  {
     "contractName": "SkinnyOptimisticOracle",
     "address": "0xeE3Afe347D5C74317041E2618C49534dAf887c24"
   },
@@ -165,5 +160,33 @@
   {
     "contractName": "Proposer",
     "address": "0x226726Ac52e6e948D1B7eA9168F9Ff2E27DbcbB5"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0xfb55F43fB9F48F63f9269DB7Dde3BbBe1ebDC0dE"
+  },
+  {
+    "contractName": "FixedSlashSlashingLibrary",
+    "address": "0x9a406ba5a99983250fd663947b3c968d387ce5cd"
+  },
+  {
+    "contractName": "VotingV2",
+    "address": "0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac"
+  },
+  {
+    "contractName": "GovernorV2",
+    "address": "0x7b292034084A41B9D441B71b6E3557Edd0463fa8"
+  },
+  {
+    "contractName": "ProposerV2",
+    "address": "0x50efaC9619225d7fB4703C5872da978849B6E7cC"
+  },
+  {
+    "contractName": "EmergencyProposer",
+    "address": "0x91F1804aCaf87C2D34A34A70be1bb16bB85D6748"
+  },
+  {
+    "contractName": "VotingUpgraderV2",
+    "address": "0x13852D4AF390d8C3404c0577fd8B8E43389A290b"
   }
 ]

@@ -1,13 +1,12 @@
-import { ethers } from "ethers";
 import type * as ethersTypes from "../types/ethers";
 import * as state from "../types/state";
 import * as statemachine from "../types/statemachine";
 
-import { requestId, insertOrderedAscending, eventKey } from "../utils";
+import { requestId } from "../utils";
 import { factory as Erc20Factory } from "../services/erc20";
-import { OptimisticOracle as OptimisticOracleService } from "../services/optimisticOracle";
 import Multicall2 from "../../multicall2";
 import { SortedRequests } from "../services/sortedRequests";
+import type { OracleInterface, Request, Requests } from "../types/interfaces";
 
 // This file contains composable and type safe state writers which mirror the state in types/state.
 // Each component takes in 1 parameters, state and you can include any number of functions to operate on the state.
@@ -70,7 +69,7 @@ export class OptimisticOracle {
   address(address: string): void {
     this.state.address = address;
   }
-  request(request: state.FullRequest): void {
+  request(request: Request): void {
     const id = requestId(request);
     if (!this.state.requests) this.state.requests = {};
     // merge data in rather than replace
@@ -78,10 +77,6 @@ export class OptimisticOracle {
   }
   defaultLiveness(defaultLiveness: ethersTypes.BigNumber): void {
     this.state.defaultLiveness = defaultLiveness;
-  }
-  event(event: state.OptimisticOracleEvent): void {
-    if (!this.state.events) this.state.events = [];
-    insertOrderedAscending(this.state.events, event, eventKey);
   }
 }
 export class Chain {
@@ -112,17 +107,8 @@ export class Inputs {
 
 export class Services {
   constructor(private state: Partial<state.ChainServices>) {}
-  provider(rpcUrls: string[]): void {
-    if (this.state?.provider) return;
-    const providers = rpcUrls.map((url) => {
-      const provider = ethers.getDefaultProvider(url);
-      // turn off all polling, we will poll manually
-      provider.polling = false;
-      return provider;
-    });
-    this.state.provider = new ethers.providers.FallbackProvider(providers, 1);
-    // turn off all polling, we will poll manually
-    this.state.provider.polling = false;
+  provider(provider: ethersTypes.FallbackProvider): void {
+    this.state.provider = provider;
   }
   erc20s(address: string): void {
     if (!this.state?.provider) return;
@@ -131,10 +117,9 @@ export class Services {
     if (this.state?.erc20s[address]) return;
     this.state.erc20s[address] = Erc20Factory(this.state.provider, address, this.state.multicall2);
   }
-  optimisticOracle(address: string): void {
+  optimisticOracle(optimisticOracle: OracleInterface): void {
     if (this.state.optimisticOracle) return;
-    if (!this.state.provider) return;
-    this.state.optimisticOracle = new OptimisticOracleService(this.state.provider, address);
+    this.state.optimisticOracle = optimisticOracle;
   }
   multicall2(multicall2Address?: string): void {
     if (!multicall2Address) return;
@@ -175,12 +160,12 @@ export default class Write {
     if (!this.state.commands) this.state.commands = {};
     this.state.commands[context.id] = context;
   }
-  sortedRequestsService(): void {
+  sortedRequestsService(sortedRequests: SortedRequests): void {
     if (this.state?.services?.sortedRequests) return;
     // only want to add this once
-    this.state.services = { sortedRequests: new SortedRequests() };
+    this.state.services = { sortedRequests };
   }
-  descendingRequests(sortedRequests: state.RequestIndexes): void {
+  descendingRequests(sortedRequests: Requests): void {
     this.state.descendingRequests = sortedRequests;
   }
 }

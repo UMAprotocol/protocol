@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../external/polygon/tunnel/FxBaseChildTunnel.sol";
+import "@maticnetwork/fx-portal/contracts/tunnel/FxBaseChildTunnel.sol";
 import "../interfaces/ChildMessengerInterface.sol";
 import "../interfaces/ChildMessengerConsumerInterface.sol";
 import "../../common/implementation/Lockable.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
-import "../../oracle/implementation/Constants.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/implementation/Constants.sol";
 import "../../common/implementation/HasFinder.sol";
 
 /**

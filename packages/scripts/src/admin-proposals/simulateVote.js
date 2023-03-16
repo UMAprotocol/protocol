@@ -8,7 +8,7 @@
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
 // - Vote Simulate: NODE_URL_1=http://localhost:9545 node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
 
-const Web3 = require("Web3");
+const Web3 = require("web3");
 const { toWei } = Web3.utils;
 require("dotenv").config();
 const assert = require("assert");
@@ -26,8 +26,10 @@ const argv = require("minimist")(process.argv.slice(), {
   boolean: [
     // set to True to not execute any proposals after voting on them
     "skipExecute",
+    // set to True to use multicall to execute all transactions in a single tx
+    "multicall",
   ],
-  default: { skipExecute: false },
+  default: { skipExecute: false, multicall: false },
 });
 
 async function simulateVote() {
@@ -177,18 +179,37 @@ async function simulateVote() {
       const proposalId = Number(await mainnetContracts.governor.methods.numProposals().call()) - i;
       console.group("\nProposal ID:", proposalId.toString());
       const proposal = await mainnetContracts.governor.methods.getProposal(proposalId.toString()).call();
-      for (let j = 0; j < proposal.transactions.length; j++) {
-        console.log(`- Submitting transaction #${j + 1} from proposal #${proposalId}`);
-        try {
-          let txn = await mainnetContracts.governor.methods
-            .executeProposal(proposalId.toString(), j.toString())
+
+      if (argv.multicall)
+        if (argv.multicall) {
+          console.log("Submitting proposal execution with multicall");
+          const calls = [];
+          for (let j = 0; j < proposal.transactions.length; j++) {
+            console.log(`- Aggregating transaction #${j + 1} from proposal #${proposalId}`);
+            calls.push({
+              target: mainnetContracts.governor.options.address,
+              callData: mainnetContracts.governor.methods.executeProposal(proposalId, j).encodeABI(),
+            });
+          }
+          const txn = await mainnetContracts.multicall.methods
+            .aggregate(calls)
             .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
           console.log(`    - Success, receipt: ${txn.transactionHash}`);
-        } catch (err) {
-          console.error("    - Failure: Txn was likely executed previously, skipping to next one");
-          continue;
+        } else {
+          for (let j = 0; j < proposal.transactions.length; j++) {
+            console.log(`- Submitting transaction #${j + 1} from proposal #${proposalId}`);
+            try {
+              let txn = await mainnetContracts.governor.methods
+                .executeProposal(proposalId.toString(), j.toString())
+                .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
+              console.log(`    - Success, receipt: ${txn.transactionHash}`);
+            } catch (err) {
+              console.error("    - Failure: Txn was likely executed previously, skipping to next one");
+              continue;
+            }
+          }
         }
-      }
+
       console.groupEnd();
     }
     console.groupEnd();

@@ -59,6 +59,7 @@ export const PublicNetworks: PublicNetworksType = {
     wethAddress: "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
   },
   69: { name: "optimism-kovan", etherscan: "https://kovan-optimistic.etherscan.io/" },
+  82: { name: "meter", etherscan: "https://scan.meter.io/" },
   100: { name: "xdai", etherscan: "https://blockscout.com/xdai/mainnet" },
   137: {
     name: "polygon-matic",
@@ -66,12 +67,15 @@ export const PublicNetworks: PublicNetworksType = {
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
   288: { name: "boba", etherscan: "https://blockexplorer.boba.network/" },
+  416: { name: "sx", etherscan: "https://explorer.sx.technology/" },
+  9001: { name: "evmos", etherscan: "https://evm.evmos.org" },
   80001: {
     name: "polygon-mumbai",
     etherscan: "https://mumbai.polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
   42161: { name: "arbitrum", etherscan: "https://arbiscan.io/" },
+  43114: { name: "avalanche", etherscan: "https://snowtrace.io/" },
   421611: { name: "arbitrum-rinkeby", etherscan: "https://testnet.arbiscan.io/" },
 };
 

@@ -3,6 +3,199 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.32.7](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.6...@uma/financial-templates-lib@2.32.7) (2023-02-28)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.32.6](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.5...@uma/financial-templates-lib@2.32.6) (2023-02-20)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.32.5](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.4...@uma/financial-templates-lib@2.32.5) (2023-02-20)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.32.4](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.3...@uma/financial-templates-lib@2.32.4) (2023-01-17)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.32.3](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.2...@uma/financial-templates-lib@2.32.3) (2023-01-11)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.32.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.1...@uma/financial-templates-lib@2.32.2) (2023-01-09)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.32.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.0...@uma/financial-templates-lib@2.32.1) (2022-12-28)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+# [2.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.10...@uma/financial-templates-lib@2.32.0) (2022-12-20)
+
+### Features
+
+- cleanup protocol repo by removing old packages ([#4309](https://github.com/UMAprotocol/protocol/issues/4309)) ([74855fc](https://github.com/UMAprotocol/protocol/commit/74855fcef11644db0bf4f135e7907c9f6078e189))
+- restructure core contracts directory ([#4207](https://github.com/UMAprotocol/protocol/issues/4207)) ([40b5b2c](https://github.com/UMAprotocol/protocol/commit/40b5b2cbc1591201d99f2545a2b22b744b01e663))
+- update dvm2.0 upgrade script ([#4304](https://github.com/UMAprotocol/protocol/issues/4304)) ([f8a2b10](https://github.com/UMAprotocol/protocol/commit/f8a2b105f7c7570d985a1df8db397f86ccd811cd))
+
+## [2.31.10](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.9...@uma/financial-templates-lib@2.31.10) (2022-11-23)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.31.9](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.8...@uma/financial-templates-lib@2.31.9) (2022-11-23)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.31.8](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.6...@uma/financial-templates-lib@2.31.8) (2022-11-23)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.31.7](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.6...@uma/financial-templates-lib@2.31.7) (2022-11-23)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.31.6](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.5...@uma/financial-templates-lib@2.31.6) (2022-11-02)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.31.5](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.4...@uma/financial-templates-lib@2.31.5) (2022-11-01)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.31.4](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.3...@uma/financial-templates-lib@2.31.4) (2022-10-06)
+
+### Bug Fixes
+
+- copy logs when changing BNs to strings ([#4197](https://github.com/UMAprotocol/protocol/issues/4197)) ([e7cd6c5](https://github.com/UMAprotocol/protocol/commit/e7cd6c52e4cb8a18041dac1046bb0c78649fc945))
+
+## [2.31.3](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.2...@uma/financial-templates-lib@2.31.3) (2022-10-05)
+
+### Bug Fixes
+
+- **financial-templates-lib:** fix incorrect severity setting on pdv2 events ([#4195](https://github.com/UMAprotocol/protocol/issues/4195)) ([8d18544](https://github.com/UMAprotocol/protocol/commit/8d18544a08fe2c5912da23baffa1459b64870075))
+- bump docker node ver, remove bad script ([#4184](https://github.com/UMAprotocol/protocol/issues/4184)) ([d55e3dd](https://github.com/UMAprotocol/protocol/commit/d55e3ddcade682f759b9b58dc0f31f404bf2ab09))
+
+## [2.31.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.1...@uma/financial-templates-lib@2.31.2) (2022-09-23)
+
+### Bug Fixes
+
+- **financial-templates-lib:** prevent disabled config for pdv2 transp… ([#4179](https://github.com/UMAprotocol/protocol/issues/4179)) ([55f2c72](https://github.com/UMAprotocol/protocol/commit/55f2c7254538ec62ad954684aad7c262cd5b9819))
+
+## [2.31.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.0...@uma/financial-templates-lib@2.31.1) (2022-09-22)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+# [2.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.30.4...@uma/financial-templates-lib@2.31.0) (2022-09-12)
+
+### Features
+
+- **financial-templates-lib:** pagerduty v2 logger ([#3975](https://github.com/UMAprotocol/protocol/issues/3975)) ([e869586](https://github.com/UMAprotocol/protocol/commit/e86958673292411a801396eb91c09dbc417c7f71))
+
+## [2.30.4](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.30.3...@uma/financial-templates-lib@2.30.4) (2022-08-24)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.30.3](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.30.2...@uma/financial-templates-lib@2.30.3) (2022-08-16)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.30.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.30.1...@uma/financial-templates-lib@2.30.2) (2022-08-09)
+
+### Bug Fixes
+
+- Update the Monitor, proposer and disputer bots to work with OOv2 contracts ([#4062](https://github.com/UMAprotocol/protocol/issues/4062)) ([35267d8](https://github.com/UMAprotocol/protocol/commit/35267d87b44555acabae8c9e6457d75c3f650dcc))
+
+## [2.30.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.30.0...@uma/financial-templates-lib@2.30.1) (2022-08-02)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+# [2.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.29.0...@uma/financial-templates-lib@2.30.0) (2022-07-13)
+
+### Bug Fixes
+
+- **pf:** remove uSPAC10 from default price feed config ([#4005](https://github.com/UMAprotocol/protocol/issues/4005)) ([eb75a5d](https://github.com/UMAprotocol/protocol/commit/eb75a5d976016bec05af87e8d5d78b47941ec2fc))
+
+### Features
+
+- **pf-configs:** Add default price feed configs for ETHDOM and USDTDOM ([#4003](https://github.com/UMAprotocol/protocol/issues/4003)) ([8551f3f](https://github.com/UMAprotocol/protocol/commit/8551f3f9ea9b27602030cfc314fd8d4b8faa6052))
+
+# [2.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.3...@uma/financial-templates-lib@2.29.0) (2022-06-27)
+
+### Bug Fixes
+
+- Across V1 event clients need to use paginated event search query now that DepositRelayed has over 10,000 events ([#3969](https://github.com/UMAprotocol/protocol/issues/3969)) ([969612e](https://github.com/UMAprotocol/protocol/commit/969612e16cdfdf184fbbebe075dd86bd9756262c))
+- Update slack transport logic to not skip one line when breaking a multi-line message into multiple messages ([#3991](https://github.com/UMAprotocol/protocol/issues/3991)) ([382e327](https://github.com/UMAprotocol/protocol/commit/382e32716a37d55b420d0cc5fccf9d791594ce72))
+
+### Features
+
+- **logger:** Split long mrkdwn text into smaller chunks under Slack's 3000-char limit ([#3978](https://github.com/UMAprotocol/protocol/issues/3978)) ([e576ad4](https://github.com/UMAprotocol/protocol/commit/e576ad43f9c1072c940ec5d576a8eee14b2a1b5d))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- Round realized LP fee % to match UMIP ([#3898](https://github.com/UMAprotocol/protocol/issues/3898)) ([675eaa7](https://github.com/UMAprotocol/protocol/commit/675eaa73dab1389c6cdf649b1d3197aa22ad640a))
+
+### Reverts
+
+- Revert "feat: Round realized LP fee % to match UMIP (#3898)" (#3966) ([c6b6faf](https://github.com/UMAprotocol/protocol/commit/c6b6faff84930a93076952413f08a124330b72e4)), closes [#3898](https://github.com/UMAprotocol/protocol/issues/3898) [#3966](https://github.com/UMAprotocol/protocol/issues/3966)
+
+# [2.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.4...@uma/financial-templates-lib@2.28.0) (2022-06-23)
+
+### Bug Fixes
+
+- Across V1 event clients need to use paginated event search query now that DepositRelayed has over 10,000 events ([#3969](https://github.com/UMAprotocol/protocol/issues/3969)) ([969612e](https://github.com/UMAprotocol/protocol/commit/969612e16cdfdf184fbbebe075dd86bd9756262c))
+
+### Features
+
+- **logger:** Split long mrkdwn text into smaller chunks under Slack's 3000-char limit ([#3978](https://github.com/UMAprotocol/protocol/issues/3978)) ([e576ad4](https://github.com/UMAprotocol/protocol/commit/e576ad43f9c1072c940ec5d576a8eee14b2a1b5d))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- Round realized LP fee % to match UMIP ([#3898](https://github.com/UMAprotocol/protocol/issues/3898)) ([675eaa7](https://github.com/UMAprotocol/protocol/commit/675eaa73dab1389c6cdf649b1d3197aa22ad640a))
+
+### Reverts
+
+- Revert "feat: Round realized LP fee % to match UMIP (#3898)" (#3966) ([c6b6faf](https://github.com/UMAprotocol/protocol/commit/c6b6faff84930a93076952413f08a124330b72e4)), closes [#3898](https://github.com/UMAprotocol/protocol/issues/3898) [#3966](https://github.com/UMAprotocol/protocol/issues/3966)
+
+## [2.27.4](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.3...@uma/financial-templates-lib@2.27.4) (2022-05-27)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.27.3](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.2...@uma/financial-templates-lib@2.27.3) (2022-05-13)
+
+### Bug Fixes
+
+- add tests for v1 OptimisticOracle bot interactions ([#3897](https://github.com/UMAprotocol/protocol/issues/3897)) ([3aef7dd](https://github.com/UMAprotocol/protocol/commit/3aef7dd159138805e83c02e275999a95a416de8a))
+- Paginate InsuredBridgeL1Client event search for select events ([#3902](https://github.com/UMAprotocol/protocol/issues/3902)) ([6fff88a](https://github.com/UMAprotocol/protocol/commit/6fff88a4be3bc9f55cca70b54f265435ef08a1cb))
+- split l1 block queries at specific block ([#3901](https://github.com/UMAprotocol/protocol/issues/3901)) ([18da1ad](https://github.com/UMAprotocol/protocol/commit/18da1ada8aa480b8042b1c9e11ba1d4ac54a1dca))
+
+## [2.27.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.1...@uma/financial-templates-lib@2.27.2) (2022-05-05)
+
+### Bug Fixes
+
+- use v1 OO abi ([#3891](https://github.com/UMAprotocol/protocol/issues/3891)) ([92dfa43](https://github.com/UMAprotocol/protocol/commit/92dfa438d0cb7100393f7ea36fb32b9d3ccbac4c))
+
+## [2.27.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.0...@uma/financial-templates-lib@2.27.1) (2022-04-27)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+# [2.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.26.0...@uma/financial-templates-lib@2.27.0) (2022-04-22)
+
+### Features
+
+- add logger formatter to FPL release ([#3878](https://github.com/UMAprotocol/protocol/issues/3878)) ([adc471a](https://github.com/UMAprotocol/protocol/commit/adc471a34aa69d21bb783a91c67d3ea5f2f00b9e))
+
+# [2.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.25.0...@uma/financial-templates-lib@2.26.0) (2022-04-01)
+
+### Bug Fixes
+
+- Address Discord transport rate limiting issues ([#3858](https://github.com/UMAprotocol/protocol/issues/3858)) ([dc4cf55](https://github.com/UMAprotocol/protocol/commit/dc4cf55f739377b98e3301d8d02892fd7083acf9))
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+- Update OCEANUSD markets ([#3862](https://github.com/UMAprotocol/protocol/issues/3862)) ([e8bb1bc](https://github.com/UMAprotocol/protocol/commit/e8bb1bc22925fe142ab774878517ed52ed359376))
+- **across-relayer:** more accurately determine a safe last block number to query ([#3856](https://github.com/UMAprotocol/protocol/issues/3856)) ([02ea4c4](https://github.com/UMAprotocol/protocol/commit/02ea4c4c73faf6e57ae57db7b473a11c9c085a40))
+- **discord-transport:** Remove extra log messages for links and refine discord config to be more granular on where messages are sent ([#3848](https://github.com/UMAprotocol/protocol/issues/3848)) ([e5c1289](https://github.com/UMAprotocol/protocol/commit/e5c128971dafb4ecfcf4c96cce62ad8ca6715d10))
+
+### Features
+
+- add better provider logging and retries to redundant event calls ([#3852](https://github.com/UMAprotocol/protocol/issues/3852)) ([dabce64](https://github.com/UMAprotocol/protocol/commit/dabce643f6a2936d06d5273ef7861884ddd542d0))
+- added more robust bignumber formatting to winston transport ([#3866](https://github.com/UMAprotocol/protocol/issues/3866)) ([0095617](https://github.com/UMAprotocol/protocol/commit/0095617c66ce0fedfaf308d939ca0938a30af21e))
+
 # [2.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.24.0...@uma/financial-templates-lib@2.25.0) (2022-02-28)
 
 ### Features

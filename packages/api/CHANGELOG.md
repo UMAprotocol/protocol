@@ -3,6 +3,140 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.11.18](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.17...@uma/api@0.11.18) (2023-02-28)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.17](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.16...@uma/api@0.11.17) (2023-02-20)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.16](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.15...@uma/api@0.11.16) (2023-02-20)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.15](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.14...@uma/api@0.11.15) (2023-01-17)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.14](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.13...@uma/api@0.11.14) (2023-01-11)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.13](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.12...@uma/api@0.11.13) (2023-01-09)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.12](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.11...@uma/api@0.11.12) (2022-12-28)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.11](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.10...@uma/api@0.11.11) (2022-12-20)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.10](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.9...@uma/api@0.11.10) (2022-11-23)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.9](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.8...@uma/api@0.11.9) (2022-11-23)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.8](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.6...@uma/api@0.11.8) (2022-11-23)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.7](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.6...@uma/api@0.11.7) (2022-11-23)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.6](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.5...@uma/api@0.11.6) (2022-11-02)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.5](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.4...@uma/api@0.11.5) (2022-11-01)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.4](https://github.com/mrice32/protocol/compare/@uma/api@0.11.3...@uma/api@0.11.4) (2022-10-06)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.3](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.2...@uma/api@0.11.3) (2022-10-05)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.2](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.1...@uma/api@0.11.2) (2022-09-23)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.11.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.0...@uma/api@0.11.1) (2022-09-22)
+
+**Note:** Version bump only for package @uma/api
+
+# [0.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.18...@uma/api@0.11.0) (2022-09-12)
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+
+## [0.10.18](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.17...@uma/api@0.10.18) (2022-08-24)
+
+### Bug Fixes
+
+- **sdk,api:** configure datastore to accept longer strings on props ([#4136](https://github.com/UMAprotocol/protocol/issues/4136)) ([4fbcff7](https://github.com/UMAprotocol/protocol/commit/4fbcff734edf12c74e8496720a0ef837cd436eb1))
+
+## [0.10.17](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.16...@uma/api@0.10.17) (2022-08-16)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.16](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.15...@uma/api@0.10.16) (2022-08-09)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.15](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.14...@uma/api@0.10.15) (2022-08-02)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.14](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.13...@uma/api@0.10.14) (2022-07-13)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.13](https://github.com-uma/UMAprotocol/protocol/compare/@uma/api@0.10.10...@uma/api@0.10.13) (2022-06-27)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.12](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.11...@uma/api@0.10.12) (2022-06-23)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.11](https://github.com/mrice32/protocol/compare/@uma/api@0.10.10...@uma/api@0.10.11) (2022-05-27)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.10](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.9...@uma/api@0.10.10) (2022-05-13)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.9](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.8...@uma/api@0.10.9) (2022-05-05)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.8](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.7...@uma/api@0.10.8) (2022-04-27)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.7](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.6...@uma/api@0.10.7) (2022-04-22)
+
+### Bug Fixes
+
+- fallback to mainnet prices for L2 ERC20 tokens ([#3872](https://github.com/UMAprotocol/protocol/issues/3872)) ([cde12d9](https://github.com/UMAprotocol/protocol/commit/cde12d92368aed64e7c4767c214f34c1b221eedc))
+
+## [0.10.6](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.5...@uma/api@0.10.6) (2022-04-01)
+
+**Note:** Version bump only for package @uma/api
+
 ## [0.10.5](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.4...@uma/api@0.10.5) (2022-02-28)
 
 **Note:** Version bump only for package @uma/api

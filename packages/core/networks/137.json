@@ -28,8 +28,12 @@
     "address": "0xBb1A8db2D4350976a11cdfA60A1d43f97710Da49"
   },
   {
+    "contractName": "OptimisticOracleV2",
+    "address": "0xee3afe347d5c74317041e2618c49534daf887c24"
+  },
+  {
     "contractName": "OracleChildTunnel",
-    "address": "0x7f08B770E52e80ad418A90038FbcDf10DC7CD62F"
+    "address": "0xBEd4c1FC0FD95A2020EC351379b22d8582B904e3"
   },
   {
     "contractName": "TokenFactory",
@@ -82,5 +86,9 @@
   {
     "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
     "address": "0x821B8aF8f616bd5C2B3ccF4392F5635CcA545307"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0x5953f2538F613E05bAED8A5AeFa8e6622467AD3D"
   }
 ]

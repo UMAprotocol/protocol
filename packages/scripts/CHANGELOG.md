@@ -3,6 +3,202 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.23.1...@uma/scripts@1.24.0) (2023-02-28)
+
+### Features
+
+- add ability to replace wallets in DV migration ([#4456](https://github.com/UMAprotocol/protocol/issues/4456)) ([5c34358](https://github.com/UMAprotocol/protocol/commit/5c34358245e2a0e68529eab640b5e85052bdd238))
+- Add stake and delegate payload constuction for gnosis multisig for DesignatedVoting migration ([#4453](https://github.com/UMAprotocol/protocol/issues/4453)) ([7ff1a34](https://github.com/UMAprotocol/protocol/commit/7ff1a348542860770ea7060f12c3ecb673573411))
+- dvm2.0 upgrade scripts updates ([#4451](https://github.com/UMAprotocol/protocol/issues/4451)) ([2fb75fb](https://github.com/UMAprotocol/protocol/commit/2fb75fbbb67c9ac7a46776f35caa1b8cdd539963))
+- update downgrade upgrader ([#4459](https://github.com/UMAprotocol/protocol/issues/4459)) ([050a1b4](https://github.com/UMAprotocol/protocol/commit/050a1b49fa719a6274f4c76d4f7332cc6be91ee8))
+- update getGckmsSigner to be used in hardhat scripts ([#4401](https://github.com/UMAprotocol/protocol/issues/4401)) ([807517d](https://github.com/UMAprotocol/protocol/commit/807517de126aee27191125531e70407b13874795))
+
+## [1.23.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.23.0...@uma/scripts@1.23.1) (2023-02-20)
+
+**Note:** Version bump only for package @uma/scripts
+
+# [1.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.22.0...@uma/scripts@1.23.0) (2023-02-20)
+
+### Bug Fixes
+
+- **dvm2.0:** L-02 - Retroactively unstake cooldown ([#4430](https://github.com/UMAprotocol/protocol/issues/4430)) ([a4619e4](https://github.com/UMAprotocol/protocol/commit/a4619e4e943a1df6b50f122c60535842004b4d30))
+- chain specific block range for bots ([#4398](https://github.com/UMAprotocol/protocol/issues/4398)) ([de678e2](https://github.com/UMAprotocol/protocol/commit/de678e2726badfd5e4730122875b7411bb88cedb))
+
+### Features
+
+- add tolerance to slashingEvents checks ([#4438](https://github.com/UMAprotocol/protocol/issues/4438)) ([669d0a2](https://github.com/UMAprotocol/protocol/commit/669d0a22df7765f9498b79f4278e9c12b80ae71a))
+- implement optimistic asserter monitor ([#4396](https://github.com/UMAprotocol/protocol/issues/4396)) ([941ddc5](https://github.com/UMAprotocol/protocol/commit/941ddc5c6f1e87e700221eca3d8b22bf243e131a))
+- optimistic asserter admin proposals ([#4397](https://github.com/UMAprotocol/protocol/issues/4397)) ([e722591](https://github.com/UMAprotocol/protocol/commit/e7225914387b7b63fbbaf5bdee712e3d3bd2aef0))
+- redundant rpc in dvm-v2 monitor ([#4390](https://github.com/UMAprotocol/protocol/issues/4390)) ([5a38e1e](https://github.com/UMAprotocol/protocol/commit/5a38e1ec36f8c7462306b5b7a2093397057c234a))
+- rename Optimistic asserter to Optimistic Oracle V3 ([#4440](https://github.com/UMAprotocol/protocol/issues/4440)) ([e5fd755](https://github.com/UMAprotocol/protocol/commit/e5fd7556a1b88dc02c078f03e724b55a768decaa))
+
+# [1.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.21.0...@uma/scripts@1.22.0) (2023-01-17)
+
+### Features
+
+- add getProcessedPendingRequests ([#4376](https://github.com/UMAprotocol/protocol/issues/4376)) ([69a497b](https://github.com/UMAprotocol/protocol/commit/69a497b7829c63ac832a1518ce3a0cb04634aa6f))
+- Address unbounded intra round slashing ([#4380](https://github.com/UMAprotocol/protocol/issues/4380)) ([324f309](https://github.com/UMAprotocol/protocol/commit/324f309364c27896e950f23f8325ce8f636abcd3))
+
+# [1.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.20.2...@uma/scripts@1.21.0) (2023-01-11)
+
+### Features
+
+- dvm v2 monitor bots ([#4317](https://github.com/UMAprotocol/protocol/issues/4317)) ([5a6602e](https://github.com/UMAprotocol/protocol/commit/5a6602e60130e20edca56d4ae40d595c899a2ed8)), closes [#4304](https://github.com/UMAprotocol/protocol/issues/4304) [#4315](https://github.com/UMAprotocol/protocol/issues/4315) [#4301](https://github.com/UMAprotocol/protocol/issues/4301) [#4214](https://github.com/UMAprotocol/protocol/issues/4214) [#4311](https://github.com/UMAprotocol/protocol/issues/4311) [#4318](https://github.com/UMAprotocol/protocol/issues/4318) [#4322](https://github.com/UMAprotocol/protocol/issues/4322) [#4306](https://github.com/UMAprotocol/protocol/issues/4306) [#4320](https://github.com/UMAprotocol/protocol/issues/4320) [#4323](https://github.com/UMAprotocol/protocol/issues/4323) [#4324](https://github.com/UMAprotocol/protocol/issues/4324) [#4325](https://github.com/UMAprotocol/protocol/issues/4325) [#4326](https://github.com/UMAprotocol/protocol/issues/4326) [#4327](https://github.com/UMAprotocol/protocol/issues/4327) [#4336](https://github.com/UMAprotocol/protocol/issues/4336) [#4337](https://github.com/UMAprotocol/protocol/issues/4337) [#4338](https://github.com/UMAprotocol/protocol/issues/4338) [#4341](https://github.com/UMAprotocol/protocol/issues/4341) [#4335](https://github.com/UMAprotocol/protocol/issues/4335) [#4339](https://github.com/UMAprotocol/protocol/issues/4339) [#4319](https://github.com/UMAprotocol/protocol/issues/4319) [#4334](https://github.com/UMAprotocol/protocol/issues/4334) [#4340](https://github.com/UMAprotocol/protocol/issues/4340) [#4342](https://github.com/UMAprotocol/protocol/issues/4342) [#4343](https://github.com/UMAprotocol/protocol/issues/4343)
+- update upgrade scripts ([#4371](https://github.com/UMAprotocol/protocol/issues/4371)) ([278d12c](https://github.com/UMAprotocol/protocol/commit/278d12c6a71733f71e12ae52a8f12a3f9cecd87b))
+- voting v2 monitoring scripts ([#4312](https://github.com/UMAprotocol/protocol/issues/4312)) ([1582a8a](https://github.com/UMAprotocol/protocol/commit/1582a8a5623e1e76f026ff7ff487792a5cae5fe6))
+
+## [1.20.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.20.1...@uma/scripts@1.20.2) (2023-01-09)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.20.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.20.0...@uma/scripts@1.20.1) (2022-12-28)
+
+**Note:** Version bump only for package @uma/scripts
+
+# [1.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.19.5...@uma/scripts@1.20.0) (2022-12-20)
+
+### Features
+
+- update dvm2.0 upgrade script ([#4304](https://github.com/UMAprotocol/protocol/issues/4304)) ([f8a2b10](https://github.com/UMAprotocol/protocol/commit/f8a2b105f7c7570d985a1df8db397f86ccd811cd))
+
+## [1.19.5](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.19.4...@uma/scripts@1.19.5) (2022-11-23)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.19.4](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.19.3...@uma/scripts@1.19.4) (2022-11-23)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.19.3](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.19.1...@uma/scripts@1.19.3) (2022-11-23)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.19.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.19.1...@uma/scripts@1.19.2) (2022-11-23)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.19.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.19.0...@uma/scripts@1.19.1) (2022-11-02)
+
+**Note:** Version bump only for package @uma/scripts
+
+# [1.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.18.0...@uma/scripts@1.19.0) (2022-11-01)
+
+### Features
+
+- **scripts:** Add vote simulation in upgraded DVMv2 ([#4203](https://github.com/UMAprotocol/protocol/issues/4203)) ([c21e43c](https://github.com/UMAprotocol/protocol/commit/c21e43c6b0cdc981330d0f3c27c83d21bb468bd4))
+- **scripts:** additional assertions on the validate script ([#4200](https://github.com/UMAprotocol/protocol/issues/4200)) ([0e1b320](https://github.com/UMAprotocol/protocol/commit/0e1b320b2846dce38cf07aaca9a76d986d5c8748))
+- add emergency proposer to the dvm upgrade ([#4198](https://github.com/UMAprotocol/protocol/issues/4198)) ([2178eed](https://github.com/UMAprotocol/protocol/commit/2178eedb11f36566dd5b4232916414f6ec50592a))
+
+# [1.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.3...@uma/scripts@1.18.0) (2022-10-06)
+
+### Features
+
+- dvm 2.0 upgrade improvement ([#4190](https://github.com/UMAprotocol/protocol/issues/4190)) ([e65ca52](https://github.com/UMAprotocol/protocol/commit/e65ca524cc67583e30763f823f5fed4a78be2866))
+
+## [1.17.3](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.2...@uma/scripts@1.17.3) (2022-10-05)
+
+### Bug Fixes
+
+- add missing transfer of voting token ([#4189](https://github.com/UMAprotocol/protocol/issues/4189)) ([771f480](https://github.com/UMAprotocol/protocol/commit/771f4805ea6f1c047466589a53c1f99eff63a669))
+- **scripts:** support case sensitive file systems ([#4188](https://github.com/UMAprotocol/protocol/issues/4188)) ([fceee50](https://github.com/UMAprotocol/protocol/commit/fceee5020c54544ce41ccb4aed77ba9100ac600a))
+
+## [1.17.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.1...@uma/scripts@1.17.2) (2022-09-23)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.17.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.0...@uma/scripts@1.17.1) (2022-09-22)
+
+**Note:** Version bump only for package @uma/scripts
+
+# [1.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.16.0...@uma/scripts@1.17.0) (2022-09-12)
+
+### Features
+
+- update votingv2 deployment arguments ([#4145](https://github.com/UMAprotocol/protocol/issues/4145)) ([eb68e22](https://github.com/UMAprotocol/protocol/commit/eb68e22f34f69fa0a6b6df0e53792444566b8a6c))
+
+# [1.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.15.2...@uma/scripts@1.16.0) (2022-08-24)
+
+### Features
+
+- add migration scripts to voting v2 ([#4121](https://github.com/UMAprotocol/protocol/issues/4121)) ([3075a63](https://github.com/UMAprotocol/protocol/commit/3075a6323da94f8f47c20b4a57c01bd25b8300a6)), closes [#4132](https://github.com/UMAprotocol/protocol/issues/4132)
+
+## [1.15.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.15.1...@uma/scripts@1.15.2) (2022-08-16)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.15.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.15.0...@uma/scripts@1.15.1) (2022-08-09)
+
+**Note:** Version bump only for package @uma/scripts
+
+# [1.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.14.0...@uma/scripts@1.15.0) (2022-08-02)
+
+### Features
+
+- add script to register oo in side chains with admin child ([#4014](https://github.com/UMAprotocol/protocol/issues/4014)) ([45f8099](https://github.com/UMAprotocol/protocol/commit/45f80991f766d19b2596a031af67be895a13a174))
+
+# [1.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.13.0...@uma/scripts@1.14.0) (2022-07-13)
+
+### Features
+
+- umip 162 update simulation script to include l2 relays ([#3980](https://github.com/UMAprotocol/protocol/issues/3980)) ([b0c69ab](https://github.com/UMAprotocol/protocol/commit/b0c69abc7fb3db8f12b164a0005a5023a2735730))
+
+# [1.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.3...@uma/scripts@1.13.0) (2022-06-27)
+
+### Bug Fixes
+
+- improvements to the uma transfer script ([#3937](https://github.com/UMAprotocol/protocol/issues/3937)) ([7137dd3](https://github.com/UMAprotocol/protocol/commit/7137dd33c9ec7580c4c5a51599b1059a4c36b163))
+
+### Features
+
+- add proposal simulation script and readme ([#3967](https://github.com/UMAprotocol/protocol/issues/3967)) ([d83a468](https://github.com/UMAprotocol/protocol/commit/d83a4685157407200d6dfbda40fb55c4de0734de))
+- add script for transferring uma tokens from governor ([#3930](https://github.com/UMAprotocol/protocol/issues/3930)) ([93a287b](https://github.com/UMAprotocol/protocol/commit/93a287b6f85fe731a577463feba4ac5c75fb25fe))
+
+# [1.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.11.0...@uma/scripts@1.12.0) (2022-06-23)
+
+### Features
+
+- add proposal simulation script and readme ([#3967](https://github.com/UMAprotocol/protocol/issues/3967)) ([d83a468](https://github.com/UMAprotocol/protocol/commit/d83a4685157407200d6dfbda40fb55c4de0734de))
+
+# [1.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.3...@uma/scripts@1.11.0) (2022-05-27)
+
+### Bug Fixes
+
+- improvements to the uma transfer script ([#3937](https://github.com/UMAprotocol/protocol/issues/3937)) ([7137dd3](https://github.com/UMAprotocol/protocol/commit/7137dd33c9ec7580c4c5a51599b1059a4c36b163))
+
+### Features
+
+- add script for transferring uma tokens from governor ([#3930](https://github.com/UMAprotocol/protocol/issues/3930)) ([93a287b](https://github.com/UMAprotocol/protocol/commit/93a287b6f85fe731a577463feba4ac5c75fb25fe))
+
+## [1.10.3](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.2...@uma/scripts@1.10.3) (2022-05-13)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.10.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.1...@uma/scripts@1.10.2) (2022-05-05)
+
+**Note:** Version bump only for package @uma/scripts
+
+## [1.10.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.0...@uma/scripts@1.10.1) (2022-04-27)
+
+**Note:** Version bump only for package @uma/scripts
+
+# [1.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.9.0...@uma/scripts@1.10.0) (2022-04-22)
+
+### Features
+
+- Add script to manually propose a single admin transaction ([#3868](https://github.com/UMAprotocol/protocol/issues/3868)) ([872362a](https://github.com/UMAprotocol/protocol/commit/872362a1d0c07df535b846ed68d98a71f0592ee2))
+
+# [1.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.8.1...@uma/scripts@1.9.0) (2022-04-01)
+
+### Bug Fixes
+
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+- fix voter dapp scripts ([#3853](https://github.com/UMAprotocol/protocol/issues/3853)) ([c9af0d1](https://github.com/UMAprotocol/protocol/commit/c9af0d18aa2e314cfff3eb99cc8ff4273052d91e))
+- **admin-proposal-script:** Only send ETH to Arbitrum_ParentMessenger if balance is low ([#3844](https://github.com/UMAprotocol/protocol/issues/3844)) ([0d6040e](https://github.com/UMAprotocol/protocol/commit/0d6040e662da255625a9d8e3ae7e0ea89a1f4826))
+
+### Features
+
+- Add admin script to change Finder address ([#3865](https://github.com/UMAprotocol/protocol/issues/3865)) ([c55a985](https://github.com/UMAprotocol/protocol/commit/c55a985a9141778a48cb079b64d3d99e4bd0e43a))
+
 ## [1.8.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.8.0...@uma/scripts@1.8.1) (2022-02-28)
 
 **Note:** Version bump only for package @uma/scripts

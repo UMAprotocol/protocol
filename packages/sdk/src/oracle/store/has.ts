@@ -32,4 +32,13 @@ export default class Has {
   request = (): boolean => {
     return exists(ignoreExistenceError(this.read.request));
   };
+  collateralProps = (): boolean => {
+    return exists(ignoreExistenceError(this.read.collateralProps));
+  };
+  defaultLiveness = (): boolean => {
+    return exists(ignoreExistenceError(this.read.defaultLiveness));
+  };
+  currentTime = (): boolean => {
+    return exists(ignoreExistenceError(this.read.currentTime));
+  };
 }

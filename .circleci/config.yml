@@ -1,11 +1,11 @@
 version: 2.1
 setup: true
 orbs:
-  continuation: circleci/continuation@0.1.2
+  continuation: circleci/continuation@0.3.1
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     steps:
       - checkout
@@ -15,6 +15,12 @@ jobs:
       - run:
           name: Install Dependencies
           command: yarn --frozen-lockfile
+      - run:
+          name: Install Foundry
+          command: |
+            curl -L https://foundry.paradigm.xyz | bash || true
+            export PATH="$PATH:/home/circleci/.foundry/bin"
+            foundryup
       - save_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -22,7 +28,7 @@ jobs:
             - ~/.ssh
   build:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     resource_class: large
     steps:
@@ -30,7 +36,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Prereqs
-          command: sudo apt-get install -y rsync
+          command: sudo apt-get update && sudo apt-get install -y rsync
       - run:
           name: Run build
           command: yarn qbuild
@@ -44,7 +50,7 @@ jobs:
             - ~/.ssh
   lint:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -60,13 +66,14 @@ jobs:
       - run:
           name: Generate Tests
           command: |
+            export PATH="$PATH:/home/circleci/.foundry/bin"
             cd /home/circleci/protocol
             ./ci/generate_lerna_config.sh
       - continuation/continue:
           configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     steps:
       - checkout
@@ -79,12 +86,12 @@ jobs:
           path: packages/core/coverage
   publish:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     steps:
       - add_ssh_keys:
           fingerprints:
-            - "e5:da:db:1a:1d:66:5b:e7:f5:43:f2:24:1c:56:6a:97"
+            - "ad:e6:34:8f:ee:03:d5:b2:29:38:8c:64:0f:83:a2:ab"
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:

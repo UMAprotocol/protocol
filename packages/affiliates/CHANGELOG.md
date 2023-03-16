@@ -3,6 +3,157 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.15.23](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.22...@uma/affiliates@1.15.23) (2023-02-28)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.22](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.21...@uma/affiliates@1.15.22) (2023-02-20)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.21](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.20...@uma/affiliates@1.15.21) (2023-02-20)
+
+### Bug Fixes
+
+- remove most of affiliates and dependencies to fix build ([#4404](https://github.com/UMAprotocol/protocol/issues/4404)) ([429e2b1](https://github.com/UMAprotocol/protocol/commit/429e2b1fc9ae8c95cdff3ff2a0a6f49f9bbb84e9))
+
+## [1.15.20](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.19...@uma/affiliates@1.15.20) (2023-01-17)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.19](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.18...@uma/affiliates@1.15.19) (2023-01-11)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.18](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.17...@uma/affiliates@1.15.18) (2023-01-09)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.17](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.16...@uma/affiliates@1.15.17) (2022-12-28)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.16](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.15...@uma/affiliates@1.15.16) (2022-12-20)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.15](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.14...@uma/affiliates@1.15.15) (2022-11-23)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.14](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.13...@uma/affiliates@1.15.14) (2022-11-23)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.13](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.11...@uma/affiliates@1.15.13) (2022-11-23)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.12](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.11...@uma/affiliates@1.15.12) (2022-11-23)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.11](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.10...@uma/affiliates@1.15.11) (2022-11-02)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.10](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.9...@uma/affiliates@1.15.10) (2022-11-01)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.9](https://github.com/mrice32/protocol/compare/@uma/affiliates@1.15.8...@uma/affiliates@1.15.9) (2022-10-06)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.8](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.7...@uma/affiliates@1.15.8) (2022-10-05)
+
+### Bug Fixes
+
+- ignore NUMERICAL identifier ([#4191](https://github.com/UMAprotocol/protocol/issues/4191)) ([f3027d3](https://github.com/UMAprotocol/protocol/commit/f3027d34ab2a7fe4883e150733effab8690c9094))
+
+## [1.15.7](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.6...@uma/affiliates@1.15.7) (2022-09-23)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.6](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.5...@uma/affiliates@1.15.6) (2022-09-22)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.5](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.4...@uma/affiliates@1.15.5) (2022-09-12)
+
+### Bug Fixes
+
+- Gas Rebate 24 ([#4147](https://github.com/UMAprotocol/protocol/issues/4147)) ([5d55a99](https://github.com/UMAprotocol/protocol/commit/5d55a99edbc947255932561ed1d7199959031601))
+
+## [1.15.4](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.3...@uma/affiliates@1.15.4) (2022-08-24)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.3](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.2...@uma/affiliates@1.15.3) (2022-08-16)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.2](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.1...@uma/affiliates@1.15.2) (2022-08-09)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.15.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.0...@uma/affiliates@1.15.1) (2022-08-02)
+
+**Note:** Version bump only for package @uma/affiliates
+
+# [1.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.14.0...@uma/affiliates@1.15.0) (2022-07-13)
+
+### Features
+
+- DVM2.0 Add ability to delete spam requests from the DVM. ([#4010](https://github.com/UMAprotocol/protocol/issues/4010)) ([5703c4a](https://github.com/UMAprotocol/protocol/commit/5703c4abeb0093169bbcd047f9ef477e7063afb3))
+- Gas Rebate 22 + add fixes for missing ETHERSCAN_API_KEY ([#4008](https://github.com/UMAprotocol/protocol/issues/4008)) ([4a0ae6f](https://github.com/UMAprotocol/protocol/commit/4a0ae6fe5547657f26861c5d48cf784c4683c23e))
+
+# [1.14.0](https://github.com-uma/UMAprotocol/protocol/compare/@uma/affiliates@1.12.0...@uma/affiliates@1.14.0) (2022-06-27)
+
+### Features
+
+- Gas rebate 21 ([#3954](https://github.com-uma/UMAprotocol/protocol/issues/3954)) ([19f54ee](https://github.com-uma/UMAprotocol/protocol/commit/19f54ee63266fa7e80e406a6a7783cccc9e8dd78))
+
+# [1.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.12.1...@uma/affiliates@1.13.0) (2022-06-23)
+
+### Features
+
+- Gas rebate 21 ([#3954](https://github.com/UMAprotocol/protocol/issues/3954)) ([19f54ee](https://github.com/UMAprotocol/protocol/commit/19f54ee63266fa7e80e406a6a7783cccc9e8dd78))
+
+## [1.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.12.0...@uma/affiliates@1.12.1) (2022-05-27)
+
+**Note:** Version bump only for package @uma/affiliates
+
+# [1.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.11.2...@uma/affiliates@1.12.0) (2022-05-13)
+
+### Features
+
+- Gas Rebate 20 ([#3899](https://github.com/UMAprotocol/protocol/issues/3899)) ([8bc357e](https://github.com/UMAprotocol/protocol/commit/8bc357e115ec046a086113c540f5014ae7321abe))
+
+## [1.11.2](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.11.1...@uma/affiliates@1.11.2) (2022-05-05)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.11.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.11.0...@uma/affiliates@1.11.1) (2022-04-27)
+
+**Note:** Version bump only for package @uma/affiliates
+
+# [1.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.10.0...@uma/affiliates@1.11.0) (2022-04-22)
+
+### Features
+
+- Gas Rebate 19 ([#3871](https://github.com/UMAprotocol/protocol/issues/3871)) ([09ab19e](https://github.com/UMAprotocol/protocol/commit/09ab19ef904e8aba0089b341ff55a4cc539b66c9))
+
+# [1.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.9.1...@uma/affiliates@1.10.0) (2022-04-01)
+
+### Bug Fixes
+
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+
+### Features
+
+- Gas Rebate 18 ([#3836](https://github.com/UMAprotocol/protocol/issues/3836)) ([630f7b5](https://github.com/UMAprotocol/protocol/commit/630f7b5a25e8242f2458964ff8e7c351f08ee6a2))
+
 ## [1.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.9.0...@uma/affiliates@1.9.1) (2022-02-28)
 
 **Note:** Version bump only for package @uma/affiliates

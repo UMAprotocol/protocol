@@ -1,0 +1,78 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0x1340229DCF6e0bed7D9c2356929987C2A720F836"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x1251C69A4b91C2df1c1Af90CFFa65BEbC843BCfa"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0xCFdC4d6FdeC25e339ef07e25C35a482A6bedcfE0"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0xc5E1687895A563a43d956EE1D71B4c9Fe9425a34"
+  },
+  {
+    "contractName": "Admin_ChildMessenger",
+    "address": "0x39f9311F2DaB49147F3078a81212531D9507feDF"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x93097B6d282a0BA755042a66Cf287843cADBCb53"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x6Ff461b854F5349857c2Ad41e0f558C19953DF89"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0xB0D89D3218374BD8FE60f5748a880e9E373fB818"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x273CAC5468b7c50B9ab2ce598693c5f441750CC4"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x28077B47Cd03326De7838926A63699849DD4fa87"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x7de64fbc5eAbae2Cb5E9D110bA7D40933F9270b5"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x1e581855c52879a6B0E302E3798B94E51A09E0AF"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x053a2c1428269633E00a1f83fE060007cfEe3637"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0xbAc2A96a07071e77010970fC1539c1E8E2b060E8"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0xB82d59f9125EC77c2bcc1cd3bfC7AB179Bf153Db"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0xB5ae263c672B0E9c5187c7151982cF1A44F02eb2"
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x3ADB01551C5433d8E951c0bBee486543e3762Ed3"
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0xcCDB59baaa3b01649bef7A75Ae739491C4724aD2"
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": "0x2FB6850b35E902c97895a050c6008f3073b0F8D7"
+  }
+]

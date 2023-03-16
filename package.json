@@ -7,10 +7,10 @@
     "bootstrap": "yarn",
     "lint": "yarn eslint && yarn prettier --list-different",
     "lint-fix": "yarn eslint --fix && yarn prettier --write",
-    "eslint": "eslint './**/*.js' './**/*.ts'",
+    "eslint": "eslint --quiet './**/*.js' './**/*.ts'",
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md' './**/*.ts'",
-    "test": "lerna run --stream --concurrency=4 test",
-    "test-concurrent": "lerna run --stream --concurrency=4 test --ignore @uma/serverless-orchestration --ignore @uma/affiliates && lerna run --stream --concurrency=1 test --scope @uma/serverless-orchestration --scope @uma/affiliates",
+    "test": "NODE_OPTIONS=--max-old-space-size=4096 lerna run --stream --concurrency=4 test",
+    "test-concurrent": "NODE_OPTIONS=--max-old-space-size=4096 lerna run --stream --concurrency=4 test --ignore @uma/serverless-orchestration --ignore @uma/affiliates && lerna run --stream --concurrency=1 test --scope @uma/serverless-orchestration --scope @uma/affiliates",
     "test-fork": "lerna run --stream --concurrency=1 test-fork",
     "load-addresses": "yarn workspace @uma/core load-addresses",
     "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
@@ -46,7 +46,7 @@
     "eslint-plugin-react": "^7.19.0",
     "eslint-plugin-react-hooks": "^3.0.0",
     "ganache-cli": "^6.12.2",
-    "hardhat": "^2.9.0",
+    "hardhat": "^2.12.6",
     "husky": "^4.2.3",
     "lerna": "^3.22.1",
     "lint-staged": "^10.1.3",
@@ -74,5 +74,6 @@
     "packages": [
       "packages/*"
     ]
-  }
+  },
+  "dependencies": {}
 }

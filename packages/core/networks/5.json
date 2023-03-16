@@ -1,19 +1,11 @@
 [
   {
-    "contractName": "OracleRootTunnel",
-    "address": "0x240c4B8DBC6bc563ccC76728F26b6f21F911883A"
-  },
-  {
     "contractName": "Finder",
-    "address": "0xDC6b80D38004F495861E081e249213836a2F3217"
-  },
-  {
-    "contractName": "MockOracleAncillary",
-    "address": "0x20570E9e27920aC5E2601E0bef7244DeFf7F0B28"
+    "address": "0xE60dBa66B85E10E7Fd18a67a6859E241A243950e"
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0x622d59F3dbD28fcFE746E0d2f83ebdC286E89A3c"
+    "address": "0x488211B646b909C490d942f456481BeAE52fde27"
   },
   {
     "contractName": "GovernorRootTunnel",
@@ -38,5 +30,105 @@
   {
     "contractName": "Multicall2",
     "address": "0x5ba1e12693dc8f9c48aad8770482f4739beed696"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x07417cA264170Fc5bD3568f93cFb956729752B61"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x63fDfF29EBBcf1a958032d1E64F7627c3C98A059"
+  },
+  {
+    "contractName": "Voting",
+    "address": "0x9f444346FD853084158ce9cfa7e062BaBd51a577"
+  },
+  {
+    "contractName": "VotingV2",
+    "address": "0xc48F2d8491AffFc8eB21c85dEa1B4c0259c749a0"
+  },
+  {
+    "contractName": "VotingToken",
+    "address": "0xBa950974AFdae520cEE596c98295150Cf8D9659c"
+  },
+  {
+    "contractName": "FixedSlashSlashingLibrary",
+    "address": "0x012b697170f53053E4810E58a4497896fd8a7Bd2"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x9214454Ff30410a1558b8749Ab3FB0fD6F942539"
+  },
+  {
+    "contractName": "GovernorV2",
+    "address": "0xaf5c7f4F07E3f7a9b92928FBb8a027F1adeF77a1"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0xA5B9d8a0B0Fa04Ba71BDD68069661ED5C0848884"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracleV2",
+    "address": "0x5a9Ed5DaC741e20cA6587d0c5C39C0992Db305C1"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracle",
+    "address": "0xeDc52A961B5Ca2AC7B2e0bc36714dB60E5a115Ab"
+  },
+  {
+    "contractName": "ProposerV2",
+    "address": "0x6772A8aB1Dd25d6A5975d5573030e117874b7b6c"
+  },
+  {
+    "contractName": "EmergencyProposer",
+    "address": "0x931A43528779034ac9eb77df799d133557406176"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x96deacEA7A33F76EFf3549458cAfDE5427D64A12"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x5EcA3e8CA5B69279b3D075C52Bceff225570b4Ef"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0xE08ede7eC8520F43973ab287688De5Fa1416F661"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x03050b0c154E0C22A8153a1Fe83AD40747B4Ff87"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x765c9526CBaB89eBfB6328e7188502299Bf8eBdb"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0xA123aBaf76F5f4FB67f094e53e545474Ce597404"
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x855afAa41c9393cc9D46C571fE22537E740CA027"
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0xF7116b89854880F8C5c9BEfC063D454dfb3f0B39"
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": "0x56e68853Bc173534F30a23E9De64B2BC4b64D61e"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0x9923D42eF695B5dd9911D05Ac944d4cAca3c4EAB"
+  },
+  {
+    "contractName": "DesignatedVotingV2Factory",
+    "address": "0x2eb5def5cF9635F9D926788a26D424287a045b92"
   }
 ]

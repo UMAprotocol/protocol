@@ -1,7 +1,8 @@
 import dotenv from "dotenv";
 import assert from "assert";
 
-import { factory, Client } from "../client";
+import { Client } from "../client";
+import factory from "../optimisticFactory";
 import { getFlags } from "../utils";
 import Store from "../store";
 import * as types from "../types";
@@ -9,8 +10,8 @@ import * as types from "../types";
 dotenv.config();
 assert(process.env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
 
-// const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696";
-// const optimisticOracleAddress = "0xC43767F4592DF265B4a9F1a398B97fF24F38C6A6";
+const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696";
+const optimisticOracleAddress = "0xC43767F4592DF265B4a9F1a398B97fF24F38C6A6";
 const providerUrl = process.env.CUSTOM_NODE_URL;
 const chainId = 1;
 
@@ -18,6 +19,8 @@ export const config = {
   chains: {
     [chainId]: {
       chainName: "eth",
+      optimisticOracleAddress,
+      multicall2Address,
       // dont know why typescript cant figure this out
       rpcUrls: [providerUrl] as [string],
       blockExplorerUrls: ["a"] as [string],

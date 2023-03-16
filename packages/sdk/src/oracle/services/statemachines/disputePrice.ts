@@ -1,7 +1,7 @@
 import assert from "assert";
 import { Update } from "../update";
 import Store from "../../store";
-import { Signer } from "../../types/ethers";
+import { Signer, TransactionReceipt } from "../../types/ethers";
 import { Handlers as GenericHandlers } from "../../types/statemachine";
 import { InputRequest } from "../../types/state";
 import { ContextClient } from "./utils";
@@ -14,7 +14,7 @@ export type Params = InputRequest & {
   checkTxIntervalSec: number;
 };
 
-export type Memory = { hash?: string };
+export type Memory = { hash?: string; receipt?: TransactionReceipt };
 
 export function initMemory(): Memory {
   return {};
@@ -28,7 +28,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       assert(chainId === (await signer.getChainId()), "Signer on wrong chainid");
 
       const oracle = store.read().oracleService(chainId);
-      const tx = await oracle.disputePrice(signer, requester, identifier, timestamp, ancillaryData);
+      const tx = await oracle.disputePrice(signer, { requester, identifier, timestamp, ancillaryData });
       memory.hash = tx.hash;
       return "confirm";
     },
@@ -36,23 +36,26 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       const { chainId, confirmations, checkTxIntervalSec } = params;
       const { hash } = memory;
       assert(hash, "requires hash");
-      if (await update.isConfirmed(chainId, hash, confirmations)) {
+      const receipt = await update.isConfirmed(chainId, hash, confirmations);
+      if (receipt) {
+        memory.receipt = receipt as TransactionReceipt;
         return "update";
       }
       // wait x seconds before running this state again
       return context.sleep(checkTxIntervalSec * 1000);
     },
     async update(params: Params, memory: Memory) {
-      const { chainId, currency, account, requester, identifier, timestamp, ancillaryData } = params;
-      const { hash } = memory;
+      const { chainId, currency, account } = params;
+      const { receipt } = memory;
+      const oracle = store.read().oracleService(chainId);
       await update.balance(chainId, currency, account);
-      await update.request(params);
-      store.write((w) =>
-        w
-          .chains(chainId)
-          .optimisticOracle()
-          .request({ chainId, requester, identifier, timestamp, ancillaryData, disputeTx: hash })
-      );
+      if (receipt) {
+        oracle.updateFromTransactionReceipt(receipt);
+      }
+      store.write((w) => {
+        w.chains(chainId).optimisticOracle().request(oracle.getRequest(params));
+      });
+      update.sortedRequests(chainId);
       return "done";
     },
   };

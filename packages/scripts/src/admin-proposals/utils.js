@@ -4,7 +4,7 @@ const { getWeb3ByChainId, interfaceName, MAX_UINT_VAL } = require("@uma/common")
 const { _getContractAddressByName } = require("../utils");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
-const Web3 = require("Web3");
+const Web3 = require("web3");
 const { fromWei, toBN } = Web3.utils;
 const assert = require("assert");
 
@@ -24,6 +24,7 @@ const VotingInterface = getContract("VotingInterface");
 const AddressWhitelist = getContract("AddressWhitelist");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Store = getContract("Store");
+const Multicall2 = getContract("Multicall2");
 
 const L2_ADMIN_NETWORKS = [137, 42161, 10, 288];
 
@@ -148,6 +149,8 @@ const setupMainnet = async (web3) => {
     await _getContractAddressByName("IdentifierWhitelist", 1)
   );
 
+  const multicall = new web3.eth.Contract(Multicall2.abi, await _getContractAddressByName("Multicall2", 1));
+
   const store = new web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", 1));
   console.group("\nℹ️  DVM infrastructure on L1:");
   console.log(`- Finder @ ${finder.options.address}`);
@@ -161,6 +164,7 @@ const setupMainnet = async (web3) => {
   console.log(`- Store @ ${store.options.address}`);
   console.log(`- GovernorHub @ ${governorHub.options.address}`);
   console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
+  console.log(`- Multicall2 @ ${multicall.options.address}`);
   console.groupEnd();
   return {
     finder,
@@ -174,6 +178,7 @@ const setupMainnet = async (web3) => {
     identifierWhitelist,
     store,
     proposer,
+    multicall,
   };
 };
 
@@ -187,13 +192,17 @@ const fundArbitrumParentMessengerForOneTransaction = async (web3Provider, from, 
   console.log(
     `Arbitrum xchain messages require that the Arbitrum_ParentMessenger has at least a ${l1CallValue.toString()} ETH balance.`
   );
-  const sendEthTxn = await web3Provider.eth.sendTransaction({
-    from: from,
-    to: arbitrumParentMessenger.options.address,
-    value: l1CallValue.toString(),
-    ...gasPriceObj,
-  });
-  console.log(`Sent ETH txn: ${sendEthTxn.transactionHash}`);
+  if (toBN(await web3Provider.eth.getBalance(arbitrumParentMessenger.options.address)) < toBN(l1CallValue)) {
+    const sendEthTxn = await web3Provider.eth.sendTransaction({
+      from: from,
+      to: arbitrumParentMessenger.options.address,
+      value: l1CallValue.toString(),
+      ...gasPriceObj,
+    });
+    console.log(`Sent ETH txn: ${sendEthTxn.transactionHash}`);
+  } else {
+    console.log("Arbitrum messenger has enough ETH");
+  }
 };
 
 const setupGasEstimator = async () => {

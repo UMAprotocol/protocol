@@ -13,14 +13,14 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 
 import "../../common/interfaces/ExpandedIERC20.sol";
-
-import "../../oracle/interfaces/OracleInterface.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
-import "../../oracle/interfaces/OptimisticOracleInterface.sol";
-import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 
-import "../../oracle/implementation/Constants.sol";
+import "../../data-verification-mechanism/interfaces/OracleInterface.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
+import "../../data-verification-mechanism/implementation/Constants.sol";
+
+import "../../optimistic-oracle-v2/interfaces/OptimisticOracleV2Interface.sol";
 
 /**
  * @title Long Short Pair.
@@ -152,7 +152,7 @@ contract LongShortPair is Testable, Lockable {
         collateralToken = params.collateralToken;
 
         financialProductLibrary = params.financialProductLibrary;
-        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        OptimisticOracleV2Interface optimisticOracle = _getOptimisticOracle();
 
         // Ancillary data + additional stamped information should be less than ancillary data limit. Consider early
         // expiration ancillary data, if enableEarlyExpiration is set.
@@ -373,7 +373,7 @@ contract LongShortPair is Testable, Lockable {
     // Request a price in the optimistic oracle for a given request timestamp and ancillary data combo. Set the bonds
     // accordingly to the deployer's parameters. Will revert if re-requesting for a previously requested combo.
     function _requestOraclePrice(uint64 requestTimestamp, bytes memory requestAncillaryData) internal {
-        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        OptimisticOracleV2Interface optimisticOracle = _getOptimisticOracle();
 
         // If the proposer reward was set then pull it from the caller of the function.
         if (proposerReward > 0) {
@@ -434,7 +434,7 @@ contract LongShortPair is Testable, Lockable {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
-    function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
-        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    function _getOptimisticOracle() internal view returns (OptimisticOracleV2Interface) {
+        return OptimisticOracleV2Interface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracleV2));
     }
 }

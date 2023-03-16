@@ -22,7 +22,7 @@ the process works smoothly and your contributions can be merged as quickly and e
 ## Issues
 
 - Issues should be used to open a discussion about something that you want to see changed.
-- Please tag individual maintainers if you would like thier input. If you don't know which maintainer to tag, just tag
+- Please tag individual maintainers if you would like their input. If you don't know which maintainer to tag, just tag
   @UMAprotocol/eng.
 - To make a change, add a feature, or fix a bug, one should start by opening an issue briefly describing what should be
   changed and why.
@@ -30,7 +30,7 @@ the process works smoothly and your contributions can be merged as quickly and e
   at the same time.
 - Once an issue is open and one or more maintainers have expressed corroborating opinions, the assigned person should
   feel comfortable beginning work on the issue.
-- If an issue is a major project, consider working the maintainers to break it down into sub-issues and creating a
+- If an issue is a major project, consider working with the maintainers to break it down into sub-issues and creating a
   milestone to track progress.
 
 ## PRs
@@ -41,12 +41,13 @@ the process works smoothly and your contributions can be merged as quickly and e
   auto-select a second.
 - If you make updates and would like another round of reviews, use the cycle icon next to the reviewers names to
   request a follow-up review.
-- PRs should be narrow and focused. Making multiple, unrelated changes in the same PR makes things difficult on reviewers
+- PRs should be narrow and focused. Making multiple, unrelated changes in the same PR makes things difficult for reviewers
   and can often slow PR progress. If this is the case, you may be asked to split the PR up.
 - PRs must get approval from _at least_ one maintainer. However, it is considered best practice to make sure all
   comments are completely resolved before merging.
 - PRs can only be merged by maintainers. If a maintainer opened the PR, it's preferred (although, not required) to
   allow them to merge it, themselves.
+- Reviewer comments should be resolved by the reviewer, not the person who opened the PR.
 - PR titles should be in [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) format. This helps
   inform versioning and changelogs. Please include a breaking change footer in your PR description if the change will
   break consumers of any package. If you don't know how to correctly title your PR, this can be addressed in the review

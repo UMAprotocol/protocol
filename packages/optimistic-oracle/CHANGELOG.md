@@ -3,6 +3,148 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.15.2](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.15.1...@uma/optimistic-oracle@2.15.2) (2023-02-28)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.15.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.15.0...@uma/optimistic-oracle@2.15.1) (2023-02-20)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+# [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.21...@uma/optimistic-oracle@2.15.0) (2023-02-20)
+
+### Features
+
+- move ignored identifiers to env ([#4400](https://github.com/UMAprotocol/protocol/issues/4400)) ([11fbfda](https://github.com/UMAprotocol/protocol/commit/11fbfda97a52f9954e1a056fec9a32c738263e56))
+
+## [2.14.21](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.20...@uma/optimistic-oracle@2.14.21) (2023-01-17)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.20](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.19...@uma/optimistic-oracle@2.14.20) (2023-01-11)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.19](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.18...@uma/optimistic-oracle@2.14.19) (2023-01-09)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.18](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.17...@uma/optimistic-oracle@2.14.18) (2022-12-28)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.17](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.16...@uma/optimistic-oracle@2.14.17) (2022-12-20)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.16](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.15...@uma/optimistic-oracle@2.14.16) (2022-11-23)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.15](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.14...@uma/optimistic-oracle@2.14.15) (2022-11-23)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.14](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.12...@uma/optimistic-oracle@2.14.14) (2022-11-23)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.13](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.12...@uma/optimistic-oracle@2.14.13) (2022-11-23)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.12](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.11...@uma/optimistic-oracle@2.14.12) (2022-11-02)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.11](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.10...@uma/optimistic-oracle@2.14.11) (2022-11-01)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.10](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.9...@uma/optimistic-oracle@2.14.10) (2022-10-06)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.9](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.8...@uma/optimistic-oracle@2.14.9) (2022-10-05)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.8](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.7...@uma/optimistic-oracle@2.14.8) (2022-09-23)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.7](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.6...@uma/optimistic-oracle@2.14.7) (2022-09-22)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.6](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.5...@uma/optimistic-oracle@2.14.6) (2022-09-12)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.5](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.4...@uma/optimistic-oracle@2.14.5) (2022-08-24)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.4](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.3...@uma/optimistic-oracle@2.14.4) (2022-08-16)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.3](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.2...@uma/optimistic-oracle@2.14.3) (2022-08-09)
+
+### Bug Fixes
+
+- Update the Monitor, proposer and disputer bots to work with OOv2 contracts ([#4062](https://github.com/UMAprotocol/protocol/issues/4062)) ([35267d8](https://github.com/UMAprotocol/protocol/commit/35267d87b44555acabae8c9e6457d75c3f650dcc))
+
+## [2.14.2](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.1...@uma/optimistic-oracle@2.14.2) (2022-08-02)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.14.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.0...@uma/optimistic-oracle@2.14.1) (2022-07-13)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+# [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.6...@uma/optimistic-oracle@2.14.0) (2022-06-27)
+
+### Features
+
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+
+# [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.7...@uma/optimistic-oracle@2.13.0) (2022-06-23)
+
+### Features
+
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+
+## [2.12.7](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.6...@uma/optimistic-oracle@2.12.7) (2022-05-27)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.12.6](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.5...@uma/optimistic-oracle@2.12.6) (2022-05-13)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.12.5](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.4...@uma/optimistic-oracle@2.12.5) (2022-05-05)
+
+### Bug Fixes
+
+- use v1 OO abi ([#3891](https://github.com/UMAprotocol/protocol/issues/3891)) ([92dfa43](https://github.com/UMAprotocol/protocol/commit/92dfa438d0cb7100393f7ea36fb32b9d3ccbac4c))
+
+## [2.12.4](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.3...@uma/optimistic-oracle@2.12.4) (2022-04-27)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.12.3](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.2...@uma/optimistic-oracle@2.12.3) (2022-04-22)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+## [2.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.1...@uma/optimistic-oracle@2.12.2) (2022-04-01)
+
+### Bug Fixes
+
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+
 ## [2.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.0...@uma/optimistic-oracle@2.12.1) (2022-02-28)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

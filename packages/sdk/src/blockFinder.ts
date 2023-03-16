@@ -8,7 +8,8 @@ export type WithoutStringTimestamp<T extends { timestamp: number | string }> = T
 export default class BlockFinder<T extends { number: number; timestamp: number | string }> {
   constructor(
     private readonly requestBlock: (requestedBlock: string | number) => Promise<T>,
-    private readonly blocks: T[] = []
+    private readonly blocks: T[] = [],
+    private readonly chainId: number = 1
   ) {
     assert(requestBlock, "requestBlock function must be provided");
   }
@@ -29,9 +30,16 @@ export default class BlockFinder<T extends { number: number; timestamp: number |
     // Check the first block. If it's grater than our timestamp, we need to find an earlier block.
     if (this.blocks[0].timestamp > timestamp) {
       const initialBlock = this.blocks[0] as WithoutStringTimestamp<T>;
-      const cushion = 1.1;
-      // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
-      const incrementDistance = Math.max(await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion), 1);
+      // We use a 2x cushion to reduce the number of iterations in the following loop and increase the chance
+      // that the first block we find sets a floor for the target timestamp. The loop converges on the correct block
+      // slower than the following incremental search performed by `findBlock`, so we want to minimize the number of
+      // loop iterations in favor of searching more blocks over the `findBlock` search.
+      const cushion = 1;
+      const incrementDistance = Math.max(
+        // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
+        await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion, this.chainId),
+        1
+      );
 
       // Search backwards by a constant increment until we find a block before the timestamp or hit block 0.
       for (let multiplier = 1; ; multiplier++) {
@@ -58,9 +66,15 @@ export default class BlockFinder<T extends { number: number; timestamp: number |
 
   // Grabs the block for a particular number and caches it.
   private async getBlock(number: number) {
-    const index = sortedIndexBy(this.blocks, { number } as T, "number");
+    let index = sortedIndexBy(this.blocks, { number } as T, "number");
     if (this.blocks[index]?.number === number) return this.blocks[index]; // Return early if block already exists.
     const block = await this.requestBlock(number);
+
+    // Recompute the index after the async call since the state of this.blocks could have changed!
+    index = sortedIndexBy(this.blocks, { number } as T, "number");
+
+    // Rerun this check to avoid duplicate insertion.
+    if (this.blocks[index]?.number === number) return this.blocks[index];
     this.blocks.splice(index, 0, block); // A simple insert at index.
     return block;
   }

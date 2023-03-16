@@ -36,6 +36,10 @@
     "address": "0x56e2d1b8C7dE8D11B282E1b4C924C32D91f9102B"
   },
   {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x255483434aba5a75dc60c1391bB162BCd9DE2882"
+  },
+  {
     "contractName": "TokenFactory",
     "address": "0x2D509190Ed0172ba588407D4c2df918F955Cc6E1"
   },
@@ -58,5 +62,9 @@
   {
     "contractName": "LinearLongShortPairFinancialProductLibrary",
     "address": "0x168144503BFDA917657A6CcD079d1B7d2e6BF0E2"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0x072819Bb43B50E7A251c64411e7aA362ce82803B"
   }
 ]

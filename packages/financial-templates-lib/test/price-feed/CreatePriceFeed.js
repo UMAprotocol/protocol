@@ -13,8 +13,6 @@ const SyntheticToken = getContract("SyntheticToken");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
 const AddressWhitelist = getContract("AddressWhitelist");
-const BridgeAdmin = getContract("BridgeAdmin");
-const RateModelStore = getContract("RateModelStore");
 
 const {
   createPriceFeed,
@@ -35,10 +33,7 @@ const { DefiPulsePriceFeed } = require("../../dist/price-feed/DefiPulsePriceFeed
 const { ETHVIXPriceFeed } = require("../../dist/price-feed/EthVixPriceFeed");
 const { ForexDailyPriceFeed } = require("../../dist/price-feed/ForexDailyPriceFeed");
 const { QuandlPriceFeed } = require("../../dist/price-feed/QuandlPriceFeed");
-const { InsuredBridgePriceFeed } = require("../../dist/price-feed/InsuredBridgePriceFeed");
 const { SpyTransport } = require("../../dist/logger/SpyTransport");
-const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Client");
-const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
 
 const winston = require("winston");
 const sinon = require("sinon");
@@ -55,10 +50,8 @@ describe("CreatePriceFeed.js", function () {
   let store;
   let timer;
   let finder;
-  let rateModelStore;
   let identifierWhitelist;
   let addressWhitelist;
-  let bridgeAdmin;
   let spy;
 
   const apiKey = "test-api-key";
@@ -94,13 +87,6 @@ describe("CreatePriceFeed.js", function () {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
       .send({ from: accounts[0] });
-    bridgeAdmin = await BridgeAdmin.new(
-      finder.options.address,
-      7200,
-      "0",
-      padRight(utf8ToHex("ETH/BTC")) // Identifier shouldn't matter for these tests as we don't test any relays.
-    ).send({ from: accounts[0] });
-    rateModelStore = await RateModelStore.new().send({ from: accounts[0] });
     process.env[nodeUrlEnvVar] = "https://cloudflare-eth.com";
   });
 
@@ -1344,19 +1330,5 @@ describe("CreatePriceFeed.js", function () {
         type: "ethvix",
       })) instanceof ETHVIXPriceFeed
     );
-  });
-
-  it("Valid InsuredBridge Config", async function () {
-    const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
-      rateModels: {},
-      l2NetId: chainId,
-      bridgeAdminAddress: bridgeAdmin.options.address,
-      rateModelAddress: rateModelStore.options.address,
-      type: "insuredbridge",
-    });
-
-    assert.isTrue(pricefeed instanceof InsuredBridgePriceFeed);
-    assert.isTrue(pricefeed.l1Client instanceof InsuredBridgeL1Client);
-    assert.isTrue(pricefeed.l2Client instanceof InsuredBridgeL2Client);
   });
 });

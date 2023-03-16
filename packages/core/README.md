@@ -1,6 +1,21 @@
 # @uma/core
 
-This package contains contract artifacts for all UMA smart contracts.
+This package contains contract artifacts for all UMA smart contracts. It contains the following sets of smart contracts within the `contracts` directory:
+
+| **Directory Name**            | **Description**                                                                                                                                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common`                      | Common contracts re-used between diffrent contract implementations within this repo.                                                                                                                                                                                            |
+| `cross-chain-oracle`          | Contracts to enable the UMA DVM to reach a number of side-chains & rollups.                                                                                                                                                                                                     |
+| `data-verification-mechanism` | Schelling point commit reveal oracle used to arbitrate disputes in downstream escalation games.                                                                                                                                                                                 |
+| `external`                    | External integration points from projects integrated into UMA core contracts.                                                                                                                                                                                                   |
+| `finanical-templates`         | Financial contracts built on top of UMA's Oracle. Include Synthetic tokens (fixed term and perpetual), Long-short-pair(on-chain contract for diffrence) and a number of other mechanisms used to build on-chain incentive systems.                                              |
+| `gnosis-zodiac`               | Gnosis Safe Zodiac integration enabling an Optimistic Oracle powered multisig deployments.                                                                                                                                                                                      |
+| `merkle-distributor`          | Contracts enabling token distribution via merkle distribution and claim process.                                                                                                                                                                                                |
+| `optimistic-oracle-v2`        | Optimistic oracle mechanism, used to bring data on-chain. Highly suited for complex, longtailed, time insensitive data such as prediction markets, insurance products and complex cross-chain applications.                                                                     |
+| `optimistic-oracle-v3`        | Next iteration of optimistic oracle pattern wherein assertions are about the state of the world which are optimistically verified. Uses "sovereign security" to enable bespoke security models and design patterns over what is possible with other optimistic oracle designs.. |
+| `polygon-cross-chain-oracle`  | Similar to `cross-chain-oracle` contracts, except just supports polygon. Kept for legacy reasons.                                                                                                                                                                               |
+| `proxy-scripts`               | "Script" smart contracts, used in conjunction with DSProxy based actors.                                                                                                                                                                                                        |
+| `umip-helpers`                | Smart contracts used in UMIPs, such as upgrading the DVM.                                                                                                                                                                                                                       |
 
 ## Installing the package
 
@@ -89,7 +104,7 @@ core's tests. Running these specific tests can be done as follows:
 
 ```bash
 cd ../.. # navigate to the root of the protocol repo
-yarn optimsim-up # start the optimism containers. note this will take a long time as a few containers need to be built
+yarn optimism-up # start the optimism containers. note this will take a long time as a few containers need to be built
 cd ./packages/core # move back to this package
 yarn test-e2e # run the end to end tests against the optimism containers.
 ```

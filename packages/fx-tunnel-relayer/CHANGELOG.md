@@ -3,6 +3,142 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.31](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.30...@uma/fx-tunnel-relayer@1.3.31) (2023-02-28)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.30](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.29...@uma/fx-tunnel-relayer@1.3.30) (2023-02-20)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.29](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.28...@uma/fx-tunnel-relayer@1.3.29) (2023-02-20)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.28](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.27...@uma/fx-tunnel-relayer@1.3.28) (2023-01-17)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.27](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.26...@uma/fx-tunnel-relayer@1.3.27) (2023-01-11)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.26](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.25...@uma/fx-tunnel-relayer@1.3.26) (2023-01-09)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.25](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.24...@uma/fx-tunnel-relayer@1.3.25) (2022-12-28)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.24](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.23...@uma/fx-tunnel-relayer@1.3.24) (2022-12-20)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.23](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.22...@uma/fx-tunnel-relayer@1.3.23) (2022-11-23)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.22](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.21...@uma/fx-tunnel-relayer@1.3.22) (2022-11-23)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.21](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.19...@uma/fx-tunnel-relayer@1.3.21) (2022-11-23)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.20](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.19...@uma/fx-tunnel-relayer@1.3.20) (2022-11-23)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.19](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.18...@uma/fx-tunnel-relayer@1.3.19) (2022-11-02)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.18](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.17...@uma/fx-tunnel-relayer@1.3.18) (2022-11-01)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.17](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.16...@uma/fx-tunnel-relayer@1.3.17) (2022-10-06)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.16](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.15...@uma/fx-tunnel-relayer@1.3.16) (2022-10-05)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.15](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.14...@uma/fx-tunnel-relayer@1.3.15) (2022-09-23)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.14](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.13...@uma/fx-tunnel-relayer@1.3.14) (2022-09-22)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.13](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.12...@uma/fx-tunnel-relayer@1.3.13) (2022-09-12)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.12](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.11...@uma/fx-tunnel-relayer@1.3.12) (2022-08-24)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.11](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.10...@uma/fx-tunnel-relayer@1.3.11) (2022-08-16)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.10](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.9...@uma/fx-tunnel-relayer@1.3.10) (2022-08-09)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.9](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.8...@uma/fx-tunnel-relayer@1.3.9) (2022-08-02)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.8](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.7...@uma/fx-tunnel-relayer@1.3.8) (2022-07-13)
+
+### Bug Fixes
+
+- increase yarn test node process mem to fix ci ([#4015](https://github.com/UMAprotocol/protocol/issues/4015)) ([8e1dc1f](https://github.com/UMAprotocol/protocol/commit/8e1dc1ffa2fdf73eb8caf4380e7ed9f66f36fbcb))
+
+## [1.3.7](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.4...@uma/fx-tunnel-relayer@1.3.7) (2022-06-27)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.6](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.5...@uma/fx-tunnel-relayer@1.3.6) (2022-06-23)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.5](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.4...@uma/fx-tunnel-relayer@1.3.5) (2022-05-27)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.4](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.3...@uma/fx-tunnel-relayer@1.3.4) (2022-05-13)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.3](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.2...@uma/fx-tunnel-relayer@1.3.3) (2022-05-05)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.2](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.1...@uma/fx-tunnel-relayer@1.3.2) (2022-04-27)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.3.1](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.0...@uma/fx-tunnel-relayer@1.3.1) (2022-04-22)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.2.5...@uma/fx-tunnel-relayer@1.3.0) (2022-04-01)
+
+### Bug Fixes
+
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+
+### Features
+
+- **core:** Upgrade FxBaseRootTunnel contracts to be compatible with Polygon events emitted by EIP-1559 transactions ([#3863](https://github.com/UMAprotocol/protocol/issues/3863)) ([7b70d39](https://github.com/UMAprotocol/protocol/commit/7b70d39638e158a7c87babdb25e5d8bc42dec718))
+
 ## [1.2.5](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.2.4...@uma/fx-tunnel-relayer@1.2.5) (2022-02-28)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer
