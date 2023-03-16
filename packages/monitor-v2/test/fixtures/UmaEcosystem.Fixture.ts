@@ -6,6 +6,7 @@ import {
   MockOracleAncillaryEthers,
   RegistryEthers,
   StoreEthers,
+  TimerEthers,
   VotingTokenEthers,
 } from "@uma/contracts-node";
 import { zeroRawValue } from "../constants";
@@ -19,6 +20,7 @@ export interface UmaEcosystemContracts {
   store: StoreEthers;
   votingToken: VotingTokenEthers;
   mockOracle: MockOracleAncillaryEthers;
+  timer: TimerEthers;
 }
 
 export const umaEcosystemFixture = hre.deployments.createFixture(
@@ -46,6 +48,8 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
       ZERO_ADDRESS
     )) as MockOracleAncillaryEthers;
 
+    const timer = (await (await getContractFactory("Timer", deployer)).deploy()) as TimerEthers;
+
     // Register the UMA ecosystem contracts with the Finder.
     await finder.changeImplementationAddress(formatBytes32String("Store"), store.address);
     await finder.changeImplementationAddress(formatBytes32String("Registry"), registry.address);
@@ -64,6 +68,7 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
       store,
       votingToken,
       mockOracle,
+      timer,
     };
   }
 );
