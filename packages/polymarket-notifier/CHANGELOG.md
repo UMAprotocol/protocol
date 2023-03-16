@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.25](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.3.24...@uma/polymarket-notifier@1.3.25) (2023-03-16)
+
+### Bug Fixes
+
+- Add v2 events and adapter contract to Polymarket notifier ([#4468](https://github.com/UMAprotocol/protocol/issues/4468)) ([2c626ba](https://github.com/UMAprotocol/protocol/commit/2c626ba576513644d95ff13bd2e09b5011778a37))
+
 ## [1.3.24](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.3.23...@uma/polymarket-notifier@1.3.24) (2023-02-28)
 
 **Note:** Version bump only for package @uma/polymarket-notifier
