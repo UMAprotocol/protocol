@@ -1206,4 +1206,38 @@ describe("OptimisticGovernor", () => {
     const proposalBond = toBN(finalFee).mul(toBN(toWei("1")).div(toBN(burnedBondPercentage)));
     assert.equal(await optimisticOracleModule.methods.getProposalBond().call(), proposalBond.toString());
   });
+
+  it("Emits event on syncing new Optimistic Oracle V3", async function () {
+    // Upgrade the Optimistic Oracle V3.
+    const defaultCurrency = await TestnetERC20.new("Default Currency", "DC", 18).send({ from: owner });
+    const newOptimisticOracleV3 = await OptimisticOracleV3Test.new(
+      finder.options.address,
+      defaultCurrency.options.address,
+      liveness,
+      timer.options.address
+    ).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), newOptimisticOracleV3.options.address)
+      .send({ from: owner });
+
+    // Cache the upgraded Optimistic Oracle V3 and check the event is emitted.
+    const receipt = await optimisticOracleModule.methods.sync().send({ from: disputer });
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "OptimisticOracleChanged",
+      (event) => event.optimisticOracleV3 == newOptimisticOracleV3.options.address
+    );
+
+    // Revert to the original Optimistic Oracle V3 for other tests.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), optimisticOracleV3.options.address)
+      .send({ from: owner });
+  });
+
+  it("Does not emit event on syncing the same Optimistic Oracle V3", async function () {
+    // Sync the Optimistic Oracle V3 and check the event is not emitted.
+    const receipt = await optimisticOracleModule.methods.sync().send({ from: owner });
+    assert.equal(Object.keys(receipt.events).length, 0);
+  });
 });
