@@ -1,5 +1,5 @@
 import { Logger, MonitoringParams, runQueryFilter, getOg } from "./common";
-import { logProposalDeleted, logProposalExecuted, logSetBond, logSetCollateral, logSetRules } from "./MonitorLogger";
+import { logProposalDeleted, logProposalExecuted, logSetCollateralAndBond, logSetRules } from "./MonitorLogger";
 import {
   logSetIdentifier,
   logSetLiveness,
@@ -78,25 +78,13 @@ export async function monitorProposalDeleted(logger: typeof Logger, params: Moni
   }
 }
 
-export async function monitorSetBond(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function monitorSetCollateralAndBond(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const og = await getOg(params);
-  const transactions = await runQueryFilter(og, og.filters.SetBond(), params.blockRange);
+  const transactions = await runQueryFilter(og, og.filters.SetCollateralAndBond(), params.blockRange);
   for (const transaction of transactions) {
-    await logSetBond(
+    await logSetCollateralAndBond(
       logger,
-      { bond: transaction.args.bondAmount, collateral: transaction.args.collateral, tx: transaction.transactionHash },
-      params
-    );
-  }
-}
-
-export async function monitorSetCollateral(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter(og, og.filters.SetCollateral(), params.blockRange);
-  for (const transaction of transactions) {
-    await logSetCollateral(
-      logger,
-      { collateral: transaction.args.collateral, tx: transaction.transactionHash },
+      { collateral: transaction.args.collateral, bond: transaction.args.bondAmount, tx: transaction.transactionHash },
       params
     );
   }

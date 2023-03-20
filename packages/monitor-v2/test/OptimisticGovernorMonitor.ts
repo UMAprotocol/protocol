@@ -12,8 +12,7 @@ import { BotModes, MonitoringParams } from "../src/monitor-og/common";
 import {
   monitorProposalDeleted,
   monitorProposalExecuted,
-  monitorSetBond,
-  monitorSetCollateral,
+  monitorSetCollateralAndBond,
   monitorSetEscalationManager,
   monitorSetIdentifier,
   monitorSetLiveness,
@@ -262,22 +261,12 @@ describe("OptimisticGovernorMonitor", function () {
 
     let spy = sinon.spy();
     let spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorSetBond(spyLogger, await createMonitoringParams(setBondCollateralBlockNumber));
+    await monitorSetCollateralAndBond(spyLogger, await createMonitoringParams(setBondCollateralBlockNumber));
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
-    assert.equal(spy.getCall(0).lastArg.message, "Bond Set 📝");
+    assert.equal(spy.getCall(0).lastArg.message, "Collateral And Bond Set 📝");
     assert.isTrue(spyLogIncludes(spy, 0, bondToken.address));
     assert.isTrue(spyLogIncludes(spy, 0, parseEther("1").toString()));
-    assert.equal(spyLogLevel(spy, 0), "warn");
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
-
-    spy = sinon.spy();
-    spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorSetCollateral(spyLogger, await createMonitoringParams(setBondCollateralBlockNumber));
-
-    assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
-    assert.equal(spy.getCall(0).lastArg.message, "Collateral Set 📝");
-    assert.isTrue(spyLogIncludes(spy, 0, bondToken.address));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
 
