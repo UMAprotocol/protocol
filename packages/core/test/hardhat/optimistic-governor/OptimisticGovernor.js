@@ -803,7 +803,7 @@ describe("OptimisticGovernor", () => {
     await assertEventEmitted(
       collateralReceipt,
       optimisticOracleModule,
-      "SetBond",
+      "SetCollateralAndBond",
       (event) => event.collateral == newBondToken.options.address && event.bondAmount == newBondAmount
     );
 
