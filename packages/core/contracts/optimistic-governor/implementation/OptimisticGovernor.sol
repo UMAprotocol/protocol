@@ -207,6 +207,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
      * whitelisting of proposers and disputers since Optimistic Governor is deleting disputed proposals.
      */
     function setEscalationManager(address _escalationManager) external onlyOwner {
+        require(_isContract(_escalationManager) || _escalationManager == address(0), "EM is not a contract");
         escalationManager = _escalationManager;
         emit SetEscalationManager(_escalationManager);
     }
