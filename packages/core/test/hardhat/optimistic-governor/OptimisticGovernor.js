@@ -803,7 +803,7 @@ describe("OptimisticGovernor", () => {
     await assertEventEmitted(
       collateralReceipt,
       optimisticOracleModule,
-      "SetBond",
+      "SetCollateralAndBond",
       (event) => event.collateral == newBondToken.options.address && event.bondAmount == newBondAmount
     );
 
@@ -851,22 +851,24 @@ describe("OptimisticGovernor", () => {
       (event) => event.identifier == newIdentifier
     );
 
-    // Set new Escalation Manager.
-    const newEscalationManager = executor;
+    // Deploy Full Policy Escalation Manager and set it as new Escalation Manager.
+    const newEscalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
     const setEscalationManagerData = optimisticOracleModule.methods
-      .setEscalationManager(newEscalationManager)
+      .setEscalationManager(newEscalationManager.options.address)
       .encodeABI();
     let escalationManagerReceipt = await avatar.methods
       .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
       .send({ from: owner });
 
     // Check that the new Escalation Manager is set.
-    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), newEscalationManager);
+    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), newEscalationManager.options.address);
     await assertEventEmitted(
       escalationManagerReceipt,
       optimisticOracleModule,
       "SetEscalationManager",
-      (event) => event.escalationManager == newEscalationManager
+      (event) => event.escalationManager == newEscalationManager.options.address
     );
   });
 
@@ -896,11 +898,13 @@ describe("OptimisticGovernor", () => {
     await identifierWhitelist.methods.addSupportedIdentifier(newIdentifier).send({ from: owner });
     assert(await didContractThrow(optimisticOracleModule.methods.setIdentifier(newIdentifier).send({ from: rando })));
 
-    // Try set new Escalation Manager from a non-owner.
-    const newEscalationManager = executor;
+    // Deploy Full Policy Escalation Manager and try setting it as new Escalation Manager from a non-owner.
+    const newEscalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
     assert(
       await didContractThrow(
-        optimisticOracleModule.methods.setEscalationManager(newEscalationManager).send({ from: rando })
+        optimisticOracleModule.methods.setEscalationManager(newEscalationManager.options.address).send({ from: rando })
       )
     );
   });
@@ -1205,6 +1209,41 @@ describe("OptimisticGovernor", () => {
     // Check that the proposal bond now is set to the floor driven by the final fee.
     const proposalBond = toBN(finalFee).mul(toBN(toWei("1")).div(toBN(burnedBondPercentage)));
     assert.equal(await optimisticOracleModule.methods.getProposalBond().call(), proposalBond.toString());
+  });
+
+  it("Cannot set EOA as Escalation Manager", async function () {
+    // Set EOA as escalation manager.
+    const newEscalationManager = executor;
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(newEscalationManager)
+      .encodeABI();
+    assert(
+      await didContractThrow(
+        avatar.methods.exec(optimisticOracleModule.options.address, "0", setEscalationManagerData).send({ from: owner })
+      )
+    );
+  });
+
+  it("Can reset Escalation Manager to zero address", async function () {
+    // Deploy Full Policy Escalation Manager and set it as new Escalation Manager.
+    const newEscalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(newEscalationManager.options.address)
+      .encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Reset Escalation Manager to zero address.
+    const resetEscalationManagerData = optimisticOracleModule.methods.setEscalationManager(ZERO_ADDRESS).encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", resetEscalationManagerData)
+      .send({ from: owner });
+
+    // Check that Escalation Manager is set to zero address.
+    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), ZERO_ADDRESS);
   });
 
   it("Cannot process callback from Optimistic Oracle V3 with invalid assertionId", async function () {

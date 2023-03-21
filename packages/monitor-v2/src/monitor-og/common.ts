@@ -16,8 +16,7 @@ export interface BotModes {
   transactionsExecutedEnabled: boolean;
   proposalExecutedEnabled: boolean;
   proposalDeletedEnabled: boolean;
-  setBondEnabled: boolean;
-  setCollateralEnabled: boolean;
+  setCollateralAndBondEnabled: boolean;
   setRulesEnabled: boolean;
   setLivenessEnabled: boolean;
   setIdentifierEnabled: boolean;
@@ -72,8 +71,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     transactionsExecutedEnabled: env.TRANSACTIONS_EXECUTED_ENABLED === "true",
     proposalExecutedEnabled: env.PROPOSAL_EXECUTED_ENABLED === "true",
     proposalDeletedEnabled: env.PROPOSAL_DELETED_ENABLED === "true",
-    setBondEnabled: env.SET_BOND_ENABLED === "true",
-    setCollateralEnabled: env.SET_COLLATERAL_ENABLED === "true",
+    setCollateralAndBondEnabled: env.SET_COLLATERAL_BOND_ENABLED === "true",
     setRulesEnabled: env.SET_RULES_ENABLED === "true",
     setLivenessEnabled: env.SET_LIVENESS_ENABLED === "true",
     setIdentifierEnabled: env.SET_IDENTIFIER_ENABLED === "true",

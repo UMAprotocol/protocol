@@ -27,8 +27,7 @@ All the configuration should be provided with following environment variables:
 - `TRANSACTIONS_EXECUTED_ENABLED` is boolean enabling/disabling monitoring transactions executed (`false` by default).
 - `PROPOSAL_EXECUTED_ENABLED` is boolean enabling/disabling monitoring proposal executed (`false` by default).
 - `PROPOSAL_DELETED_ENABLED` is boolean enabling/disabling monitoring proposal deleted (`false` by default).
-- `SET_BOND_ENABLED` is boolean enabling/disabling monitoring set bond (`false` by default).
-- `SET_COLLATERAL_ENABLED` is boolean enabling/disabling monitoring set collateral (`false` by default).
+- `SET_COLLATERAL_BOND_ENABLED` is boolean enabling/disabling monitoring set collateral and bond amount (`false` by default).
 - `SET_RULES_ENABLED` is boolean enabling/disabling monitoring set rules (`false` by default).
 - `SET_LIVENESS_ENABLED` is boolean enabling/disabling monitoring set liveness (`false` by default).
 - `SET_IDENTIFIER_ENABLED` is boolean enabling/disabling monitoring set identifier (`false` by default).

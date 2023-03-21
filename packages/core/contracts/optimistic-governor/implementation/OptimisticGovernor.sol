@@ -51,9 +51,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
 
     event ProposalDeleted(bytes32 indexed proposalHash, bytes32 indexed assertionId);
 
-    event SetBond(IERC20 indexed collateral, uint256 indexed bondAmount);
-
-    event SetCollateral(IERC20 indexed collateral);
+    event SetCollateralAndBond(IERC20 indexed collateral, uint256 indexed bondAmount);
 
     event SetRules(string rules);
 
@@ -160,12 +158,12 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         // ERC20 token to be used as collateral (must be approved by UMA governance).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "Bond token not supported");
         collateral = _collateral;
-        emit SetCollateral(_collateral);
 
         // Value of the bond posted for asserting the proposed transactions. If the minimum amount required by
         // Optimistic Oracle V3 is higher this contract will attempt to pull the required bond amount.
         bondAmount = _bondAmount;
-        emit SetBond(_collateral, _bondAmount);
+
+        emit SetCollateralAndBond(_collateral, _bondAmount);
     }
 
     /**
@@ -211,6 +209,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
      * whitelisting of proposers and disputers since Optimistic Governor is deleting disputed proposals.
      */
     function setEscalationManager(address _escalationManager) external onlyOwner {
+        require(_isContract(_escalationManager) || _escalationManager == address(0), "EM is not a contract");
         escalationManager = _escalationManager;
         emit SetEscalationManager(_escalationManager);
     }
