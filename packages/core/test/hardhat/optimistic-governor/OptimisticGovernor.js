@@ -218,7 +218,7 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
-    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const assertionId = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     const claim = utf8ToHex(
       "proposalHash:" + proposalHash.slice(2) + ',explanation:"' + hexToUtf8(explanation) + '",rules:"' + rules + '"'
     );
@@ -323,7 +323,7 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
-    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const assertionId = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
 
     await assertEventEmitted(
       receipt,
@@ -496,7 +496,7 @@ describe("OptimisticGovernor", () => {
     );
 
     // Disputed proposal hash is deleted automatically from callback.
-    const disputedProposalHash = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const disputedProposalHash = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     assert.equal(disputedProposalHash, 0);
   });
 
@@ -545,7 +545,7 @@ describe("OptimisticGovernor", () => {
     await optimisticOracleV3.methods.disputeAssertion(assertionId, disputer).send({ from: disputer });
 
     // Disputed proposal hash is deleted automatically from callback.
-    const disputedProposalHashTimestamp = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const disputedProposalHashTimestamp = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     assert.equal(disputedProposalHashTimestamp, 0);
 
     // Duplicate proposal can be made after original proposal is deleted. This is useful in case the disputer was wrong.

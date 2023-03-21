@@ -90,8 +90,8 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         uint256 requestTime;
     }
 
-    mapping(bytes32 => bytes32) public proposalHashes; // Maps proposal hashes to assertionIds.
-    mapping(bytes32 => bytes32) public assertionIds; // Maps assertionIds to proposal hashes.
+    mapping(bytes32 => bytes32) public assertionIds; // Maps proposal hashes to assertionIds.
+    mapping(bytes32 => bytes32) public proposalHashes; // Maps assertionIds to proposal hashes.
 
     /**
      * @notice Construct Optimistic Governor module.
@@ -254,7 +254,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         bytes memory claim = _constructClaim(proposalHash, _explanation);
 
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
-        require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals not allowed");
+        require(assertionIds[proposalHash] == bytes32(0), "Duplicate proposals not allowed");
 
         // Get the bond from the proposer and approve the required bond to be used by the Optimistic Oracle V3.
         // This will fail if the proposer has not granted the Optimistic Governor contract an allowance
@@ -278,8 +278,8 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
             );
 
         // Maps the proposal hash to the returned assertionId and vice versa.
-        proposalHashes[proposalHash] = assertionId;
-        assertionIds[assertionId] = proposalHash;
+        assertionIds[proposalHash] = assertionId;
+        proposalHashes[assertionId] = proposalHash;
 
         emit TransactionsProposed(
             proposer,
@@ -304,14 +304,14 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored
         // proposal hash. This is possible when a) the transactions have not been proposed, b) transactions have already
         // been executed, c) the proposal was disputed or d) the proposal was deleted after Optimistic Oracle V3 upgrade.
-        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal hash does not exist");
+        require(assertionIds[_proposalHash] != bytes32(0), "Proposal hash does not exist");
 
         // Get the original proposal assertionId.
-        bytes32 assertionId = proposalHashes[_proposalHash];
+        bytes32 assertionId = assertionIds[_proposalHash];
 
         // Remove proposal hash and assertionId so transactions can not be executed again.
-        delete proposalHashes[_proposalHash];
-        delete assertionIds[assertionId];
+        delete assertionIds[_proposalHash];
+        delete proposalHashes[assertionId];
 
         // There is no need to check the assertion result as this point can be reached only for non-disputed assertions.
         // This will revert if the assertion has not been settled and can not currently be settled.
@@ -340,15 +340,15 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
      */
     function deleteProposalOnUpgrade(bytes32 _proposalHash) public nonReentrant {
         require(_proposalHash != bytes32(0), "Invalid proposal hash");
-        bytes32 assertionId = proposalHashes[_proposalHash];
+        bytes32 assertionId = assertionIds[_proposalHash];
         require(assertionId != bytes32(0), "Proposal hash does not exist");
 
         // Detect Optimistic Oracle V3 upgrade by checking if it has the matching assertionId.
         require(optimisticOracleV3.getAssertion(assertionId).asserter == address(0), "OOv3 upgrade not detected");
 
         // Remove proposal hash and assertionId so that transactions can be re-proposed if needed.
-        delete proposalHashes[_proposalHash];
-        delete assertionIds[assertionId];
+        delete assertionIds[_proposalHash];
+        delete proposalHashes[assertionId];
 
         emit ProposalDeleted(_proposalHash, assertionId);
     }
@@ -358,7 +358,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
      * @param assertionId the identifier of the disputed assertion.
      */
     function assertionDisputedCallback(bytes32 assertionId) external {
-        bytes32 proposalHash = assertionIds[assertionId];
+        bytes32 proposalHash = proposalHashes[assertionId];
 
         // Callback should only be called by the Optimistic Oracle V3. Address would not match in case of contract
         // upgrade, thus try deleting the proposal through deleteProposalOnUpgrade function that should revert if
@@ -369,8 +369,8 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
             require(proposalHash != bytes32(0), "Invalid proposal hash");
 
             // Delete the disputed proposal and associated assertionId.
-            delete proposalHashes[proposalHash];
-            delete assertionIds[assertionId];
+            delete assertionIds[proposalHash];
+            delete proposalHashes[assertionId];
 
             emit ProposalDeleted(proposalHash, assertionId);
         } else deleteProposalOnUpgrade(proposalHash);
