@@ -100,37 +100,20 @@ export async function logProposalDeleted(
   });
 }
 
-export async function logSetBond(
+export async function logSetCollateralAndBond(
   logger: typeof Logger,
-  transaction: { bond: BigNumber; collateral: string; tx: string },
+  transaction: { collateral: string; bond: BigNumber; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
     at: "OptimisticGovernorMonitor",
-    message: "Bond Set 📝",
+    message: "Collateral And Bond Set 📝",
     mrkdwn:
       " Bond has been set to " +
       transaction.bond.toString() +
       " for collateral " +
       transaction.collateral +
       " in transaction " +
-      createEtherscanLinkMarkdown(transaction.tx, params.chainId),
-    notificationPath: "optimistic-governor",
-  });
-}
-
-export async function logSetCollateral(
-  logger: typeof Logger,
-  transaction: { collateral: string; tx: string },
-  params: MonitoringParams
-): Promise<void> {
-  logger.warn({
-    at: "OptimisticGovernorMonitor",
-    message: "Collateral Set 📝",
-    mrkdwn:
-      " Collateral " +
-      transaction.collateral +
-      " has been added in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
     notificationPath: "optimistic-governor",
   });
