@@ -360,15 +360,16 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
      * @param assertionId the identifier of the disputed assertion.
      */
     function assertionDisputedCallback(bytes32 assertionId) external {
-        // In order to optimize for happy path, the assertionId is validated for potential spoofing only in the
-        // deleteProposalOnUpgrade call. Genuine Optimistic Oracle V3 should always pass a valid assertionId that has a
-        // matching proposalHash in this contract.
         bytes32 proposalHash = assertionIds[assertionId];
 
         // Callback should only be called by the Optimistic Oracle V3. Address would not match in case of contract
         // upgrade, thus try deleting the proposal through deleteProposalOnUpgrade function that should revert if
         // address mismatch was not caused by an Optimistic Oracle V3 upgrade.
         if (msg.sender == address(optimisticOracleV3)) {
+            // Validate the assertionId through existence of non-zero proposalHash. This is the same check as in
+            // deleteProposalOnUpgrade method that is called in the else branch.
+            require(proposalHash != bytes32(0), "Invalid proposal hash");
+
             // Delete the disputed proposal and associated assertionId.
             delete proposalHashes[proposalHash];
             delete assertionIds[assertionId];
