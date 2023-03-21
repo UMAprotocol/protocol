@@ -1207,6 +1207,49 @@ describe("OptimisticGovernor", () => {
     assert.equal(await optimisticOracleModule.methods.getProposalBond().call(), proposalBond.toString());
   });
 
+  it("Cannot process callback from Optimistic Oracle V3 with invalid assertionId", async function () {
+    // Create assertion directly with Optimistic Oracle V3 and pointing Optimistic Governor as the callback recipient.
+    await bondToken.methods.approve(optimisticOracleV3.options.address, bond).send({ from: proposer });
+    const fakeClaim = utf8ToHex("Fake claim");
+    await optimisticOracleV3.methods
+      .assertTruth(
+        fakeClaim,
+        proposer,
+        optimisticOracleModule.options.address,
+        ZERO_ADDRESS,
+        liveness,
+        bondToken.options.address,
+        bond,
+        identifier,
+        rightPad(0, 64)
+      )
+      .send({ from: proposer });
+    const assertionTimestamp = await optimisticOracleV3.methods.getCurrentTime().call();
+    const assertionId = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(
+        ["bytes", "uint256", "uint256", "uint64", "address", "address", "address", "bytes32", "address"],
+        [
+          fakeClaim,
+          bond,
+          assertionTimestamp,
+          liveness,
+          bondToken.options.address,
+          optimisticOracleModule.options.address,
+          ZERO_ADDRESS,
+          identifier,
+          proposer,
+        ]
+      )
+    );
+
+    // Disputing the assertion should revert because the assertionId is not known to the Optimistic Governor.
+    assert(
+      await didContractThrow(
+        optimisticOracleV3.methods.disputeAssertion(assertionId, disputer).send({ from: disputer })
+      )
+    );
+  });
+
   it("Emits event on syncing new Optimistic Oracle V3", async function () {
     // Upgrade the Optimistic Oracle V3.
     const defaultCurrency = await TestnetERC20.new("Default Currency", "DC", 18).send({ from: owner });
