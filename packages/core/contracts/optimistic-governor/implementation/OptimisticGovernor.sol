@@ -63,7 +63,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
 
     event SetEscalationManager(address indexed escalationManager);
 
-    event OptimisticOracleChanged(address indexed optimisticOracleV3);
+    event OptimisticOracleChanged(address indexed newOptimisticOracleV3);
 
     FinderInterface public immutable finder; // Finder used to discover other UMA ecosystem contracts.
 
@@ -421,10 +421,10 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
 
     // Caches the address of the Optimistic Oracle V3 from the Finder.
     function _sync() internal {
-        address currentOptimisticOracleV3 = finder.getImplementationAddress(OracleInterfaces.OptimisticOracleV3);
-        if (currentOptimisticOracleV3 != address(optimisticOracleV3)) {
-            optimisticOracleV3 = OptimisticOracleV3Interface(currentOptimisticOracleV3);
-            emit OptimisticOracleChanged(currentOptimisticOracleV3);
+        address newOptimisticOracleV3 = finder.getImplementationAddress(OracleInterfaces.OptimisticOracleV3);
+        if (newOptimisticOracleV3 != address(optimisticOracleV3)) {
+            optimisticOracleV3 = OptimisticOracleV3Interface(newOptimisticOracleV3);
+            emit OptimisticOracleChanged(newOptimisticOracleV3);
         }
     }
 

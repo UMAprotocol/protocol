@@ -1269,7 +1269,7 @@ describe("OptimisticGovernor", () => {
       receipt,
       optimisticOracleModule,
       "OptimisticOracleChanged",
-      (event) => event.optimisticOracleV3 == newOptimisticOracleV3.options.address
+      (event) => event.newOptimisticOracleV3 == newOptimisticOracleV3.options.address
     );
 
     // Revert to the original Optimistic Oracle V3 for other tests.
