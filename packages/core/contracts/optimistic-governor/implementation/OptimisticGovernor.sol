@@ -90,8 +90,8 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         uint256 requestTime;
     }
 
-    mapping(bytes32 => bytes32) public proposalHashes; // Maps proposal hashes to assertionIds.
-    mapping(bytes32 => bytes32) public assertionIds; // Maps assertionIds to proposal hashes.
+    mapping(bytes32 => bytes32) public assertionIds; // Maps proposal hashes to assertionIds.
+    mapping(bytes32 => bytes32) public proposalHashes; // Maps assertionIds to proposal hashes.
 
     /**
      * @notice Construct Optimistic Governor module.
@@ -223,12 +223,12 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
 
     /**
      * @notice Makes a new proposal for transactions to be executed with an explanation argument.
-     * @param _transactions the transactions being proposed.
-     * @param _explanation Auxillary information that can be referenced to validate the proposal.
+     * @param transactions the transactions being proposed.
+     * @param explanation Auxillary information that can be referenced to validate the proposal.
      * @dev Proposer must grant the contract collateral allowance at least to the bondAmount or result of getMinimumBond
      * from the Optimistic Oracle V3, whichever is greater.
      */
-    function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) external nonReentrant {
+    function proposeTransactions(Transaction[] memory transactions, bytes memory explanation) external nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
         uint256 time = getCurrentTime();
         address proposer = msg.sender;
@@ -238,29 +238,29 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         proposal.requestTime = time;
 
         // Add transactions to proposal in memory.
-        for (uint256 i = 0; i < _transactions.length; i++) {
-            require(_transactions[i].to != address(0), "The `to` address cannot be 0x0");
+        for (uint256 i = 0; i < transactions.length; i++) {
+            require(transactions[i].to != address(0), "The `to` address cannot be 0x0");
             // If the transaction has any data with it the recipient must be a contract, not an EOA.
-            if (_transactions[i].data.length > 0) {
-                require(_isContract(_transactions[i].to), "EOA can't accept tx with data");
+            if (transactions[i].data.length > 0) {
+                require(_isContract(transactions[i].to), "EOA can't accept tx with data");
             }
         }
-        proposal.transactions = _transactions;
+        proposal.transactions = transactions;
 
         // Create the proposal hash.
-        bytes32 proposalHash = keccak256(abi.encode(_transactions));
+        bytes32 proposalHash = keccak256(abi.encode(transactions));
 
         // Add the proposal hash, explanation and rules to ancillary data.
-        bytes memory claim = _constructClaim(proposalHash, _explanation);
+        bytes memory claim = _constructClaim(proposalHash, explanation);
 
         // Check that the proposal is not already mapped to an assertionId, i.e., is not a duplicate.
-        require(proposalHashes[proposalHash] == bytes32(0), "Duplicate proposals not allowed");
+        require(assertionIds[proposalHash] == bytes32(0), "Duplicate proposals not allowed");
 
         // Get the bond from the proposer and approve the required bond to be used by the Optimistic Oracle V3.
         // This will fail if the proposer has not granted the Optimistic Governor contract an allowance
         // of the collateral token equal to or greater than the totalBond.
         uint256 totalBond = getProposalBond();
-        collateral.safeTransferFrom(msg.sender, address(this), totalBond);
+        collateral.safeTransferFrom(proposer, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracleV3), totalBond);
 
         // Assert that the proposal is correct at the Optimistic Oracle V3.
@@ -278,8 +278,8 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
             );
 
         // Maps the proposal hash to the returned assertionId and vice versa.
-        proposalHashes[proposalHash] = assertionId;
-        assertionIds[assertionId] = proposalHash;
+        assertionIds[proposalHash] = assertionId;
+        proposalHashes[assertionId] = proposalHash;
 
         emit TransactionsProposed(
             proposer,
@@ -287,7 +287,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
             assertionId,
             proposal,
             proposalHash,
-            _explanation,
+            explanation,
             rules,
             time + liveness
         );
@@ -295,62 +295,63 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
 
     /**
      * @notice Executes an approved proposal.
-     * @param _transactions the transactions being executed. These must exactly match those that were proposed.
+     * @param transactions the transactions being executed. These must exactly match those that were proposed.
      */
-    function executeProposal(Transaction[] memory _transactions) external nonReentrant {
+    function executeProposal(Transaction[] memory transactions) external nonReentrant {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
-        bytes32 _proposalHash = keccak256(abi.encode(_transactions));
-
-        // This will reject the transaction if the proposal hash generated from the inputs does not match the stored
-        // proposal hash. This is possible when a) the transactions have not been proposed, b) transactions have already
-        // been executed, c) the proposal was disputed or d) the proposal was deleted after Optimistic Oracle V3 upgrade.
-        require(proposalHashes[_proposalHash] != bytes32(0), "Proposal hash does not exist");
+        bytes32 proposalHash = keccak256(abi.encode(transactions));
 
         // Get the original proposal assertionId.
-        bytes32 assertionId = proposalHashes[_proposalHash];
+        bytes32 assertionId = assertionIds[proposalHash];
+
+        // This will reject the transaction if the proposal hash generated from the inputs does not have the associated
+        // assertionId stored. This is possible when a) the transactions have not been proposed, b) transactions have
+        // already been executed, c) the proposal was disputed or d) the proposal was deleted after Optimistic Oracle V3
+        // upgrade.
+        require(assertionId != bytes32(0), "Proposal hash does not exist");
 
         // Remove proposal hash and assertionId so transactions can not be executed again.
-        delete proposalHashes[_proposalHash];
-        delete assertionIds[assertionId];
+        delete assertionIds[proposalHash];
+        delete proposalHashes[assertionId];
 
         // There is no need to check the assertion result as this point can be reached only for non-disputed assertions.
         // This will revert if the assertion has not been settled and can not currently be settled.
         optimisticOracleV3.settleAndGetAssertionResult(assertionId);
 
         // Execute the transactions.
-        for (uint256 i = 0; i < _transactions.length; i++) {
-            Transaction memory transaction = _transactions[i];
+        for (uint256 i = 0; i < transactions.length; i++) {
+            Transaction memory transaction = transactions[i];
 
             require(
                 exec(transaction.to, transaction.value, transaction.data, transaction.operation),
                 "Failed to execute transaction"
             );
-            emit TransactionExecuted(_proposalHash, assertionId, i);
+            emit TransactionExecuted(proposalHash, assertionId, i);
         }
 
-        emit ProposalExecuted(_proposalHash, assertionId);
+        emit ProposalExecuted(proposalHash, assertionId);
     }
 
     /**
      * @notice Function to delete a proposal on an Optimistic Oracle V3 upgrade.
-     * @param _proposalHash the hash of the proposal to delete.
+     * @param proposalHash the hash of the proposal to delete.
      * @dev In case of an Optimistic Oracle V3 upgrade, the proposal execution would be blocked as its related
      * assertionId would not be recognized by the new Optimistic Oracle V3. This function allows the proposal to be
      * deleted if detecting an Optimistic Oracle V3 upgrade so that transactions can be re-proposed if needed.
      */
-    function deleteProposalOnUpgrade(bytes32 _proposalHash) public nonReentrant {
-        require(_proposalHash != bytes32(0), "Invalid proposal hash");
-        bytes32 assertionId = proposalHashes[_proposalHash];
+    function deleteProposalOnUpgrade(bytes32 proposalHash) public nonReentrant {
+        require(proposalHash != bytes32(0), "Invalid proposal hash");
+        bytes32 assertionId = assertionIds[proposalHash];
         require(assertionId != bytes32(0), "Proposal hash does not exist");
 
         // Detect Optimistic Oracle V3 upgrade by checking if it has the matching assertionId.
         require(optimisticOracleV3.getAssertion(assertionId).asserter == address(0), "OOv3 upgrade not detected");
 
         // Remove proposal hash and assertionId so that transactions can be re-proposed if needed.
-        delete proposalHashes[_proposalHash];
-        delete assertionIds[assertionId];
+        delete assertionIds[proposalHash];
+        delete proposalHashes[assertionId];
 
-        emit ProposalDeleted(_proposalHash, assertionId);
+        emit ProposalDeleted(proposalHash, assertionId);
     }
 
     /**
@@ -358,7 +359,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
      * @param assertionId the identifier of the disputed assertion.
      */
     function assertionDisputedCallback(bytes32 assertionId) external {
-        bytes32 proposalHash = assertionIds[assertionId];
+        bytes32 proposalHash = proposalHashes[assertionId];
 
         // Callback should only be called by the Optimistic Oracle V3. Address would not match in case of contract
         // upgrade, thus try deleting the proposal through deleteProposalOnUpgrade function that should revert if
@@ -369,8 +370,8 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
             require(proposalHash != bytes32(0), "Invalid proposal hash");
 
             // Delete the disputed proposal and associated assertionId.
-            delete proposalHashes[proposalHash];
-            delete assertionIds[assertionId];
+            delete assertionIds[proposalHash];
+            delete proposalHashes[assertionId];
 
             emit ProposalDeleted(proposalHash, assertionId);
         } else deleteProposalOnUpgrade(proposalHash);
@@ -429,14 +430,14 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
     }
 
     // Constructs the claim that will be asserted at the Optimistic Oracle V3.
-    function _constructClaim(bytes32 _proposalHash, bytes memory _explanation) internal view returns (bytes memory) {
+    function _constructClaim(bytes32 proposalHash, bytes memory explanation) internal view returns (bytes memory) {
         return
             abi.encodePacked(
-                ClaimData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash),
+                ClaimData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, proposalHash),
                 ",",
                 EXPLANATION_KEY,
                 ':"',
-                _explanation,
+                explanation,
                 '",',
                 RULES_KEY,
                 ':"',
