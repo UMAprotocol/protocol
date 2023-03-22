@@ -260,7 +260,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         // This will fail if the proposer has not granted the Optimistic Governor contract an allowance
         // of the collateral token equal to or greater than the totalBond.
         uint256 totalBond = getProposalBond();
-        collateral.safeTransferFrom(msg.sender, address(this), totalBond);
+        collateral.safeTransferFrom(proposer, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracleV3), totalBond);
 
         // Assert that the proposal is correct at the Optimistic Oracle V3.
@@ -301,13 +301,14 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         bytes32 proposalHash = keccak256(abi.encode(transactions));
 
-        // This will reject the transaction if the proposal hash generated from the inputs does not match the stored
-        // proposal hash. This is possible when a) the transactions have not been proposed, b) transactions have already
-        // been executed, c) the proposal was disputed or d) the proposal was deleted after Optimistic Oracle V3 upgrade.
-        require(assertionIds[proposalHash] != bytes32(0), "Proposal hash does not exist");
-
         // Get the original proposal assertionId.
         bytes32 assertionId = assertionIds[proposalHash];
+
+        // This will reject the transaction if the proposal hash generated from the inputs does not have the associated
+        // assertionId stored. This is possible when a) the transactions have not been proposed, b) transactions have
+        // already been executed, c) the proposal was disputed or d) the proposal was deleted after Optimistic Oracle V3
+        // upgrade.
+        require(assertionId != bytes32(0), "Proposal hash does not exist");
 
         // Remove proposal hash and assertionId so transactions can not be executed again.
         delete assertionIds[proposalHash];
