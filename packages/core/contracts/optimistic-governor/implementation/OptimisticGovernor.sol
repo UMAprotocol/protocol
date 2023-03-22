@@ -299,7 +299,7 @@ contract OptimisticGovernor is OptimisticOracleV3CallbackRecipientInterface, Mod
      * @notice Executes an approved proposal.
      * @param transactions the transactions being executed. These must exactly match those that were proposed.
      */
-    function executeProposal(Transaction[] memory transactions) external payable nonReentrant {
+    function executeProposal(Transaction[] memory transactions) external nonReentrant {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         bytes32 proposalHash = keccak256(abi.encode(transactions));
 
