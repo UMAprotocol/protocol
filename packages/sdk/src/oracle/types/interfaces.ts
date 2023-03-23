@@ -40,6 +40,10 @@ export type Request = RequestKey & {
     proposeBlockNumber: number;
     disputeBlockNumber: number;
     settleBlockNumber: number;
+    requestLogIndex: number;
+    proposeLogIndex: number;
+    disputeLogIndex: number;
+    settleLogIndex: number;
     // oo v2 fields moved here from settings object
     bond: BigNumber;
     customLiveness: BigNumber;
@@ -74,7 +78,7 @@ export interface OracleInterface {
   updateFromTransactionReceipt: (receipt: TransactionReceipt) => void;
   getProps: () => Promise<OracleProps>;
   listRequests: () => Requests;
-  parseLog: (log: Log) => ParsedLog;
+  parseLog: (log: Log) => Log & ParsedLog & { event: string; eventSignature: string };
 }
 
 export type ClientTable = {
