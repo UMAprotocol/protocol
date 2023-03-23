@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.53.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.52.0...@uma/core@2.53.0) (2023-03-23)
+
+### Bug Fixes
+
+- **og:** L-01 - Restrict ProposalDeleted event emission to valid assertionId ([#4486](https://github.com/UMAprotocol/protocol/issues/4486)) ([d880037](https://github.com/UMAprotocol/protocol/commit/d88003765b84e7e41513189f79db10cb1a96ffd8))
+- **og:** L-02 - Emit event on syncing upgraded OOv3 ([#4487](https://github.com/UMAprotocol/protocol/issues/4487)) ([f3ea7a6](https://github.com/UMAprotocol/protocol/commit/f3ea7a6c04bd5da53ca9a225fc7682c17f465b93))
+- **og:** L-03 - Add contract address check in setEscalationManager ([#4488](https://github.com/UMAprotocol/protocol/issues/4488)) ([ed8f3fc](https://github.com/UMAprotocol/protocol/commit/ed8f3fc0d082eab65854f96019d5cde5c6a69256))
+- **og:** L-04 - Rename SetBond event to SetCollateralAndBond ([#4489](https://github.com/UMAprotocol/protocol/issues/4489)) ([cf6b68f](https://github.com/UMAprotocol/protocol/commit/cf6b68fe3d823b5dd8fefc3fff35d33a03a09320))
+- **og:** N-01 - Consistent variable naming ([#4490](https://github.com/UMAprotocol/protocol/issues/4490)) ([8a2f6d5](https://github.com/UMAprotocol/protocol/commit/8a2f6d5a427db6c91695fc705b6ac7bde0015985))
+- **og:** N-02 - Remove payable in executeProposal ([#4491](https://github.com/UMAprotocol/protocol/issues/4491)) ([f417256](https://github.com/UMAprotocol/protocol/commit/f41725694091cbb3707921067032912dd1c83e61))
+- **og:** N-03 - Swap misleading variable names ([#4492](https://github.com/UMAprotocol/protocol/issues/4492)) ([c1e996c](https://github.com/UMAprotocol/protocol/commit/c1e996c0e1b70d5d4155afa0d823a5a281ea3f77))
+- **og:** N-04 - Eliminate redundant code ([#4493](https://github.com/UMAprotocol/protocol/issues/4493)) ([835a6ff](https://github.com/UMAprotocol/protocol/commit/835a6ff606badc62d06857fc3fc45ddcd55452ef))
+
+### Features
+
+- **core:** deploy script for og mastercopy ([#4495](https://github.com/UMAprotocol/protocol/issues/4495)) ([ef74cd3](https://github.com/UMAprotocol/protocol/commit/ef74cd320b4c3ad9ba38e5f60bb6b36359cf5638))
+- **core:** update zodiac dependency version ([#4494](https://github.com/UMAprotocol/protocol/issues/4494)) ([72edf0d](https://github.com/UMAprotocol/protocol/commit/72edf0df98d10a535fd672bf9683662d9857fdfc))
+
 # [2.52.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.51.0...@uma/core@2.52.0) (2023-03-16)
 
 ### Bug Fixes
