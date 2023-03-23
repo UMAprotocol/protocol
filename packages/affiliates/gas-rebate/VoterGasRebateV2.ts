@@ -9,7 +9,7 @@ const hre = require("hardhat");
 const { ethers } = hre;
 import { BigNumber } from "ethers";
 import bn from "bignumber.js";
-import { format } from "date-fns";
+const moment = require("moment");
 import { findBlockNumberAtTimestamp, getWeb3, decodePriceSqrt } from "@uma/common";
 import fs from "fs";
 import path from "path";
@@ -43,9 +43,9 @@ export async function run(): Promise<void> {
   const fromBlock = (await findBlockNumberAtTimestamp(getWeb3(), prevMonthStart.getTime() / 1000)).blockNumber;
   const toBlock = (await findBlockNumberAtTimestamp(getWeb3(), prevMonthEnd.getTime() / 1000)).blockNumber;
 
-  console.log("Current time:", format(currentDate, `ppp dd/MM/yyyy`));
-  console.log("Previous Month Start:", format(prevMonthStart, `ppp dd/MM/yyyy`), "& block", fromBlock);
-  console.log("Previous Month End:", format(prevMonthEnd, `ppp dd/MM/yyyy`), "& block", toBlock);
+  console.log("Current time:", moment(currentDate).format());
+  console.log("Previous Month Start:", moment(prevMonthStart).format(), "& block", fromBlock);
+  console.log("Previous Month End:", moment(prevMonthEnd).format(), "& block", toBlock);
 
   // Fetch all commit and reveal events.
   const voting = await hre.ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1));
@@ -89,8 +89,7 @@ export async function run(): Promise<void> {
   for (const [key, value] of Object.entries(shareholderPayoutBN))
     shareholderPayout[key] = parseFloat(ethers.utils.formatEther(value));
 
-
-  // Now save the output. First, work out the next rebate number by looking at previous rebate files. 
+  // Now save the output. First, work out the next rebate number by looking at previous rebate files.
   const basePath = `${path.resolve(__dirname)}/rebates/`;
   const rebates = fs.readdirSync(basePath);
   const previousRebates = rebates.map((f) => parseInt(f.substring(f.indexOf("_") + 1, f.indexOf("."))));

@@ -4416,6 +4416,11 @@
   resolved "https://registry.yarnpkg.com/@multiformats/base-x/-/base-x-4.0.1.tgz#95ff0fa58711789d53aefb2590a8b7a4e715d121"
   integrity sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==
 
+"@napi-rs/triples@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@napi-rs/triples/-/triples-1.1.0.tgz#88c35b72e79a20b79bb4c9b3e2817241a1c9f4f9"
+  integrity sha512-XQr74QaLeMiqhStEhLn1im9EOMnkypp7MZOwQhGzqp2Weu5eQJbpPxWxixxlYRKWPOmJjsk6qYfYH9kq43yc2w==
+
 "@noble/hashes@1.1.2":
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.1.2.tgz#e9e035b9b166ca0af657a7848eb2718f0f22f183"
@@ -4430,6 +4435,53 @@
   version "1.6.3"
   resolved "https://registry.yarnpkg.com/@noble/secp256k1/-/secp256k1-1.6.3.tgz#7eed12d9f4404b416999d0c87686836c4c5c9b94"
   integrity sha512-T04e4iTurVy7I8Sw4+c5OSN9/RkPlo1uKxAomtxQNLq8j1uPAqnsqG1bqvY3Jv7c13gyr6dui0zmh/I3+f/JaQ==
+
+"@node-rs/crc32-android-arm64@^1.0.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.6.0.tgz#7e19658d05d592309d693b83c2f3d98eecb344a4"
+  integrity sha512-DyeB3uzMD3Ctfr3dZzLwfy6zDK5GFdaqgCElILwx7S5tMeqlEpLxeAqMFoiovq98+0G+QHhNlAikfDJWDYTmFA==
+
+"@node-rs/crc32-darwin-arm64@^1.0.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.6.0.tgz#ded16cbffc212afae19fed9a4172b7431300668f"
+  integrity sha512-Mb4fx1EtEc163ZuuU1kOYJpgQDiKllnjX5WW0k5JFL17MwOwC2AiZfiIVxqjqDUZ6kim8Fvg3205zxNpYcy5Xw==
+
+"@node-rs/crc32-darwin-x64@^1.0.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.6.0.tgz#5b7c570358ecb8a064b1b977d5a7e1d2d544eb52"
+  integrity sha512-lizIV4mxI5jw3vviHBLRM6Q8u0iizeIKHx2QKTEiD4b2KMZrce1kv0QAnz/RNxZ47ajRe3cp5B8KceSm8/qcng==
+
+"@node-rs/crc32-linux-arm-gnueabihf@^1.0.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.6.0.tgz#89fa6b38a9b8929a0fcd54c85858a2970245ff81"
+  integrity sha512-fyyQi2qiGLqy5bMdzG+Y4p+/nRvjOG92t6qZBFmdWrcQnj0jxfPqORPNUYvSGfvDW7PgUI/+IAo8bpgNt6GbzA==
+
+"@node-rs/crc32-linux-arm64-gnu@^1.0.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.6.0.tgz#d8109754eac740fe22ad8f3c31a1ea5423034e5a"
+  integrity sha512-NhFPUDz/A8C/su/kNrtG0FgtQJuxW1KwIUJySAinGVDDqSWUcKr+jeFMsYKWU331AIJW6uCMIaJowE2tQ0lnBQ==
+
+"@node-rs/crc32-linux-x64-gnu@^1.0.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.6.0.tgz#13d77e6fd965c6221480be094224178ae566d714"
+  integrity sha512-6cZIh4un/IlKHJKWQS1KPbMIEkfK47cHd4m7YkwNjwXiT62hzkyfWA+D/io0L8glqUyGAcStQGv8fpRngIkdkw==
+
+"@node-rs/crc32-linux-x64-musl@^1.0.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.6.0.tgz#551cf03bd8c146dd8c09a495062b434ccb355595"
+  integrity sha512-DKd2SwAsf5RJW9BHZqLW0NAKxCRFL3GDEzuUm43wn53XEcL6hmezCUtmNHOmdehIiwNyGEruBh1kekH3JPSYYw==
+
+"@node-rs/crc32-win32-x64-msvc@^1.0.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.6.0.tgz#16f5677951f8894c3ef08d787d0179fac273af48"
+  integrity sha512-raJJVGbP/KbffTAbIW5hl9/N4VMj9zIonskJy2xVEmo/B6TZtkjhRcaXZvgWqjVqh2SzO94HCphygD1qxT4EYw==
+
+"@node-rs/helper@^1.0.0":
+  version "1.3.3"
+  resolved "https://registry.yarnpkg.com/@node-rs/helper/-/helper-1.3.3.tgz#2b1953846ddba31bfb7ecf4ba57e7b1359fcdedc"
+  integrity sha512-p4OdfQObGN9YFy5WZaGwlPYICQSe7xZYyXB0sxREmvj1HzGKp5bPg2PlfgfMZEfnjIA882B9ZrnagYzZihIwjA==
+  dependencies:
+    "@napi-rs/triples" "^1.1.0"
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -10502,11 +10554,6 @@ data-urls@^1.1.0:
     abab "^2.0.0"
     whatwg-mimetype "^2.2.0"
     whatwg-url "^7.0.0"
-
-date-fns@^2.29.3:
-  version "2.29.3"
-  resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.29.3.tgz#27402d2fc67eb442b511b70bbdf98e6411cd68a8"
-  integrity sha512-dDCnyH2WnnKusqvZZ6+jA1O51Ibt8ZMRNkDZdyAyK4YfbDwa/cEmuztzG5pk6hqlp9aSBPYcjOlktquahGwGeA==
 
 dateformat@^3.0.0:
   version "3.0.3"
@@ -23436,6 +23483,22 @@ sprintf-js@~1.0.2:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.0.3.tgz#04e6926f662895354f3dd015203633b857297e2c"
   integrity sha1-BOaSb2YolTVPPdAVIDYzuFcpfiw=
+
+"sse4_crc32@npm:@node-rs/crc32@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32/-/crc32-1.0.0.tgz#b5038542a754f85d340b7c6c316853ee8c76a079"
+  integrity sha512-0Y5VP0f4vFuEujP3G2j+wd5bdTJg/pzj7ILq0K7PyUeGuI0iGQwg1iYSGIjQg0OU+xp987P7XCQaMpNt0+DcDg==
+  dependencies:
+    "@node-rs/helper" "^1.0.0"
+  optionalDependencies:
+    "@node-rs/crc32-android-arm64" "^1.0.0"
+    "@node-rs/crc32-darwin-arm64" "^1.0.0"
+    "@node-rs/crc32-darwin-x64" "^1.0.0"
+    "@node-rs/crc32-linux-arm-gnueabihf" "^1.0.0"
+    "@node-rs/crc32-linux-arm64-gnu" "^1.0.0"
+    "@node-rs/crc32-linux-x64-gnu" "^1.0.0"
+    "@node-rs/crc32-linux-x64-musl" "^1.0.0"
+    "@node-rs/crc32-win32-x64-msvc" "^1.0.0"
 
 sshpk@^1.7.0:
   version "1.16.1"
