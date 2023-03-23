@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.1](https://github.com/UMAprotocol/protocol/compare/monitor-v2@1.1.0...monitor-v2@1.1.1) (2023-03-23)
+
+### Bug Fixes
+
+- **og:** L-04 - Rename SetBond event to SetCollateralAndBond ([#4489](https://github.com/UMAprotocol/protocol/issues/4489)) ([cf6b68f](https://github.com/UMAprotocol/protocol/commit/cf6b68fe3d823b5dd8fefc3fff35d33a03a09320))
+
 # [1.1.0](https://github.com/UMAprotocol/protocol/compare/monitor-v2@1.0.1...monitor-v2@1.1.0) (2023-03-16)
 
 ### Bug Fixes
