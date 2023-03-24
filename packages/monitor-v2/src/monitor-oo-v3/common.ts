@@ -1,8 +1,5 @@
 import { getRetryProvider } from "@uma/common";
-import { ERC20Ethers } from "@uma/contracts-node";
 import { delay } from "@uma/financial-templates-lib";
-import { utils } from "ethers";
-import { getContractInstanceWithProvider } from "../utils/contracts";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 
@@ -78,40 +75,4 @@ export const waitNextBlockRange = async (params: MonitoringParams): Promise<Bloc
 
 export const startupLogLevel = (params: MonitoringParams): "debug" | "info" => {
   return params.pollingDelay === 0 ? "debug" : "info";
-};
-
-export const tryHexToUtf8String = (ancillaryData: string): string => {
-  try {
-    return utils.toUtf8String(ancillaryData);
-  } catch (err) {
-    return ancillaryData;
-  }
-};
-
-export const getCurrencyDecimals = async (provider: Provider, currencyAddress: string): Promise<number> => {
-  const currencyContract = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, currencyAddress);
-  try {
-    return await currencyContract.decimals();
-  } catch (err) {
-    return 18;
-  }
-};
-
-export const getCurrencySymbol = async (provider: Provider, currencyAddress: string): Promise<string> => {
-  const currencyContract = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, currencyAddress);
-  try {
-    return await currencyContract.symbol();
-  } catch (err) {
-    // Try to get the symbol as bytes32 (e.g. MKR uses this).
-    try {
-      const bytes32SymbolIface = new utils.Interface(["function symbol() view returns (bytes32 symbol)"]);
-      const bytes32Symbol = await provider.call({
-        to: currencyAddress,
-        data: bytes32SymbolIface.encodeFunctionData("symbol"),
-      });
-      return utils.parseBytes32String(bytes32SymbolIface.decodeFunctionResult("symbol", bytes32Symbol).symbol);
-    } catch (err) {
-      return "";
-    }
-  }
 };

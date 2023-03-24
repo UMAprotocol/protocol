@@ -25,7 +25,7 @@ export async function getGckmsSigner(): Promise<Wallet> {
   return new Wallet(privateKeys[0]); // GCKMS retrieveGckmsKeys returns multiple keys. For now we only support 1.
 }
 
-function getMnemonicSigner() {
+export function getMnemonicSigner(): Wallet {
   if (!process.env.MNEMONIC) throw new Error(`Wallet mnemonic selected but no MNEMONIC env set!`);
   return Wallet.fromMnemonic(process.env.MNEMONIC);
 }

@@ -53,8 +53,7 @@ describe("OptimisticGovernorMonitor", function () {
       transactionsExecutedEnabled: false,
       proposalExecutedEnabled: false,
       proposalDeletedEnabled: false,
-      setBondEnabled: false,
-      setCollateralEnabled: false,
+      setCollateralAndBondEnabled: false,
       setRulesEnabled: false,
       setLivenessEnabled: false,
       setIdentifierEnabled: false,
@@ -315,7 +314,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
 
-    const newEscalationManager = await random.getAddress();
+    const newEscalationManager = await timer.address; // Just use the timer address as a random contract address.
     const setEscalationManagerTx = await optimisticGovernor.connect(ogOwner).setEscalationManager(newEscalationManager);
 
     const setEscalationManagerBlockNumber = await getBlockNumberFromTx(setEscalationManagerTx);
