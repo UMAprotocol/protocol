@@ -11,9 +11,8 @@ import {
   DesignatedVotingV2Ethers,
 } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
+import { baseSafePayload, appendTxToSafePayload } from "../../utils/gnosisPayload";
 import { utils } from "ethers";
-
-import { baseSafePayload, appendTxToSafePayload } from "./common";
 
 import fs from "fs";
 import path from "path";
