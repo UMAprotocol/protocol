@@ -71,6 +71,10 @@ export type Request = RequestKey &
     proposeBlockNumber: number;
     disputeBlockNumber: number;
     settleBlockNumber: number;
+    requestLogIndex: number;
+    proposeLogIndex: number;
+    disputeLogIndex: number;
+    settleLogIndex: number;
     requestSettings: RequestSettings;
   }>;
 
@@ -104,6 +108,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         state: RequestState.Requested,
         requestTx: event.transactionHash,
         requestBlockNumber: event.blockNumber,
+        requestLogIndex: event.logIndex,
       };
       break;
     }
@@ -136,6 +141,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         state: RequestState.Proposed,
         proposeTx: event.transactionHash,
         proposeBlockNumber: event.blockNumber,
+        proposeLogIndex: event.logIndex,
       };
       break;
     }
@@ -158,6 +164,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         state: RequestState.Disputed,
         disputeTx: event.transactionHash,
         disputeBlockNumber: event.blockNumber,
+        disputeLogIndex: event.logIndex,
       };
       break;
     }
@@ -182,6 +189,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         state: RequestState.Settled,
         settleTx: event.transactionHash,
         settleBlockNumber: event.blockNumber,
+        settleLogIndex: event.logIndex,
       };
       break;
     }

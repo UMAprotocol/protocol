@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.8...@uma/sdk@0.33.0) (2023-03-23)
+
+### Features
+
+- add logIndexes to request data and searching ([#4498](https://github.com/UMAprotocol/protocol/issues/4498)) ([2858b6f](https://github.com/UMAprotocol/protocol/commit/2858b6f055b23f5c7aec032f3ba5af7529592d79))
+
+## [0.32.8](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.7...@uma/sdk@0.32.8) (2023-03-16)
+
+**Note:** Version bump only for package @uma/sdk
+
 ## [0.32.7](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.32.6...@uma/sdk@0.32.7) (2023-02-28)
 
 **Note:** Version bump only for package @uma/sdk

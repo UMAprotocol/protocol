@@ -218,7 +218,7 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
-    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const assertionId = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     const claim = utf8ToHex(
       "proposalHash:" + proposalHash.slice(2) + ',explanation:"' + hexToUtf8(explanation) + '",rules:"' + rules + '"'
     );
@@ -323,7 +323,7 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
-    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const assertionId = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
 
     await assertEventEmitted(
       receipt,
@@ -496,7 +496,7 @@ describe("OptimisticGovernor", () => {
     );
 
     // Disputed proposal hash is deleted automatically from callback.
-    const disputedProposalHash = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const disputedProposalHash = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     assert.equal(disputedProposalHash, 0);
   });
 
@@ -545,7 +545,7 @@ describe("OptimisticGovernor", () => {
     await optimisticOracleV3.methods.disputeAssertion(assertionId, disputer).send({ from: disputer });
 
     // Disputed proposal hash is deleted automatically from callback.
-    const disputedProposalHashTimestamp = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const disputedProposalHashTimestamp = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     assert.equal(disputedProposalHashTimestamp, 0);
 
     // Duplicate proposal can be made after original proposal is deleted. This is useful in case the disputer was wrong.
@@ -803,7 +803,7 @@ describe("OptimisticGovernor", () => {
     await assertEventEmitted(
       collateralReceipt,
       optimisticOracleModule,
-      "SetBond",
+      "SetCollateralAndBond",
       (event) => event.collateral == newBondToken.options.address && event.bondAmount == newBondAmount
     );
 
@@ -851,22 +851,24 @@ describe("OptimisticGovernor", () => {
       (event) => event.identifier == newIdentifier
     );
 
-    // Set new Escalation Manager.
-    const newEscalationManager = executor;
+    // Deploy Full Policy Escalation Manager and set it as new Escalation Manager.
+    const newEscalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
     const setEscalationManagerData = optimisticOracleModule.methods
-      .setEscalationManager(newEscalationManager)
+      .setEscalationManager(newEscalationManager.options.address)
       .encodeABI();
     let escalationManagerReceipt = await avatar.methods
       .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
       .send({ from: owner });
 
     // Check that the new Escalation Manager is set.
-    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), newEscalationManager);
+    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), newEscalationManager.options.address);
     await assertEventEmitted(
       escalationManagerReceipt,
       optimisticOracleModule,
       "SetEscalationManager",
-      (event) => event.escalationManager == newEscalationManager
+      (event) => event.escalationManager == newEscalationManager.options.address
     );
   });
 
@@ -896,11 +898,13 @@ describe("OptimisticGovernor", () => {
     await identifierWhitelist.methods.addSupportedIdentifier(newIdentifier).send({ from: owner });
     assert(await didContractThrow(optimisticOracleModule.methods.setIdentifier(newIdentifier).send({ from: rando })));
 
-    // Try set new Escalation Manager from a non-owner.
-    const newEscalationManager = executor;
+    // Deploy Full Policy Escalation Manager and try setting it as new Escalation Manager from a non-owner.
+    const newEscalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
     assert(
       await didContractThrow(
-        optimisticOracleModule.methods.setEscalationManager(newEscalationManager).send({ from: rando })
+        optimisticOracleModule.methods.setEscalationManager(newEscalationManager.options.address).send({ from: rando })
       )
     );
   });
@@ -1205,5 +1209,117 @@ describe("OptimisticGovernor", () => {
     // Check that the proposal bond now is set to the floor driven by the final fee.
     const proposalBond = toBN(finalFee).mul(toBN(toWei("1")).div(toBN(burnedBondPercentage)));
     assert.equal(await optimisticOracleModule.methods.getProposalBond().call(), proposalBond.toString());
+  });
+
+  it("Cannot set EOA as Escalation Manager", async function () {
+    // Set EOA as escalation manager.
+    const newEscalationManager = executor;
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(newEscalationManager)
+      .encodeABI();
+    assert(
+      await didContractThrow(
+        avatar.methods.exec(optimisticOracleModule.options.address, "0", setEscalationManagerData).send({ from: owner })
+      )
+    );
+  });
+
+  it("Can reset Escalation Manager to zero address", async function () {
+    // Deploy Full Policy Escalation Manager and set it as new Escalation Manager.
+    const newEscalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(newEscalationManager.options.address)
+      .encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Reset Escalation Manager to zero address.
+    const resetEscalationManagerData = optimisticOracleModule.methods.setEscalationManager(ZERO_ADDRESS).encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", resetEscalationManagerData)
+      .send({ from: owner });
+
+    // Check that Escalation Manager is set to zero address.
+    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), ZERO_ADDRESS);
+  });
+
+  it("Cannot process callback from Optimistic Oracle V3 with invalid assertionId", async function () {
+    // Create assertion directly with Optimistic Oracle V3 and pointing Optimistic Governor as the callback recipient.
+    await bondToken.methods.approve(optimisticOracleV3.options.address, bond).send({ from: proposer });
+    const fakeClaim = utf8ToHex("Fake claim");
+    await optimisticOracleV3.methods
+      .assertTruth(
+        fakeClaim,
+        proposer,
+        optimisticOracleModule.options.address,
+        ZERO_ADDRESS,
+        liveness,
+        bondToken.options.address,
+        bond,
+        identifier,
+        rightPad(0, 64)
+      )
+      .send({ from: proposer });
+    const assertionTimestamp = await optimisticOracleV3.methods.getCurrentTime().call();
+    const assertionId = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(
+        ["bytes", "uint256", "uint256", "uint64", "address", "address", "address", "bytes32", "address"],
+        [
+          fakeClaim,
+          bond,
+          assertionTimestamp,
+          liveness,
+          bondToken.options.address,
+          optimisticOracleModule.options.address,
+          ZERO_ADDRESS,
+          identifier,
+          proposer,
+        ]
+      )
+    );
+
+    // Disputing the assertion should revert because the assertionId is not known to the Optimistic Governor.
+    assert(
+      await didContractThrow(
+        optimisticOracleV3.methods.disputeAssertion(assertionId, disputer).send({ from: disputer })
+      )
+    );
+  });
+
+  it("Emits event on syncing new Optimistic Oracle V3", async function () {
+    // Upgrade the Optimistic Oracle V3.
+    const defaultCurrency = await TestnetERC20.new("Default Currency", "DC", 18).send({ from: owner });
+    const newOptimisticOracleV3 = await OptimisticOracleV3Test.new(
+      finder.options.address,
+      defaultCurrency.options.address,
+      liveness,
+      timer.options.address
+    ).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), newOptimisticOracleV3.options.address)
+      .send({ from: owner });
+
+    // Cache the upgraded Optimistic Oracle V3 and check the event is emitted.
+    const receipt = await optimisticOracleModule.methods.sync().send({ from: disputer });
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "OptimisticOracleChanged",
+      (event) => event.newOptimisticOracleV3 == newOptimisticOracleV3.options.address
+    );
+
+    // Revert to the original Optimistic Oracle V3 for other tests.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), optimisticOracleV3.options.address)
+      .send({ from: owner });
+  });
+
+  it("Does not emit event on syncing the same Optimistic Oracle V3", async function () {
+    // Sync the Optimistic Oracle V3 and check the event is not emitted.
+    const receipt = await optimisticOracleModule.methods.sync().send({ from: owner });
+    assert.equal(Object.keys(receipt.events).length, 0);
   });
 });
