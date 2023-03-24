@@ -3,9 +3,12 @@
 // The scripts executes the required actions through the Admin_ChilMessenger of the target network.
 // Therefore the Wallet used need to be the owner of Admin_ChilMessenger.
 // The contract address and name to verify should be passed as environment variables: CONTRACT_ADDRESS and CONTRACT_NAME.
+// If the Admin_ChilMessenger is owned by a Gnosis Safe, the address of the Safe should be passed as optional
+// environment variable: GNOSIS_SAFE and the script will only save the transaction payload to a file.
 // Run it with:
 // CONTRACT_ADDRESS=<CONTRACT_ADDRESS> \
 // CONTRACT_NAME=<CONTRACT_NAME> \
+// GNOSIS_SAFE=<GNOSIS_SAFE> \
 // yarn hardhat run ./src/admin-proposals/adminChildRegistration.ts  --network <network>
 
 const hre = require("hardhat");
@@ -13,11 +16,16 @@ const hre = require("hardhat");
 import { BytesLike } from "@ethersproject/bytes";
 import { AdminChildMessenger, Finder, GovernorSpoke, Registry } from "@uma/contracts-node/typechain/core/ethers";
 import { getContractInstance } from "../utils/contracts";
+import { baseSafePayload, appendTxToSafePayload } from "../utils/gnosisPayload";
 const { RegistryRolesEnum } = require("@uma/common");
+
+import fs from "fs";
+import path from "path";
 
 // PARAMETERS
 const newContractAddress = process.env.CONTRACT_ADDRESS;
 const newContractInterfaceName = process.env.CONTRACT_NAME;
+const safe = process.env.GNOSIS_SAFE || "";
 
 async function main() {
   const finder = await getContractInstance<Finder>("Finder");
@@ -81,11 +89,29 @@ async function main() {
     [adminProposalTransactions]
   );
 
-  const tx = await adminChildMessenger.processMessageFromCrossChainParent(calldata, governor.address);
+  if (safe === "") {
+    const tx = await adminChildMessenger.processMessageFromCrossChainParent(calldata, governor.address);
 
-  await tx.wait();
+    await tx.wait();
 
-  console.log("Contract added to Registry and Finder successfully.");
+    console.log("Contract added to Registry and Finder successfully.");
+  } else {
+    const chainId = (await hre.ethers.provider.getNetwork()).chainId;
+    let payload = baseSafePayload(
+      chainId,
+      "AdminChildRegistration",
+      `Registers ${newContractInterfaceName} as ${newContractAddress} on chainId ${chainId}`,
+      safe
+    );
+    payload = appendTxToSafePayload(payload, adminChildMessenger.address, processMessageFromCrossChainParentInput, {
+      data: calldata,
+      target: governor.address,
+    });
+    const savePath = `${path.resolve(__dirname)}/out/admin_child_registration_payload.json`;
+    fs.writeFileSync(savePath, JSON.stringify(payload, null, 4));
+
+    console.log("Payload saved!");
+  }
 }
 
 main().then(
@@ -97,3 +123,12 @@ main().then(
     process.exit(1);
   }
 );
+
+const processMessageFromCrossChainParentInput = {
+  inputs: [
+    { internalType: "bytes", name: "data", type: "bytes" },
+    { internalType: "address", name: "target", type: "address" },
+  ],
+  name: "processMessageFromCrossChainParent",
+  payable: false,
+};
