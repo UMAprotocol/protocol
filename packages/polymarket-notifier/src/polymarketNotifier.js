@@ -164,7 +164,7 @@ class PolymarketNotifier {
     // Polymarket API
     const query = `
     {
-      markets(where: "active = true AND question_ID IS NOT NULL", order: "created_at desc") {
+      markets(where: "active = true AND question_ID IS NOT NULL and (resolved_by = '${binaryAdapterAddress}' OR resolved_by = '${ctfAdapterAddress}')", order: "created_at desc") {
         resolvedBy
         questionID
         createdAt
