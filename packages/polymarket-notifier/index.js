@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers:
-const { Networker, Logger, delay } = require("@uma/financial-templates-lib");
+const { Logger, delay } = require("@uma/financial-templates-lib");
 
 const { PolymarketNotifier } = require("./src/polymarketNotifier");
 
@@ -39,12 +39,10 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
     const apiEndpoint = notifierConfig.apiEndpoint;
     const maxTimeAfterProposal = notifierConfig.maxTimeAfterProposal;
     const minAcceptedPrice = notifierConfig.minAcceptedPrice;
-    const networker = new Networker(logger);
 
     const polymarketNotifier = new PolymarketNotifier({
       logger,
       web3,
-      networker,
       getTime,
       apiEndpoint,
       maxTimeAfterProposal,
@@ -115,7 +113,7 @@ async function Poll(callback) {
     // Fill in notifierConfig defaults:
     executionParameters.notifierConfig = {
       maxTimeAfterProposal: 7200,
-      apiEndpoint: "https://strapi-matic.poly.market/markets",
+      apiEndpoint: "https://gamma-api.polymarket.com/query",
       minAcceptedPrice: 0.99,
       ...executionParameters.notifierConfig,
     };
