@@ -6,6 +6,7 @@ const { binaryAdapterAbi, ctfAdapterAbi } = require("./abi/abi");
 const { getAddress, getAbi } = require("@uma/contracts-node");
 const { TransactionDataDecoder, aggregateTransactionsAndCall } = require("@uma/financial-templates-lib");
 const { MIN_INT_VALUE } = require("@uma/common");
+const { request } = require("graphql-request");
 const assert = require("assert");
 
 const binaryAdapterAddress = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
@@ -15,16 +16,14 @@ const multicallAddress = "0x11ce4B23bD875D7F5C6a31084f55fDe1e9A87507";
 class PolymarketNotifier {
   /**
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
    * @param {String} apiEndpoint API endpoint to monitor.
    * @param {Integer} maxTimeAfterProposal Period in seconds to look for past proposals.
    * @param {Integer} minAcceptedPrice API price that determines if alert is sent.
    */
-  constructor({ logger, web3, networker, getTime, apiEndpoint, maxTimeAfterProposal, minAcceptedPrice }) {
+  constructor({ logger, web3, getTime, apiEndpoint, maxTimeAfterProposal, minAcceptedPrice }) {
     this.logger = logger;
     this.web3 = web3;
-    this.networker = networker;
     this.getTime = getTime;
     this.apiEndpoint = apiEndpoint;
     this.maxTimeAfterProposal = maxTimeAfterProposal;
@@ -160,17 +159,27 @@ class PolymarketNotifier {
 
   // gets Polymarket API data that can be used to compare against proposals
   async getQuestionData() {
-    const binaryAdapterContract = await new this.web3.eth.Contract(binaryAdapterAbi, binaryAdapterAddress);
     const ctfAdapterContract = await new this.web3.eth.Contract(ctfAdapterAbi, ctfAdapterAddress);
 
     // Polymarket API
-    const apiUrl = this.apiEndpoint + "?_limit=-1&active=true&_sort=created_at:desc";
-    const polymarketContracts = await this.networker.getJson(apiUrl, { method: "get" });
+    const query = `
+    {
+      markets(where: "active = true AND question_ID IS NOT NULL and (resolved_by = '${binaryAdapterAddress}' OR resolved_by = '${ctfAdapterAddress}')", order: "created_at desc") {
+        resolvedBy
+        questionID
+        createdAt
+        question
+        outcomes
+        outcomePrices
+      }
+    }
+    `;
+
+    const { markets: polymarketContracts } = await request(this.apiEndpoint, query);
     assert(polymarketContracts && polymarketContracts.length, "Requires polymarket api data");
 
     const transactions = polymarketContracts.map((polymarketContract) => {
-      const resolutionContract =
-        polymarketContract.resolved_by === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
+      const resolutionContract = ctfAdapterContract;
 
       return {
         target: resolutionContract.options.address,
@@ -181,7 +190,15 @@ class PolymarketNotifier {
     // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
     const ancillaryData = (await aggregateTransactionsAndCall(multicallAddress, this.web3, transactions)).map(
       ({ ancillaryData }, i) => {
-        const { questionID, question, outcomes, outcomePrices } = polymarketContracts[i];
+        const {
+          questionID,
+          question,
+          outcomes: outcomesString,
+          outcomePrices: outcomePricesString,
+        } = polymarketContracts[i];
+        const outcomes = JSON.parse(outcomesString);
+        const outcomePrices = JSON.parse(outcomePricesString);
+
         return {
           questionID,
           question,
