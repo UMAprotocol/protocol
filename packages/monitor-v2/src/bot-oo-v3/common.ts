@@ -28,11 +28,11 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
-  // Throws if MNEMONIC env var is not defined.
-  const signer = getMnemonicSigner() as Signer;
-
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
+
+  // Throws if MNEMONIC env var is not defined.
+  const signer = (getMnemonicSigner() as Signer).connect(provider);
 
   // Default to 1 minute run frequency.
   const runFrequency = env.RUN_FREQUENCY ? Number(env.RUN_FREQUENCY) : 60;
