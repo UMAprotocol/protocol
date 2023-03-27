@@ -3,8 +3,6 @@
   "version": "2.14.9",
   "description": "Serverless orchestration scripts to run a parallel instances of scripts or bots",
   "dependencies": {
-    "@openzeppelin/contracts": "4.4.2",
-    "@truffle/contract": "^4.2.20",
     "@uma/common": "^2.31.0",
     "@uma/financial-templates-lib": "^2.32.9",
     "web3": "^1.6.0"

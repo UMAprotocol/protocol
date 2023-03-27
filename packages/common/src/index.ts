@@ -2,7 +2,6 @@ export * from "./browser";
 export * from "./gckms/ManagedSecretProvider";
 export * from "./gckms/utils";
 export * from "./FileHelpers";
-export * from "./MetaMaskTruffleProvider";
 export * from "./MerkleTree";
 export * from "./ProviderUtils";
 export * from "./HardhatConfig";
