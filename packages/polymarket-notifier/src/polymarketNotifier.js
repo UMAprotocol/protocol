@@ -181,7 +181,7 @@ class PolymarketNotifier {
 
     const transactions = polymarketContracts.map((polymarketContract) => {
       const resolutionContract =
-        polymarketContract.resolved_by === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
+        polymarketContract.resolvedBy === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
 
       return {
         target: resolutionContract.options.address,
