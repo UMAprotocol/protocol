@@ -159,6 +159,7 @@ class PolymarketNotifier {
 
   // gets Polymarket API data that can be used to compare against proposals
   async getQuestionData() {
+    const binaryAdapterContract = await new this.web3.eth.Contract(binaryAdapterAbi, binaryAdapterAddress);
     const ctfAdapterContract = await new this.web3.eth.Contract(ctfAdapterAbi, ctfAdapterAddress);
 
     // Polymarket API
@@ -179,7 +180,8 @@ class PolymarketNotifier {
     assert(polymarketContracts && polymarketContracts.length, "Requires polymarket api data");
 
     const transactions = polymarketContracts.map((polymarketContract) => {
-      const resolutionContract = ctfAdapterContract;
+      const resolutionContract =
+        polymarketContract.resolveBy === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
 
       return {
         target: resolutionContract.options.address,
