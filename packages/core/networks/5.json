@@ -130,5 +130,9 @@
   {
     "contractName": "DesignatedVotingV2Factory",
     "address": "0x2eb5def5cF9635F9D926788a26D424287a045b92"
+  },
+  {
+    "contractName": "OptimisticGovernor",
+    "address": "0x07a7Be7AA4AaD42696A17e974486cb64A4daC47b"
   }
 ]
