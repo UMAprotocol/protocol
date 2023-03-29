@@ -1,9 +1,0 @@
-{
-    "votingContractAddress": "0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac",
-    "rebate": 30,
-    "fromBlock": 16529948,
-    "toBlock": 16729777,
-    "countVoters": 0,
-    "totalRebateAmount": 0,
-    "shareholderPayout": {}
-}
