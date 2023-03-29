@@ -17,19 +17,7 @@ interface VotingInterface {
         address delegate;
     }
 
-    function voterStakes(address)
-        external
-        view
-        returns (
-            uint128,
-            uint128,
-            uint128,
-            uint128,
-            int128,
-            uint64,
-            uint64,
-            address
-        );
+    function voterStakes(address) external view returns (VoterStake memory);
 
     function getVoterFromDelegate(address) external view returns (address);
 }
@@ -48,11 +36,11 @@ contract SnapshotVotingPower {
      **/
     function balanceOf(address user) external view returns (uint256) {
         address voter = votingV2.getVoterFromDelegate(user);
-        (uint128 stake, , , , , , , address delegate) = votingV2.voterStakes(voter);
+        VotingInterface.VoterStake memory voterStake = votingV2.voterStakes(voter);
 
         // Avoid double counting in case of stake delegation.
-        if (delegate != address(0) && user != delegate) return 0;
+        if (voterStake.delegate != address(0) && user != voterStake.delegate) return 0;
 
-        return uint256(stake);
+        return uint256(voterStake.stake);
     }
 }
