@@ -33,12 +33,12 @@ export async function run(): Promise<void> {
   // Work out the range to run over. This should be over the totality of the previous month.
   const currentDate = new Date();
   const prevMonthStart = new Date(currentDate);
-  prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
-  prevMonthStart.setDate(1);
-  prevMonthStart.setHours(0, 0, 0, 0);
+  prevMonthStart.setUTCMonth(prevMonthStart.getUTCMonth() - 1);
+  prevMonthStart.setUTCDate(1);
+  prevMonthStart.setUTCHours(0, 0, 0, 0);
 
-  const prevMonthEnd = new Date(prevMonthStart.getFullYear(), prevMonthStart.getMonth() + 1, 0);
-  prevMonthEnd.setHours(23, 59, 59);
+  const prevMonthEnd = new Date(prevMonthStart.getUTCFullYear(), prevMonthStart.getUTCMonth() + 1, 0);
+  prevMonthEnd.setUTCHours(23, 59, 59);
 
   // Fetch associated block numbers for the start and end of the previous month.
   const fromBlock = (await findBlockNumberAtTimestamp(getWeb3(), prevMonthStart.getTime() / 1000)).blockNumber;
