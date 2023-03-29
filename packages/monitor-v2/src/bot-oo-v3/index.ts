@@ -2,6 +2,11 @@ import { delay } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
 import { settleAssertions } from "./SettleAssertions";
 
+export {
+  AssertionSettledEvent,
+  AssertionMadeEvent,
+} from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV3";
+
 const logger = Logger;
 
 async function main() {
