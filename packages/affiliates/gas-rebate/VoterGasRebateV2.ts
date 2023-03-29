@@ -9,7 +9,7 @@ import hre from "hardhat";
 const { ethers } = hre as any;
 import { BigNumber } from "ethers";
 import bn from "bignumber.js";
-const moment = require("moment");
+import moment from "moment";
 import { findBlockNumberAtTimestamp, getWeb3, decodePriceSqrt } from "@uma/common";
 import fs from "fs";
 import path from "path";
