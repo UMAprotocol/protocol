@@ -1,6 +1,6 @@
 // The types in this package are broken, so we have to require it.
 const contractConstructor_ = require("@truffle/contract");
-import type truffleContract_ from "@truffle/contract";
+// import type truffleContract_ from "@truffle/contract";
 import type { BN } from "./types";
 import Web3 from "web3";
 import type { provider as Provider } from "web3-core";
@@ -10,7 +10,7 @@ import { EventData, Contract } from "web3-eth-contract";
 export interface TruffleInstance {
   [prop: string]: any;
 }
-export interface TruffleContract extends truffleContract_.Contract {
+export interface TruffleContract {
   setProvider: (provider: Provider) => void;
   at: (address: string) => Promise<TruffleInstance>;
   deployed: () => Promise<TruffleInstance>;

@@ -6,8 +6,9 @@ import { utils } from "ethers";
 import yesno from "yesno";
 import { VotingTokenEthers, DesignatedVotingV2FactoryEthers, DesignatedVotingV2Ethers } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
+import { baseSafePayload, appendTxToSafePayload } from "../../utils/gnosisPayload";
 
-import { getDesignatedVotingContractsOwnedByOwner, baseSafePayload, appendTxToSafePayload } from "./common";
+import { getDesignatedVotingContractsOwnedByOwner } from "./common";
 
 import fs from "fs";
 import path from "path";

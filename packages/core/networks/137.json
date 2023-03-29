@@ -90,5 +90,9 @@
   {
     "contractName": "OptimisticOracleV3",
     "address": "0x5953f2538F613E05bAED8A5AeFa8e6622467AD3D"
+  },
+  {
+    "contractName": "OptimisticGovernor",
+    "address": "0x3Cc4b597E9c3f51288c6Cd0c087DC14c3FfdD966"
   }
 ]

@@ -125,7 +125,7 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
   GetARGsTypeFromFactory as GetARGsTypeFromFactoryEthers,
   TypedEventFilter as TypedEventFilterEthers,
   TypedEvent as TypedEventEthers,
-} from "../typechain/core/ethers/commons";\n`
+} from "../typechain/core/ethers/common";\n`
     );
 
     artifacts.forEach(({ contractName, packageName }) => {
@@ -218,7 +218,7 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
   GetARGsTypeFromFactory as GetARGsTypeFromFactoryEthers,
   TypedEventFilter as TypedEventFilterEthers,
   TypedEvent as TypedEventEthers,
-} from "../typechain/core/ethers/commons";\n`
+} from "../typechain/core/ethers/common";\n`
     );
 
     artifacts.forEach(({ contractName, packageName }) => {

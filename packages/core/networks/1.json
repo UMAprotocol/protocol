@@ -188,5 +188,9 @@
   {
     "contractName": "VotingUpgraderV2",
     "address": "0x13852D4AF390d8C3404c0577fd8B8E43389A290b"
+  },
+  {
+    "contractName": "OptimisticGovernor",
+    "address": "0x28CeBFE94a03DbCA9d17143e9d2Bd1155DC26D5d"
   }
 ]

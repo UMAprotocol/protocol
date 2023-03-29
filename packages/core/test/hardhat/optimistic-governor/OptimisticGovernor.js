@@ -218,7 +218,7 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
-    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const assertionId = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     const claim = utf8ToHex(
       "proposalHash:" + proposalHash.slice(2) + ',explanation:"' + hexToUtf8(explanation) + '",rules:"' + rules + '"'
     );
@@ -323,7 +323,7 @@ describe("OptimisticGovernor", () => {
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     const endingTime = proposalTime + liveness;
 
-    const assertionId = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const assertionId = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
 
     await assertEventEmitted(
       receipt,
@@ -496,7 +496,7 @@ describe("OptimisticGovernor", () => {
     );
 
     // Disputed proposal hash is deleted automatically from callback.
-    const disputedProposalHash = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const disputedProposalHash = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     assert.equal(disputedProposalHash, 0);
   });
 
@@ -545,7 +545,7 @@ describe("OptimisticGovernor", () => {
     await optimisticOracleV3.methods.disputeAssertion(assertionId, disputer).send({ from: disputer });
 
     // Disputed proposal hash is deleted automatically from callback.
-    const disputedProposalHashTimestamp = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    const disputedProposalHashTimestamp = await optimisticOracleModule.methods.assertionIds(proposalHash).call();
     assert.equal(disputedProposalHashTimestamp, 0);
 
     // Duplicate proposal can be made after original proposal is deleted. This is useful in case the disputer was wrong.
@@ -1224,6 +1224,28 @@ describe("OptimisticGovernor", () => {
     );
   });
 
+  it("Can reset Escalation Manager to zero address", async function () {
+    // Deploy Full Policy Escalation Manager and set it as new Escalation Manager.
+    const newEscalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
+      from: owner,
+    });
+    const setEscalationManagerData = optimisticOracleModule.methods
+      .setEscalationManager(newEscalationManager.options.address)
+      .encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+      .send({ from: owner });
+
+    // Reset Escalation Manager to zero address.
+    const resetEscalationManagerData = optimisticOracleModule.methods.setEscalationManager(ZERO_ADDRESS).encodeABI();
+    await avatar.methods
+      .exec(optimisticOracleModule.options.address, "0", resetEscalationManagerData)
+      .send({ from: owner });
+
+    // Check that Escalation Manager is set to zero address.
+    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), ZERO_ADDRESS);
+  });
+
   it("Cannot process callback from Optimistic Oracle V3 with invalid assertionId", async function () {
     // Create assertion directly with Optimistic Oracle V3 and pointing Optimistic Governor as the callback recipient.
     await bondToken.methods.approve(optimisticOracleV3.options.address, bond).send({ from: proposer });
@@ -1267,25 +1289,37 @@ describe("OptimisticGovernor", () => {
     );
   });
 
-  it("Can reset Escalation Manager to zero address", async function () {
-    // Deploy Full Policy Escalation Manager and set it as new Escalation Manager.
-    const newEscalationManager = await FullPolicyEscalationManager.new(optimisticOracleV3.options.address).send({
-      from: owner,
-    });
-    const setEscalationManagerData = optimisticOracleModule.methods
-      .setEscalationManager(newEscalationManager.options.address)
-      .encodeABI();
-    await avatar.methods
-      .exec(optimisticOracleModule.options.address, "0", setEscalationManagerData)
+  it("Emits event on syncing new Optimistic Oracle V3", async function () {
+    // Upgrade the Optimistic Oracle V3.
+    const defaultCurrency = await TestnetERC20.new("Default Currency", "DC", 18).send({ from: owner });
+    const newOptimisticOracleV3 = await OptimisticOracleV3Test.new(
+      finder.options.address,
+      defaultCurrency.options.address,
+      liveness,
+      timer.options.address
+    ).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), newOptimisticOracleV3.options.address)
       .send({ from: owner });
 
-    // Reset Escalation Manager to zero address.
-    const resetEscalationManagerData = optimisticOracleModule.methods.setEscalationManager(ZERO_ADDRESS).encodeABI();
-    await avatar.methods
-      .exec(optimisticOracleModule.options.address, "0", resetEscalationManagerData)
-      .send({ from: owner });
+    // Cache the upgraded Optimistic Oracle V3 and check the event is emitted.
+    const receipt = await optimisticOracleModule.methods.sync().send({ from: disputer });
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "OptimisticOracleChanged",
+      (event) => event.newOptimisticOracleV3 == newOptimisticOracleV3.options.address
+    );
 
-    // Check that Escalation Manager is set to zero address.
-    assert.equal(await optimisticOracleModule.methods.escalationManager().call(), ZERO_ADDRESS);
+    // Revert to the original Optimistic Oracle V3 for other tests.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV3), optimisticOracleV3.options.address)
+      .send({ from: owner });
+  });
+
+  it("Does not emit event on syncing the same Optimistic Oracle V3", async function () {
+    // Sync the Optimistic Oracle V3 and check the event is not emitted.
+    const receipt = await optimisticOracleModule.methods.sync().send({ from: owner });
+    assert.equal(Object.keys(receipt.events).length, 0);
   });
 });
