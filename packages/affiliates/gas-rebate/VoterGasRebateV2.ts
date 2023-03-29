@@ -30,7 +30,8 @@ function findClosestUmaEthPrice(swapEvents: any, blockNumber: number) {
 export async function run(): Promise<void> {
   console.log("Running UMA2.0 Gas rebate script! This script assumes you are running it for the previous month🍌.");
 
-  // Work out the range to run over. This should be over the totality of the previous month.
+  // Work out the range to run over. This should be over the totality of the previous month. Note we use the UTC month
+  // methods to ensure that the same output is always created irrespective of timezones.
   const currentDate = new Date();
   const prevMonthStart = new Date(currentDate);
   prevMonthStart.setUTCMonth(prevMonthStart.getUTCMonth() - 1);
