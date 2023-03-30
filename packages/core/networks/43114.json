@@ -78,5 +78,9 @@
   {
     "contractName": "LongShortPairCreator",
     "address": "0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E"
+  },
+  {
+    "contractName": "OptimisticGovernor",
+    "address": "0xEF8b46765ae805537053C59f826C3aD61924Db45"
   }
 ]
