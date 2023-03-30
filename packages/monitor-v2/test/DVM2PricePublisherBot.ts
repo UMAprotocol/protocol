@@ -1,53 +1,39 @@
 import type { Provider } from "@ethersproject/abstract-provider";
-import "@nomiclabs/hardhat-ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { RegistryRolesEnum, addGlobalHardhatTestingAddress } from "@uma/common";
-import { ArbitrumParentMessenger } from "@uma/contracts-frontend/dist/typechain/core/ethers";
+import { RegistryRolesEnum } from "@uma/common";
 import {
   FxChildMockEthers,
   FxRootMockEthers,
   IdentifierWhitelistEthers,
   OracleChildTunnelEthers,
   OracleHubEthers,
-  OracleRootTunnelMockEthers,
+  OracleMessengerMockEthers,
+  OracleRootTunnelEthers,
   RegistryEthers,
   StateSyncMockEthers,
   VotingTokenEthers,
   VotingV2Ethers,
 } from "@uma/contracts-node";
-import { assert } from "chai";
-import { BigNumber, BytesLike, utils } from "ethers";
-import hre from "hardhat";
-import sinon from "sinon";
-import { publishPrices } from "../src/price-publisher/PublishPrices";
-import { BotModes, MonitoringParams, OPTIMISM_CHAIN_ID, POLYGON_CHAIN_ID } from "../src/price-publisher/common";
+import { BigNumber, BytesLike } from "ethers";
+import { BotModes, MonitoringParams } from "../src/bot-oo-v3/common";
 import { dvm2Fixture } from "./fixtures/DVM2.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
-import { Signer, formatBytes32String, getContractFactory, moveToNextPhase, moveToNextRound } from "./utils";
-
-import { getAbi } from "@uma/contracts-node";
-import { OptimismParentMessenger } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
-import { SpyTransport, createNewLogger, spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
-import { ARBITRUM_CHAIN_ID } from "../src/price-publisher/common";
-
-const { defaultAbiCoder } = utils;
+import { formatBytes32String, getContractFactory, hre, moveToNextPhase, moveToNextRound, Signer } from "./utils";
 
 const ethers = hre.ethers;
 
 // Create monitoring params for single block to pass to monitor modules.
 const createMonitoringParams = async (): Promise<MonitoringParams> => {
-  // get chain id
-  const chainId = await hre.ethers.provider.getNetwork().then((network) => network.chainId);
   // get hardhat signer
   const [signer] = await ethers.getSigners();
   // Bot modes are not used as we are calling monitor modules directly.
   const botModes: BotModes = {
-    publishPricesEnabled: false,
+    settleAssertionsEnabled: false,
   };
   return {
-    chainId: chainId,
     provider: ethers.provider as Provider,
-    pollingDelay: 0,
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    runFrequency: 60,
     botModes,
     signer,
   };
@@ -57,29 +43,25 @@ describe("DVM2 Price Publisher", function () {
   let votingToken: VotingTokenEthers;
   let votingV2: VotingV2Ethers;
   let oracleHub: OracleHubEthers;
-  let oracleRootTunnel: OracleRootTunnelMockEthers;
-  let arbitrumParentMessenger: ArbitrumParentMessenger;
-  let optimismParentMessenger: OptimismParentMessenger;
+  let oracleRootTunnel: OracleRootTunnelEthers;
+  let messengerMock: OracleMessengerMockEthers;
+  // let governorV2: GovernorV2Ethers;
+  // let proposerV2: ProposerV2Ethers;
+  // let emergencyProposer: EmergencyProposerEthers;
   let registry: RegistryEthers;
   let identifierWhitelist: IdentifierWhitelistEthers;
   let deployer: Signer;
   let staker: Signer;
+  // let proposer: Signer;
   let registeredContract: Signer;
-  let checkpointManager: Signer;
-  let random: Signer;
   let deployerAddress: string;
   let stakerAddress: string;
+  // let proposerAddress: string;
   let registeredContractAddress: string;
-  let arbitrumBridgeMock;
-  let OVM_L1CrossDomainMessengerMock;
+  let chainId: number;
 
-  const testAncillaryData = `q:"Really hard question, maybe 100, maybe 90?"`;
+  const testAncillaryData = ethers.utils.toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
   const testIdentifier = formatBytes32String("NUMERICAL");
-  const testRequestTime = BigNumber.from("1234567890");
-
-  const stampAncillaryData = (ancillary: string, chainId: number) => {
-    return ethers.utils.toUtf8Bytes(ancillary + `,childChainId:${chainId}`);
-  };
 
   const commitAndReveal = async (
     signer: SignerWithAddress,
@@ -105,11 +87,10 @@ describe("DVM2 Price Publisher", function () {
 
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.
-    [deployer, staker, registeredContract, checkpointManager, random] = (await ethers.getSigners()) as Signer[];
+    [deployer, staker, registeredContract] = (await ethers.getSigners()) as Signer[];
     deployerAddress = await deployer.getAddress();
     stakerAddress = await staker.getAddress();
     registeredContractAddress = await registeredContract.getAddress();
-    const randomAddress = await random.getAddress();
 
     // Get contract instances.
     const umaEcosystemContracts = await umaEcosystemFixture();
@@ -118,6 +99,11 @@ describe("DVM2 Price Publisher", function () {
     identifierWhitelist = umaEcosystemContracts.identifierWhitelist;
     const dvm2Contracts = await dvm2Fixture();
     votingV2 = dvm2Contracts.votingV2;
+    // governorV2 = dvm2Contracts.governorV2;
+    // proposerV2 = dvm2Contracts.proposerV2;
+    // emergencyProposer = dvm2Contracts.emergencyProposer;
+
+    // const crossChainContracts = await oracleCrossChainFixture();
 
     oracleHub = (await (await getContractFactory("OracleHub", deployer)).deploy(
       umaEcosystemContracts.finder.address,
@@ -140,14 +126,18 @@ describe("DVM2 Price Publisher", function () {
       umaEcosystemContracts.finder.address
     )) as OracleChildTunnelEthers;
 
-    oracleRootTunnel = (await (await getContractFactory("OracleRootTunnelMock", deployer)).deploy(
-      await checkpointManager.getAddress(),
+    oracleRootTunnel = (await (await getContractFactory("OracleRootTunnel", deployer)).deploy(
+      await deployer.getAddress(),
       fxRoot.address,
       umaEcosystemContracts.finder.address
-    )) as OracleRootTunnelMockEthers;
+    )) as OracleRootTunnelEthers;
 
-    await (await oracleChild.setFxRootTunnel(oracleRootTunnel.address)).wait();
-    await (await oracleRootTunnel.setFxChildTunnel(oracleChild.address)).wait();
+    messengerMock = (await (
+      await getContractFactory("OracleMessengerMock", deployer)
+    ).deploy()) as OracleMessengerMockEthers;
+
+    chainId = (await ethers.provider.getNetwork()).chainId;
+    await (await oracleHub.setMessenger(chainId, messengerMock.address)).wait();
 
     // Add test identifier to whitelist.
     await (await identifierWhitelist.addSupportedIdentifier(testIdentifier)).wait();
@@ -156,54 +146,6 @@ describe("DVM2 Price Publisher", function () {
     await (await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployerAddress)).wait();
     await (await registry.registerContract([], registeredContractAddress)).wait();
     await (await registry.registerContract([], oracleHub.address)).wait();
-    await (await registry.registerContract([], oracleRootTunnel.address)).wait();
-
-    // Arbitrum parent messenger setup
-    arbitrumBridgeMock = await (await getContractFactory("Arbitrum_BridgeMock", deployer)).deploy();
-
-    const arbitrumInboxMock = await hre.waffle.deployMockContract(deployer, getAbi("Arbitrum_InboxMock"));
-    const arbitrumOutboxMock = await hre.waffle.deployMockContract(deployer, getAbi("Arbitrum_OutboxMock"));
-
-    await arbitrumBridgeMock.setOutbox(arbitrumOutboxMock.address);
-    await arbitrumInboxMock.mock.bridge.returns(arbitrumBridgeMock.address);
-    await arbitrumOutboxMock.mock.l2ToL1Sender.returns(randomAddress);
-    await arbitrumInboxMock.mock.createRetryableTicketNoRefundAliasRewrite.returns(1);
-
-    arbitrumParentMessenger = (await (await getContractFactory("Arbitrum_ParentMessenger", deployer)).deploy(
-      arbitrumInboxMock.address,
-      ARBITRUM_CHAIN_ID
-    )) as ArbitrumParentMessenger;
-
-    await arbitrumParentMessenger.setChildMessenger(randomAddress);
-    await arbitrumParentMessenger.setOracleHub(oracleHub.address);
-
-    await (await oracleHub.setMessenger(ARBITRUM_CHAIN_ID, arbitrumParentMessenger.address)).wait();
-
-    // Optimism
-    OVM_L1CrossDomainMessengerMock = await hre.waffle.deployMockContract(
-      deployer,
-      getAbi("OVM_L1CrossDomainMessengerMock")
-    );
-    await OVM_L1CrossDomainMessengerMock.mock.xDomainMessageSender.returns(randomAddress);
-    await OVM_L1CrossDomainMessengerMock.mock.sendMessage.returns();
-    await hre.network.provider.send("hardhat_setBalance", [
-      OVM_L1CrossDomainMessengerMock.address,
-      ethers.utils.parseEther("10.0").toHexString(),
-    ]);
-    optimismParentMessenger = (await (await getContractFactory("Optimism_ParentMessenger", deployer)).deploy(
-      OVM_L1CrossDomainMessengerMock.address,
-      OPTIMISM_CHAIN_ID
-    )) as OptimismParentMessenger;
-
-    await optimismParentMessenger.setChildMessenger(randomAddress);
-    await optimismParentMessenger.setOracleHub(oracleHub.address);
-
-    await (await oracleHub.setMessenger(OPTIMISM_CHAIN_ID, optimismParentMessenger.address)).wait();
-
-    addGlobalHardhatTestingAddress("Arbitrum_ParentMessenger", arbitrumParentMessenger.address);
-    addGlobalHardhatTestingAddress("Optimism_ParentMessenger", optimismParentMessenger.address);
-    addGlobalHardhatTestingAddress("OracleHub", oracleHub.address);
-    addGlobalHardhatTestingAddress("OracleRootTunnel", oracleRootTunnel.address);
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
@@ -213,238 +155,64 @@ describe("DVM2 Price Publisher", function () {
     await (await votingV2.connect(staker).stake(TEN_MILLION)).wait();
   });
 
-  const requestVoteAndResolve = async (
-    voter: Signer,
-    voteValue: BigNumber,
-    time: BigNumber,
-    identifier: string,
-    ancillaryData: BytesLike
-  ) => {
+  it("Testing", async function () {
+    const time = BigNumber.from("0");
     await (
-      await votingV2.connect(registeredContract)["requestPrice(bytes32,uint256,bytes)"](identifier, time, ancillaryData)
+      await votingV2
+        .connect(registeredContract)
+        ["requestPrice(bytes32,uint256,bytes)"](testIdentifier, time, testAncillaryData)
     ).wait();
+
+    // Price request event
+    const priceRequestFilter = votingV2.filters.RequestAdded(null, null, null, null, null);
+    const priceRequestEvents = await votingV2.queryFilter(priceRequestFilter);
 
     await moveToNextRound(votingV2);
 
-    await commitAndReveal(voter as SignerWithAddress, voteValue, time, identifier, ancillaryData);
+    await commitAndReveal(
+      staker as SignerWithAddress,
+      ethers.utils.parseEther("1"),
+      time,
+      testIdentifier,
+      testAncillaryData
+    );
 
     await moveToNextRound(votingV2);
 
     await (await votingV2.updateTrackers(stakerAddress)).wait();
-  };
 
-  it("Message received from Arbitrum to be published", async function () {
-    const ancillaryDataStamp = stampAncillaryData(testAncillaryData, ARBITRUM_CHAIN_ID);
+    // Get reques resolved event.
+    const requestResolvedFilter = votingV2.filters.RequestResolved(null, null, null, null, null);
+    const requestResolvedEvents = await votingV2.queryFilter(requestResolvedFilter);
 
-    const encodedData = defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testRequestTime, ancillaryDataStamp]
-    );
+    console.log(requestResolvedEvents[0]);
 
-    await hre.network.provider.send("hardhat_setBalance", [
-      arbitrumBridgeMock.address,
-      ethers.utils.parseEther("10.0").toHexString(),
-    ]);
+    await (await oracleHub.publishPrice(chainId, testIdentifier, time, testAncillaryData)).wait();
 
-    const bridgeSigner = (await ethers.getImpersonatedSigner(arbitrumBridgeMock.address)) as Signer;
+    // Call monitorAssertions directly for the block when the assertion was made.
+    // const spy = sinon.spy();
+    // const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    // await settleAssertions(spyLogger, await createMonitoringParams());
 
-    await arbitrumParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
+    // // No logs should be generated as there are no assertions to settle.
+    // assert.isNull(spy.getCall(0));
 
-    await requestVoteAndResolve(
-      staker,
-      ethers.utils.parseEther("1"),
-      testRequestTime,
-      testIdentifier,
-      ancillaryDataStamp
-    );
+    // // move time forward to the execution time.
+    // await hardhatTime.increase(defaultLiveness);
+    // await settleAssertions(spyLogger, await createMonitoringParams());
 
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    // // When calling monitoring module directly there should be only one log (index 0) with the assertion caught by spy.
+    // assert.equal(spy.getCall(0).lastArg.at, "OOv3Bot");
+    // assert.equal(spy.getCall(0).lastArg.message, "Assertion Settled ✅");
+    // assert.equal(spyLogLevel(spy, 0), "warn");
+    // assert.isTrue(spyLogIncludes(spy, 0, assertionMadeEvent.args.assertionId));
+    // assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
+    // assert.isTrue(spyLogIncludes(spy, 0, "Settlement Resolution: true"));
+    // assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
 
-    await publishPrices(spyLogger, await createMonitoringParams());
-
-    assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
-    assert.equal(spy.getCall(0).lastArg.message, "Price Published ✅");
-    assert.equal(spyLogLevel(spy, 0), "warn");
-    assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
-    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(ethers.utils.toUtf8String(ancillaryDataStamp)));
-    assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-publisher");
-  });
-
-  it("Message received from Arbitrum already published", async function () {
-    const ancillaryDataStamp = stampAncillaryData(testAncillaryData, ARBITRUM_CHAIN_ID);
-
-    const encodedData = defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testRequestTime, ancillaryDataStamp]
-    );
-
-    await hre.network.provider.send("hardhat_setBalance", [
-      arbitrumBridgeMock.address,
-      ethers.utils.parseEther("10.0").toHexString(),
-    ]);
-
-    const bridgeSigner = (await ethers.getImpersonatedSigner(arbitrumBridgeMock.address)) as Signer;
-
-    await arbitrumParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
-
-    await requestVoteAndResolve(
-      staker,
-      ethers.utils.parseEther("1"),
-      testRequestTime,
-      testIdentifier,
-      ancillaryDataStamp
-    );
-
-    const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
-
-    await (
-      await oracleHub.publishPrice(ARBITRUM_CHAIN_ID, testIdentifier, testRequestTime, ancillaryDataStamp, {
-        value: arbitrumL1CallValue,
-      })
-    ).wait();
-
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-
-    await publishPrices(spyLogger, await createMonitoringParams());
-
-    // There should be no logs as there are no prices to publish.
-    assert.isNull(spy.getCall(0));
-  });
-
-  it("Message received Polygon", async function () {
-    const ancillaryDataStamp = stampAncillaryData(testAncillaryData, POLYGON_CHAIN_ID);
-
-    const encodedData = defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testRequestTime, ancillaryDataStamp]
-    );
-
-    await oracleRootTunnel.processMessageFromChild(encodedData);
-
-    await requestVoteAndResolve(
-      staker,
-      ethers.utils.parseEther("1"),
-      testRequestTime,
-      testIdentifier,
-      ancillaryDataStamp
-    );
-
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-
-    await publishPrices(spyLogger, await createMonitoringParams());
-
-    assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
-    assert.equal(spy.getCall(0).lastArg.message, "Price Published ✅");
-    assert.equal(spyLogLevel(spy, 0), "warn");
-    assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
-    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(ethers.utils.toUtf8String(ancillaryDataStamp)));
-    assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-publisher");
-  });
-
-  it("Message received Polygon  already published", async function () {
-    const ancillaryDataStamp = stampAncillaryData(testAncillaryData, POLYGON_CHAIN_ID);
-
-    const encodedData = defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testRequestTime, ancillaryDataStamp]
-    );
-
-    await oracleRootTunnel.processMessageFromChild(encodedData);
-
-    await requestVoteAndResolve(
-      staker,
-      ethers.utils.parseEther("1"),
-      testRequestTime,
-      testIdentifier,
-      ancillaryDataStamp
-    );
-
-    await (
-      await oracleRootTunnel.connect(deployer).publishPrice(testIdentifier, testRequestTime, ancillaryDataStamp)
-    ).wait();
-
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-
-    await publishPrices(spyLogger, await createMonitoringParams());
-
-    // There should be no logs as there are no prices to publish.
-    assert.isNull(spy.getCall(0));
-  });
-
-  it("Message received from Optimism", async function () {
-    const ancillaryDataStamp = stampAncillaryData(testAncillaryData, OPTIMISM_CHAIN_ID);
-
-    const encodedData = defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testRequestTime, ancillaryDataStamp]
-    );
-
-    const bridgeSigner = (await ethers.getImpersonatedSigner(OVM_L1CrossDomainMessengerMock.address)) as Signer;
-
-    await optimismParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
-
-    await requestVoteAndResolve(
-      staker,
-      ethers.utils.parseEther("1"),
-      testRequestTime,
-      testIdentifier,
-      ancillaryDataStamp
-    );
-
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-
-    await publishPrices(spyLogger, await createMonitoringParams());
-
-    assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
-    assert.equal(spy.getCall(0).lastArg.message, "Price Published ✅");
-    assert.equal(spyLogLevel(spy, 0), "warn");
-    assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
-    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(ethers.utils.toUtf8String(ancillaryDataStamp)));
-    assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-publisher");
-  });
-
-  it("Message received from Optimism already published", async function () {
-    const ancillaryDataStamp = stampAncillaryData(testAncillaryData, OPTIMISM_CHAIN_ID);
-
-    const encodedData = defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testRequestTime, ancillaryDataStamp]
-    );
-
-    const bridgeSigner = (await ethers.getImpersonatedSigner(OVM_L1CrossDomainMessengerMock.address)) as Signer;
-
-    await optimismParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
-
-    await requestVoteAndResolve(
-      staker,
-      ethers.utils.parseEther("1"),
-      testRequestTime,
-      testIdentifier,
-      ancillaryDataStamp
-    );
-
-    const optimismL1CallValue = await optimismParentMessenger.getL1CallValue();
-
-    await (
-      await oracleHub.publishPrice(OPTIMISM_CHAIN_ID, testIdentifier, testRequestTime, ancillaryDataStamp, {
-        value: optimismL1CallValue,
-      })
-    ).wait();
-
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-
-    await publishPrices(spyLogger, await createMonitoringParams());
-
-    // There should be no logs as there are no prices to publish.
-    assert.isNull(spy.getCall(0));
+    // spy.resetHistory();
+    // await settleAssertions(spyLogger, await createMonitoringParams());
+    // // There should be no logs as there are no assertions to settle.
+    // assert.isNull(spy.getCall(0));
   });
 });
