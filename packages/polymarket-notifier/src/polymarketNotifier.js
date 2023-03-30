@@ -74,7 +74,7 @@ class PolymarketNotifier {
 
     // combines data from the Polymarket API data to the proposal event based on ancillaryData
     const proposalData = proposalEvents
-      .filter((proposalEvent) => proposalEvent.expirationTimestamp + 14000 > currentTime)
+      .filter((proposalEvent) => proposalEvent.expirationTimestamp > currentTime)
       .map((proposalEvent) => ({
         ...proposalEvent,
         ...questionData.find((proposals) => proposals.ancillaryData === proposalEvent.ancillaryData),

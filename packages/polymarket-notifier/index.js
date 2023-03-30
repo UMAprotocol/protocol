@@ -104,7 +104,7 @@ async function Poll(callback) {
     // Fill in notifierConfig defaults:
     executionParameters.notifierConfig = {
       apiEndpoint: "https://gamma-api.polymarket.com/query",
-      minAcceptedPrice: 1,
+      minAcceptedPrice: 0.95,
       ...executionParameters.notifierConfig,
     };
 
