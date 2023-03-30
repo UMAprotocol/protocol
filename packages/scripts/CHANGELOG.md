@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.25.1...@uma/scripts@1.26.0) (2023-03-30)
+
+### Features
+
+- refine packages in core ([#4482](https://github.com/UMAprotocol/protocol/issues/4482)) ([6596881](https://github.com/UMAprotocol/protocol/commit/6596881e8aea36e03461768200a84e101b047563))
+- **scripts:** admin child registration safe payload ([#4503](https://github.com/UMAprotocol/protocol/issues/4503)) ([25de660](https://github.com/UMAprotocol/protocol/commit/25de6606fd81f2f79b423989a296da3e0316d708))
+
 ## [1.25.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.25.0...@uma/scripts@1.25.1) (2023-03-23)
 
 **Note:** Version bump only for package @uma/scripts

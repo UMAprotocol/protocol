@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.54.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.53.0...@uma/core@2.54.0) (2023-03-30)
+
+### Features
+
+- **core:** add optimistic governor mastercopy deployments ([#4497](https://github.com/UMAprotocol/protocol/issues/4497)) ([dde212d](https://github.com/UMAprotocol/protocol/commit/dde212da74e309ebb70e65fed09bd46c0c5039d2))
+- **core:** helper contract for snapshot ([#4502](https://github.com/UMAprotocol/protocol/issues/4502)) ([fd4777b](https://github.com/UMAprotocol/protocol/commit/fd4777bd62bc8815ae6070cc0517d208c70dde89))
+- **core:** optimistic governor mastercopy on avalanche ([#4507](https://github.com/UMAprotocol/protocol/issues/4507)) ([0464fca](https://github.com/UMAprotocol/protocol/commit/0464fca264d7261ca70e92da2814f778b49b64df))
+- **core:** optimistic oracle v3 deployments on multisig relay chains ([#4500](https://github.com/UMAprotocol/protocol/issues/4500)) ([b4f100e](https://github.com/UMAprotocol/protocol/commit/b4f100ee8676c8148241ac8a08e9a18418817823))
+- refine packages in core ([#4482](https://github.com/UMAprotocol/protocol/issues/4482)) ([6596881](https://github.com/UMAprotocol/protocol/commit/6596881e8aea36e03461768200a84e101b047563))
+
 # [2.53.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.52.0...@uma/core@2.53.0) (2023-03-23)
 
 ### Bug Fixes
