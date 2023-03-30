@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.15.5](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.15.4...@uma/optimistic-oracle@2.15.5) (2023-03-30)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
 ## [2.15.4](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.15.3...@uma/optimistic-oracle@2.15.4) (2023-03-23)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

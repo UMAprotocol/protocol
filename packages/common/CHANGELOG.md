@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.31.0...@uma/common@2.32.0) (2023-03-30)
+
+### Features
+
+- refine packages in core ([#4482](https://github.com/UMAprotocol/protocol/issues/4482)) ([6596881](https://github.com/UMAprotocol/protocol/commit/6596881e8aea36e03461768200a84e101b047563))
+
 # [2.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.30.1...@uma/common@2.31.0) (2023-02-28)
 
 ### Features

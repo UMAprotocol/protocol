@@ -1,5 +1,5 @@
 {
-  "version": "0.33.0",
+  "version": "0.34.0",
   "license": "MIT",
   "name": "@uma/sdk",
   "author": "David Adams",
@@ -35,20 +35,20 @@
     }
   ],
   "dependencies": {
+    "@eth-optimism/core-utils": "^0.7.7",
     "@ethersproject/abstract-signer": "^5.4.0",
     "@ethersproject/providers": "^5.4.2",
     "@google-cloud/datastore": "^7.0.0",
     "@types/lodash-es": "^4.17.5",
-    "@uma/contracts-frontend": "^0.4.14",
-    "@uma/contracts-node": "^0.4.14",
+    "@uma/contracts-frontend": "^0.4.15",
+    "@uma/contracts-node": "^0.4.15",
     "axios": "^0.24.0",
     "bluebird": "^3.7.2",
     "bn.js": "^4.11.9",
     "decimal.js": "^10.3.1",
     "highland": "^2.13.5",
     "immer": "^9.0.7",
-    "lodash-es": "^4.17.21",
-    "@eth-optimism/core-utils": "^0.7.7"
+    "lodash-es": "^4.17.21"
   },
   "peerDependencies": {
     "@eth-optimism/contracts": "^0.5.40",
