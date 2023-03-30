@@ -18,15 +18,13 @@ class PolymarketNotifier {
    * @param {Object} logger Winston module used to send logs.
    * @param {Function} getTime Returns the current time.
    * @param {String} apiEndpoint API endpoint to monitor.
-   * @param {Integer} maxTimeAfterProposal Period in seconds to look for past proposals.
    * @param {Integer} minAcceptedPrice API price that determines if alert is sent.
    */
-  constructor({ logger, web3, getTime, apiEndpoint, maxTimeAfterProposal, minAcceptedPrice }) {
+  constructor({ logger, web3, getTime, apiEndpoint, minAcceptedPrice }) {
     this.logger = logger;
     this.web3 = web3;
     this.getTime = getTime;
     this.apiEndpoint = apiEndpoint;
-    this.maxTimeAfterProposal = maxTimeAfterProposal;
     this.minAcceptedPrice = minAcceptedPrice;
     // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
     const decoder = TransactionDataDecoder.getInstance();
@@ -40,7 +38,6 @@ class PolymarketNotifier {
       at: "PolymarketNotifier",
       message: "Checking for past proposals",
       apiEndpoint: this.apiEndpoint,
-      maxTimeAfterProposal: this.maxTimeAfterProposal,
       minAcceptedPrice: this.minAcceptedPrice,
     });
     const currentTime = await this.getTime();
@@ -57,8 +54,8 @@ class PolymarketNotifier {
     const optimisticOracleV2 = await new this.web3.eth.Contract(optimisticOracleAbiV2, optimisticOracleAddressV2);
 
     // gets all ProposePrice events using ethers query filter api. fromBlock is set to block of the latest OO deployment.
-    const optimisticOracleEventsV1 = await optimisticOracleV1.getPastEvents("ProposePrice", { fromBlock: 16783346 });
-    const optimisticOracleEventsV2 = await optimisticOracleV2.getPastEvents("ProposePrice", { fromBlock: 29786052 });
+    const optimisticOracleEventsV1 = await optimisticOracleV1.getPastEvents("ProposePrice", { fromBlock: 40929008 });
+    const optimisticOracleEventsV2 = await optimisticOracleV2.getPastEvents("ProposePrice", { fromBlock: 40929008 });
     const events = [...optimisticOracleEventsV1, ...optimisticOracleEventsV2];
 
     // creates array for each event
@@ -67,6 +64,7 @@ class PolymarketNotifier {
       requester: request.returnValues["requester"],
       proposer: request.returnValues["proposer"],
       timestamp: Number(request.returnValues["timestamp"]),
+      expirationTimestamp: Number(request.returnValues["expirationTimestamp"]),
       identifier: request.returnValues["identifier"],
       ancillaryData: request.returnValues["ancillaryData"],
       proposedPrice: this.web3.utils.fromWei(request.returnValues["proposedPrice"]).toString(),
@@ -74,7 +72,7 @@ class PolymarketNotifier {
 
     // combines data from the Polymarket API data to the proposal event based on ancillaryData
     const proposalData = proposalEvents
-      .filter((proposalEvent) => proposalEvent.timestamp > currentTime - this.maxTimeAfterProposal)
+      .filter((proposalEvent) => proposalEvent.expirationTimestamp + 14000 > currentTime)
       .map((proposalEvent) => ({
         ...proposalEvent,
         ...questionData.find((proposals) => proposals.ancillaryData === proposalEvent.ancillaryData),
@@ -126,8 +124,6 @@ class PolymarketNotifier {
       .filter((contract) => {
         return (
           contract &&
-          // Include only contracts that expire within maxTimeAfterProposal seconds.
-          contract.proposeTimestamp >= currentTime - this.maxTimeAfterProposal &&
           // Filter out proposals that have already been notified
           !Object.keys(notifiedProposals).includes(
             contract.txHash + "_" + contract.question + "_" + contract.proposedPrice
@@ -189,29 +185,39 @@ class PolymarketNotifier {
       };
     });
 
-    // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
-    const ancillaryData = (await aggregateTransactionsAndCall(multicallAddress, this.web3, transactions)).map(
-      ({ ancillaryData }, i) => {
-        const {
-          questionID,
-          question,
-          outcomes: outcomesString,
-          outcomePrices: outcomePricesString,
-        } = polymarketContracts[i];
-        const outcomes = JSON.parse(outcomesString);
-        const outcomePrices = JSON.parse(outcomePricesString);
+    // split transactions into chunks of 100 to avoid hitting the multicall gas limit
+    const chunks = [];
+    for (let i = 0; i < transactions.length; i += 100) {
+      chunks.push(transactions.slice(i, i + 100));
+    }
 
-        return {
-          questionID,
-          question,
-          ancillaryData,
-          outcome1: outcomes[0],
-          outcome1Price: Number(outcomePrices[0]).toFixed(4),
-          outcome2: outcomes[1],
-          outcome2Price: Number(outcomePrices[1]).toFixed(4),
-        };
-      }
-    );
+    // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
+    const ancillaryData = [];
+    for (let chunk of chunks) {
+      const chunkAncillaryData = (await aggregateTransactionsAndCall(multicallAddress, this.web3, chunk)).map(
+        ({ ancillaryData }, i) => {
+          const {
+            questionID,
+            question,
+            outcomes: outcomesString,
+            outcomePrices: outcomePricesString,
+          } = polymarketContracts[i];
+          const outcomes = JSON.parse(outcomesString);
+          const outcomePrices = JSON.parse(outcomePricesString);
+
+          return {
+            questionID,
+            question,
+            ancillaryData,
+            outcome1: outcomes[0],
+            outcome1Price: Number(outcomePrices[0]).toFixed(4),
+            outcome2: outcomes[1],
+            outcome2Price: Number(outcomePrices[1]).toFixed(4),
+          };
+        }
+      );
+      ancillaryData.push(...chunkAncillaryData);
+    }
 
     return ancillaryData;
   }
