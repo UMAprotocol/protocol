@@ -54,8 +54,10 @@ class PolymarketNotifier {
     const optimisticOracleV2 = await new this.web3.eth.Contract(optimisticOracleAbiV2, optimisticOracleAddressV2);
 
     // gets all ProposePrice events using ethers query filter api. fromBlock is set to block of the latest OO deployment.
-    const optimisticOracleEventsV1 = await optimisticOracleV1.getPastEvents("ProposePrice", { fromBlock: 40929008 });
-    const optimisticOracleEventsV2 = await optimisticOracleV2.getPastEvents("ProposePrice", { fromBlock: 40929008 });
+    const currentBlock = await this.web3.eth.getBlockNumber();
+    const fromBlock = currentBlock - 120_000; // 120k blocks is roughly 3 days in polygon
+    const optimisticOracleEventsV1 = await optimisticOracleV1.getPastEvents("ProposePrice", { fromBlock: fromBlock });
+    const optimisticOracleEventsV2 = await optimisticOracleV2.getPastEvents("ProposePrice", { fromBlock: fromBlock });
     const events = [...optimisticOracleEventsV1, ...optimisticOracleEventsV2];
 
     // creates array for each event
@@ -185,10 +187,10 @@ class PolymarketNotifier {
       };
     });
 
-    // split transactions into chunks of 100 to avoid hitting the multicall gas limit
+    // The API query returns 4k+ contracts, so we need to chunk the multicall requests to avoid hitting the gas limit.
     const chunks = [];
-    for (let i = 0; i < transactions.length; i += 100) {
-      chunks.push(transactions.slice(i, i + 100));
+    for (let i = 0; i < transactions.length; i += 250) {
+      chunks.push(transactions.slice(i, i + 250));
     }
 
     // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
