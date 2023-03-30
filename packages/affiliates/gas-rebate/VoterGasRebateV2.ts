@@ -5,11 +5,11 @@
 // to not require any run time parameters by always running it one month after the desired output month.
 
 import { getAddress } from "@uma/contracts-node";
-const hre = require("hardhat");
-const { ethers } = hre;
+import hre from "hardhat";
+const { ethers } = hre as any;
 import { BigNumber } from "ethers";
 import bn from "bignumber.js";
-const moment = require("moment");
+import moment from "moment";
 import { findBlockNumberAtTimestamp, getWeb3, decodePriceSqrt } from "@uma/common";
 import fs from "fs";
 import path from "path";
@@ -21,6 +21,7 @@ function findClosestUmaEthPrice(swapEvents: any, blockNumber: number) {
   });
   // The returned price is of the form 1 UMA = x ETH. We want to return the price of 1 ETH in UMA. Also, Uniswap returns
   // the price in x96 square root encoded. We need to decode by reverse x96 operation by compting (price/(2^96))^2.
+  // the casting from/to bn is needed to deal with the decimals returned by the decodePriceSqrt function.
   const basePrice = decodePriceSqrt(closest.args.sqrtPriceX96.toString());
   const bnPrice = new bn(ethers.utils.parseUnits("1").toString()).div(new bn(basePrice.toString()));
   return BigNumber.from(bnPrice.toString().toString().substring(0, bnPrice.toString().indexOf(".")));
@@ -29,15 +30,16 @@ function findClosestUmaEthPrice(swapEvents: any, blockNumber: number) {
 export async function run(): Promise<void> {
   console.log("Running UMA2.0 Gas rebate script! This script assumes you are running it for the previous month🍌.");
 
-  // Work out the range to run over. This should be over the totality of the previous month.
+  // Work out the range to run over. This should be over the totality of the previous month. Note we use the UTC month
+  // methods to ensure that the same output is always created irrespective of timezones.
   const currentDate = new Date();
   const prevMonthStart = new Date(currentDate);
-  prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
-  prevMonthStart.setDate(1);
-  prevMonthStart.setHours(0, 0, 0, 0);
+  prevMonthStart.setUTCMonth(prevMonthStart.getUTCMonth() - 1);
+  prevMonthStart.setUTCDate(1);
+  prevMonthStart.setUTCHours(0, 0, 0, 0);
 
-  const prevMonthEnd = new Date(prevMonthStart.getFullYear(), prevMonthStart.getMonth() + 1, 0);
-  prevMonthEnd.setHours(23, 59, 59);
+  const prevMonthEnd = new Date(prevMonthStart.getUTCFullYear(), prevMonthStart.getUTCMonth() + 1, 0);
+  prevMonthEnd.setUTCHours(23, 59, 59);
 
   // Fetch associated block numbers for the start and end of the previous month.
   const fromBlock = (await findBlockNumberAtTimestamp(getWeb3(), prevMonthStart.getTime() / 1000)).blockNumber;
@@ -48,7 +50,7 @@ export async function run(): Promise<void> {
   console.log("Previous Month End:", moment(prevMonthEnd).format(), "& block", toBlock);
 
   // Fetch all commit and reveal events.
-  const voting = await hre.ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1));
+  const voting = await ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1));
   const commitEvents = await voting.queryFilter(voting.filters.VoteCommitted(), fromBlock, toBlock);
   const revealEvents = await voting.queryFilter(voting.filters.VoteRevealed(), fromBlock, toBlock);
 
@@ -67,10 +69,10 @@ export async function run(): Promise<void> {
 
   // Find the associated UMA/ETH price for each transaction. We use the UniswapV3 pool to find the price at the block.
   // Note that we search for 10000 blocks before to ensure that the range over which we have data spans the entire range.
-  const uniswapPool = await hre.ethers.getContractAt("UniswapV3", "0x157dfa656fdf0d18e1ba94075a53600d81cb3a97");
+  const uniswapPool = await ethers.getContractAt("UniswapV3", "0x157dfa656fdf0d18e1ba94075a53600d81cb3a97");
   const uniswapPoolEvents = await uniswapPool.queryFilter(uniswapPool.filters.Swap(), fromBlock - 10000, toBlock);
 
-  const shareholderPayoutBN: { [key: string]: BigNumber } = {};
+  const shareholderPayoutBN: { [address: string]: BigNumber } = {};
   // Now, traverse all transactions and calculate the rebate for each.
   for (const transaction of transactionsToRefund) {
     // Eth used is the gas used * the gas price.
