@@ -109,7 +109,7 @@ async function Poll(callback) {
       //  "minAcceptedPrice": 0.99,                         // If the Polymarket API price is below this value at the time of a proposal an alert is sent.
       //  "apiEndpoint": "https://gamma-api.polymarket.com/query",   // API endpoint to check for Polymarket information.
       //  "minMarketLiquidity": 1000,                       // Minimum market liquidity that determines if alert is sent.
-      //  "minMarketVolume": 1000                           // Minimum market volume that determines if alert is sent.
+      //  "minMarketVolume": 750                           // Minimum market volume that determines if alert is sent.
       // }
       notifierConfig: process.env.NOTIFIER_CONFIG ? JSON.parse(process.env.NOTIFIER_CONFIG) : {},
     };
@@ -117,8 +117,8 @@ async function Poll(callback) {
     executionParameters.notifierConfig = {
       apiEndpoint: "https://gamma-api.polymarket.com/query",
       minAcceptedPrice: 0.95,
-      minMarketLiquidity: 1000,
-      minMarketVolume: 1000,
+      minMarketLiquidity: 500,
+      minMarketVolume: 500,
       ...executionParameters.notifierConfig,
     };
 

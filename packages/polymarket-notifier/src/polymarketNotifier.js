@@ -43,6 +43,8 @@ class PolymarketNotifier {
       message: "Checking for past proposals",
       apiEndpoint: this.apiEndpoint,
       minAcceptedPrice: this.minAcceptedPrice,
+      minMarketLiquidity: this.minMarketLiquidity,
+      minMarketVolume: this.minMarketVolume,
     });
     const currentTime = await this.getTime();
     const notifiedProposals = await this.getNotifiedProposals();
