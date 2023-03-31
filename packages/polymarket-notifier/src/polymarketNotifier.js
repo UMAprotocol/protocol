@@ -20,14 +20,16 @@ class PolymarketNotifier {
    * @param {String} apiEndpoint API endpoint to monitor.
    * @param {Integer} minAcceptedPrice API price that determines if alert is sent.
    * @param {Integer} minMarketLiquidity Minimum market liquidity that determines if alert is sent.
+   * @param {Integer} minMarketVolume Minimum market volume that determines if alert is sent.
    */
-  constructor({ logger, web3, getTime, apiEndpoint, minAcceptedPrice, minMarketLiquidity }) {
+  constructor({ logger, web3, getTime, apiEndpoint, minAcceptedPrice, minMarketLiquidity, minMarketVolume }) {
     this.logger = logger;
     this.web3 = web3;
     this.getTime = getTime;
     this.apiEndpoint = apiEndpoint;
     this.minAcceptedPrice = minAcceptedPrice;
     this.minMarketLiquidity = minMarketLiquidity;
+    this.minMarketVolume = minMarketVolume;
     // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
     const decoder = TransactionDataDecoder.getInstance();
     decoder.abiDecoder.addABI(binaryAdapterAbi);
@@ -172,7 +174,8 @@ class PolymarketNotifier {
         question
         outcomes
         outcomePrices
-        liquidity
+        liquidityNum
+        volumeNum
       }
     }
     `;
@@ -181,7 +184,7 @@ class PolymarketNotifier {
     assert(polymarketContracts && polymarketContracts.length, "Requires polymarket api data");
 
     const transactions = polymarketContracts
-      .filter((polymarketContract) => Number(polymarketContract.liquidity) > this.minMarketLiquidity)
+      .filter((polymarketContract) => Number(polymarketContract.liquidityNum) > this.minMarketLiquidity && Number(polymarketContract.volumeNum) > this.minMarketVolume
       .map((polymarketContract) => {
         const resolutionContract =
           polymarketContract.resolveBy === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;

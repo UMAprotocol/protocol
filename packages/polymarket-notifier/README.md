@@ -12,6 +12,7 @@ The Polymarket notifier uses the following environment variables:
 - `NOTIFIER_CONFIG` is a JSON object containing-application specific parameters:
   - `minAcceptedPrice` determines if an alert should be sent at the time of a proposal based on the price value returned from the Polymarket API. The default is set to 0.99, meaning when a price is proposed it requires the API price to be greater than 0.99 or an alert will be sent.
   - `minMarketLiquidity` Minimum market liquidity that determines if alert is sent.
+  - `minMarketVolume` Minimum market volume that determines if alert is sent.
   - `apiEndpoint` sets API to fetch Polymarket contract information, defaulting to https://strapi-matic.poly.market/markets
 - `POLLING_DELAY` is value in seconds for the delay between consecutive runs, defaults to 10 minutes. If set to 0 then running in serverless mode will exit after the loop.
 - `BOT_IDENTIFIER` identifies the application name in the logs.
