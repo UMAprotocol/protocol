@@ -22,7 +22,49 @@ export interface MonitoringParams {
   runFrequency: number;
   botModes: BotModes;
   signer: Signer;
+  warmingUpBlockLookback: number;
+  blockLookback: number;
+  maxBlockLookBack: number;
+  firstRun?: boolean;
 }
+
+const blockDefaults = {
+  "1": {
+    // Mainnet
+    day: 576,
+    month: 17280,
+    maxBlockLookBack: 7000,
+  },
+  "137": {
+    // Polygon
+    day: 4320,
+    month: 129600,
+    maxBlockLookBack: 2500,
+  },
+  "10": {
+    // Optimism
+    day: 4320,
+    month: 129600,
+    maxBlockLookBack: 2000,
+  },
+  "42161": {
+    // Arbitrum
+    day: 3456,
+    month: 103680,
+    maxBlockLookBack: 2000,
+  },
+  "43114": {
+    // Avalanche
+    day: 864,
+    month: 25920,
+    maxBlockLookBack: 2000,
+  },
+  other: {
+    day: 1000,
+    month: 20000,
+    maxBlockLookBack: 1000,
+  },
+};
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
@@ -41,12 +83,30 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     settleAssertionsEnabled: env.SETTLEMENTS_ENABLED === "true",
   };
 
+  const blockLookback =
+    Number(env.WARMING_UP_BLOCK_LOOKBACK) ||
+    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.day ||
+    blockDefaults.other.day;
+
+  const warmingUpBlockLookback =
+    Number(env.BLOCK_LOOKBACK) ||
+    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.month ||
+    blockDefaults.other.month;
+
+  const maxBlockLookBack =
+    Number(env.MAX_BLOCK_LOOKBACK) ||
+    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.maxBlockLookBack ||
+    blockDefaults.other.maxBlockLookBack;
+
   return {
     provider,
     chainId,
     runFrequency,
     botModes,
     signer,
+    warmingUpBlockLookback,
+    blockLookback,
+    maxBlockLookBack,
   };
 };
 

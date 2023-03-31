@@ -26,6 +26,10 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
     runFrequency: 60,
     botModes,
     signer,
+    warmingUpBlockLookback: 2000,
+    blockLookback: 2000,
+    maxBlockLookBack: 1000,
+    firstRun: true,
   };
 };
 

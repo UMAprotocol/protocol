@@ -11,15 +11,20 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
 
   const currentBlockNumber = await params.provider.getBlockNumber();
 
-  const assertions = await paginatedEventQuery<AssertionMadeEvent>(oo, oo.filters.AssertionMade(), {
-    fromBlock: 0,
+  const loopBack = params.firstRun ? params.warmingUpBlockLookback : params.blockLookback;
+  const searchConfig = {
+    fromBlock: currentBlockNumber - loopBack < 0 ? 0 : currentBlockNumber - loopBack,
     toBlock: currentBlockNumber,
-  });
+    maxBlockLookBack: params.maxBlockLookBack,
+  };
 
-  const assertionsSettled = await paginatedEventQuery<AssertionSettledEvent>(oo, oo.filters.AssertionSettled(), {
-    fromBlock: 0,
-    toBlock: currentBlockNumber,
-  });
+  const assertions = await paginatedEventQuery<AssertionMadeEvent>(oo, oo.filters.AssertionMade(), searchConfig);
+
+  const assertionsSettled = await paginatedEventQuery<AssertionSettledEvent>(
+    oo,
+    oo.filters.AssertionSettled(),
+    searchConfig
+  );
 
   const assertionsSettledIds = new Set(assertionsSettled.map((assertion) => assertion.args.assertionId));
 
