@@ -19,13 +19,15 @@ class PolymarketNotifier {
    * @param {Function} getTime Returns the current time.
    * @param {String} apiEndpoint API endpoint to monitor.
    * @param {Integer} minAcceptedPrice API price that determines if alert is sent.
+   * @param {Integer} minMarketLiquidity Minimum market liquidity that determines if alert is sent.
    */
-  constructor({ logger, web3, getTime, apiEndpoint, minAcceptedPrice }) {
+  constructor({ logger, web3, getTime, apiEndpoint, minAcceptedPrice, minMarketLiquidity }) {
     this.logger = logger;
     this.web3 = web3;
     this.getTime = getTime;
     this.apiEndpoint = apiEndpoint;
     this.minAcceptedPrice = minAcceptedPrice;
+    this.minMarketLiquidity = minMarketLiquidity;
     // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
     const decoder = TransactionDataDecoder.getInstance();
     decoder.abiDecoder.addABI(binaryAdapterAbi);
@@ -170,6 +172,7 @@ class PolymarketNotifier {
         question
         outcomes
         outcomePrices
+        liquidity
       }
     }
     `;
@@ -177,15 +180,17 @@ class PolymarketNotifier {
     const { markets: polymarketContracts } = await request(this.apiEndpoint, query);
     assert(polymarketContracts && polymarketContracts.length, "Requires polymarket api data");
 
-    const transactions = polymarketContracts.map((polymarketContract) => {
-      const resolutionContract =
-        polymarketContract.resolveBy === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
+    const transactions = polymarketContracts
+      .filter((polymarketContract) => Number(polymarketContract.liquidity) > this.minMarketLiquidity)
+      .map((polymarketContract) => {
+        const resolutionContract =
+          polymarketContract.resolveBy === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
 
-      return {
-        target: resolutionContract.options.address,
-        callData: resolutionContract.methods.questions(polymarketContract.questionID).encodeABI(),
-      };
-    });
+        return {
+          target: resolutionContract.options.address,
+          callData: resolutionContract.methods.questions(polymarketContract.questionID).encodeABI(),
+        };
+      });
 
     // The API query returns 4k+ contracts, so we need to chunk the multicall requests to avoid hitting the gas limit.
     const chunks = [];
