@@ -184,7 +184,11 @@ class PolymarketNotifier {
     assert(polymarketContracts && polymarketContracts.length, "Requires polymarket api data");
 
     const transactions = polymarketContracts
-      .filter((polymarketContract) => Number(polymarketContract.liquidityNum) > this.minMarketLiquidity && Number(polymarketContract.volumeNum) > this.minMarketVolume
+      .filter(
+        (polymarketContract) =>
+          Number(polymarketContract.liquidityNum) > this.minMarketLiquidity &&
+          Number(polymarketContract.volumeNum) > this.minMarketVolume
+      )
       .map((polymarketContract) => {
         const resolutionContract =
           polymarketContract.resolveBy === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
