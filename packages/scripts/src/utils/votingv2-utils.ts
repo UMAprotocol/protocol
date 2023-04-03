@@ -31,10 +31,15 @@ export const getUniqueVoters = async (votingV2: VotingV2Ethers): Promise<string[
 
 export const updateTrackers = async (votingV2: VotingV2Ethers, voters: string[]): Promise<void> => {
   console.log("Updating trackers for all voters");
-  const tx = await votingV2.multicall(
-    voters.map((voter) => votingV2.interface.encodeFunctionData("updateTrackers", [voter]))
-  );
-  await tx.wait();
+  // process voters in batches of 25 to avoid hitting the gas limit with multicall
+  const batchSize = 25;
+  for (let i = 0; i < voters.length; i += batchSize) {
+    const batch = voters.slice(i, i + batchSize);
+    const tx = await votingV2.multicall(
+      batch.map((voter) => votingV2.interface.encodeFunctionData("updateTrackers", [voter]))
+    );
+    await tx.wait();
+  }
   console.log("Done updating trackers for all voters");
 };
 
