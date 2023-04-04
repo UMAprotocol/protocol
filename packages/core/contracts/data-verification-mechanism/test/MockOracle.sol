@@ -33,13 +33,28 @@ contract MockOracle is OracleInterface, Testable {
     // Reference to the Finder.
     FinderInterface private finder;
 
-    // Conceptually we want a (time, identifier) -> price map.
-    mapping(bytes32 => mapping(uint256 => Price)) private verifiedPrices;
+    // Maps request IDs to their resolved Price structs.
+    mapping(bytes32 => Price) private verifiedPrices;
 
-    // The mapping and array allow retrieving all the elements in a mapping and finding/deleting elements.
-    // Can we generalize this data structure?
-    mapping(bytes32 => mapping(uint256 => QueryIndex)) private queryIndices;
+    // Maps request IDs to their pending QueryIndex structs.
+    mapping(bytes32 => QueryIndex) private queryIndices;
+
+    // Array of pending QueryPoint structs.
     QueryPoint[] private requestedPrices;
+
+    event PriceRequestAdded(
+        address indexed requester,
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes32 indexed requestId
+    );
+    event PushedPrice(
+        address indexed pusher,
+        bytes32 indexed identifier,
+        uint256 time,
+        int256 price,
+        bytes32 indexed requestId
+    );
 
     constructor(address _finderAddress, address _timerAddress) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
@@ -49,11 +64,13 @@ contract MockOracle is OracleInterface, Testable {
 
     function requestPrice(bytes32 identifier, uint256 time) public override {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
-        Price storage lookup = verifiedPrices[identifier][time];
-        if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
+        bytes32 requestId = _encodePriceRequest(identifier, time);
+        Price storage lookup = verifiedPrices[requestId];
+        if (!lookup.isAvailable && !queryIndices[requestId].isValid) {
             // New query, enqueue it for review.
-            queryIndices[identifier][time] = QueryIndex(true, requestedPrices.length);
+            queryIndices[requestId] = QueryIndex(true, requestedPrices.length);
             requestedPrices.push(QueryPoint(identifier, time));
+            emit PriceRequestAdded(msg.sender, identifier, time, requestId);
         }
     }
 
@@ -62,32 +79,42 @@ contract MockOracle is OracleInterface, Testable {
         bytes32 identifier,
         uint256 time,
         int256 price
-    ) external {
-        verifiedPrices[identifier][time] = Price(true, price, getCurrentTime());
+    ) public {
+        bytes32 requestId = _encodePriceRequest(identifier, time);
+        verifiedPrices[requestId] = Price(true, price, getCurrentTime());
 
-        QueryIndex storage queryIndex = queryIndices[identifier][time];
+        QueryIndex storage queryIndex = queryIndices[requestId];
         require(queryIndex.isValid, "Can't push prices that haven't been requested");
         // Delete from the array. Instead of shifting the queries over, replace the contents of `indexToReplace` with
         // the contents of the last index (unless it is the last index).
         uint256 indexToReplace = queryIndex.index;
-        delete queryIndices[identifier][time];
+        delete queryIndices[requestId];
         uint256 lastIndex = requestedPrices.length - 1;
         if (lastIndex != indexToReplace) {
             QueryPoint storage queryToCopy = requestedPrices[lastIndex];
-            queryIndices[queryToCopy.identifier][queryToCopy.time].index = indexToReplace;
+            queryIndices[_encodePriceRequest(queryToCopy.identifier, queryToCopy.time)].index = indexToReplace;
             requestedPrices[indexToReplace] = queryToCopy;
         }
+        requestedPrices.pop();
+
+        emit PushedPrice(msg.sender, identifier, time, price, requestId);
+    }
+
+    // Wrapper function to push the verified price by request ID.
+    function pushPriceByRequestId(bytes32 requestId, int256 price) external {
+        QueryPoint memory queryPoint = getRequestParameters(requestId);
+        pushPrice(queryPoint.identifier, queryPoint.time, price);
     }
 
     // Checks whether a price has been resolved.
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
-        Price storage lookup = verifiedPrices[identifier][time];
+        Price storage lookup = verifiedPrices[_encodePriceRequest(identifier, time)];
         return lookup.isAvailable;
     }
 
     // Gets a price that has already been resolved.
     function getPrice(bytes32 identifier, uint256 time) public view override returns (int256) {
-        Price storage lookup = verifiedPrices[identifier][time];
+        Price storage lookup = verifiedPrices[_encodePriceRequest(identifier, time)];
         require(lookup.isAvailable);
         return lookup.price;
     }
@@ -97,7 +124,19 @@ contract MockOracle is OracleInterface, Testable {
         return requestedPrices;
     }
 
+    // Gets the request parameters by request ID.
+    function getRequestParameters(bytes32 requestId) public view returns (QueryPoint memory) {
+        QueryIndex storage queryIndex = queryIndices[requestId];
+        require(queryIndex.isValid, "Request ID not found");
+        return requestedPrices[queryIndex.index];
+    }
+
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    // Returns an encoded bytes32 representing a price request ID. Used when storing/referencing price requests.
+    function _encodePriceRequest(bytes32 identifier, uint256 time) internal pure returns (bytes32) {
+        return keccak256(abi.encode(identifier, time));
     }
 }
