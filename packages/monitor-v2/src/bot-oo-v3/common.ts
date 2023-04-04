@@ -31,37 +31,37 @@ export interface MonitoringParams {
 const blockDefaults = {
   "1": {
     // Mainnet
-    day: 7200, // 12 seconds per block
-    month: 216000,
+    hour: 300, // 12 seconds per block
+    day: 7200,
     maxBlockLookBack: 20000,
   },
   "137": {
     // Polygon
-    day: 43200, // 2 seconds per block
-    month: 1296000,
+    hour: 1800, // 2 seconds per block
+    day: 43200,
     maxBlockLookBack: 3499,
   },
   "10": {
     // Optimism
-    day: 43200, // 2 seconds per block
-    month: 1296000,
+    hour: 1800, // 2 seconds per block
+    day: 43200,
     maxBlockLookBack: 10000,
   },
   "42161": {
     // Arbitrum
-    day: 5760, // 15 seconds per block
-    month: 172800,
+    hour: 240, // 15 seconds per block
+    day: 5760,
     maxBlockLookBack: 10000,
   },
   "43114": {
     // Avalanche
-    day: 43200, // 2 seconds per block
-    month: 1296000,
+    hour: 1800, // 2 seconds per block
+    day: 43200,
     maxBlockLookBack: 2000,
   },
   other: {
-    day: 5760, // assume 15 seconds per block in rest of chains
-    month: 172800,
+    hour: 240, // 15 seconds per block
+    day: 5760,
     maxBlockLookBack: 1000,
   },
 };
@@ -85,13 +85,13 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const blockLookback =
     Number(env.WARMING_UP_BLOCK_LOOKBACK) ||
-    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.day ||
-    blockDefaults.other.day;
+    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.hour ||
+    blockDefaults.other.hour;
 
   const warmingUpBlockLookback =
     Number(env.BLOCK_LOOKBACK) ||
-    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.month ||
-    blockDefaults.other.month;
+    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.day ||
+    blockDefaults.other.day;
 
   const maxBlockLookBack =
     Number(env.MAX_BLOCK_LOOKBACK) ||
