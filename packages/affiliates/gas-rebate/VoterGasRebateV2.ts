@@ -55,12 +55,23 @@ export async function run(): Promise<void> {
   const revealEvents = await voting.queryFilter(voting.filters.VoteRevealed(), fromBlock, toBlock);
 
   // For each event find the associated transaction. We want to refund all transactions that were sent by voters.
-  const transactionsToRefund = await Promise.all(
-    [
-      commitEvents.map(async (commit: any) => voting.provider.getTransactionReceipt(commit.transactionHash)),
-      revealEvents.map(async (reveal: any) => voting.provider.getTransactionReceipt(reveal.transactionHash)),
-    ].flat()
+  // Run in two batches to not overload the node provider.
+  const commitTransactions = await Promise.all(
+    commitEvents.map(async (commit: any) => voting.provider.getTransactionReceipt(commit.transactionHash))
   );
+  const revealTransactions = await Promise.all(
+    revealEvents.map(async (reveal: any) => voting.provider.getTransactionReceipt(reveal.transactionHash))
+  );
+
+  // The transactions to refund are the union of the commit and reveal transactions. We need to remove any duplicates
+  // as a voter could have done multiple commits and reveals in the same transaction due to multicall. If we refund
+  // the full gas used within a transaction then we will refund for all commit-reveal operations within that tx.
+  const transactionsToRefund = [...commitTransactions, ...revealTransactions].reduce((accumulator, current) => {
+    if (!accumulator.find((transaction: any) => transaction.transactionHash === current.transactionHash))
+      accumulator.push(current);
+
+    return accumulator;
+  }, []);
 
   console.log(
     `In aggregate, refund ${commitEvents.length} commits and ${revealEvents.length} Reveals` +
