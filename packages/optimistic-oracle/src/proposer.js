@@ -493,7 +493,7 @@ class OptimisticOracleProposer {
       console.log("error", error);
       const message =
         error.type === "call" ? "Cannot settle for unknown reason☹️" : "Failed to settle proposal or dispute🚨";
-      this.logger.error({ at: "OptimisticOracleProposer#settleRequests", message, priceRequest, error });
+      this.logger.warn({ at: "OptimisticOracleProposer#settleRequests", message, priceRequest, error });
       return;
     }
   }

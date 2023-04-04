@@ -325,7 +325,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       await eventClient.update();
       await contractMonitor.checkForProposals();
 
-      assert.equal(spyLogLevel(spy, -1), "error");
+      assert.equal(spyLogLevel(spy, -1), "info");
 
       // Should contain etherscan addresses for the proposer and transaction
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${proposer}`));
@@ -550,7 +550,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForProposals();
 
-      assert.equal(spyLogLevel(spy, -1), "error");
+      assert.equal(spyLogLevel(spy, -1), "info");
 
       // Should contain etherscan addresses for the proposer and transaction
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${skinnyProposer}`));
@@ -789,7 +789,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       await eventClientV2.update();
       await contractMonitorV2.checkForProposals();
 
-      assert.equal(spyLogLevel(spy, -1), "error");
+      assert.equal(spyLogLevel(spy, -1), "info");
 
       // Should contain etherscan addresses for the proposer and transaction
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${proposer}`));
