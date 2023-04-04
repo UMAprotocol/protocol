@@ -24,7 +24,7 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         uint256 index;
     }
 
-    // Represents a (identifier, time) point that has been queried.
+    // Represents a (identifier, time, ancillary data) point that has been queried.
     struct QueryPoint {
         bytes32 identifier;
         uint256 time;
@@ -34,28 +34,36 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
     // Reference to the Finder.
     FinderInterface private finder;
 
-    // Conceptually we want a (time, identifier) -> price map.
-    mapping(bytes32 => mapping(uint256 => mapping(bytes => Price))) internal verifiedPrices;
+    // Maps request IDs to their resolved Price structs.
+    mapping(bytes32 => Price) internal verifiedPrices;
 
-    // The mapping and array allow retrieving all the elements in a mapping and finding/deleting elements.
-    // Can we generalize this data structure?
-    mapping(bytes32 => mapping(uint256 => mapping(bytes => QueryIndex))) internal queryIndices;
+    // Maps request IDs to their pending QueryIndex structs.
+    mapping(bytes32 => QueryIndex) internal queryIndices;
+
+    // Array of pending QueryPoint structs.
     QueryPoint[] internal requestedPrices;
 
-    event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+    event PriceRequestAdded(
+        address indexed requester,
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        bytes32 indexed requestId
+    );
     event PushedPrice(
         address indexed pusher,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData,
-        int256 price
+        int256 price,
+        bytes32 indexed requestId
     );
 
     constructor(address _finderAddress, address _timerAddress) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
     }
 
-    // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
+    // Enqueues a request (if a request isn't already present) for the given identifier, time and ancillary data.
 
     function requestPrice(
         bytes32 identifier,
@@ -63,12 +71,13 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         bytes memory ancillaryData
     ) public override {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
-        Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
-        if (!lookup.isAvailable && !queryIndices[identifier][time][ancillaryData].isValid) {
+        bytes32 requestId = _encodePriceRequest(identifier, time, ancillaryData);
+        Price storage lookup = verifiedPrices[requestId];
+        if (!lookup.isAvailable && !queryIndices[requestId].isValid) {
             // New query, enqueue it for review.
-            queryIndices[identifier][time][ancillaryData] = QueryIndex(true, requestedPrices.length);
+            queryIndices[requestId] = QueryIndex(true, requestedPrices.length);
             requestedPrices.push(QueryPoint(identifier, time, ancillaryData));
-            emit PriceRequestAdded(msg.sender, identifier, time, ancillaryData);
+            emit PriceRequestAdded(msg.sender, identifier, time, ancillaryData, requestId);
         }
     }
 
@@ -79,22 +88,31 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         bytes memory ancillaryData,
         int256 price
     ) public {
-        verifiedPrices[identifier][time][ancillaryData] = Price(true, price, getCurrentTime());
+        bytes32 requestId = _encodePriceRequest(identifier, time, ancillaryData);
+        verifiedPrices[requestId] = Price(true, price, getCurrentTime());
 
-        QueryIndex storage queryIndex = queryIndices[identifier][time][ancillaryData];
+        QueryIndex storage queryIndex = queryIndices[requestId];
         require(queryIndex.isValid, "Can't push prices that haven't been requested");
         // Delete from the array. Instead of shifting the queries over, replace the contents of `indexToReplace` with
         // the contents of the last index (unless it is the last index).
         uint256 indexToReplace = queryIndex.index;
-        delete queryIndices[identifier][time][ancillaryData];
+        delete queryIndices[requestId];
         uint256 lastIndex = requestedPrices.length - 1;
         if (lastIndex != indexToReplace) {
             QueryPoint storage queryToCopy = requestedPrices[lastIndex];
-            queryIndices[queryToCopy.identifier][queryToCopy.time][queryToCopy.ancillaryData].index = indexToReplace;
+            queryIndices[_encodePriceRequest(queryToCopy.identifier, queryToCopy.time, queryToCopy.ancillaryData)]
+                .index = indexToReplace;
             requestedPrices[indexToReplace] = queryToCopy;
         }
+        requestedPrices.pop();
 
-        emit PushedPrice(msg.sender, identifier, time, ancillaryData, price);
+        emit PushedPrice(msg.sender, identifier, time, ancillaryData, price, requestId);
+    }
+
+    // Wrapper function to push the verified price by request ID.
+    function pushPriceByRequestId(bytes32 requestId, int256 price) external {
+        (bytes32 identifier, uint256 time, bytes memory ancillaryData) = getRequestParameters(requestId);
+        pushPrice(identifier, time, ancillaryData, price);
     }
 
     // Checks whether a price has been resolved.
@@ -103,7 +121,7 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         uint256 time,
         bytes memory ancillaryData
     ) public view override returns (bool) {
-        Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
+        Price storage lookup = verifiedPrices[_encodePriceRequest(identifier, time, ancillaryData)];
         return lookup.isAvailable;
     }
 
@@ -113,7 +131,7 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         uint256 time,
         bytes memory ancillaryData
     ) public view override returns (int256) {
-        Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
+        Price storage lookup = verifiedPrices[_encodePriceRequest(identifier, time, ancillaryData)];
         require(lookup.isAvailable);
         return lookup.price;
     }
@@ -123,7 +141,32 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         return requestedPrices;
     }
 
+    // Gets the request parameters by request ID.
+    function getRequestParameters(bytes32 requestId)
+        public
+        view
+        returns (
+            bytes32,
+            uint256,
+            bytes memory
+        )
+    {
+        QueryIndex storage queryIndex = queryIndices[requestId];
+        require(queryIndex.isValid, "Request ID not found");
+        QueryPoint storage queryPoint = requestedPrices[queryIndex.index];
+        return (queryPoint.identifier, queryPoint.time, queryPoint.ancillaryData);
+    }
+
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface supportedIdentifiers) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    // Returns an encoded bytes32 representing a price request ID. Used when storing/referencing price requests.
+    function _encodePriceRequest(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(identifier, time, ancillaryData));
     }
 }
