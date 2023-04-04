@@ -111,8 +111,8 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
 
     // Wrapper function to push the verified price by request ID.
     function pushPriceByRequestId(bytes32 requestId, int256 price) external {
-        (bytes32 identifier, uint256 time, bytes memory ancillaryData) = getRequestParameters(requestId);
-        pushPrice(identifier, time, ancillaryData, price);
+        QueryPoint memory queryPoint = getRequestParameters(requestId);
+        pushPrice(queryPoint.identifier, queryPoint.time, queryPoint.ancillaryData, price);
     }
 
     // Checks whether a price has been resolved.
@@ -142,19 +142,10 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
     }
 
     // Gets the request parameters by request ID.
-    function getRequestParameters(bytes32 requestId)
-        public
-        view
-        returns (
-            bytes32,
-            uint256,
-            bytes memory
-        )
-    {
+    function getRequestParameters(bytes32 requestId) public view returns (QueryPoint memory) {
         QueryIndex storage queryIndex = queryIndices[requestId];
         require(queryIndex.isValid, "Request ID not found");
-        QueryPoint storage queryPoint = requestedPrices[queryIndex.index];
-        return (queryPoint.identifier, queryPoint.time, queryPoint.ancillaryData);
+        return requestedPrices[queryIndex.index];
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface supportedIdentifiers) {
