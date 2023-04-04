@@ -31,37 +31,37 @@ export interface MonitoringParams {
 const blockDefaults = {
   "1": {
     // Mainnet
-    day: 576,
-    month: 17280,
-    maxBlockLookBack: 7000,
+    day: 7200, // 12 seconds per block
+    month: 216000,
+    maxBlockLookBack: 20000,
   },
   "137": {
     // Polygon
-    day: 4320,
-    month: 129600,
-    maxBlockLookBack: 2500,
+    day: 43200, // 2 seconds per block
+    month: 1296000,
+    maxBlockLookBack: 3499,
   },
   "10": {
     // Optimism
-    day: 4320,
-    month: 129600,
-    maxBlockLookBack: 2000,
+    day: 43200, // 2 seconds per block
+    month: 1296000,
+    maxBlockLookBack: 10000,
   },
   "42161": {
     // Arbitrum
-    day: 3456,
-    month: 103680,
-    maxBlockLookBack: 2000,
+    day: 5760, // 15 seconds per block
+    month: 172800,
+    maxBlockLookBack: 10000,
   },
   "43114": {
     // Avalanche
-    day: 864,
-    month: 25920,
+    day: 43200, // 2 seconds per block
+    month: 1296000,
     maxBlockLookBack: 2000,
   },
   other: {
-    day: 1000,
-    month: 20000,
+    day: 5760, // assume 15 seconds per block in rest of chains
+    month: 172800,
     maxBlockLookBack: 1000,
   },
 };
