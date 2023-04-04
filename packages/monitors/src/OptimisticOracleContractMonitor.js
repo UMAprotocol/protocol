@@ -177,9 +177,7 @@ class OptimisticOracleContractMonitor {
         )}.`;
 
       // The default log level should be reduced to "info" for funding rate identifiers:
-      this.logger[
-        this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
-      ]({
+      this.logger.info({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
         mrkdwn,
