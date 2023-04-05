@@ -94,5 +94,9 @@
   {
     "contractName": "OptimisticGovernor",
     "address": "0x3Cc4b597E9c3f51288c6Cd0c087DC14c3FfdD966"
+  },
+  {
+    "contractName": "MulticallMakerDao",
+    "address": "0x11ce4B23bD875D7F5C6a31084f55fDe1e9A87507"
   }
 ]
