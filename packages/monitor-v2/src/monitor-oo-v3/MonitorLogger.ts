@@ -1,8 +1,9 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
 import { utils } from "ethers";
-import { getCurrencyDecimals, getCurrencySymbol, Logger, OptimisticOracleV3Ethers, tryHexToUtf8String } from "./common";
+import { Logger, OptimisticOracleV3Ethers } from "./common";
 
 import type { MonitoringParams } from "./common";
+import { getCurrencyDecimals, getCurrencySymbol, tryHexToUtf8String } from "../utils/contracts";
 
 export async function logAssertion(
   logger: typeof Logger,

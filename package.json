@@ -31,7 +31,7 @@
   "devDependencies": {
     "@antora/cli": "^2.1.2",
     "@antora/site-generator-default": "^2.1.2",
-    "@typechain/ethers-v5": "^7.0.1",
+    "@typechain/ethers-v5": "^7.1.0",
     "@typescript-eslint/eslint-plugin": "^4.14.1",
     "@typescript-eslint/parser": "^4.14.1",
     "babel-eslint": "10.0.1",
