@@ -31,14 +31,20 @@ async function main() {
   //   OO v1.
   const optimisticOracle = await getContractInstance<OptimisticOracleEthers>("OptimisticOracle", undefined, 5);
   console.log("Sending requests to OptimisticOracle", optimisticOracle.address);
-  const ooTx = await optimisticOracle.requestPrice(approvedIdentifier, requestTime, ancillaryData, goerliUsdc, "0");
+  const ooTx = await optimisticOracle.requestPrice(approvedIdentifier, requestTime, ancillaryData, goerliUsdc, "10000");
   ooTx.wait();
   console.log("Sent request to OptimisticOracle", ooTx.hash);
 
   //   OO v2.
   const optimisticOracleV2 = await getContractInstance<OptimisticOracleV2Ethers>("OptimisticOracleV2", undefined, 5);
   console.log("Sending requests to OptimisticOracleV2", optimisticOracleV2.address);
-  const ooV2Tx = await optimisticOracleV2.requestPrice(approvedIdentifier, requestTime, ancillaryData, goerliUsdc, "0");
+  const ooV2Tx = await optimisticOracleV2.requestPrice(
+    approvedIdentifier,
+    requestTime,
+    ancillaryData,
+    goerliUsdc,
+    "10000"
+  );
   ooV2Tx.wait();
   console.log("Sent request to OptimisticOracleV2", ooV2Tx.hash);
 
@@ -54,8 +60,8 @@ async function main() {
     requestTime,
     ancillaryData,
     goerliUsdc,
-    "0",
-    "0",
+    "10000",
+    "10000",
     "7200"
   );
   ooSkinnyTx.wait();
@@ -63,8 +69,19 @@ async function main() {
 
   // OO v3.
   const optimisticOracleV3 = await getContractInstance<OptimisticOracleV3Ethers>("OptimisticOracleV3", undefined, 5);
+  console.log("Sending requests to OptimisticOracleV3", optimisticOracleV3.address);
   const claim = ethers.utils.formatBytes32String("The sky is blue");
-  const ooV3Tx = await optimisticOracleV3.assertTruthWithDefaults(claim, (await ethers.provider.listAccounts())[0]);
+  const ooV3Tx = await optimisticOracleV3.assertTruth(
+    claim,
+    (await ethers.provider.listAccounts())[0],
+    "0x0000000000000000000000000000000000000000",
+    "0x0000000000000000000000000000000000000000",
+    "7200",
+    goerliUsdc,
+    "10000",
+    "0x4153534552545f54525554480000000000000000000000000000000000000000",
+    "0x0000000000000000000000000000000000000000000000000000000000000000"
+  );
   ooV3Tx.wait();
   console.log("Sent request to OptimisticOracleV3", ooV3Tx.hash);
 }
