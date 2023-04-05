@@ -8,10 +8,11 @@ import {
 } from "@uma/contracts-node";
 import { BotModes, MonitoringParams } from "../src/monitor-polymarket/common";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
-import { formatBytes32String, getContractFactory, hre, Provider, Signer } from "./utils";
+import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
 import sinon from "sinon";
 import { createNewLogger, SpyTransport } from "@uma/financial-templates-lib";
 import { monitorTransactionsProposed } from "../src/monitor-polymarket/MonitorProposals";
+import * as commonModule from "../src/monitor-polymarket/common";
 
 const ethers = hre.ethers;
 
@@ -94,13 +95,31 @@ describe("PolymarketNotifier", function () {
   });
   it("Monitor TransactionsProposed", async function () {
     const time = 123;
-    await (await oov2.requestPrice(indentifier, time, "0x", votingTokenAddress, 0)).wait();
-    await (await oov2.proposePrice(await deployer.getAddress(), indentifier, time, "0x", 1)).wait();
+    const ancillaryData = toUtf8Bytes("Test");
+    await (await oov2.requestPrice(indentifier, time, ancillaryData, votingTokenAddress, 0)).wait();
+    await (await oov2.proposePrice(await deployer.getAddress(), indentifier, time, ancillaryData, 1)).wait();
 
     // get ProposePrice event
-    // const events = await oov2.queryFilter(oov2.filters.ProposePrice());
-    // const event = events[0];
-    // console.log(event);
+    const events = await oov2.queryFilter(oov2.filters.ProposePrice());
+    const event = events[0];
+
+    // const sample = require("./mock/polymarketContracts.json");
+    // const markets = sample.slice(0, 5);
+    // const getPolymarketMarketsMock = sinon.stub();
+    // getPolymarketMarketsMock.returns(markets);
+    // sinon.stub(commonModule, "getPolymarketMarkets").callsFake(getPolymarketMarketsMock);
+
+    // const marketsWithAncillary = markets.map((market) => {
+    //   return {
+    //     ...market,
+    //     ancillaryData: "0x",
+    //   };
+    // });
+    // marketsWithAncillary[0].ancillaryData = event.args.ancillaryData;
+
+    // const getMarketsAncillaryMock = sinon.stub();
+    // getMarketsAncillaryMock.returns(marketsWithAncillary);
+    // sinon.stub(commonModule, "getMarketsAncillary").callsFake(getMarketsAncillaryMock);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();

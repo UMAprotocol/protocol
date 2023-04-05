@@ -1,6 +1,12 @@
 import { getRetryProvider } from "@uma/common";
 import { ERC20Ethers, MulticallMakerDaoEthers } from "@uma/contracts-node";
-import { delay } from "@uma/financial-templates-lib";
+import {
+  delay,
+  TransactionDataDecoder,
+  aggregateTransactionsAndCall,
+  Networker,
+  Logger,
+} from "@uma/financial-templates-lib";
 import { utils } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 
@@ -8,7 +14,7 @@ import type { Provider } from "@ethersproject/abstract-provider";
 import request from "graphql-request";
 
 import { ethers } from "ethers";
-const { TransactionDataDecoder, aggregateTransactionsAndCall } = require("@uma/financial-templates-lib");
+
 import Web3 from "web3";
 
 export { Logger } from "@uma/financial-templates-lib";
@@ -47,23 +53,51 @@ interface PolymarketMarket {
   clobTokenIds: [string, string];
 }
 
+export interface PolymarketWithEventData extends PolymarketMarketWithAncillaryData {
+  txHash: string;
+  requester: string;
+  proposer: string;
+  timestamp: number;
+  expirationTimestamp: number;
+  proposalTimestamp: number;
+  identifier: string;
+  ancillaryData: string;
+  proposedPrice: string;
+}
+
 interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
   ancillaryData: string;
 }
 
+interface PolymarketMarketWithAncillaryDataAndProposalTimestamp extends PolymarketMarketWithAncillaryData {
+  proposalTimestamp: number;
+}
+
+interface History {
+  t: number;
+  p: number;
+}
+interface HistoricPricesPolymarket {
+  history: History[];
+}
+
+interface PolymarketWithHistoricPrices extends PolymarketMarketWithAncillaryData {
+  historicPrices: [number, number];
+}
+
 export const getPolymarketMarkets = async (params: MonitoringParams): Promise<PolymarketMarket[]> => {
-  const aMonthAgo = Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 30;
+  const sevenDays = Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 7;
   const whereClause =
     "active = true" +
     " AND question_ID IS NOT NULL" +
     " AND clob_Token_Ids IS NOT NULL" +
     ` AND (resolved_by = '${params.binaryAdapterAddress}' OR resolved_by = '${params.ctfAdapterAddress}')` +
-    ` AND EXTRACT(EPOCH FROM TO_TIMESTAMP(end_date, 'Month DD, YYYY')) > ${aMonthAgo}` +
+    ` AND EXTRACT(EPOCH FROM TO_TIMESTAMP(end_date, 'Month DD, YYYY')) > ${sevenDays}` +
     " AND uma_resolution_status='proposed'";
 
   const query = `
     {
-      markets(where: "${whereClause}", order: "created_at desc") {
+      markets(where: "${whereClause}", order: "EXTRACT(EPOCH FROM TO_TIMESTAMP(end_date, 'Month DD, YYYY')) desc") {
         resolvedBy
         questionID
         createdAt
@@ -85,13 +119,6 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
     outcomePrices: JSON.parse(contract.outcomePrices),
     clobTokenIds: JSON.parse(contract.clobTokenIds),
   }));
-
-  // return require("../../test/mock/polymarketContracts.json").map((contract: { [k: string]: any }) => ({
-  //   ...contract,
-  //   outcomes: JSON.parse(contract.outcomes),
-  //   outcomePrices: JSON.parse(contract.outcomePrices),
-  //   clobTokenIds: JSON.parse(contract.clobTokenIds),
-  // }));
 };
 
 export const getMarketsAncillary = async (
@@ -130,7 +157,7 @@ export const getMarketsAncillary = async (
   const web3 = new Web3(web3Provider);
 
   // batch call to multicall contract
-  const chunkSize = 25;
+  const chunkSize = 100;
   const chunks = [];
   for (let i = 0; i < calls.length; i += chunkSize) {
     chunks.push(calls.slice(i, i + chunkSize));
@@ -142,7 +169,7 @@ export const getMarketsAncillary = async (
         return aggregateTransactionsAndCall(multicall.address, web3, chunk);
       })
     )
-  ).flat(Infinity);
+  ).flat(Infinity) as { ancillaryData: string }[];
 
   return markets.map((market, index) => {
     return {
@@ -150,6 +177,46 @@ export const getMarketsAncillary = async (
       ancillaryData: results[index].ancillaryData,
     };
   });
+};
+
+export const getMarketsHistoricPrices = async (
+  params: MonitoringParams,
+  markets: PolymarketMarketWithAncillaryDataAndProposalTimestamp[],
+  networker: any
+): Promise<PolymarketWithHistoricPrices[]> => {
+  return await Promise.all(
+    markets.map(async (polymarketContract) => {
+      // startTs 24 hours ago
+      const startTs = polymarketContract.proposalTimestamp - 3600;
+      const endTs = polymarketContract.proposalTimestamp;
+      const marketOne = polymarketContract.clobTokenIds[0];
+      const marketTwo = polymarketContract.clobTokenIds[1];
+      const apiUrlOne = params.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketOne}`;
+      const apiUrlTwo = params.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketTwo}`;
+      const { history: outcome1HistoricPrices } = (await networker.getJson(apiUrlOne, {
+        method: "get",
+      })) as HistoricPricesPolymarket;
+
+      const { history: outcome2HistoricPrices } = (await networker.getJson(apiUrlTwo, {
+        method: "get",
+      })) as HistoricPricesPolymarket;
+      //
+
+      const sortTimestampDescending = (historicPrices: History[]) => {
+        return historicPrices.sort((a, b) => {
+          return b.t - a.t;
+        });
+      };
+
+      return {
+        ...polymarketContract,
+        historicPrices: [
+          sortTimestampDescending(outcome1HistoricPrices)[outcome1HistoricPrices.length - 1].p,
+          sortTimestampDescending(outcome2HistoricPrices)[outcome1HistoricPrices.length - 1].p,
+        ],
+      };
+    })
+  );
 };
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
