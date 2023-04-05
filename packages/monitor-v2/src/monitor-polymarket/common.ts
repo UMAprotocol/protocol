@@ -153,7 +153,7 @@ export const getMarketsAncillary = async (
   if (rpcUrl.includes("localhost")) {
     rpcUrl = "http://127.0.0.1:9545/";
   }
-  const web3Provider = new Web3.providers.HttpProvider("http://127.0.0.1:9545/");
+  const web3Provider = new Web3.providers.HttpProvider(rpcUrl);
   const web3 = new Web3(web3Provider);
 
   // batch call to multicall contract
