@@ -1,5 +1,7 @@
 // This script verifies that basic voting functionality works correctly in the VotingV2 contract.
-// It can be run on a mainnet or goerli fork, with the following command and environment variables:
+// It is adapted from original DVM2.0 upgrade tests in packages/scripts/src/upgrade-tests/voting2/3_SimulateVoting.ts
+// intended to be run as regular health checks on the VotingV2 contract.
+// This script can be run on a mainnet or goerli fork, with the following command and environment variables:
 // CUSTOM_NODE_URL=https://<goerli OR mainnet>.infura.io/v3/<YOUR-INFURA-KEY> \
 // yarn hardhat run ./src/monitoring-dvm2.0/simulateVoting.ts
 
