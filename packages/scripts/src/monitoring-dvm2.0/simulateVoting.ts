@@ -5,7 +5,7 @@
 // CUSTOM_NODE_URL=https://<goerli OR mainnet>.infura.io/v3/<YOUR-INFURA-KEY> \
 // yarn hardhat run ./src/monitoring-dvm2.0/simulateVoting.ts
 
-const hre = require("hardhat");
+import hre from "hardhat";
 import { strict as assert } from "assert";
 
 const { formatBytes32String, formatEther, parseEther, parseUnits, toUtf8Bytes } = hre.ethers.utils;
@@ -50,7 +50,7 @@ interface RewardTrackers {
   unclaimedRewards: [BigNumber, BigNumber, BigNumber];
 }
 
-const zeroBigNumber: BigNumber = hre.ethers.BigNumber.from(0);
+const zeroBigNumber = hre.ethers.BigNumber.from(0);
 
 // Constants hardcoded in the SlashingLibrary, needs to be updated here upon change.
 const wrongVoteSlashPerToken = parseEther("0.001");
@@ -63,6 +63,9 @@ const voter3RelativeGatFunding = parseEther("0.5");
 
 // Tested price identifier should be whitelisted.
 const priceIdentifier = formatBytes32String("NUMERICAL");
+
+// Ensure VotingV2 contract has at least this much total stake in Wei so that rewardsPerTokenStored do not overflow.
+const minimumStakedAmount = hre.ethers.BigNumber.from("1000");
 
 async function main() {
   const rewardTrackers: RewardTrackers = {
@@ -242,29 +245,21 @@ async function main() {
   const unstakeCoolDown = await votingV2.unstakeCoolDown();
   const finalFee = (await store.computeFinalFee(votingToken.address)).rawValue;
 
-  console.log(" 0. Unstake from all preexisting voters...");
-  const uniqueVoters = await getUniqueVoters(votingV2);
-
+  console.log(" 1. Funding foundation account...");
+  // Consolidate foundation balance with other large UMA holder account to be able to fund simulated voters.
+  // Make sure both accounts have enough ETH to pay for gas.
+  const accountWithUma = REQUIRED_SIGNER_ADDRESSES["account_with_uma"];
+  const etherAmount = hre.ethers.utils.parseEther("10.0").toHexString();
+  await hre.network.provider.send("hardhat_setBalance", [accountWithUma, etherAmount]);
+  await hre.network.provider.send("hardhat_setBalance", [FOUNDATION_WALLET, etherAmount]);
+  const accountWithUmaSigner = await hre.ethers.getImpersonatedSigner(accountWithUma);
   const foundationSigner = await hre.ethers.getImpersonatedSigner(FOUNDATION_WALLET);
-  await votingToken.connect(foundationSigner).approve(votingV2.address, "1000");
-  await votingV2.connect(foundationSigner).stake("1000");
-  for (const address of uniqueVoters) {
-    await unstakeFromStakedAccount(votingV2, address);
-  }
-
-  console.log("All voters have been unstaked!");
-
-  await hre.network.provider.send("hardhat_setBalance", [
-    REQUIRED_SIGNER_ADDRESSES["account_with_uma"],
-    hre.ethers.utils.parseEther("10.0").toHexString(),
-  ]);
-  const accountWithUmaSigner = await hre.ethers.getImpersonatedSigner(REQUIRED_SIGNER_ADDRESSES["account_with_uma"]);
   await votingToken
     .connect(accountWithUmaSigner)
-    .transfer(FOUNDATION_WALLET, await votingToken.balanceOf(REQUIRED_SIGNER_ADDRESSES["account_with_uma"]));
+    .transfer(FOUNDATION_WALLET, await votingToken.balanceOf(accountWithUma));
   let foundationBalance = await votingToken.balanceOf(FOUNDATION_WALLET);
-  console.log(` 1. Foundation has ${formatEther(foundationBalance)} UMA, funding requester and voters...`);
 
+  console.log(` 2. Foundation has ${formatEther(foundationBalance)} UMA, funding requester and voters...`);
   // There will be 3 voters with initial balances set relative to GAT, and for two disputed price
   // price requests 12 * finalFee amount will be needed (Optimistic Oracle bond defaults to finalFee).
   if (
@@ -273,6 +268,7 @@ async function main() {
         .mul(voter1RelativeGatFunding.add(voter2RelativeGatFunding.add(voter3RelativeGatFunding)))
         .div(parseEther("1"))
         .add(finalFee.mul(12))
+        .add(minimumStakedAmount)
     )
   )
     throw new Error("Foundation balance too low for simulation!");
@@ -324,7 +320,21 @@ async function main() {
   console.log(` ✅ Voter 2 now has ${formatEther(voter2Balance)} UMA.`);
   console.log(` ✅ Voter 3 now has ${formatEther(voter3Balance)} UMA.`);
 
-  console.log(" 2. Voters are staking all their UMA...");
+  console.log(" 3. Staking minimum amount from foundation...");
+  // Get existing stakers that will be needed in the next step before foundation stakes.
+  const uniqueVoters = await getUniqueVoters(votingV2);
+
+  await votingToken.connect(foundationSigner).approve(votingV2.address, minimumStakedAmount);
+  await votingV2.connect(foundationSigner).stake(minimumStakedAmount);
+  console.log(` ✅ Foundation has staked ${formatEther(minimumStakedAmount)} UMA.`);
+
+  console.log(" 4. Unstake from all preexisting voters...");
+  for (const address of uniqueVoters) {
+    await unstakeFromStakedAccount(votingV2, address);
+  }
+  console.log(" ✅ All voters have been unstaked!");
+
+  console.log(" 5. Voters are staking all their UMA...");
   await (await votingToken.connect(voter1Signer as Signer).approve(votingV2.address, voter1Balance)).wait();
   await (await votingToken.connect(voter2Signer as Signer).approve(votingV2.address, voter2Balance)).wait();
   await (await votingToken.connect(voter3Signer as Signer).approve(votingV2.address, voter3Balance)).wait();
@@ -338,14 +348,14 @@ async function main() {
   await _updateRewardTrackers(2, voter3Balance);
   console.log(" ✅ Voters have staked all their UMA.");
 
-  console.log(" 3. Waiting till the start of the next voting cycle...");
+  console.log(" 6. Waiting till the start of the next voting cycle...");
   await increaseEvmTime(
     Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
   let currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  console.log(" 4. Adding the first data request...");
+  console.log(" 7. Adding the first data request...");
   const firstRequestData: PriceRequestData = {
     originalAncillaryData: toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`),
     proposedPrice: "100",
@@ -358,7 +368,7 @@ async function main() {
   );
   console.log(" ✅ Verified the first data request enqueued for future voting round.");
 
-  console.log(" 5. Waiting till the start of the next voting cycle...");
+  console.log(" 8. Waiting till the start of the next voting cycle...");
   await increaseEvmTime(
     Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
@@ -371,7 +381,7 @@ async function main() {
   );
   console.log(" ✅ Verified the first data request can be voted in the current round.");
 
-  console.log(" 6. Not reaching quorum on the first data request...");
+  console.log(" 9. Not reaching quorum on the first data request...");
   // Only the Voter 2 participates, below GAT.
   const voter2FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter2Signer.address, "90");
   await _commitVote(voter2Signer, voter2FirstRequestVote);
@@ -394,7 +404,7 @@ async function main() {
   );
   console.log(" ✅ Verified the first data request is not yet resolved.");
 
-  console.log(" 7. Requesting unstake...");
+  console.log(" 10. Requesting unstake...");
   assert.equal(
     (await votingV2.callStatic.getVoterStakePostUpdate(voter1Signer.address)).toString(),
     voter1Balance.toString()
@@ -417,18 +427,18 @@ async function main() {
   await _updateRewardTrackers(2, voter3Balance.mul("-1"));
   console.log(" ✅ Voters requested unstake of all UMA.");
 
-  console.log(" 8. Waiting for unstake cooldown...");
+  console.log(" 11. Waiting for unstake cooldown...");
   await increaseEvmTime(Number(unstakeCoolDown));
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  console.log(" 9. Executing unstake...");
+  console.log(" 12. Executing unstake...");
   await (await votingV2.connect(voter1Signer as Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter2Signer as Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter3Signer as Signer).executeUnstake()).wait();
   console.log(" ✅ Voters have unstaked all UMA.");
 
-  console.log(" 10. Claiming staking rewards...");
+  console.log(" 13. Claiming staking rewards...");
   await (await votingV2.connect(voter1Signer as Signer).withdrawRewards()).wait();
   await (await votingV2.connect(voter2Signer as Signer).withdrawRewards()).wait();
   await (await votingV2.connect(voter3Signer as Signer).withdrawRewards()).wait();
@@ -456,7 +466,7 @@ async function main() {
   rewardTrackers.unclaimedRewards[2] = zeroBigNumber;
   console.log(` ✅ Verified that all reward amounts are correct.`);
 
-  console.log(" 11. Voters are restaking original balances...");
+  console.log(" 14. Voters are restaking original balances...");
   await (await votingToken.connect(voter1Signer as Signer).approve(votingV2.address, voter1Balance)).wait();
   await (await votingToken.connect(voter2Signer as Signer).approve(votingV2.address, voter2Balance)).wait();
   await (await votingToken.connect(voter3Signer as Signer).approve(votingV2.address, voter3Balance)).wait();
@@ -467,7 +477,7 @@ async function main() {
   await (await votingV2.connect(voter3Signer as Signer).stake(voter3Balance)).wait();
   console.log(" ✅ Voters have restaked original balances.");
 
-  console.log(" 12. Move 3 rounds forward so that the first request is deleted for having rolled too many times....");
+  console.log(" 15. Move 3 rounds forward so that the first request is deleted for having rolled too many times....");
   await increaseEvmTime(
     Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
@@ -480,9 +490,9 @@ async function main() {
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  console.log(" 13. Adding the second and third data request...");
+  console.log(" 16. Adding the second and third data request...");
 
-  console.log(" 13.1. At this point the first request should have been deleted because of rolling too many times.");
+  console.log(" 16.1. At this point the first request should have been deleted because of rolling too many times.");
   // Update trackers to process the price requests
   await votingV2.connect(requesterSigner as Signer).updateTrackers(requesterSigner.address);
   assert.equal(
@@ -515,7 +525,7 @@ async function main() {
 
   console.log(" ✅ Verified the second and third data request enqueued for future voting round.");
 
-  console.log(" 14. Waiting till the start of the next voting cycle...");
+  console.log(" 17. Waiting till the start of the next voting cycle...");
   await increaseEvmTime(
     Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
@@ -530,7 +540,7 @@ async function main() {
   );
   console.log(" ✅ Verified the second and third data request can be voted in the current round.");
 
-  console.log(" 15. Resolving both data requests...");
+  console.log(" 18. Resolving both data requests...");
   const voter1ThirdRequestVote = await _createVote(thirdRequestData.priceRequest, voter1Signer.address, "90");
   const voter1SecondRequestVote = await _createVote(
     secondRequestData.priceRequest,
@@ -581,7 +591,7 @@ async function main() {
   );
   console.log(" ✅ Verified both data requests are now resolved.");
 
-  console.log(" 16. Settling requests...");
+  console.log(" 19. Settling requests...");
   // Voter 1 voted on both requests and since it has the largest stake its voted price should be the right one as only
   // two voters participated in each vote.
   const correctThirdPrice = voter1ThirdRequestVote.price.toString();
@@ -590,7 +600,7 @@ async function main() {
   assert.equal((await _settleAndGetPrice(secondRequestData)).toString(), correctSecondPrice);
   console.log(" ✅ Verified that correct prices are available to the requester.");
 
-  console.log(" 17. Verifying slashing...");
+  console.log(" 20. Verifying slashing...");
   // Voter 2 voted wrong and Voter 3 missed the third request.
   const expectedVoter2ThirdSlash = voter2Balance.mul(wrongVoteSlashPerToken).div(parseEther("1"));
   const expectedVoter3ThirdSlash = voter3Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
@@ -625,7 +635,7 @@ async function main() {
   console.log(` ✅ Voter 2 was slashed by ${formatEther(voter2Slash)} UMA.`);
   console.log(` ✅ Voter 3 was slashed by ${formatEther(voter3Slash)} UMA.`);
 
-  console.log(" 18. Requesting unstake...");
+  console.log(" 21. Requesting unstake...");
   await (
     await votingV2
       .connect(voter1Signer as Signer)
@@ -643,24 +653,24 @@ async function main() {
   ).wait();
   console.log(" ✅ Voters requested unstake of all UMA.");
 
-  console.log(" 19. Waiting for unstake cooldown...");
+  console.log(" 22. Waiting for unstake cooldown...");
   await increaseEvmTime(Number(unstakeCoolDown));
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  console.log(" 20. Executing unstake...");
+  console.log(" 23. Executing unstake...");
   await (await votingV2.connect(voter1Signer as Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter2Signer as Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter3Signer as Signer).executeUnstake()).wait();
   console.log(" ✅ Voters have unstaked all UMA.");
 
-  console.log(" 21. Claiming staking rewards...");
+  console.log(" 24. Claiming staking rewards...");
   await (await votingV2.connect(voter1Signer as Signer).withdrawRewards()).wait();
   await (await votingV2.connect(voter2Signer as Signer).withdrawRewards()).wait();
   await (await votingV2.connect(voter3Signer as Signer).withdrawRewards()).wait();
   // TODO: verify claimed reward amounts.
 
-  console.log(" 22. Returning all UMA to the foundation...");
+  console.log(" 25. Returning all UMA to the foundation...");
   await votingToken
     .connect(requesterSigner as Signer)
     .transfer(foundationSigner.address, await votingToken.balanceOf(requesterSigner.address));
