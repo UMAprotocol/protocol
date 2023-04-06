@@ -13,37 +13,27 @@ const { formatBytes32String, formatEther, parseEther, parseUnits, toUtf8Bytes } 
 import { BigNumber, BigNumberish, BytesLike, Signer } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import {
-  computeVoteHashAncillary,
-  getRandomSignedInt,
-  OptimisticOracleRequestStatesEnum,
-  PriceRequestStatusEnum,
-} from "@uma/common";
+import { OptimisticOracleRequestStatesEnum, PriceRequestStatusEnum } from "@uma/common";
 import { OptimisticOracleV2Ethers, StoreEthers } from "@uma/contracts-node";
 
 import { REQUIRED_SIGNER_ADDRESSES, SECONDS_PER_DAY } from "../utils/constants";
 import { getContractInstance } from "../utils/contracts";
 import { getForkChainId, increaseEvmTime } from "../utils/utils";
-import { getUniqueVoters, getVotingContracts, unstakeFromStakedAccount } from "../utils/votingv2-utils";
-
-interface VotingPriceRequest {
-  identifier: BytesLike;
-  time: BigNumberish;
-  ancillaryData: BytesLike;
-}
+import {
+  commitVote,
+  createCommittedVote,
+  getUniqueVoters,
+  getVotingContracts,
+  revealVote,
+  unstakeFromStakedAccount,
+  VotingPriceRequest,
+} from "../utils/votingv2-utils";
 
 interface PriceRequestData {
   originalAncillaryData: BytesLike;
   proposedPrice: BigNumberish;
   priceRequest: VotingPriceRequest;
 }
-interface CommittedVote {
-  priceRequest: VotingPriceRequest;
-  salt: BigNumberish;
-  price: BigNumberish;
-  voteHash: BytesLike;
-}
-
 interface RewardTrackers {
   lastUpdateTimestamp: BigNumber;
   staked: [BigNumber, BigNumber, BigNumber];
@@ -116,49 +106,6 @@ async function main() {
         )
     ).wait();
     return await optimisticOracleV2.stampAncillaryData(priceRequestData.originalAncillaryData, requesterSigner.address);
-  }
-
-  // Construct voting structure for commit and reveal.
-  async function _createVote(priceRequest: VotingPriceRequest, voter: string, price: string): Promise<CommittedVote> {
-    const salt = getRandomSignedInt().toString();
-    const roundId = Number(await votingV2.getCurrentRoundId());
-    const voteHash = computeVoteHashAncillary({
-      price,
-      salt,
-      account: voter,
-      time: Number(priceRequest.time),
-      roundId,
-      identifier: priceRequest.identifier.toString(),
-      ancillaryData: priceRequest.ancillaryData.toString(),
-    });
-    return <CommittedVote>{ priceRequest, salt, price, voteHash };
-  }
-
-  async function _commitVote(signer: SignerWithAddress, vote: CommittedVote): Promise<void> {
-    (
-      await votingV2
-        .connect(signer as Signer)
-        .commitVote(
-          vote.priceRequest.identifier,
-          vote.priceRequest.time,
-          vote.priceRequest.ancillaryData,
-          vote.voteHash
-        )
-    ).wait();
-  }
-
-  async function _revealVote(signer: SignerWithAddress, vote: CommittedVote): Promise<void> {
-    (
-      await votingV2
-        .connect(signer as Signer)
-        .revealVote(
-          vote.priceRequest.identifier,
-          vote.priceRequest.time,
-          vote.price,
-          vote.priceRequest.ancillaryData,
-          vote.salt
-        )
-    ).wait();
   }
 
   async function _getOptimisticOracleState(priceRequestData: PriceRequestData): Promise<number> {
@@ -385,15 +332,20 @@ async function main() {
 
   console.log(" 9. Not reaching quorum on the first data request...");
   // Only the Voter 2 participates, below GAT.
-  const voter2FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter2Signer.address, "90");
-  await _commitVote(voter2Signer, voter2FirstRequestVote);
+  const voter2FirstRequestVote = await createCommittedVote(
+    votingV2,
+    firstRequestData.priceRequest,
+    voter2Signer.address,
+    "90"
+  );
+  await commitVote(votingV2, voter2Signer, voter2FirstRequestVote);
   console.log(" ✅ Voter 2 committed.");
 
   await increaseEvmTime(SECONDS_PER_DAY);
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  await _revealVote(voter2Signer, voter2FirstRequestVote);
+  await revealVote(votingV2, voter2Signer, voter2FirstRequestVote);
   console.log(" ✅ Voter 2 revealed.");
 
   await increaseEvmTime(SECONDS_PER_DAY);
@@ -543,40 +495,48 @@ async function main() {
   console.log(" ✅ Verified the second and third data request can be voted in the current round.");
 
   console.log(" 18. Resolving both data requests...");
-  const voter1ThirdRequestVote = await _createVote(thirdRequestData.priceRequest, voter1Signer.address, "90");
-  const voter1SecondRequestVote = await _createVote(
+  const voter1ThirdRequestVote = await createCommittedVote(
+    votingV2,
+    thirdRequestData.priceRequest,
+    voter1Signer.address,
+    "90"
+  );
+  const voter1SecondRequestVote = await createCommittedVote(
+    votingV2,
     secondRequestData.priceRequest,
     voter1Signer.address,
     secondRequestData.proposedPrice.toString()
   );
-  await _commitVote(voter1Signer, voter1ThirdRequestVote);
-  await _commitVote(voter1Signer, voter1SecondRequestVote);
+  await commitVote(votingV2, voter1Signer, voter1ThirdRequestVote);
+  await commitVote(votingV2, voter1Signer, voter1SecondRequestVote);
   console.log(" ✅ Voter 1 committed on both requests.");
 
-  const voter2ThirdRequestVote = await _createVote(
+  const voter2ThirdRequestVote = await createCommittedVote(
+    votingV2,
     thirdRequestData.priceRequest,
     voter2Signer.address,
     thirdRequestData.proposedPrice.toString()
   );
-  await _commitVote(voter2Signer, voter2ThirdRequestVote);
+  await commitVote(votingV2, voter2Signer, voter2ThirdRequestVote);
   console.log(" ✅ Voter 2 committed on the third request.");
 
-  const voter3SecondRequestVote = await _createVote(
+  const voter3SecondRequestVote = await createCommittedVote(
+    votingV2,
     secondRequestData.priceRequest,
     voter3Signer.address,
     secondRequestData.proposedPrice.toString()
   );
-  await _commitVote(voter3Signer, voter3SecondRequestVote);
+  await commitVote(votingV2, voter3Signer, voter3SecondRequestVote);
   console.log(" ✅ Voter 3 committed on the second request.");
 
   await increaseEvmTime(SECONDS_PER_DAY);
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  await _revealVote(voter1Signer, voter1ThirdRequestVote);
-  await _revealVote(voter1Signer, voter1SecondRequestVote);
-  await _revealVote(voter2Signer, voter2ThirdRequestVote);
-  await _revealVote(voter3Signer, voter3SecondRequestVote);
+  await revealVote(votingV2, voter1Signer, voter1ThirdRequestVote);
+  await revealVote(votingV2, voter1Signer, voter1SecondRequestVote);
+  await revealVote(votingV2, voter2Signer, voter2ThirdRequestVote);
+  await revealVote(votingV2, voter3Signer, voter3SecondRequestVote);
   console.log(" ✅ Voters revealed.");
 
   await increaseEvmTime(SECONDS_PER_DAY);
