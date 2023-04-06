@@ -21,7 +21,7 @@ import {
 } from "@uma/common";
 import { OptimisticOracleV2Ethers, StoreEthers } from "@uma/contracts-node";
 
-import { FOUNDATION_WALLET, REQUIRED_SIGNER_ADDRESSES, SECONDS_PER_DAY } from "../utils/constants";
+import { REQUIRED_SIGNER_ADDRESSES, SECONDS_PER_DAY } from "../utils/constants";
 import { getContractInstance } from "../utils/contracts";
 import { getForkChainId, increaseEvmTime } from "../utils/utils";
 import { getUniqueVoters, getVotingContracts, unstakeFromStakedAccount } from "../utils/votingv2-utils";
@@ -49,6 +49,9 @@ interface RewardTrackers {
   staked: [BigNumber, BigNumber, BigNumber];
   unclaimedRewards: [BigNumber, BigNumber, BigNumber];
 }
+
+const foundationAddress = REQUIRED_SIGNER_ADDRESSES.foundation;
+const accountWithUma = REQUIRED_SIGNER_ADDRESSES.account_with_uma;
 
 const zeroBigNumber = hre.ethers.BigNumber.from(0);
 
@@ -248,16 +251,15 @@ async function main() {
   console.log(" 1. Funding foundation account...");
   // Consolidate foundation balance with other large UMA holder account to be able to fund simulated voters.
   // Make sure both accounts have enough ETH to pay for gas.
-  const accountWithUma = REQUIRED_SIGNER_ADDRESSES["account_with_uma"];
   const etherAmount = hre.ethers.utils.parseEther("10.0").toHexString();
   await hre.network.provider.send("hardhat_setBalance", [accountWithUma, etherAmount]);
-  await hre.network.provider.send("hardhat_setBalance", [FOUNDATION_WALLET, etherAmount]);
+  await hre.network.provider.send("hardhat_setBalance", [foundationAddress, etherAmount]);
   const accountWithUmaSigner = await hre.ethers.getImpersonatedSigner(accountWithUma);
-  const foundationSigner = await hre.ethers.getImpersonatedSigner(FOUNDATION_WALLET);
+  const foundationSigner = await hre.ethers.getImpersonatedSigner(foundationAddress);
   await votingToken
     .connect(accountWithUmaSigner)
-    .transfer(FOUNDATION_WALLET, await votingToken.balanceOf(accountWithUma));
-  let foundationBalance = await votingToken.balanceOf(FOUNDATION_WALLET);
+    .transfer(foundationAddress, await votingToken.balanceOf(accountWithUma));
+  let foundationBalance = await votingToken.balanceOf(foundationAddress);
 
   console.log(` 2. Foundation has ${formatEther(foundationBalance)} UMA, funding requester and voters...`);
   // There will be 3 voters with initial balances set relative to GAT, and for two disputed price
@@ -684,7 +686,7 @@ async function main() {
     .connect(voter3Signer as Signer)
     .transfer(foundationSigner.address, await votingToken.balanceOf(voter3Signer.address));
 
-  foundationBalance = await votingToken.balanceOf(FOUNDATION_WALLET);
+  foundationBalance = await votingToken.balanceOf(foundationAddress);
   console.log(` ✅ Foundation has ${formatEther(foundationBalance)} UMA.`);
 
   console.log("\n💪 Verified! The VotingV2 contract is still functional.");

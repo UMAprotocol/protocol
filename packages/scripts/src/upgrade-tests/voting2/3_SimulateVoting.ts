@@ -30,7 +30,7 @@ import {
   VotingV2Ethers,
 } from "@uma/contracts-node";
 
-import { FOUNDATION_WALLET, SECONDS_PER_DAY } from "../../utils/constants";
+import { REQUIRED_SIGNER_ADDRESSES, SECONDS_PER_DAY } from "../../utils/constants";
 import { getContractInstance } from "../../utils/contracts";
 import { increaseEvmTime } from "../../utils/utils";
 import {
@@ -68,6 +68,7 @@ interface RewardTrackers {
   unclaimedRewards: [BigNumber, BigNumber, BigNumber];
 }
 
+const FOUNDATION_WALLET = REQUIRED_SIGNER_ADDRESSES.foundation;
 const zeroBigNumber: BigNumber = hre.ethers.BigNumber.from(0);
 
 // Constants hardcoded in the SlashingLibrary, needs to be updated here upon change.
