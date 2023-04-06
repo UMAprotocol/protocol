@@ -14,4 +14,4 @@ const YES_VOTE = "1";
 // Need to sign this message to take an UMA voting token snapshot before any votes can be revealed.
 const SNAPSHOT_MESSAGE = "Sign For Snapshot";
 
-module.exports = { REQUIRED_SIGNER_ADDRESSES, PROD_NET_ID, SECONDS_PER_DAY, YES_VOTE, SNAPSHOT_MESSAGE };
+export { REQUIRED_SIGNER_ADDRESSES, PROD_NET_ID, SECONDS_PER_DAY, YES_VOTE, SNAPSHOT_MESSAGE };
