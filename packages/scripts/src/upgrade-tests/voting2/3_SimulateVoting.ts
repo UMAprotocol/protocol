@@ -30,7 +30,8 @@ import {
   VotingV2Ethers,
 } from "@uma/contracts-node";
 
-import { FOUNDATION_WALLET, getContractInstance, SECONDS_PER_DAY } from "../../utils/contracts";
+import { FOUNDATION_WALLET, SECONDS_PER_DAY } from "../../utils/constants";
+import { getContractInstance } from "../../utils/contracts";
 import { increaseEvmTime } from "../../utils/utils";
 import {
   EMERGENCY_EXECUTOR,

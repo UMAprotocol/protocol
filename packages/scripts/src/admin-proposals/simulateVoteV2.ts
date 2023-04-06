@@ -4,7 +4,8 @@ const hre = require("hardhat");
 import { computeVoteHashAncillary, getRandomSignedInt } from "@uma/common";
 import { GovernorV2Ethers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { BigNumberish, BytesLike, Signer } from "ethers";
-import { FOUNDATION_WALLET, getContractInstance, SECONDS_PER_DAY, YES_VOTE } from "../utils/contracts";
+import { FOUNDATION_WALLET, SECONDS_PER_DAY, YES_VOTE } from "../utils/constants";
+import { getContractInstance } from "../utils/contracts";
 import { increaseEvmTime } from "../utils/utils";
 
 const { ethers } = hre;

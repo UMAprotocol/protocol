@@ -5,6 +5,8 @@ const REQUIRED_SIGNER_ADDRESSES = {
   account_with_uma: "0xc19B1ac01eb8c9d75b996B030110353C8F09d1Af",
 };
 
+const FOUNDATION_WALLET = "0x8180d59b7175d4064bdfa8138a58e9babffda44a";
+
 // Net ID that this script should simulate with.
 const PROD_NET_ID = 1;
 
@@ -14,4 +16,4 @@ const YES_VOTE = "1";
 // Need to sign this message to take an UMA voting token snapshot before any votes can be revealed.
 const SNAPSHOT_MESSAGE = "Sign For Snapshot";
 
-export { REQUIRED_SIGNER_ADDRESSES, PROD_NET_ID, SECONDS_PER_DAY, YES_VOTE, SNAPSHOT_MESSAGE };
+export { FOUNDATION_WALLET, REQUIRED_SIGNER_ADDRESSES, PROD_NET_ID, SECONDS_PER_DAY, YES_VOTE, SNAPSHOT_MESSAGE };

@@ -21,8 +21,8 @@ import {
 } from "@uma/common";
 import { OptimisticOracleV2Ethers, StoreEthers } from "@uma/contracts-node";
 
-import { REQUIRED_SIGNER_ADDRESSES } from "../utils/constants";
-import { FOUNDATION_WALLET, getContractInstance, SECONDS_PER_DAY } from "../utils/contracts";
+import { FOUNDATION_WALLET, REQUIRED_SIGNER_ADDRESSES, SECONDS_PER_DAY } from "../utils/constants";
+import { getContractInstance } from "../utils/contracts";
 import { getForkChainId, increaseEvmTime } from "../utils/utils";
 import { getUniqueVoters, getVotingContracts, unstakeFromStakedAccount } from "../utils/votingv2-utils";
 

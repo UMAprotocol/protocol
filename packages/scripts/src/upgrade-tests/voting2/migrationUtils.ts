@@ -16,7 +16,8 @@ import {
   VotingUpgraderV2Ethers,
   VotingUpgraderV2Ethers__factory,
 } from "@uma/contracts-node";
-import { FOUNDATION_WALLET, getContractInstance } from "../../utils/contracts";
+import { FOUNDATION_WALLET } from "../../utils/constants";
+import { getContractInstance } from "../../utils/contracts";
 
 export const NEW_CONTRACTS = {
   governor: "GOVERNOR_V2_ADDRESS",
