@@ -19,12 +19,14 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
   const networker = new Networker(logger);
   const currentBlockNumber = await params.provider.getBlockNumber();
 
+  const daysToLookup = 1; // This bot only looks back 1 day for proposals.
+
   // These values are hardcoded for the Polygon network as this bot is only intended to run on Polygon.
   const maxBlockLookBack = 3499; // Polygons max block look back is 3499 blocks.
-  const oneDayInBlocks = 43200; // 1 day in blocks on Polygon is 43200 blocks.
+  const blockLookup = 43200 * daysToLookup; // 1 day in blocks on Polygon is 43200 blocks.
 
   const searchConfig = {
-    fromBlock: currentBlockNumber - oneDayInBlocks < 0 ? 0 : currentBlockNumber - oneDayInBlocks,
+    fromBlock: currentBlockNumber - blockLookup < 0 ? 0 : currentBlockNumber - blockLookup,
     toBlock: currentBlockNumber,
     maxBlockLookBack,
   };
@@ -52,13 +54,13 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
       };
     });
 
-  // Add the order filled events to the markets and calculate the trade signals.
-  const marketsWithOrderFilled = await getOrderFilledEvents(params, marketsWithEventData);
-
   // Add the historic orderbook signals to the markets and calculate the trade signals.
-  const marketsWithHistory = await getMarketsHistoricPrices(params, marketsWithOrderFilled, networker);
+  const marketsWithHistory = await getMarketsHistoricPrices(params, marketsWithEventData, networker);
 
-  for (const market of marketsWithHistory) {
+  // Add the order filled events to the markets and calculate the trade signals.
+  const marketsWithOrderFilled = await getOrderFilledEvents(params, marketsWithHistory);
+
+  for (const market of marketsWithOrderFilled) {
     const proposedOutcome = market.proposedPrice == "1.0" ? 0 : 1;
     const threshold = 0.75;
     const thresholdHistoric = 0.8;

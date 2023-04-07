@@ -6,7 +6,7 @@ import {
   OptimisticOracleV2Ethers,
   VotingTokenEthers,
 } from "@uma/contracts-node";
-import { BotModes, MonitoringParams } from "../src/monitor-polymarket/common";
+import { BotModes, MonitoringParams, OrderBookPrice } from "../src/monitor-polymarket/common";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
 import sinon from "sinon";
@@ -78,22 +78,17 @@ describe("PolymarketNotifier", function () {
 
     const multicall = await (await getContractFactory("MulticallMakerDao", deployer)).deploy();
 
+    const ctfExchange = await (await getContractFactory("CTFExchange", deployer)).deploy();
+
     addGlobalHardhatTestingAddress("OptimisticOracle", oo.address);
     addGlobalHardhatTestingAddress("OptimisticOracleV2", oov2.address);
     addGlobalHardhatTestingAddress("MulticallMakerDao", multicall.address);
+    addGlobalHardhatTestingAddress("CTFExchange", ctfExchange.address);
 
     await (await identifierWhitelist.addSupportedIdentifier(indentifier)).wait();
     await (await collateralWhitelist.addToWhitelist(votingToken.address)).wait();
-
-    // await (await votingToken.addMinter(await deployer.getAddress())).wait();
-
-    // await bondToken.addMinter(await deployer.getAddress());
-    // await bondToken.mint(optimisticGovernorContracts.avatar.address, parseEther("500"));
-
-    // await bondToken.mint(await proposer.getAddress(), await optimisticGovernor.getProposalBond());
-    // await bondToken.connect(proposer).approve(optimisticGovernor.address, await optimisticGovernor.getProposalBond());
   });
-  it("Monitor TransactionsProposed", async function () {
+  it("Monitor transactions proposed", async function () {
     const time = 123;
     const ancillaryData = toUtf8Bytes("Test");
     await (await oov2.requestPrice(indentifier, time, ancillaryData, votingTokenAddress, 0)).wait();
@@ -103,23 +98,34 @@ describe("PolymarketNotifier", function () {
     const events = await oov2.queryFilter(oov2.filters.ProposePrice());
     const event = events[0];
 
-    // const sample = require("./mock/polymarketContracts.json");
-    // const markets = sample.slice(0, 5);
-    // const getPolymarketMarketsMock = sinon.stub();
-    // getPolymarketMarketsMock.returns(markets);
-    // sinon.stub(commonModule, "getPolymarketMarkets").callsFake(getPolymarketMarketsMock);
+    const sample = require("./mock/polymarketContracts.json");
+    const markets = sample.slice(0, 5);
+    const getPolymarketMarketsMock = sinon.stub();
+    getPolymarketMarketsMock.returns(markets);
+    sinon.stub(commonModule, "getPolymarketMarkets").callsFake(getPolymarketMarketsMock);
 
-    // const marketsWithAncillary = markets.map((market) => {
-    //   return {
-    //     ...market,
-    //     ancillaryData: "0x",
-    //   };
-    // });
-    // marketsWithAncillary[0].ancillaryData = event.args.ancillaryData;
+    const getMarketsHistoricPricesMock = sinon.stub();
+    const marketsWithHistoricPrices = markets.map((market) => {
+      return {
+        ...market,
+        historicPrices: [[{ p: 1, t: 123 }], [{ p: 1, t: 123 }]],
+        historicOrderBookSignals: [1, 1],
+      } as OrderBookPrice;
+    });
+    getMarketsHistoricPricesMock.returns(marketsWithHistoricPrices);
+    sinon.stub(commonModule, "getMarketsHistoricPrices").callsFake(getMarketsHistoricPricesMock);
 
-    // const getMarketsAncillaryMock = sinon.stub();
-    // getMarketsAncillaryMock.returns(marketsWithAncillary);
-    // sinon.stub(commonModule, "getMarketsAncillary").callsFake(getMarketsAncillaryMock);
+    const marketsWithAncillary = markets.map((market) => {
+      return {
+        ...market,
+        ancillaryData: "0x",
+      };
+    });
+    marketsWithAncillary[0].ancillaryData = event.args.ancillaryData;
+
+    const getMarketsAncillaryMock = sinon.stub();
+    getMarketsAncillaryMock.returns(marketsWithAncillary);
+    sinon.stub(commonModule, "getMarketsAncillary").callsFake(getMarketsAncillaryMock);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();

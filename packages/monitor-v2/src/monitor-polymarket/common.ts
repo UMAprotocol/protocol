@@ -22,6 +22,9 @@ import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-n
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 
+const { Datastore } = require("@google-cloud/datastore");
+const datastore = new Datastore();
+
 const POLYGON_SECONDS_PER_BLOCK = 2;
 
 export interface BotModes {
@@ -57,6 +60,10 @@ interface PolymarketMarket {
   clobTokenIds: [string, string];
 }
 
+interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
+  ancillaryData: string;
+}
+
 export interface PolymarketWithEventData extends PolymarketMarketWithAncillaryData {
   txHash: string;
   requester: string;
@@ -71,6 +78,17 @@ export interface PolymarketWithEventData extends PolymarketMarketWithAncillaryDa
   ancillaryData: string;
   proposedPrice: string;
 }
+export interface OrderBookPrice {
+  t: number;
+  p: number;
+}
+interface HistoricPricesPolymarket {
+  history: OrderBookPrice[];
+}
+interface PolymarketWithHistoricPrices extends PolymarketWithEventData {
+  historicPrices: [OrderBookPrice[], OrderBookPrice[]];
+  historicOrderBookSignals: [number, number];
+}
 
 export interface TradeInformation {
   price: number;
@@ -78,27 +96,9 @@ export interface TradeInformation {
   amount: number;
   timestamp: number;
 }
-
-export interface PolymarketWithTrades extends PolymarketWithEventData {
+export interface PolymarketWithTrades extends PolymarketWithHistoricPrices {
   orderFilledEvents: [TradeInformation[], TradeInformation[]];
   tradeSignals: [number, number];
-}
-
-interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
-  ancillaryData: string;
-}
-
-interface OrderBookPrice {
-  t: number;
-  p: number;
-}
-interface HistoricPricesPolymarket {
-  history: OrderBookPrice[];
-}
-
-interface PolymarketWithHistoricPrices extends PolymarketWithTrades {
-  historicPrices: [OrderBookPrice[], OrderBookPrice[]];
-  historicOrderBookSignals: [number, number];
 }
 
 export const formatPriceEvents = async (
@@ -142,14 +142,11 @@ export const formatPriceEvents = async (
 };
 
 export const getPolymarketMarkets = async (params: MonitoringParams): Promise<PolymarketMarket[]> => {
-  const sevenDays = Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 7;
   const whereClause =
-    "active = true" +
+    " created_at > '2023-01-01'" +
     " AND question_ID IS NOT NULL" +
     " AND clob_Token_Ids IS NOT NULL" +
-    ` AND (resolved_by = '${params.binaryAdapterAddress}' OR resolved_by = '${params.ctfAdapterAddress}')` +
-    ` AND EXTRACT(EPOCH FROM TO_TIMESTAMP(end_date, 'Month DD, YYYY')) > ${sevenDays}` +
-    " AND uma_resolution_status='resolved'";
+    ` AND (resolved_by = '${params.binaryAdapterAddress}' OR resolved_by = '${params.ctfAdapterAddress}')`;
 
   const query = `
     {
@@ -184,8 +181,8 @@ export const getMarketsAncillary = async (
   const binaryAdapterAbi = require("./abi/binaryAdapter.json");
   const ctfAdapterAbi = require("./abi/ctfAdapter.json");
   const binaryAdapter = new ethers.Contract(params.binaryAdapterAddress, binaryAdapterAbi, params.provider);
-  const decoder = TransactionDataDecoder.getInstance();
   const ctfAdapter = new ethers.Contract(params.ctfAdapterAddress, ctfAdapterAbi, params.provider);
+  const decoder = TransactionDataDecoder.getInstance();
 
   // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
   decoder.abiDecoder.addABI(binaryAdapterAbi);
@@ -211,19 +208,36 @@ export const getMarketsAncillary = async (
   const web3 = new Web3(web3Provider);
 
   // batch call to multicall contract
-  const chunkSize = 100;
+  const chunkSize = 25;
   const chunks = [];
   for (let i = 0; i < calls.length; i += chunkSize) {
     chunks.push(calls.slice(i, i + chunkSize));
   }
 
-  const results = (
-    await Promise.all(
-      chunks.map((chunk) => {
-        return aggregateTransactionsAndCall(multicall.address, web3, chunk);
-      })
-    )
-  ).flat(Infinity) as { ancillaryData: string }[];
+  // Process the chunks sequentially, if the chunk fails, process the contents of the chunk individually.
+  const results: { ancillaryData: string }[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    try {
+      const chunkResults = (await aggregateTransactionsAndCall(multicall.address, web3, chunk)) as {
+        ancillaryData: string;
+      }[];
+      results.push(...chunkResults);
+    } catch (error) {
+      for (let j = 0; j < chunk.length; j++) {
+        const call = chunk[j];
+        try {
+          const market = markets[i * chunkSize + j];
+          const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
+          const result = await adapter.callStatic.questions(market.questionID);
+          results.push(result);
+        } catch {
+          results.push({ ancillaryData: "0x" });
+          console.log("Failed to get ancillary data for market", call);
+        }
+      }
+    }
+  }
 
   return markets.map((market, index) => {
     return {
@@ -235,12 +249,12 @@ export const getMarketsAncillary = async (
 
 export const getMarketsHistoricPrices = async (
   params: MonitoringParams,
-  markets: PolymarketWithTrades[],
+  markets: PolymarketWithEventData[],
   networker: NetworkerInterface
 ): Promise<PolymarketWithHistoricPrices[]> => {
   return await Promise.all(
     markets.map(async (market) => {
-      const startTs = Math.floor(new Date(market.createdAt).getTime());
+      const startTs = Math.floor(new Date(market.createdAt).getTime() / 1000);
       const endTs = market.expirationTimestamp;
       const marketOne = market.clobTokenIds[0];
       const marketTwo = market.clobTokenIds[1];
@@ -404,10 +418,11 @@ export function calculateOrderBooksSignal(trades: OrderBookPrice[], marketResolu
 
 export const getOrderFilledEvents = async (
   params: MonitoringParams,
-  markets: PolymarketWithEventData[]
+  markets: PolymarketWithHistoricPrices[]
 ): Promise<PolymarketWithTrades[]> => {
-  let ctfExchange;
+  if (markets.length === 0) return [];
 
+  let ctfExchange;
   try {
     ctfExchange = await getContractInstanceWithProvider<CTFExchangeEthers>("CTFExchange", params.provider);
   } catch (e) {
@@ -421,7 +436,7 @@ export const getOrderFilledEvents = async (
   // get markets min eventBlockNumber
   const minEventBlockNumber = Math.min(...markets.map((market) => market.eventBlockNumber));
   const minEventBlockNumberTimestamp = (await params.provider.getBlock(minEventBlockNumber)).timestamp;
-  const minCreatedAt = Math.min(...markets.map((market) => Math.floor(new Date(market.createdAt).getTime())));
+  const minCreatedAt = Math.min(...markets.map((market) => Math.floor(new Date(market.createdAt).getTime() / 1000)));
 
   const fromBlock =
     minEventBlockNumberTimestamp > minCreatedAt
