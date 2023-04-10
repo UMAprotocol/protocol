@@ -13,8 +13,9 @@
 // Note:
 // - Optimistic Governor module will not accept duplicate proposals. This can happen when DISPUTE was set to "false". Either:
 //   - provide a new proposal with different TOKEN, AMOUNT and RECIPIENT combination,
-//   - dispute the previous proposal by passing ASSERTION_ID (if not past liveness),
-//   - settle and execute the previous proposal (if past liveness).
+//   - dispute the previous proposal with this same script by passing ASSERTION_ID (if not past liveness),
+//   - settle and execute the previous proposal with OptimisticGovernorExecute script by passing the same
+//     TOKEN, AMOUNT and RECIPIENT environment (if past liveness).
 
 import { Provider, StaticJsonRpcProvider } from "@ethersproject/providers";
 import { getContractInstanceWithProvider, getMnemonicSigner } from "@uma/common";
