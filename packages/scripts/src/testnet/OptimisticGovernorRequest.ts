@@ -18,9 +18,10 @@
 //     TOKEN, AMOUNT and RECIPIENT environment (if past liveness).
 
 import { Provider, StaticJsonRpcProvider } from "@ethersproject/providers";
-import { getContractInstanceWithProvider, getMnemonicSigner } from "@uma/common";
+import { getMnemonicSigner } from "@uma/common";
 import { ERC20Ethers, OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 import { BigNumber, utils, Wallet } from "ethers";
+import { getContractInstanceWithProvider } from "../utils/contracts";
 import { createApprovalPayload } from "../utils/optimisticGovernorPayload";
 
 async function main() {

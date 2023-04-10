@@ -10,4 +10,3 @@ export * from "./UniswapV3Helpers";
 export * from "./types";
 export * from "./EthersSignerUtils";
 export * from "./EthersProviderUtils";
-export * from "./EthersContractUtils";

@@ -12,9 +12,10 @@
 // - Optimistic Governor module will only execute undisputed proposals that are past their liveness.
 
 import { StaticJsonRpcProvider } from "@ethersproject/providers";
-import { getContractInstanceWithProvider, getMnemonicSigner } from "@uma/common";
+import { getMnemonicSigner } from "@uma/common";
 import { OptimisticGovernorEthers } from "@uma/contracts-node";
 import { utils } from "ethers";
+import { getContractInstanceWithProvider } from "../utils/contracts";
 import { createApprovalPayload } from "../utils/optimisticGovernorPayload";
 
 async function main() {

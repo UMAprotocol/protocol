@@ -17,9 +17,10 @@
 
 import { StaticJsonRpcProvider } from "@ethersproject/providers";
 import { deployAndSetUpCustomModule } from "@gnosis.pm/zodiac";
-import { getContractInstanceWithProvider, getMnemonicSigner } from "@uma/common";
+import { getMnemonicSigner } from "@uma/common";
 import { getAbi, getAddress, ERC20Ethers, OptimisticGovernorEthers } from "@uma/contracts-node";
 import { BigNumber, Contract, constants, utils, Wallet } from "ethers";
+import { getContractInstanceWithProvider } from "../utils/contracts";
 import { getGnosisSafe, deployGnosisSafe } from "../utils/gnosisSafeDeployment";
 
 async function main() {

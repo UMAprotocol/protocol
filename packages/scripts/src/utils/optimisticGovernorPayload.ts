@@ -1,7 +1,7 @@
 import { Provider } from "@ethersproject/providers";
-import { getContractInstanceWithProvider } from "@uma/common";
 import { ERC20Ethers } from "@uma/contracts-node";
 import { utils } from "ethers";
+import { getContractInstanceWithProvider } from "./contracts";
 
 interface ApprovalPayload {
   approvalTokenAddress: string;
