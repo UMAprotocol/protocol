@@ -4,8 +4,7 @@ import {
   getSafeSingletonDeployment,
   getProxyFactoryDeployment,
 } from "@safe-global/safe-deployments";
-import { ZERO_ADDRESS } from "@uma/common";
-import { Contract, Wallet } from "ethers";
+import { Contract, constants, Wallet } from "ethers";
 
 export async function deployGnosisSafe(signer: Wallet, _owners?: string[], _threshold?: number): Promise<Contract> {
   const owners = _owners ? _owners : [signer.address];
@@ -37,12 +36,12 @@ export async function deployGnosisSafe(signer: Wallet, _owners?: string[], _thre
   const initializer = gnosisSafeSingleton.interface.encodeFunctionData("setup", [
     owners,
     threshold,
-    ZERO_ADDRESS,
+    constants.AddressZero,
     "0x",
     compatibilityFallbackHandlerAddress,
-    ZERO_ADDRESS,
+    constants.AddressZero,
     0,
-    ZERO_ADDRESS,
+    constants.AddressZero,
   ]);
   const saltNonce = Number(new Date());
   const proxyCreationReciept = await (

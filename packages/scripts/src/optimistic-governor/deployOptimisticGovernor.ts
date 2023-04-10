@@ -19,9 +19,9 @@
 
 import { StaticJsonRpcProvider } from "@ethersproject/providers";
 import { deployAndSetUpCustomModule } from "@gnosis.pm/zodiac";
-import { getEthersSigner, ZERO_ADDRESS } from "@uma/common";
+import { getEthersSigner } from "@uma/common";
 import { getAbi, getAddress, OptimisticGovernorEthers } from "@uma/contracts-node";
-import { BigNumber, Contract, utils, Wallet } from "ethers";
+import { BigNumber, Contract, constants, utils, Wallet } from "ethers";
 import minimist from "minimist";
 import { getGnosisSafe, deployGnosisSafe } from "../utils/gnosisSafeDeployment";
 
@@ -104,11 +104,22 @@ async function deployOptimisticGovernor(signer: Wallet, owner: string): Promise<
 async function enableModule(signer: Wallet, gnosisSafe: Contract, moduleAddress: string) {
   const payload = gnosisSafe.interface.encodeFunctionData("enableModule", [moduleAddress]);
   // Assumes the signer is the owner of the Gnosis Safe with threshold 1.
-  const signatures = utils.hexConcat([utils.hexZeroPad(signer.address, 32), utils.hexZeroPad("0x", 32), "0x01"]);
+  const signatures = utils.hexConcat([utils.hexZeroPad(signer.address, 32), constants.HashZero, "0x01"]);
   await (
     await gnosisSafe
       .connect(signer)
-      .execTransaction(gnosisSafe.address, 0, payload, 0, 0, 0, 0, ZERO_ADDRESS, ZERO_ADDRESS, signatures)
+      .execTransaction(
+        gnosisSafe.address,
+        0,
+        payload,
+        0,
+        0,
+        0,
+        0,
+        constants.AddressZero,
+        constants.AddressZero,
+        signatures
+      )
   ).wait();
 
   console.log("Enabled module", moduleAddress);
