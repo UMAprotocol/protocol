@@ -9,7 +9,7 @@
 // - IDENTIFIER: Price identifier to use (in UTF-8). If not provided, value from mastercopy will be used.
 // - LIVENESS: Proposal liveness in seconds. If not provided, value from mastercopy will be used.
 // Run:
-//   node dist/optimistic-governor/deployOptimisticGovernor.js
+//   node dist/testnet/OptimisticGovernorDeploy.js
 // Note:
 // - Existing Gnosis Safe must have a threshold of 1 and the first mnemonic wallet owner must be among the Safe owners.
 // - COLLATERAL token must be whitelisted in the AddressWhitelist.
