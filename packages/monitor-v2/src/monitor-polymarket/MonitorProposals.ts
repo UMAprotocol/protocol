@@ -81,8 +81,8 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
   for (const market of marketsWithOrderFilled) {
     const proposedOutcome = market.proposedPrice == "1.0" ? 0 : 1;
     const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
-    const thresholdTrades = Number(process.env["THRESHOLD_TRADES"]) || 0.8;
-    const thresholdOrders = Number(process.env["THRESHOLD_ORDERS"]) || 0.8;
+    const thresholdTrades = Number(process.env["THRESHOLD_TRADES"]) || 0.9;
+    const thresholdOrders = Number(process.env["THRESHOLD_ORDERS"]) || 0.9;
     const tradeSignal = shouldNotify(
       market.tradeSignalsEfficiency[proposedOutcome],
       market.tradeSignals[proposedOutcome],
