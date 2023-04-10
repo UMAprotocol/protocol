@@ -7,13 +7,14 @@
 //   - TOKEN: Address of token to approve. If not provided, it will be set to the collateral token.
 //   - AMOUNT: Amount to approve (scaled down to human readable). If not provided, value of "1" will be used.
 //   - RECIPIENT: Address of approval beneficiary. If not provided, it will be set to the first mnemonic wallet owner.
-// - DISPUTE: Boolean on whether to dispute the proposal. If not provided, the assertion will be disputed by default.
+// - DISPUTE: Boolean on whether to dispute the proposal. If not provided, the assertion will not be disputed.
 // Run:
 //   node dist/testnet/OptimisticGovernorRequest.js
 // Note:
-// - Optimistic Governor module will not accept duplicate proposals. This can happen when DISPUTE was set to "false". Either:
+// - Optimistic Governor module will not accept duplicate proposals. This can happen when DISPUTE was not provided or
+//   it was set to false. To resolve this, either:
 //   - provide a new proposal with different TOKEN, AMOUNT and RECIPIENT combination,
-//   - dispute the previous proposal with this same script by passing ASSERTION_ID (if not past liveness),
+//   - dispute the previous proposal with this same script by passing ASSERTION_ID and DISPUTE set to true (if not past liveness),
 //   - settle and execute the previous proposal with OptimisticGovernorExecute script by passing the same
 //     TOKEN, AMOUNT and RECIPIENT environment (if past liveness).
 
@@ -74,12 +75,12 @@ async function main() {
 function parseDisputeEnv(): boolean {
   if (
     process.env.DISPUTE === undefined ||
-    process.env.DISPUTE.toLowerCase() === "true" ||
-    process.env.DISPUTE === "1"
+    process.env.DISPUTE.toLowerCase() === "false" ||
+    process.env.DISPUTE === "0"
   ) {
-    return true;
-  } else if (process.env.DISPUTE.toLowerCase() === "false" || process.env.DISPUTE === "0") {
     return false;
+  } else if (process.env.DISPUTE.toLowerCase() === "true" || process.env.DISPUTE === "1") {
+    return true;
   } else throw new Error("Invalid DISPUTE value");
 }
 
