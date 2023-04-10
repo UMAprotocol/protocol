@@ -7,6 +7,8 @@ interface ApprovalPayload {
   approvalTokenAddress: string;
   proposalPayload: string;
   explanation: string;
+  approvalAmount: string;
+  recipient: string;
 }
 
 // Helper function to generate the payload for an approval transaction to be proposed through the OptimisticGovernor.
@@ -33,5 +35,5 @@ export async function createApprovalPayload(
     utils.parseUnits(approvalAmount, decimals),
   ]);
   const explanation = `Approve ${approvalAmount} ${symbol} to ${recipient}`;
-  return { approvalTokenAddress, proposalPayload, explanation };
+  return { approvalTokenAddress, proposalPayload, explanation, approvalAmount, recipient };
 }

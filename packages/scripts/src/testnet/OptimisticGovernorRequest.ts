@@ -16,10 +16,10 @@
 //   - dispute the previous proposal by passing ASSERTION_ID (if not past liveness),
 //   - settle and execute the previous proposal (if past liveness).
 
-import { StaticJsonRpcProvider } from "@ethersproject/providers";
+import { Provider, StaticJsonRpcProvider } from "@ethersproject/providers";
 import { getContractInstanceWithProvider, getMnemonicSigner } from "@uma/common";
 import { ERC20Ethers, OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
-import { utils, Wallet } from "ethers";
+import { BigNumber, utils, Wallet } from "ethers";
 import { createApprovalPayload } from "../utils/optimisticGovernorPayload";
 
 async function main() {
@@ -31,12 +31,41 @@ async function main() {
   const assertionId =
     process.env.ASSERTION_ID === undefined ? await proposeApproval(walletSigner) : process.env.ASSERTION_ID;
 
+  const expirationTimestamp = Number(await getAssertionExpiration(provider, assertionId));
   if (shouldDispute) {
+    const currentTimestamp = (await provider.getBlock("latest")).timestamp;
+    if (currentTimestamp >= expirationTimestamp) {
+      throw new Error("Assertion is past liveness. Cannot dispute");
+    }
     await disputeAssertion(walletSigner, assertionId);
   } else {
+    const expirationString = new Date(expirationTimestamp * 1000).toUTCString();
     console.log(
-      `Skipping dispute. If you want to dispute the assertion, re-run with DISPUTE=true ASSERTION_ID=${assertionId}`
+      "Skipping dispute. \n" +
+        `- If you want to dispute the assertion, re-run this script before ${expirationString} with \n` +
+        "DISPUTE=true \\\n" +
+        `ASSERTION_ID=${assertionId} \\`
     );
+    if (process.env.ASSERTION_ID === undefined) {
+      const optimisticGovernor = await getContractInstanceWithProvider<OptimisticGovernorEthers>(
+        "OptimisticGovernor",
+        provider,
+        process.env.MODULE
+      );
+      const proposal = await createApprovalPayload(
+        provider,
+        await optimisticGovernor.collateral(),
+        "1",
+        walletSigner.address
+      );
+      console.log(
+        `- If you want to execute the proposal, run OptimisticGovernorExecute script at or after ${expirationString} with \n` +
+          `MODULE=${process.env.MODULE} \\\n` +
+          `TOKEN=${proposal.approvalTokenAddress} \\\n` +
+          `AMOUNT=${proposal.approvalAmount} \\\n` +
+          `RECIPIENT=${proposal.recipient} \\`
+      );
+    }
   }
 }
 
@@ -113,6 +142,14 @@ async function disputeAssertion(signer: Wallet, assertionId: string): Promise<vo
     await optimisticOracleV3.connect(signer).disputeAssertion(assertionId, signer.address)
   ).wait();
   console.log("Disputed assertion at", disputeReceipt.transactionHash);
+}
+
+async function getAssertionExpiration(provider: Provider, assertionId: string): Promise<BigNumber> {
+  const optimisticOracleV3 = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>(
+    "OptimisticOracleV3",
+    provider
+  );
+  return (await optimisticOracleV3.getAssertion(assertionId)).expirationTime;
 }
 
 main().then(
