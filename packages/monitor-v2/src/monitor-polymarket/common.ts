@@ -27,6 +27,11 @@ const datastore = new Datastore();
 
 const POLYGON_SECONDS_PER_BLOCK = 2;
 
+// Helper function to sleep for a given duration
+const sleep = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
 export interface BotModes {
   transactionsProposedEnabled: boolean;
 }
@@ -88,6 +93,7 @@ interface HistoricPricesPolymarket {
 interface PolymarketWithHistoricPrices extends PolymarketWithEventData {
   historicPrices: [OrderBookPrice[], OrderBookPrice[]];
   historicOrderBookSignals: [number, number];
+  historicOrderBookSignalsEfficiency: [number, number];
 }
 
 export interface TradeInformation {
@@ -99,6 +105,7 @@ export interface TradeInformation {
 export interface PolymarketWithTrades extends PolymarketWithHistoricPrices {
   orderFilledEvents: [TradeInformation[], TradeInformation[]];
   tradeSignals: [number, number];
+  tradeSignalsEfficiency: [number, number];
 }
 
 export const formatPriceEvents = async (
@@ -247,38 +254,88 @@ export const getMarketsAncillary = async (
   });
 };
 
+// If the signal is 0.5 then the market is not liquid enough to be considered efficient.
+// This is because there haven't been any orders placed on the book.
+const getHistoricOrderBookEfficiency = (
+  orders: OrderBookPrice[],
+  marketResolutionTimestamp: number,
+  mostRelevantHoursBeforeResolution = 24
+) => {
+  const mostRelevantOrders = orders.filter(
+    (order) =>
+      order.t < marketResolutionTimestamp &&
+      order.t > marketResolutionTimestamp - 60 * 60 * mostRelevantHoursBeforeResolution
+  );
+
+  // ratio of orders with p !== 0.5 in the last relevant hours before resolution
+  const relevantOrdersRatio = mostRelevantOrders.filter((order) => order.p !== 0.5).length / mostRelevantOrders.length;
+
+  return relevantOrdersRatio;
+};
+
+// Helper function to process markets in chunks
+const processMarketsInChunks = async (
+  markets: PolymarketWithEventData[],
+  chunkSize: number,
+  callback: (m: PolymarketWithEventData[]) => Promise<void>
+) => {
+  for (let i = 0; i < markets.length; i += chunkSize) {
+    const chunk = markets.slice(i, i + chunkSize);
+    await callback(chunk);
+    await sleep(500); // Introduce a 0.5 second delay between each chunk
+  }
+};
+
 export const getMarketsHistoricPrices = async (
   params: MonitoringParams,
   markets: PolymarketWithEventData[],
   networker: NetworkerInterface
 ): Promise<PolymarketWithHistoricPrices[]> => {
-  return await Promise.all(
-    markets.map(async (market) => {
-      const startTs = Math.floor(new Date(market.createdAt).getTime() / 1000);
-      const endTs = market.expirationTimestamp;
-      const marketOne = market.clobTokenIds[0];
-      const marketTwo = market.clobTokenIds[1];
-      const apiUrlOne = params.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketOne}`;
-      const apiUrlTwo = params.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketTwo}`;
-      const { history: outcome1HistoricPrices } = (await networker.getJson(apiUrlOne, {
-        method: "get",
-      })) as HistoricPricesPolymarket;
+  const results: PolymarketWithHistoricPrices[] = [];
 
-      const { history: outcome2HistoricPrices } = (await networker.getJson(apiUrlTwo, {
-        method: "get",
-      })) as HistoricPricesPolymarket;
-      //
+  await processMarketsInChunks(markets, 30, async (marketChunk: PolymarketWithEventData[]) => {
+    const chunkResults = await Promise.all(
+      marketChunk.map(async (market) => {
+        const startTs = Math.floor(new Date(market.createdAt).getTime() / 1000);
+        const endTs = market.expirationTimestamp;
+        const marketOne = market.clobTokenIds[0];
+        const marketTwo = market.clobTokenIds[1];
+        const apiUrlOne = params.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketOne}`;
+        const apiUrlTwo = params.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketTwo}`;
+        const { history: outcome1HistoricPrices } = (await networker.getJson(apiUrlOne, {
+          method: "get",
+        })) as HistoricPricesPolymarket;
 
-      return {
-        ...market,
-        historicPrices: [outcome1HistoricPrices, outcome2HistoricPrices],
-        historicOrderBookSignals: [
-          calculateOrderBooksSignal(outcome1HistoricPrices, market.expirationTimestamp),
-          calculateOrderBooksSignal(outcome2HistoricPrices, market.expirationTimestamp),
-        ],
-      };
-    })
-  );
+        const { history: outcome2HistoricPrices } = (await networker.getJson(apiUrlTwo, {
+          method: "get",
+        })) as HistoricPricesPolymarket;
+
+        const historicOrderBookOutcomeOne = calculateOrderBooksSignal(
+          outcome1HistoricPrices,
+          market.expirationTimestamp
+        );
+
+        const historicOrderBookOutcomeTwo = calculateOrderBooksSignal(
+          outcome2HistoricPrices,
+          market.expirationTimestamp
+        );
+
+        return {
+          ...market,
+          historicPrices: [outcome1HistoricPrices, outcome2HistoricPrices],
+          historicOrderBookSignals: [historicOrderBookOutcomeOne, historicOrderBookOutcomeTwo],
+          historicOrderBookSignalsEfficiency: [
+            getHistoricOrderBookEfficiency(outcome1HistoricPrices, market.expirationTimestamp),
+            getHistoricOrderBookEfficiency(outcome2HistoricPrices, market.expirationTimestamp),
+          ],
+        } as PolymarketWithHistoricPrices;
+      })
+    );
+
+    results.push(...chunkResults);
+  });
+
+  return results;
 };
 
 export const getTradeInfoFromOrderFilledEvent = async (
@@ -356,28 +413,31 @@ function calculateTWAP(
 export function calculateTradesSignal(
   trades: TradeInformation[],
   sizeThreshold: number,
-  marketResolutionTimestamp: number
+  marketResolutionTimestamp: number,
+  twapIntervalMinutes = 30,
+  moreRelevantHours = 2.5, // Number of hours before market resolution that are more relevant
+  lastHoursWeight = 1.5 // The weight of the last hours' volume compared to the total volume
 ): number {
-  const oneHourBeforeMarketResolution = marketResolutionTimestamp - 60 * 60;
-  const lastHourTrades = trades.filter((trade) => trade.timestamp >= oneHourBeforeMarketResolution);
+  const hoursBeforeMarketResolution = marketResolutionTimestamp - 60 * 60 * moreRelevantHours;
+  const lastHoursTrades = trades.filter((trade) => trade.timestamp >= hoursBeforeMarketResolution);
 
-  // Calculate the last hour's trade volume
-  const lastHourVolume = lastHourTrades.reduce((total, trade) => total + trade.amount, 0);
+  // Calculate the last hours' trade volume
+  const lastHourVolume = lastHoursTrades.reduce((total, trade) => total + trade.amount, 0);
 
   // Calculate the total trade volume
   const totalVolume = trades.reduce((total, trade) => total + trade.amount, 0);
 
   // Calculate the volume ratio in the last hour
-  const lastHourVolumeRatio = totalVolume == 0 ? 0 : lastHourVolume / totalVolume;
+  const lastHoursVolumeRatio = totalVolume == 0 ? 0 : lastHourVolume / totalVolume;
 
   // Calculate the TWAP for the given interval
-  const twap = calculateTWAP(trades, 60 * 30); // 30 min interval
+  const twap = calculateTWAP(trades, 60 * twapIntervalMinutes);
 
   // Find the last trade with an amount above the size threshold and within the last hour
   const lastSignificantTrade = trades
     .slice()
     .reverse()
-    .find((trade) => trade.amount >= sizeThreshold && trade.timestamp >= oneHourBeforeMarketResolution);
+    .find((trade) => trade.amount >= sizeThreshold && trade.timestamp >= hoursBeforeMarketResolution);
 
   // If there's no significant trade, use TWAP as the signal
   if (!lastSignificantTrade) {
@@ -385,7 +445,7 @@ export function calculateTradesSignal(
   }
 
   // Apply a heuristic based on the last hour's volume ratio
-  const controversyFactor = lastHourVolumeRatio > 0.5 ? 1.3 : 1;
+  const controversyFactor = lastHoursVolumeRatio > 0.5 ? lastHoursWeight : 1;
 
   // Calculate the weighted average of TWAP and the last significant trade price with the controversy factor
   const signal = (twap + lastSignificantTrade.price * controversyFactor) / (1 + controversyFactor);
@@ -393,25 +453,27 @@ export function calculateTradesSignal(
   return signal;
 }
 
-export function calculateOrderBooksSignal(trades: OrderBookPrice[], marketResolutionTimestamp: number): number {
-  const twoHourBeforeMarketResolution = marketResolutionTimestamp - 60 * 60 * 2;
+export function calculateOrderBooksSignal(
+  trades: OrderBookPrice[],
+  marketResolutionTimestamp: number,
+  moreRelevantHours = 2.5, // Number of hours before market resolution that are more relevant
+  lastHoursWeight = 1.5 // Order books orders are more relevant in the last moreRelevantHours
+): number {
+  const hoursBeforeMarketResolution = marketResolutionTimestamp - 60 * 60 * moreRelevantHours;
 
-  const lastTwoHoursTrades = trades.filter((trade) => trade.t >= twoHourBeforeMarketResolution);
-  const tradesBeforeTwoHours = trades.filter((trade) => trade.t < twoHourBeforeMarketResolution);
+  const lastHoursTrades = trades.filter((trade) => trade.t >= hoursBeforeMarketResolution);
+  const tradesBefore = trades.filter((trade) => trade.t < hoursBeforeMarketResolution);
 
   const twapBefore = calculateTWAP(
-    tradesBeforeTwoHours.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
+    tradesBefore.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
     60 * 60 * 2 // 2 hour interval
   );
 
   // Caculate twap for last hour
   const lastHourTwap = calculateTWAP(
-    lastTwoHoursTrades.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
+    lastHoursTrades.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
     60 * 15 // 15 min interval
   );
-
-  // Apply a heuristic based on the last hour's volume ratio
-  const lastHoursWeight = 1.3;
 
   return (twapBefore + lastHourTwap * lastHoursWeight) / (1 + lastHoursWeight);
 }
@@ -481,10 +543,30 @@ export const getOrderFilledEvents = async (
     const outcomeTokenOneSignal = calculateTradesSignal(outcomeTokenOne, 0, market.expirationTimestamp);
     const outcomeTokenTwoSignal = calculateTradesSignal(outcomeTokenTwo, 0, market.expirationTimestamp);
 
+    const efficiencyDenominator = 60 * 60 * 24; // 24 hours
+    const marketProposalTimestamp = market.proposalTimestamp;
+    const lastOrderTimestampOutcomeOne = Math.max(...outcomeTokenOne.map((trade) => trade.timestamp));
+    const lastOrderTimestampOutcomeTwo = Math.max(...outcomeTokenTwo.map((trade) => trade.timestamp));
+
+    // The trade efficiency is a number between 0 and 1 that represents how much time has passed since the last trade
+    // If there are no trades, the efficiency is 0
+    // If there are trades, the efficiency is 1 if the last trade happened after the market proposal
+    // If there are trades, the efficiency is 1 - (time since last trade / 24 hours) if the last trade happened before the
+    // market proposal
+    const getTradesEfficiency = (lastTradeTimestamp: number) => {
+      if (!lastTradeTimestamp) return 0;
+      if (lastTradeTimestamp > marketProposalTimestamp) return 1;
+      return Math.max(0, 1 - (marketProposalTimestamp - lastTradeTimestamp) / efficiencyDenominator);
+    };
+
     output.push({
       ...market,
       orderFilledEvents: [outcomeTokenOne, outcomeTokenTwo],
       tradeSignals: [outcomeTokenOneSignal, outcomeTokenTwoSignal],
+      tradeSignalsEfficiency: [
+        getTradesEfficiency(lastOrderTimestampOutcomeOne),
+        getTradesEfficiency(lastOrderTimestampOutcomeTwo),
+      ],
     });
   }
   return output;

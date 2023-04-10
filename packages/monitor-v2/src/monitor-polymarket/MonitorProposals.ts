@@ -60,14 +60,35 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
   // Add the order filled events to the markets and calculate the trade signals.
   const marketsWithOrderFilled = await getOrderFilledEvents(params, marketsWithHistory);
 
+  const shouldNotify = (
+    efficiencyProposed: number,
+    signalProposed: number,
+    efficiencyComplentary: number,
+    signalComplementary: number,
+    threshold: number
+  ) =>
+    (efficiencyProposed > 0 && signalProposed < threshold * efficiencyProposed) ||
+    (efficiencyComplentary > 0 && signalComplementary > (1 - threshold) * efficiencyComplentary);
+
   for (const market of marketsWithOrderFilled) {
     const proposedOutcome = market.proposedPrice == "1.0" ? 0 : 1;
-    const threshold = 0.75;
-    const thresholdHistoric = 0.8;
-    const tradeSignal = market.tradeSignals[proposedOutcome] > 0 && market.tradeSignals[proposedOutcome] < threshold;
-    const historicOrderbookSignal =
-      market.historicOrderBookSignals[proposedOutcome] > 0 &&
-      market.historicOrderBookSignals[proposedOutcome] < thresholdHistoric;
+    const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
+    const thresholdTrades = 0.85;
+    const thresholdHistoric = 0.9;
+    const tradeSignal = shouldNotify(
+      market.tradeSignalsEfficiency[proposedOutcome],
+      market.tradeSignals[proposedOutcome],
+      market.tradeSignalsEfficiency[complementaryOutcome],
+      market.tradeSignals[complementaryOutcome],
+      thresholdTrades
+    );
+    const historicOrderbookSignal = shouldNotify(
+      market.historicOrderBookSignalsEfficiency[proposedOutcome],
+      market.historicOrderBookSignals[proposedOutcome],
+      market.historicOrderBookSignalsEfficiency[complementaryOutcome],
+      market.historicOrderBookSignals[complementaryOutcome],
+      thresholdHistoric
+    );
     if (tradeSignal || historicOrderbookSignal) {
       logProposal(
         logger,
