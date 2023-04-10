@@ -20,6 +20,7 @@ import { StaticJsonRpcProvider } from "@ethersproject/providers";
 import { getContractInstanceWithProvider, getMnemonicSigner } from "@uma/common";
 import { ERC20Ethers, OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 import { utils, Wallet } from "ethers";
+import { createApprovalPayload } from "../utils/optimisticGovernorPayload";
 
 async function main() {
   const shouldDispute = parseDisputeEnv();
@@ -70,26 +71,15 @@ async function proposeApproval(signer: Wallet): Promise<string> {
   );
   await collateral.connect(signer).approve(optimisticGovernor.address, proposalBond);
 
-  // Construct proposed approval transaction.
-  const approvalTokenAddress = process.env.TOKEN !== undefined ? process.env.TOKEN : collateral.address;
-  if (!utils.isAddress(approvalTokenAddress)) throw new Error("Invalid approval token address");
-  const approvalToken = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, approvalTokenAddress);
-  const symbol = await approvalToken.symbol();
-  const decimals = await approvalToken.decimals();
-  const approvalAmount =
-    process.env.AMOUNT !== undefined ? utils.parseUnits(process.env.AMOUNT, decimals) : utils.parseUnits("1", decimals);
-  const recipient = process.env.RECIPIENT !== undefined ? process.env.RECIPIENT : signer.address;
-  if (!utils.isAddress(recipient)) throw new Error("Invalid recipient address");
-  const proposalPayload = approvalToken.interface.encodeFunctionData("approve", [recipient, approvalAmount]);
-  const explanation = utils.toUtf8Bytes(
-    `Approve ${utils.formatUnits(approvalAmount, decimals)} ${symbol} to ${recipient}`
-  );
-
-  // Propose approval transaction.
+  // Propose approval transaction. Uses TOKEN, AMOUNT and RECIPIENT environment variables if provided.
+  const proposal = await createApprovalPayload(provider, collateral.address, "1", signer.address);
   const proposalReceipt = await (
     await optimisticGovernor
       .connect(signer)
-      .proposeTransactions([{ to: approvalToken.address, operation: 0, value: 0, data: proposalPayload }], explanation)
+      .proposeTransactions(
+        [{ to: proposal.approvalTokenAddress, operation: 0, value: 0, data: proposal.proposalPayload }],
+        utils.toUtf8Bytes(proposal.explanation)
+      )
   ).wait();
 
   // Get assertionId.
@@ -101,7 +91,7 @@ async function proposeApproval(signer: Wallet): Promise<string> {
     )
   )[0];
   const assertionId = proposalEvent.args.assertionId;
-  console.log("Proposed transaction with explanation:", utils.toUtf8String(explanation));
+  console.log("Proposed transaction with explanation:", proposal.explanation);
   console.log("Assertion transaction hash:", proposalReceipt.transactionHash);
   console.log("Assertion ID:", assertionId);
   return assertionId;
