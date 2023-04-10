@@ -259,7 +259,7 @@ export const getMarketsAncillary = async (
 const getHistoricOrderBookEfficiency = (
   orders: OrderBookPrice[],
   marketResolutionTimestamp: number,
-  mostRelevantHoursBeforeResolution = 24
+  mostRelevantHoursBeforeResolution = 2
 ) => {
   const mostRelevantOrders = orders.filter(
     (order) =>
@@ -415,7 +415,7 @@ export function calculateTradesSignal(
   sizeThreshold: number,
   marketResolutionTimestamp: number,
   twapIntervalMinutes = 30,
-  moreRelevantHours = 2.5, // Number of hours before market resolution that are more relevant
+  moreRelevantHours = 2, // Number of hours before market resolution that are more relevant
   lastHoursWeight = 1.5 // The weight of the last hours' volume compared to the total volume
 ): number {
   const hoursBeforeMarketResolution = marketResolutionTimestamp - 60 * 60 * moreRelevantHours;
@@ -456,26 +456,19 @@ export function calculateTradesSignal(
 export function calculateOrderBooksSignal(
   trades: OrderBookPrice[],
   marketResolutionTimestamp: number,
-  moreRelevantHours = 2.5, // Number of hours before market resolution that are more relevant
-  lastHoursWeight = 1.5 // Order books orders are more relevant in the last moreRelevantHours
+  moreRelevantHours = 2 // Number of hours before market resolution that are more relevant
 ): number {
   const hoursBeforeMarketResolution = marketResolutionTimestamp - 60 * 60 * moreRelevantHours;
 
   const lastHoursTrades = trades.filter((trade) => trade.t >= hoursBeforeMarketResolution);
-  const tradesBefore = trades.filter((trade) => trade.t < hoursBeforeMarketResolution);
-
-  const twapBefore = calculateTWAP(
-    tradesBefore.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
-    60 * 60 * 2 // 2 hour interval
-  );
 
   // Caculate twap for last hour
   const lastHourTwap = calculateTWAP(
     lastHoursTrades.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
-    60 * 15 // 15 min interval
+    60 * 10 // 10 min interval
   );
 
-  return (twapBefore + lastHourTwap * lastHoursWeight) / (1 + lastHoursWeight);
+  return lastHourTwap;
 }
 
 export const getOrderFilledEvents = async (
