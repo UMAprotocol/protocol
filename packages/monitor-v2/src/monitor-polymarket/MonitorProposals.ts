@@ -7,17 +7,22 @@ import {
   getContractInstanceWithProvider,
   getMarketsAncillary,
   getMarketsHistoricPrices,
+  getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarkets,
   Logger,
   MonitoringParams,
   PolymarketWithEventData,
+  storeNotifiedProposals,
+  getMarketKeyToStore,
 } from "./common";
 import { logProposal } from "./MonitorLogger";
 
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const networker = new Networker(logger);
   const currentBlockNumber = await params.provider.getBlockNumber();
+
+  const pastNotifiedProposals = await getNotifiedProposals();
 
   const daysToLookup = 1; // This bot only looks back 1 day for proposals.
 
@@ -52,7 +57,9 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         ...market,
         ...event,
       };
-    });
+    })
+    .filter((market) => market.expirationTimestamp > Date.now() / 1000)
+    .filter((market) => !Object.keys(pastNotifiedProposals).includes(getMarketKeyToStore(market)));
 
   // Add the historic orderbook signals to the markets and calculate the trade signals.
   const marketsWithHistory = await getMarketsHistoricPrices(params, marketsWithEventData, networker);
@@ -68,13 +75,14 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
     threshold: number
   ) =>
     (efficiencyProposed > 0 && signalProposed < threshold * efficiencyProposed) ||
-    (efficiencyComplentary > 0 && signalComplementary > (1 - threshold) * efficiencyComplentary);
+    (efficiencyComplentary > 0 && signalComplementary > 1 - threshold * efficiencyComplentary);
 
+  const notifiedProposals = [];
   for (const market of marketsWithOrderFilled) {
     const proposedOutcome = market.proposedPrice == "1.0" ? 0 : 1;
     const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
-    const thresholdTrades = 0.9;
-    const thresholdHistoric = 0.9;
+    const thresholdTrades = Number(process.env["THRESHOLD_TRADES"]) || 0.8;
+    const thresholdOrders = Number(process.env["THRESHOLD_ORDERS"]) || 0.8;
     const tradeSignal = shouldNotify(
       market.tradeSignalsEfficiency[proposedOutcome],
       market.tradeSignals[proposedOutcome],
@@ -87,10 +95,11 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
       market.historicOrderBookSignals[proposedOutcome],
       market.historicOrderBookSignalsEfficiency[complementaryOutcome],
       market.historicOrderBookSignals[complementaryOutcome],
-      thresholdHistoric
+      thresholdOrders
     );
+
     if (tradeSignal || historicOrderbookSignal) {
-      logProposal(
+      await logProposal(
         logger,
         {
           proposedPrice: market.proposedPrice,
@@ -106,6 +115,8 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         },
         params
       );
+      notifiedProposals.push(market);
     }
   }
+  await storeNotifiedProposals(notifiedProposals);
 }

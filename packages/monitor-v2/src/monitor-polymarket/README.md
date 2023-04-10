@@ -1,17 +1,17 @@
-# Optimistic Governor Monitoring
+# Polymarket Notifier
 
-Optimistic Governor monitor bots can report on real time events based on the provided configuration for all the networks
-where `OptimisticGovernor` contract is deployed.
+This app continuously monitors UMA Optimistic Oracle contract proposals and sends notifications based on Polymarket API information.
+
+The Polymarket notifier looks for ProposePrice events related to the Polymarket contracts and uses the Polymarket API to fetch all active contract market prices. It compares proposed prices against the Polymarket API and notifies the user through a logging mechanism that can forward an alert to Slack or any other configured transport mechanism. Notified proposals are stored on Google Datastore, so on repeated runs the application does not notify the same proposal.
 
 The main entry point to Optimistic Governor monitor bots is running:
 
 ```
-node ./packages/monitor-v2/dist/monitor-og/index.js
+node ./packages/monitor-v2/dist/monitor-polymarket/index.js
 ```
 
 All the configuration should be provided with following environment variables:
 
-- `OG_ADDRESS` is the address of the deployed Optimistic Governor that this bot will monitor.
 - `CHAIN_ID` is network number.
 - `NODE_URLS_X` is an array of RPC node URLs replacing `X` in variable name with network number from `CHAIN_ID`.
 - `NODE_URL_X` is a single RPC node URL replacing `X` in variable name with network number from `CHAIN_ID`. This is
@@ -24,11 +24,5 @@ All the configuration should be provided with following environment variables:
 - `STARTING_BLOCK_NUMBER` and `ENDING_BLOCK_NUMBER` defines block range to look for events on the `CHAIN_ID` network.
   These are mandatory when `POLLING_DELAY=0`.
 - `TRANSACTIONS_PROPOSED_ENABLED` is boolean enabling/disabling monitoring transactions proposed (`false` by default).
-- `TRANSACTIONS_EXECUTED_ENABLED` is boolean enabling/disabling monitoring transactions executed (`false` by default).
-- `PROPOSAL_EXECUTED_ENABLED` is boolean enabling/disabling monitoring proposal executed (`false` by default).
-- `PROPOSAL_DELETED_ENABLED` is boolean enabling/disabling monitoring proposal deleted (`false` by default).
-- `SET_COLLATERAL_BOND_ENABLED` is boolean enabling/disabling monitoring set collateral and bond amount (`false` by default).
-- `SET_RULES_ENABLED` is boolean enabling/disabling monitoring set rules (`false` by default).
-- `SET_LIVENESS_ENABLED` is boolean enabling/disabling monitoring set liveness (`false` by default).
-- `SET_IDENTIFIER_ENABLED` is boolean enabling/disabling monitoring set identifier (`false` by default).
-- `SET_ESCALATION_MANAGER_ENABLED` is boolean enabling/disabling monitoring set escalation manager (`false` by default).
+- `THRESHOLD_TRADES` number to compare with the trades signal to trigger a notification (defaults to `0.8`).
+- `THRESHOLD_ORDERS` number to compare with the orders signal to trigger a notification (defaults to `0.8`).

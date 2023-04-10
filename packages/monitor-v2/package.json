@@ -6,7 +6,8 @@
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && yarn run monitor-polymarket-post-build",
+    "monitor-polymarket-post-build": "mkdir -p ./dist/monitor-polymarket/abi && cp ./src/monitor-polymarket/abi/* ./dist/monitor-polymarket/abi",
     "test": "hardhat test"
   },
   "dependencies": {

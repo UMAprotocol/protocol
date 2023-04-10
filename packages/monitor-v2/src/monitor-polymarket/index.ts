@@ -31,11 +31,9 @@ async function main() {
       continue;
     }
 
-    // const runCmds = Object.entries(cmds)
-    //   .filter(([mode]) => params.botModes[mode as keyof BotModes])
-    //   .map(([, cmd]) => cmd(logger, params));
-
-    const runCmds = [monitorTransactionsProposed(logger, params)];
+    const runCmds = Object.entries(cmds)
+      .filter(([mode]) => params.botModes[mode as keyof BotModes])
+      .map(([, cmd]) => cmd(logger, params));
 
     await Promise.all(runCmds);
 
