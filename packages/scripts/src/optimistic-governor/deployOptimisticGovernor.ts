@@ -4,7 +4,7 @@
 // - MNEMONIC: Mnemonic to use for signing transactions (required)
 // - SAFE: Address of Gnosis Safe to use. If not provided, a new Gnosis Safe will be deployed.
 // - COLLATERAL: Address of collateral token. If not provided, value from mastercopy will be used.
-// - BOND_AMOUNT: Proposal bond amount in wei. If not provided, value from mastercopy will be used.
+// - BOND_AMOUNT: Proposal bond amount (scaled down to human readable). If not provided, value from mastercopy will be used.
 // - RULES: Rules to use for evaluating proposed transactions. If not provided, the rules will be set to "proxy rules".
 // - IDENTIFIER: Price identifier to use (in UTF-8). If not provided, value from mastercopy will be used.
 // - LIVENESS: Proposal liveness in seconds. If not provided, value from mastercopy will be used.
@@ -17,8 +17,8 @@
 
 import { StaticJsonRpcProvider } from "@ethersproject/providers";
 import { deployAndSetUpCustomModule } from "@gnosis.pm/zodiac";
-import { getMnemonicSigner } from "@uma/common";
-import { getAbi, getAddress, OptimisticGovernorEthers } from "@uma/contracts-node";
+import { getContractInstanceWithProvider, getMnemonicSigner } from "@uma/common";
+import { getAbi, getAddress, ERC20Ethers, OptimisticGovernorEthers } from "@uma/contracts-node";
 import { BigNumber, Contract, constants, utils, Wallet } from "ethers";
 import { getGnosisSafe, deployGnosisSafe } from "../utils/gnosisSafeDeployment";
 
@@ -57,10 +57,15 @@ async function deployOptimisticGovernor(signer: Wallet, owner: string): Promise<
   const mastercopy = new Contract(mastercopyAddress, optimisticGovernorAbi, provider) as OptimisticGovernorEthers;
 
   // Construct OptimisticGovernor parameters.
-  const collateral = process.env.COLLATERAL !== undefined ? process.env.COLLATERAL : await mastercopy.collateral();
-  if (!utils.isAddress(collateral)) throw new Error("Invalid collateral address");
+  const collateralAddress =
+    process.env.COLLATERAL !== undefined ? process.env.COLLATERAL : await mastercopy.collateral();
+  if (!utils.isAddress(collateralAddress)) throw new Error("Invalid collateral address");
+  const collateral = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, collateralAddress);
+  const decimals = await collateral.decimals();
   const bondAmount =
-    process.env.BOND_AMOUNT !== undefined ? BigNumber.from(process.env.BOND_AMOUNT) : await mastercopy.bondAmount();
+    process.env.BOND_AMOUNT !== undefined
+      ? utils.parseUnits(process.env.BOND_AMOUNT, decimals)
+      : await mastercopy.bondAmount();
   const rules = process.env.RULES !== undefined ? process.env.RULES : "proxy rules";
   const identifier =
     process.env.IDENTIFIER !== undefined
@@ -75,7 +80,7 @@ async function deployOptimisticGovernor(signer: Wallet, owner: string): Promise<
     optimisticGovernorAbi,
     {
       types: ["address", "address", "uint256", "string", "bytes32", "uint64"],
-      values: [owner, collateral, bondAmount, rules, identifier, liveness],
+      values: [owner, collateralAddress, bondAmount, rules, identifier, liveness],
     },
     provider,
     chainId,
