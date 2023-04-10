@@ -24,5 +24,5 @@ All the configuration should be provided with following environment variables:
 - `STARTING_BLOCK_NUMBER` and `ENDING_BLOCK_NUMBER` defines block range to look for events on the `CHAIN_ID` network.
   These are mandatory when `POLLING_DELAY=0`.
 - `TRANSACTIONS_PROPOSED_ENABLED` is boolean enabling/disabling monitoring transactions proposed (`false` by default).
-- `THRESHOLD_TRADES` number to compare with the trades signal to trigger a notification (defaults to `0.8`).
-- `THRESHOLD_ORDERS` number to compare with the orders signal to trigger a notification (defaults to `0.8`).
+- `THRESHOLD_TRADES` number to compare with the trades signal to trigger a notification (defaults to `0.9`).
+- `THRESHOLD_ORDERS` number to compare with the orders signal to trigger a notification (defaults to `0.9`).
