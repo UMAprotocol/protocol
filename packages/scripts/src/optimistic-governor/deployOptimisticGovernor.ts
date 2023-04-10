@@ -59,7 +59,7 @@ async function deployOptimisticGovernor(signer: Wallet, owner: string): Promise<
   // Construct OptimisticGovernor parameters.
   const collateralAddress =
     process.env.COLLATERAL !== undefined ? process.env.COLLATERAL : await mastercopy.collateral();
-  if (!utils.isAddress(collateralAddress)) throw new Error("Invalid collateral address");
+  if (!utils.isAddress(collateralAddress)) throw new Error("Invalid COLLATERAL address");
   const collateral = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, collateralAddress);
   const decimals = await collateral.decimals();
   const bondAmount =
