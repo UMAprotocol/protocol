@@ -61,7 +61,13 @@ contract CommonOptimisticOracleV3Test is CommonTestBase {
     );
     event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
 
-    event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+    event PriceRequestAdded(
+        address indexed requester,
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        bytes32 indexed requestId
+    );
 
     event AssertionSettled(
         bytes32 indexed assertionId,

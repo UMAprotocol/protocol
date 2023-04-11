@@ -24,13 +24,14 @@ contract MockOracleGovernance is MockOracleAncillary {
         bool isGovernance
     ) internal {
         require(isGovernance || _getIdentifierWhitelist().isIdentifierSupported(identifier));
-        Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
-        if (!lookup.isAvailable && !queryIndices[identifier][time][ancillaryData].isValid) {
+        bytes32 requestId = _encodePriceRequest(identifier, time, ancillaryData);
+        Price storage lookup = verifiedPrices[requestId];
+        if (!lookup.isAvailable && !queryIndices[requestId].isValid) {
             // New query, enqueue it for review.
-            queryIndices[identifier][time][ancillaryData] = QueryIndex(true, requestedPrices.length);
+            queryIndices[requestId] = QueryIndex(true, requestedPrices.length);
             QueryPoint memory queryPoint = QueryPoint(identifier, time, ancillaryData);
             requestedPrices.push(queryPoint);
-            emit PriceRequestAdded(msg.sender, identifier, time, ancillaryData);
+            emit PriceRequestAdded(msg.sender, identifier, time, ancillaryData, requestId);
         }
     }
 }

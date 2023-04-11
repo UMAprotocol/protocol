@@ -51,12 +51,15 @@ contract OptimisticOracleV3Events is CommonOptimisticOracleV3Test {
         vm.stopPrank();
 
         // Dispute should emit logs on Optimistic Oracle V3 and Oracle.
+        uint64 assertionTime = optimisticOracleV3.getAssertion(assertionId).assertionTime;
+        bytes memory ancillaryData = optimisticOracleV3.stampAssertion(assertionId);
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(
             address(optimisticOracleV3),
-            optimisticOracleV3.defaultIdentifier(),
-            optimisticOracleV3.getAssertion(assertionId).assertionTime,
-            optimisticOracleV3.stampAssertion(assertionId)
+            defaultIdentifier,
+            assertionTime,
+            ancillaryData,
+            keccak256(abi.encode(defaultIdentifier, assertionTime, ancillaryData))
         );
         vm.expectEmit(true, true, true, true);
         emit AssertionDisputed(assertionId, TestAddress.account2, TestAddress.account2);
