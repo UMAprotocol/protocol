@@ -265,19 +265,25 @@ function calculateTradesSignal(
 function calculateOrderBooksSignal(
   trades: OrderbookPrice[],
   marketResolutionTimestamp: number,
-  moreRelevantHours = 2 // Number of hours before market resolution that are more relevant
+  moreRelevantHours = 24, // Number of hours before market resolution that are more relevant
+  lastHoursWeight = 1.5 // The weight of the last hours' volume compared to the more relevant hourse volume
 ): number {
-  const hoursBeforeMarketResolution = marketResolutionTimestamp - 60 * 60 * moreRelevantHours;
+  const startTimestamp = marketResolutionTimestamp - 60 * 60 * moreRelevantHours;
 
-  const lastHoursTrades = trades.filter((trade) => trade.t >= hoursBeforeMarketResolution);
+  const prices = trades.filter((trade) => trade.t >= startTimestamp);
+  const lastTwoHoursPrices = trades.filter((trade) => trade.t >= marketResolutionTimestamp - 60 * 60 * 2);
 
   // Caculate twap for last hour
-  const lastHourTwap = calculateTWAP(
-    lastHoursTrades.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
-    60 * 10 // 10 min interval
+  const twap = calculateTWAP(
+    prices.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
+    60 * 30
+  );
+  const twapTwoHours = calculateTWAP(
+    lastTwoHoursPrices.map((t) => ({ price: t.p, amount: 1, timestamp: t.t })),
+    60 * 15
   );
 
-  return lastHourTwap;
+  return (twap + lastHoursWeight * twapTwoHours) / (1 + lastHoursWeight);
 }
 export const formatPriceEvents = async (
   events: ProposePriceEvent[]
