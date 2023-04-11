@@ -1,4 +1,5 @@
 // This script can be used to deploy and enable a new Optimistic Governor module for a Gnosis Safe.
+// It is intended to be used on testnets as this assumes that the Gnosis Safe has only a threshold of 1.
 // Environment:
 // - CUSTOM_NODE_URL: URL of the Ethereum node to use (required)
 // - MNEMONIC: Mnemonic to use for signing transactions (required)

@@ -1,4 +1,5 @@
 // This script can be used to propose/dispute approval transaction from Gnosis Safe through Optimistic Governor module.
+// It is intended to be used on testnets for generating a sample proposal limited to a single approval transaction.
 // Environment:
 // - CUSTOM_NODE_URL: URL of the Ethereum node to use (required)
 // - MNEMONIC: Mnemonic to use for signing transactions (required)
