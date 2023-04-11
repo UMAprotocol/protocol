@@ -58,6 +58,9 @@ const voter3RelativeGatFunding = parseEther("0.5");
 const priceIdentifier = formatBytes32String("NUMERICAL");
 
 // Ensure VotingV2 contract has at least this much total stake in Wei so that rewardsPerTokenStored do not overflow.
+// The amount was set experimentally to be the minimum amount necessary to avoid overflow during the test timeframe.
+// Since this also affects simulated slashing amount verification for other voters in Step 20 this value is kept as
+// minimum as possible to avoid false positives while keeping slash amount precision within 10 wei.
 const minimumStakedAmount = hre.ethers.BigNumber.from("1000");
 
 async function main() {
@@ -273,6 +276,7 @@ async function main() {
   // Get existing stakers that will be needed in the next step before foundation stakes.
   const uniqueVoters = await getUniqueVoters(votingV2);
 
+  // Ensure VotingV2 contract has at least minimumStakedAmount total stake in Wei so that rewardsPerTokenStored do not overflow.
   await votingToken.connect(foundationSigner).approve(votingV2.address, minimumStakedAmount);
   await votingV2.connect(foundationSigner).stake(minimumStakedAmount);
   console.log(` ✅ Foundation has staked ${formatEther(minimumStakedAmount)} UMA.`);
