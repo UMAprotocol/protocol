@@ -12,6 +12,7 @@ interface ApprovalPayload {
 }
 
 // Helper function to generate the payload for an approval transaction to be proposed through the OptimisticGovernor.
+// It is intended to be used on creating a sample proposal payload limited to a single approval transaction.
 // This uses TOKEN, AMOUNT and RECIPIENT from environment variables, or falls back to the provided parameters.
 export async function createApprovalPayload(
   provider: Provider,
