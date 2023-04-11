@@ -1,10 +1,25 @@
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { computeVoteHashAncillary, getRandomSignedInt } from "@uma/common";
 import { VotingTokenEthers, VotingV2Ethers, TypedEventFilterEthers as TypedEventFilter } from "@uma/contracts-node";
-import { BigNumber } from "ethers";
+import { BigNumber, BigNumberish, BytesLike, Signer } from "ethers";
 import { getContractInstance } from "./contracts";
 import { forkNetwork, getForkChainId, increaseEvmTime } from "./utils";
 
 const hre = require("hardhat");
 const { ethers } = hre;
+
+export interface VotingPriceRequest {
+  identifier: BytesLike;
+  time: BigNumberish;
+  ancillaryData: BytesLike;
+}
+
+export interface CommittedVote {
+  priceRequest: VotingPriceRequest;
+  salt: BigNumberish;
+  price: BigNumberish;
+  voteHash: BytesLike;
+}
 
 export const getVotingContracts = async (): Promise<{ votingV2: VotingV2Ethers; votingToken: VotingTokenEthers }> => {
   let chainId: number;
@@ -141,3 +156,54 @@ export const unstakeFromStakedAccount = async (votingV2: VotingV2Ethers, voter: 
     await tx.wait();
   }
 };
+
+// Construct voting structure for commit and reveal.
+export async function createCommittedVote(
+  votingV2: VotingV2Ethers,
+  priceRequest: VotingPriceRequest,
+  voter: string,
+  price: string
+): Promise<CommittedVote> {
+  const salt = getRandomSignedInt().toString();
+  const roundId = Number(await votingV2.getCurrentRoundId());
+  const voteHash = computeVoteHashAncillary({
+    price,
+    salt,
+    account: voter,
+    time: Number(priceRequest.time),
+    roundId,
+    identifier: priceRequest.identifier.toString(),
+    ancillaryData: priceRequest.ancillaryData.toString(),
+  });
+  return <CommittedVote>{ priceRequest, salt, price, voteHash };
+}
+
+export async function commitVote(
+  votingV2: VotingV2Ethers,
+  signer: SignerWithAddress,
+  vote: CommittedVote
+): Promise<void> {
+  (
+    await votingV2
+      .connect(signer as Signer)
+      .commitVote(vote.priceRequest.identifier, vote.priceRequest.time, vote.priceRequest.ancillaryData, vote.voteHash)
+  ).wait();
+}
+
+export async function revealVote(
+  votingV2: VotingV2Ethers,
+  signer: SignerWithAddress,
+  vote: CommittedVote
+): Promise<void> {
+  (
+    await votingV2
+      .connect(signer as Signer)
+      .revealVote(
+        vote.priceRequest.identifier,
+        vote.priceRequest.time,
+        vote.price,
+        vote.priceRequest.ancillaryData,
+        vote.salt
+      )
+  ).wait();
+}

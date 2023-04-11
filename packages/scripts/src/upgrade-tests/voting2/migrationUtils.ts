@@ -16,7 +16,8 @@ import {
   VotingUpgraderV2Ethers,
   VotingUpgraderV2Ethers__factory,
 } from "@uma/contracts-node";
-import { FOUNDATION_WALLET, getContractInstance } from "../../utils/contracts";
+import { REQUIRED_SIGNER_ADDRESSES } from "../../utils/constants";
+import { getContractInstance } from "../../utils/contracts";
 
 export const NEW_CONTRACTS = {
   governor: "GOVERNOR_V2_ADDRESS",
@@ -200,7 +201,7 @@ export const proposeEmergency = async (
   votingToken: VotingTokenEthers,
   adminProposalTransactions: AdminProposalTransaction[]
 ): Promise<void> => {
-  const signer = await hre.ethers.getSigner(FOUNDATION_WALLET);
+  const signer = await hre.ethers.getSigner(REQUIRED_SIGNER_ADDRESSES.foundation);
 
   const emergencyProposer = await getContractInstance<EmergencyProposerEthers>(
     "EmergencyProposer",

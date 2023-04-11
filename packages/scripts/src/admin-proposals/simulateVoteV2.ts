@@ -4,10 +4,12 @@ const hre = require("hardhat");
 import { computeVoteHashAncillary, getRandomSignedInt } from "@uma/common";
 import { GovernorV2Ethers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { BigNumberish, BytesLike, Signer } from "ethers";
-import { FOUNDATION_WALLET, getContractInstance, SECONDS_PER_DAY, YES_VOTE } from "../utils/contracts";
+import { REQUIRED_SIGNER_ADDRESSES, SECONDS_PER_DAY, YES_VOTE } from "../utils/constants";
+import { getContractInstance } from "../utils/contracts";
 import { increaseEvmTime } from "../utils/utils";
 
 const { ethers } = hre;
+const FOUNDATION_WALLET = REQUIRED_SIGNER_ADDRESSES.foundation;
 
 require("dotenv").config();
 const assert = require("assert").strict;
