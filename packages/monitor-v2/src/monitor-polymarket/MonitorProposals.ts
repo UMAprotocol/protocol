@@ -2,21 +2,21 @@ import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { Networker } from "@uma/financial-templates-lib";
 import { paginatedEventQuery } from "../utils/EventUtils";
+import { logProposal } from "./MonitorLogger";
 import {
-  formatPriceEvents,
-  getContractInstanceWithProvider,
-  getMarketsAncillary,
-  getMarketsHistoricPrices,
-  getNotifiedProposals,
-  getOrderFilledEvents,
-  getPolymarketMarkets,
   Logger,
   MonitoringParams,
   PolymarketWithEventData,
-  storeNotifiedProposals,
+  formatPriceEvents,
+  getContractInstanceWithProvider,
   getMarketKeyToStore,
+  getMarketsAncillary,
+  getHistoricOrdersAndSignals,
+  getNotifiedProposals,
+  getOrderFilledEventsAndSignals,
+  getPolymarketMarkets,
+  storeNotifiedProposals,
 } from "./common";
-import { logProposal } from "./MonitorLogger";
 
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const networker = new Networker(logger);
@@ -62,10 +62,10 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
     .filter((market) => !Object.keys(pastNotifiedProposals).includes(getMarketKeyToStore(market)));
 
   // Add the historic orderbook signals to the markets and calculate the trade signals.
-  const marketsWithHistory = await getMarketsHistoricPrices(params, marketsWithEventData, networker);
+  const marketsWithHistory = await getHistoricOrdersAndSignals(params, marketsWithEventData, networker);
 
   // Add the order filled events to the markets and calculate the trade signals.
-  const marketsWithOrderFilled = await getOrderFilledEvents(params, marketsWithHistory);
+  const marketsWithOrderFilled = await getOrderFilledEventsAndSignals(params, marketsWithHistory);
 
   const shouldNotify = (
     efficiencyProposed: number,

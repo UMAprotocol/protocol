@@ -6,7 +6,7 @@ import {
   OptimisticOracleV2Ethers,
   VotingTokenEthers,
 } from "@uma/contracts-node";
-import { BotModes, MonitoringParams, OrderBookPrice } from "../src/monitor-polymarket/common";
+import { BotModes, MonitoringParams, OrderbookPrice } from "../src/monitor-polymarket/common";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
 import sinon from "sinon";
@@ -19,9 +19,6 @@ const ethers = hre.ethers;
 describe("PolymarketNotifier", function () {
   let oov2: OptimisticOracleV2Ethers;
   let deployer: Signer;
-  let disputer: Signer;
-  let random: Signer;
-  let proposer: Signer;
   let votingTokenAddress: string;
   const indentifier = formatBytes32String("TEST_IDENTIFIER");
 
@@ -53,7 +50,7 @@ describe("PolymarketNotifier", function () {
 
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.
-    [deployer, random, proposer, disputer] = (await ethers.getSigners()) as Signer[];
+    [deployer] = (await ethers.getSigners()) as Signer[];
 
     // Get contract instances.
     const { finder, votingToken, identifierWhitelist, collateralWhitelist } = (await umaEcosystemFixture()) as {
@@ -106,8 +103,8 @@ describe("PolymarketNotifier", function () {
     const events = await oov2.queryFilter(oov2.filters.ProposePrice());
     const event = events[0];
 
-    const sample = require("./mock/polymarketContracts.json");
-    const markets = sample.slice(0, 5);
+    const mockData = require("./mock/polymarketContracts.json");
+    const markets = mockData.slice(0, 5);
     const getPolymarketMarketsMock = sinon.stub();
     getPolymarketMarketsMock.returns(markets);
     sinon.stub(commonModule, "getPolymarketMarkets").callsFake(getPolymarketMarketsMock);
@@ -119,10 +116,10 @@ describe("PolymarketNotifier", function () {
         historicPrices: [[{ p: 1, t: 123 }], [{ p: 1, t: 123 }]],
         historicOrderBookSignals: [1, 1],
         historicOrderBookSignalsEfficiency: [1, 1],
-      } as OrderBookPrice;
+      } as OrderbookPrice;
     });
     getMarketsHistoricPricesMock.returns(marketsWithHistoricPrices);
-    sinon.stub(commonModule, "getMarketsHistoricPrices").callsFake(getMarketsHistoricPricesMock);
+    sinon.stub(commonModule, "getHistoricOrders").callsFake(getMarketsHistoricPricesMock);
 
     const getOrderFilledEventsMock = sinon.stub();
     const marketsWithFilledEvents = marketsWithHistoricPrices.map((market) => {
@@ -131,7 +128,7 @@ describe("PolymarketNotifier", function () {
         orderFilledEvents: [],
         tradeSignals: [1, 1],
         tradeSignalsEfficiency: [1, 1],
-      } as OrderBookPrice;
+      } as OrderbookPrice;
     });
     getOrderFilledEventsMock.returns(marketsWithFilledEvents);
     sinon.stub(commonModule, "getOrderFilledEvents").callsFake(getOrderFilledEventsMock);
@@ -152,5 +149,32 @@ describe("PolymarketNotifier", function () {
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposed(spyLogger, await createMonitoringParams());
+  });
+  it("Test", async function () {
+    const mockData = require("./mock-data/marketsWithOrderFilled.json");
+
+    const getPolymarketMarketsMock = sinon.stub();
+    getPolymarketMarketsMock.returns([]);
+    sinon.stub(commonModule, "getPolymarketMarkets").callsFake(getPolymarketMarketsMock);
+
+    const getMarketsHistoricPricesMock = sinon.stub();
+    getMarketsHistoricPricesMock.returns(mockData);
+    sinon.stub(commonModule, "getHistoricOrders").callsFake(getMarketsHistoricPricesMock);
+
+    const getOrderFilledEventsMock = sinon.stub();
+    getOrderFilledEventsMock.returns(mockData);
+    sinon.stub(commonModule, "getOrderFilledEvents").callsFake(getOrderFilledEventsMock);
+
+    const getMarketsAncillaryMock = sinon.stub();
+    getMarketsAncillaryMock.returns([]);
+    sinon.stub(commonModule, "getMarketsAncillary").callsFake(getMarketsAncillaryMock);
+
+    // Call monitorAssertions directly for the block when the assertion was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposed(spyLogger, await createMonitoringParams());
+
+    console.log("Number of markets ", mockData.length);
+    console.log("Number of calls notifications", spy.callCount);
   });
 });

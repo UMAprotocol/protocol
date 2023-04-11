@@ -83,15 +83,15 @@ export interface PolymarketWithEventData extends PolymarketMarketWithAncillaryDa
   ancillaryData: string;
   proposedPrice: string;
 }
-export interface OrderBookPrice {
+export interface OrderbookPrice {
   t: number;
   p: number;
 }
-interface HistoricPricesPolymarket {
-  history: OrderBookPrice[];
+interface PolymarketHistoricOrderbook {
+  history: OrderbookPrice[];
 }
 interface PolymarketWithHistoricPrices extends PolymarketWithEventData {
-  historicPrices: [OrderBookPrice[], OrderBookPrice[]];
+  historicPrices: [OrderbookPrice[], OrderbookPrice[]];
   historicOrderBookSignals: [number, number];
   historicOrderBookSignalsEfficiency: [number, number];
 }
@@ -118,9 +118,9 @@ export interface StoredNotifiedProposal {
 // If the signal is 0.5 then the market is not liquid enough to be considered efficient.
 // This is because there haven't been any orders placed on the book.
 const getHistoricOrderBookEfficiency = (
-  orders: OrderBookPrice[],
+  orders: OrderbookPrice[],
   marketResolutionTimestamp: number,
-  mostRelevantHoursBeforeResolution = 2
+  mostRelevantHoursBeforeResolution = 24
 ) => {
   const mostRelevantOrders = orders.filter(
     (order) =>
@@ -263,7 +263,7 @@ function calculateTradesSignal(
 }
 
 function calculateOrderBooksSignal(
-  trades: OrderBookPrice[],
+  trades: OrderbookPrice[],
   marketResolutionTimestamp: number,
   moreRelevantHours = 2 // Number of hours before market resolution that are more relevant
 ): number {
@@ -428,7 +428,11 @@ export const getMarketsAncillary = async (
 export const getOrderFilledEvents = async (
   params: MonitoringParams,
   markets: PolymarketWithHistoricPrices[]
-): Promise<PolymarketWithTrades[]> => {
+): Promise<
+  (PolymarketWithHistoricPrices & {
+    orderFilledEvents: [TradeInformation[], TradeInformation[]];
+  })[]
+> => {
   if (markets.length === 0) return [];
 
   let ctfExchange;
@@ -467,7 +471,7 @@ export const getOrderFilledEvents = async (
     searchConfig
   );
 
-  const output: PolymarketWithTrades[] = [];
+  const output = [];
   for (let i = 0; i < markets.length; i++) {
     const market = markets[i];
 
@@ -487,13 +491,29 @@ export const getOrderFilledEvents = async (
         .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
     );
 
-    const outcomeTokenOneSignal = calculateTradesSignal(outcomeTokenOne, 0, market.expirationTimestamp);
-    const outcomeTokenTwoSignal = calculateTradesSignal(outcomeTokenTwo, 0, market.expirationTimestamp);
+    output.push({
+      ...market,
+      orderFilledEvents: [outcomeTokenOne, outcomeTokenTwo] as [TradeInformation[], TradeInformation[]],
+    });
+  }
+  return output;
+};
 
+export const getOrderFilledEventsAndSignals = async (
+  params: MonitoringParams,
+  markets: PolymarketWithHistoricPrices[]
+): Promise<PolymarketWithTrades[]> => {
+  const orderFilledEvents = await getOrderFilledEvents(params, markets);
+
+  return orderFilledEvents.map((market) => {
     const marketCreationTimestamp = new Date(market.createdAt).getTime() / 1000;
     const marketProposalTimestamp = market.proposalTimestamp;
-    const lastOrderTimestampOutcomeOne = Math.max(...outcomeTokenOne.map((trade) => trade.timestamp));
-    const lastOrderTimestampOutcomeTwo = Math.max(...outcomeTokenTwo.map((trade) => trade.timestamp));
+
+    const outcomeTokenOneSignal = calculateTradesSignal(market.orderFilledEvents[0], 0, market.expirationTimestamp);
+    const outcomeTokenTwoSignal = calculateTradesSignal(market.orderFilledEvents[1], 0, market.expirationTimestamp);
+
+    const lastOrderTimestampOutcomeOne = Math.max(...market.orderFilledEvents[0].map((trade) => trade.timestamp));
+    const lastOrderTimestampOutcomeTwo = Math.max(...market.orderFilledEvents[1].map((trade) => trade.timestamp));
 
     // The trade efficiency is a number between 0 and 1 that represents how much time has passed since the last trade
     // If there are no trades, the efficiency is 0
@@ -509,25 +529,29 @@ export const getOrderFilledEvents = async (
       );
     };
 
-    output.push({
+    return {
       ...market,
-      orderFilledEvents: [outcomeTokenOne, outcomeTokenTwo],
       tradeSignals: [outcomeTokenOneSignal, outcomeTokenTwoSignal],
       tradeSignalsEfficiency: [
         getTradesEfficiency(lastOrderTimestampOutcomeOne),
         getTradesEfficiency(lastOrderTimestampOutcomeTwo),
       ],
-    });
-  }
-  return output;
+    };
+  });
 };
 
-export const getMarketsHistoricPrices = async (
+export const getHistoricOrders = async (
   params: MonitoringParams,
   markets: PolymarketWithEventData[],
   networker: NetworkerInterface
-): Promise<PolymarketWithHistoricPrices[]> => {
-  const results: PolymarketWithHistoricPrices[] = [];
+): Promise<
+  (PolymarketWithEventData & {
+    historicPrices: [OrderbookPrice[], OrderbookPrice[]];
+  })[]
+> => {
+  const results: (PolymarketWithEventData & {
+    historicPrices: [OrderbookPrice[], OrderbookPrice[]];
+  })[] = [];
 
   await processMarketsInChunks(markets, 30, async (marketChunk: PolymarketWithEventData[]) => {
     const chunkResults = await Promise.all(
@@ -540,31 +564,16 @@ export const getMarketsHistoricPrices = async (
         const apiUrlTwo = params.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketTwo}`;
         const { history: outcome1HistoricPrices } = (await networker.getJson(apiUrlOne, {
           method: "get",
-        })) as HistoricPricesPolymarket;
+        })) as PolymarketHistoricOrderbook;
 
         const { history: outcome2HistoricPrices } = (await networker.getJson(apiUrlTwo, {
           method: "get",
-        })) as HistoricPricesPolymarket;
-
-        const historicOrderBookOutcomeOne = calculateOrderBooksSignal(
-          outcome1HistoricPrices,
-          market.expirationTimestamp
-        );
-
-        const historicOrderBookOutcomeTwo = calculateOrderBooksSignal(
-          outcome2HistoricPrices,
-          market.expirationTimestamp
-        );
+        })) as PolymarketHistoricOrderbook;
 
         return {
           ...market,
-          historicPrices: [outcome1HistoricPrices, outcome2HistoricPrices],
-          historicOrderBookSignals: [historicOrderBookOutcomeOne, historicOrderBookOutcomeTwo],
-          historicOrderBookSignalsEfficiency: [
-            getHistoricOrderBookEfficiency(outcome1HistoricPrices, market.expirationTimestamp),
-            getHistoricOrderBookEfficiency(outcome2HistoricPrices, market.expirationTimestamp),
-          ],
-        } as PolymarketWithHistoricPrices;
+          historicPrices: [outcome1HistoricPrices, outcome2HistoricPrices] as [OrderbookPrice[], OrderbookPrice[]],
+        };
       })
     );
 
@@ -572,6 +581,29 @@ export const getMarketsHistoricPrices = async (
   });
 
   return results;
+};
+
+export const getHistoricOrdersAndSignals = async (
+  params: MonitoringParams,
+  markets: PolymarketWithEventData[],
+  networker: NetworkerInterface
+): Promise<PolymarketWithHistoricPrices[]> => {
+  const historicOrders = await getHistoricOrders(params, markets, networker);
+
+  return historicOrders.map((market) => {
+    const historicOrderBookOutcomeOne = calculateOrderBooksSignal(market.historicPrices[0], market.expirationTimestamp);
+
+    const historicOrderBookOutcomeTwo = calculateOrderBooksSignal(market.historicPrices[1], market.expirationTimestamp);
+
+    return {
+      ...market,
+      historicOrderBookSignals: [historicOrderBookOutcomeOne, historicOrderBookOutcomeTwo],
+      historicOrderBookSignalsEfficiency: [
+        getHistoricOrderBookEfficiency(market.historicPrices[0], market.expirationTimestamp),
+        getHistoricOrderBookEfficiency(market.historicPrices[1], market.expirationTimestamp),
+      ],
+    } as PolymarketWithHistoricPrices;
+  });
 };
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
