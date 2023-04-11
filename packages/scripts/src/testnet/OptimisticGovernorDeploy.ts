@@ -6,7 +6,7 @@
 // - SAFE: Address of Gnosis Safe to use. If not provided, a new Gnosis Safe will be deployed.
 // - COLLATERAL: Address of collateral token. If not provided, value from mastercopy will be used.
 // - BOND_AMOUNT: Proposal bond amount (scaled down to human readable). If not provided, value from mastercopy will be used.
-// - RULES: Rules to use for evaluating proposed transactions. If not provided, the rules will be set to "proxy rules".
+// - RULES: Rules to use for evaluating proposed transactions. If not provided, the rules will be set to "placeholder rules".
 // - IDENTIFIER: Price identifier to use (in UTF-8). If not provided, value from mastercopy will be used.
 // - LIVENESS: Proposal liveness in seconds. If not provided, value from mastercopy will be used.
 // Run:
@@ -68,7 +68,7 @@ async function deployOptimisticGovernor(signer: Wallet, owner: string): Promise<
     process.env.BOND_AMOUNT !== undefined
       ? utils.parseUnits(process.env.BOND_AMOUNT, decimals)
       : await mastercopy.bondAmount();
-  const rules = process.env.RULES !== undefined ? process.env.RULES : "proxy rules";
+  const rules = process.env.RULES !== undefined ? process.env.RULES : "placeholder rules";
   const identifier =
     process.env.IDENTIFIER !== undefined
       ? utils.formatBytes32String(process.env.IDENTIFIER)
