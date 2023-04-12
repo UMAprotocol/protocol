@@ -258,48 +258,6 @@ export const getMarketsAncillary = async (
   });
 };
 
-function mergeAndCancelOrders(
-  orderBooks: [{ bids: OrderBookSide; asks: OrderBookSide }, { bids: OrderBookSide; asks: OrderBookSide }]
-) {
-  const cancelOrders = (side1: OrderBookSide, side2: OrderBookSide): [OrderBookSide, OrderBookSide] => {
-    const mapSide1 = new Map(side1.map((order) => [order.price, order.size]));
-    const mapSide2 = new Map(side2.map((order) => [order.price, order.size]));
-
-    for (const [price, size] of mapSide1.entries()) {
-      if (mapSide2.has(price)) {
-        const diff = size - Number(mapSide2.get(price));
-        if (diff != 0) {
-          if (size > Number(mapSide2.get(price))) {
-            const newSize = size - Number(mapSide2.get(price));
-            mapSide1.set(price, newSize);
-            mapSide2.delete(price);
-          } else {
-            const newSize = Number(mapSide2.get(price)) - size;
-            mapSide2.set(price, newSize);
-            mapSide1.delete(price);
-          }
-        } else {
-          mapSide2.delete(price);
-          mapSide1.delete(price);
-        }
-      }
-    }
-
-    const out1 = Array.from(mapSide1.entries()).map(([price, size]) => ({ price, size }));
-    const out2 = Array.from(mapSide2.entries()).map(([price, size]) => ({ price, size }));
-
-    return [out1, out2];
-  };
-
-  const [bids1, bids2] = cancelOrders(orderBooks[0].bids, orderBooks[1].bids);
-  const [asks, asks2] = cancelOrders(orderBooks[0].asks, orderBooks[1].asks);
-
-  return [
-    { bids: bids1, asks },
-    { bids: bids2, asks: asks2 },
-  ];
-}
-
 export const getPolymarketOrderBooks = async (
   params: MonitoringParams,
   markets: PolymarketWithEventData[],
@@ -364,23 +322,6 @@ export const getPolymarketOrderBooks = async (
   });
 
   return results;
-};
-
-export const getPolymarketOrderBooksAndSignals = async (
-  params: MonitoringParams,
-  markets: PolymarketWithEventData[],
-  networker: NetworkerInterface
-): Promise<(PolymarketWithEventData & MarketOrderbooks)[]> => {
-  const orderBooks = await getPolymarketOrderBooks(params, markets, networker);
-
-  // Merge and cancel orders
-  return orderBooks.map((market) => {
-    const [outcomeOne, outcomeTwo] = mergeAndCancelOrders(market.orderBooks);
-    return {
-      ...market,
-      orderBooks: [outcomeOne, outcomeTwo],
-    };
-  });
 };
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {

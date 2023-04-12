@@ -150,59 +150,13 @@ describe("PolymarketNotifier", function () {
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
-    assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketNotifier");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(
       spyLogIncludes(spy, 0, ` Someone is trying to sell 100 winner outcome tokens at a price of 0.9 on the orderbook.`)
     ); // price
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
-  });
-  it("It should not notify if orders are merge or mint operations", async function () {
-    mockData[0].proposedPrice = "1.0";
-    mockData[0].orderBooks = [
-      {
-        bids: [
-          {
-            price: "0.5",
-            size: "100",
-          },
-        ],
-        asks: [
-          {
-            price: "0.5",
-            size: "100",
-          },
-        ],
-      },
-      {
-        bids: [
-          {
-            price: "0.5",
-            size: "100",
-          },
-        ],
-        asks: [
-          {
-            price: "0.5",
-            size: "100",
-          },
-        ],
-      },
-    ];
-
-    const mockDataFunction = sinon.stub();
-    mockDataFunction.returns(mockData);
-    sinon.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sinon.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-
-    // Call monitorAssertions directly for the block when the assertion was made.
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
-
-    assert.equal(spy.callCount, 0);
   });
   it("It should not notify if order book is empty", async function () {
     mockData[0].proposedPrice = "1.0";

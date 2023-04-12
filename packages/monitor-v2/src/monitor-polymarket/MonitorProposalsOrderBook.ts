@@ -12,7 +12,7 @@ import {
   getMarketsAncillary,
   getNotifiedProposals,
   getPolymarketMarkets,
-  getPolymarketOrderBooksAndSignals,
+  getPolymarketOrderBooks,
   storeNotifiedProposals,
 } from "./common";
 import { logProposalOrderBook } from "./MonitorLogger";
@@ -63,7 +63,7 @@ export async function monitorTransactionsProposedOrderBook(
     .filter((market) => market.expirationTimestamp > Date.now() / 1000)
     .filter((market) => !Object.keys(pastNotifiedProposals).includes(getMarketKeyToStore(market)));
 
-  const marketsWithOrderBooks = await getPolymarketOrderBooksAndSignals(params, marketsWithEventData, networker);
+  const marketsWithOrderBooks = await getPolymarketOrderBooks(params, marketsWithEventData, networker);
 
   const notifiedProposals = [];
   for (const market of marketsWithOrderBooks) {
