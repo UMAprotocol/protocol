@@ -102,7 +102,7 @@ async function proposeApproval(signer: Wallet): Promise<string> {
     provider,
     await optimisticGovernor.collateral()
   );
-  await collateral.connect(signer).approve(optimisticGovernor.address, proposalBond);
+  await (await collateral.connect(signer).approve(optimisticGovernor.address, proposalBond)).wait();
 
   // Propose approval transaction. Uses TOKEN, AMOUNT and RECIPIENT environment variables if provided.
   const proposal = await createApprovalPayload(provider, collateral.address, "1", signer.address);
@@ -139,7 +139,7 @@ async function disputeAssertion(signer: Wallet, assertionId: string): Promise<vo
   // Approve dispute bond.
   const assertion = await optimisticOracleV3.getAssertion(assertionId);
   const bondCurrency = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", signer.provider, assertion.currency);
-  await bondCurrency.connect(signer).approve(optimisticOracleV3.address, assertion.bond);
+  await (await bondCurrency.connect(signer).approve(optimisticOracleV3.address, assertion.bond)).wait();
 
   // Dispute assertion.
   const disputeReceipt = await (
