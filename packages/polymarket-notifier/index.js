@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers:
-const { Networker, Logger, delay } = require("@uma/financial-templates-lib");
+const { Logger, delay } = require("@uma/financial-templates-lib");
 
 const { PolymarketNotifier } = require("./src/polymarketNotifier");
 
@@ -37,19 +37,15 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     const apiEndpoint = notifierConfig.apiEndpoint;
-    const graphqlEndpoint = notifierConfig.graphqlEndpoint;
     const minAcceptedPrice = notifierConfig.minAcceptedPrice;
     const minMarketLiquidity = notifierConfig.minMarketLiquidity;
     const minMarketVolume = notifierConfig.minMarketVolume;
-    const networker = new Networker(logger);
 
     const polymarketNotifier = new PolymarketNotifier({
       logger,
       web3,
-      networker,
       getTime,
       apiEndpoint,
-      graphqlEndpoint,
       minAcceptedPrice,
       minMarketLiquidity,
       minMarketVolume,
@@ -111,8 +107,7 @@ async function Poll(callback) {
       // Notifier config contains all configuration settings for the notifier. This includes the following:
       // NOTIFIER_CONFIG={
       //  "minAcceptedPrice": 0.99,                         // If the Polymarket API price is below this value at the time of a proposal an alert is sent.
-      //  "apiEndpoint": "https://clob.polymarket.com",   // API endpoint to check for Polymarket information.
-      //  "graphqlEndpoint": "https://gamma-api.polymarket.com/query",   // Graphql API endpoint to check for Polymarket information.
+      //  "apiEndpoint": "https://gamma-api.polymarket.com/query",   // API endpoint to check for Polymarket information.
       //  "minMarketLiquidity": 1000,                       // Minimum market liquidity that determines if alert is sent.
       //  "minMarketVolume": 750                           // Minimum market volume that determines if alert is sent.
       // }
@@ -120,8 +115,7 @@ async function Poll(callback) {
     };
     // Fill in notifierConfig defaults:
     executionParameters.notifierConfig = {
-      apiEndpoint: "https://clob.polymarket.com",
-      graphqlEndpoint: "https://gamma-api.polymarket.com/query",
+      apiEndpoint: "https://gamma-api.polymarket.com/query",
       minAcceptedPrice: 0.95,
       minMarketLiquidity: 500,
       minMarketVolume: 500,

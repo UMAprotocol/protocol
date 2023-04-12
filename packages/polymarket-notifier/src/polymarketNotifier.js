@@ -16,31 +16,17 @@ const multicallAddress = "0x11ce4B23bD875D7F5C6a31084f55fDe1e9A87507";
 class PolymarketNotifier {
   /**
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
    * @param {String} apiEndpoint API endpoint to monitor.
-   * @param {String} graphqlEndpoint Graphql API endpoint to monitor.
    * @param {Integer} minAcceptedPrice API price that determines if alert is sent.
    * @param {Integer} minMarketLiquidity Minimum market liquidity that determines if alert is sent.
    * @param {Integer} minMarketVolume Minimum market volume that determines if alert is sent.
    */
-  constructor({
-    logger,
-    web3,
-    networker,
-    getTime,
-    apiEndpoint,
-    graphqlEndpoint,
-    minAcceptedPrice,
-    minMarketLiquidity,
-    minMarketVolume,
-  }) {
+  constructor({ logger, web3, getTime, apiEndpoint, minAcceptedPrice, minMarketLiquidity, minMarketVolume }) {
     this.logger = logger;
     this.web3 = web3;
-    this.networker = networker;
     this.getTime = getTime;
     this.apiEndpoint = apiEndpoint;
-    this.graphqlEndpoint = graphqlEndpoint;
     this.minAcceptedPrice = minAcceptedPrice;
     this.minMarketLiquidity = minMarketLiquidity;
     this.minMarketVolume = minMarketVolume;
@@ -75,8 +61,7 @@ class PolymarketNotifier {
 
     // gets all ProposePrice events using ethers query filter api. fromBlock is set to block of the latest OO deployment.
     const currentBlock = await this.web3.eth.getBlockNumber();
-    const fromBlock = currentBlock - 120_000 * 10; // 120k blocks is roughly 3 days in polygon
-    const ooDefaultLiveness = 7200; // polymarket uses the default
+    const fromBlock = currentBlock - 120_000; // 120k blocks is roughly 3 days in polygon
     const optimisticOracleEventsV1 = await optimisticOracleV1.getPastEvents("ProposePrice", { fromBlock: fromBlock });
     const optimisticOracleEventsV2 = await optimisticOracleV2.getPastEvents("ProposePrice", { fromBlock: fromBlock });
     const events = [...optimisticOracleEventsV1, ...optimisticOracleEventsV2];
@@ -88,7 +73,6 @@ class PolymarketNotifier {
       proposer: request.returnValues["proposer"],
       timestamp: Number(request.returnValues["timestamp"]),
       expirationTimestamp: Number(request.returnValues["expirationTimestamp"]),
-      proposalTimestamp: Number(request.returnValues["expirationTimestamp"]) - ooDefaultLiveness,
       identifier: request.returnValues["identifier"],
       ancillaryData: request.returnValues["ancillaryData"],
       proposedPrice: this.web3.utils.fromWei(request.returnValues["proposedPrice"]).toString(),
@@ -96,28 +80,11 @@ class PolymarketNotifier {
 
     // combines data from the Polymarket API data to the proposal event based on ancillaryData
     const proposalData = proposalEvents
-      // .filter((proposalEvent) => proposalEvent.expirationTimestamp > currentTime)
-      .filter((proposalEvent) =>
-        questionData.find((proposals) => proposals.ancillaryData === proposalEvent.ancillaryData)
-      )
+      .filter((proposalEvent) => proposalEvent.expirationTimestamp > currentTime)
       .map((proposalEvent) => ({
         ...proposalEvent,
         ...questionData.find((proposals) => proposals.ancillaryData === proposalEvent.ancillaryData),
-      }))
-      .map((proposal) => {
-        // get the price before the proposal timestamp
-        const outcome1PriceBeforeProposal = proposal.outcome1HistoricPrices
-          .reverse()
-          .find((price) => price.t < proposal.proposalTimestamp);
-        const outcome2PriceBeforeProposal = proposal.outcome2HistoricPrices
-          .reverse()
-          .find((price) => price.t < proposal.proposalTimestamp);
-        return {
-          ...proposal,
-          outcome1PriceBeforeProposal: outcome1PriceBeforeProposal.p,
-          outcome2PriceBeforeProposal: outcome2PriceBeforeProposal.p,
-        };
-      });
+      }));
 
     // checks the proposed price against the Polymarket API data
     const recentProposals = proposalData
@@ -134,19 +101,11 @@ class PolymarketNotifier {
           return null;
         }
         // ensures the API price is greater than 0.95 when a 1 is proposed
-        if (
-          contract.proposedPrice === "1" &&
-          contract.outcome1PriceBeforeProposal != 0.5 &&
-          contract.outcome1PriceBeforeProposal > this.minAcceptedPrice
-        ) {
+        if (contract.proposedPrice === "1" && contract.outcome1Price > this.minAcceptedPrice) {
           return null;
         }
         // ensures the API price is greater than 0.95 when a 1 is proposed
-        if (
-          contract.proposedPrice === "0" &&
-          contract.outcome2PriceBeforeProposal != 0.5 &&
-          contract.outcome2PriceBeforeProposal > this.minAcceptedPrice
-        ) {
+        if (contract.proposedPrice === "0" && contract.outcome2Price > this.minAcceptedPrice) {
           return null;
         }
         // the bot currently is not optimized for earlyExpirations but can be updated later
@@ -208,20 +167,9 @@ class PolymarketNotifier {
     const ctfAdapterContract = await new this.web3.eth.Contract(ctfAdapterAbi, ctfAdapterAddress);
 
     // Polymarket API
-
-    const aMonthAgo = Math.floor(Date.now() / 1000) - 60 * 60 * 24;
-
-    const whereClause =
-      "active = true" +
-      " AND question_ID IS NOT NULL" +
-      " AND clob_Token_Ids IS NOT NULL" +
-      ` AND (resolved_by = '${binaryAdapterAddress}' OR resolved_by = '${ctfAdapterAddress}')` +
-      ` AND EXTRACT(EPOCH FROM TO_TIMESTAMP(end_date, 'Month DD, YYYY')) > ${aMonthAgo}` +
-      " AND uma_resolution_status='resolved'";
-
     const query = `
     {
-      markets(where: "${whereClause}", order: "created_at desc") {
+      markets(where: "active = true AND question_ID IS NOT NULL and (resolved_by = '${binaryAdapterAddress}' OR resolved_by = '${ctfAdapterAddress}')", order: "created_at desc") {
         resolvedBy
         questionID
         createdAt
@@ -230,60 +178,38 @@ class PolymarketNotifier {
         outcomePrices
         liquidityNum
         volumeNum
-        clobTokenIds
       }
     }
     `;
 
-    const { markets: polymarketContracts } = await request(this.graphqlEndpoint, query);
+    const { markets: polymarketContracts } = await request(this.apiEndpoint, query);
     assert(polymarketContracts && polymarketContracts.length, "Requires polymarket api data");
 
-    // Get the price history for each market
-    let marketsWithPriceHistory = await Promise.all(
-      polymarketContracts.map(async (polymarketContract) => {
-        // startTs 24 hours ago
-        const startTs = Math.floor(Date.now() / 1000) - 60 * 60 * 24;
-        const endTs = Math.floor(Date.now() / 1000);
-        const marketOne = JSON.parse(polymarketContract.clobTokenIds)[0];
-        const marketTwo = JSON.parse(polymarketContract.clobTokenIds)[1];
-        const apiUrlOne = this.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketOne}`;
-        const apiUrlTwo = this.apiEndpoint + `/prices-history?startTs=${startTs}&endTs=${endTs}&market=${marketTwo}`;
-        const { history: outcome1HistoricPrices } = await this.networker.getJson(apiUrlOne, { method: "get" });
-        const { history: outcome2HistoricPrices } = await this.networker.getJson(apiUrlTwo, { method: "get" });
+    const transactions = polymarketContracts
+      .filter(
+        (polymarketContract) =>
+          Number(polymarketContract.liquidityNum) > this.minMarketLiquidity &&
+          Number(polymarketContract.volumeNum) > this.minMarketVolume
+      )
+      .map((polymarketContract) => {
+        const resolutionContract =
+          polymarketContract.resolveBy === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
+
         return {
-          ...polymarketContract,
-          outcome1HistoricPrices,
-          outcome2HistoricPrices,
+          target: resolutionContract.options.address,
+          callData: resolutionContract.methods.questions(polymarketContract.questionID).encodeABI(),
         };
-      })
-    );
+      });
 
-    marketsWithPriceHistory = marketsWithPriceHistory.filter(
-      (polymarketContract) =>
-        // If the dont have price history then they are old markets that we dont want to check.
-        polymarketContract.outcome1HistoricPrices.length || polymarketContract.outcome2HistoricPrices.length
-    );
-
-    const transactions = marketsWithPriceHistory.map((polymarketContract) => {
-      const resolutionContract =
-        polymarketContract.resolveBy === binaryAdapterAddress ? binaryAdapterContract : ctfAdapterContract;
-
-      return {
-        target: resolutionContract.options.address,
-        callData: resolutionContract.methods.questions(polymarketContract.questionID).encodeABI(),
-      };
-    });
-
+    // The API query returns 4k+ contracts, so we need to chunk the multicall requests to avoid hitting the gas limit.
     const chunks = [];
-    const chunkSize = 250;
-    for (let i = 0; i < transactions.length; i += chunkSize) {
-      chunks.push(transactions.slice(i, i + chunkSize));
+    for (let i = 0; i < transactions.length; i += 250) {
+      chunks.push(transactions.slice(i, i + 250));
     }
 
     // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
     const ancillaryData = [];
-    for (let j = 0; j < chunks.length; j++) {
-      const chunk = chunks[j];
+    for (let chunk of chunks) {
       const chunkAncillaryData = (await aggregateTransactionsAndCall(multicallAddress, this.web3, chunk)).map(
         ({ ancillaryData }, i) => {
           const {
@@ -291,9 +217,7 @@ class PolymarketNotifier {
             question,
             outcomes: outcomesString,
             outcomePrices: outcomePricesString,
-            outcome1HistoricPrices,
-            outcome2HistoricPrices,
-          } = marketsWithPriceHistory[j * chunkSize + i];
+          } = polymarketContracts[i];
           const outcomes = JSON.parse(outcomesString);
           const outcomePrices = JSON.parse(outcomePricesString);
 
@@ -305,9 +229,6 @@ class PolymarketNotifier {
             outcome1Price: Number(outcomePrices[0]).toFixed(4),
             outcome2: outcomes[1],
             outcome2Price: Number(outcomePrices[1]).toFixed(4),
-            clobTokenIds: JSON.parse(polymarketContracts[i].clobTokenIds),
-            outcome1HistoricPrices,
-            outcome2HistoricPrices,
           };
         }
       );
