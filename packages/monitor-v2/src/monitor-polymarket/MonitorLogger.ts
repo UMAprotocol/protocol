@@ -34,7 +34,7 @@ export async function logProposalOrderBook(
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
-    at: "PolymarketMonitor",
+    at: "PolymarketNotifier",
     message: "Difference between proposed price and market signal! 🚨",
     mrkdwn:
       ` A price of ${market.proposedPrice} corresponding to outcome ${market.proposedOutcome} was proposed at ${market.proposalTime} for the following question:` +
