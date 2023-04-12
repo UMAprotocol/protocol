@@ -90,6 +90,15 @@ export interface OrderbookPrice {
 interface PolymarketHistoricOrderbook {
   history: OrderbookPrice[];
 }
+
+interface PolymarketOrderBook {
+  market: string;
+  asset_id: string;
+  bids: { price: string; size: string }[];
+  asks: { price: string; size: string }[];
+  hash: string;
+}
+
 interface PolymarketWithHistoricPrices extends PolymarketWithEventData {
   historicPrices: [OrderbookPrice[], OrderbookPrice[]];
   historicOrderBookSignals: [number, number];
@@ -106,6 +115,11 @@ export interface PolymarketWithTrades extends PolymarketWithHistoricPrices {
   orderFilledEvents: [TradeInformation[], TradeInformation[]];
   tradeSignals: [number, number];
   tradeSignalsEfficiency: [number, number];
+}
+
+export type OrderBookSide = { price: number; size: number }[];
+export interface MarketOrderbooks {
+  orderBooks: [{ bids: OrderBookSide; asks: OrderBookSide }, { bids: OrderBookSide; asks: OrderBookSide }];
 }
 
 export interface StoredNotifiedProposal {
@@ -589,6 +603,131 @@ export const getHistoricOrders = async (
   return results;
 };
 
+function mergeAndCancelOrders(
+  orderBooks: [{ bids: OrderBookSide; asks: OrderBookSide }, { bids: OrderBookSide; asks: OrderBookSide }]
+) {
+  const cancelOrders = (side1: OrderBookSide, side2: OrderBookSide): [OrderBookSide, OrderBookSide] => {
+    const mapSide1 = new Map(side1.map((order) => [order.price, order.size]));
+    const mapSide2 = new Map(side2.map((order) => [order.price, order.size]));
+
+    for (const [price, size] of mapSide1.entries()) {
+      if (mapSide2.has(price)) {
+        const diff = size - Number(mapSide2.get(price));
+        if (diff != 0) {
+          if (size > Number(mapSide2.get(price))) {
+            const newSize = size - Number(mapSide2.get(price));
+            mapSide1.set(price, newSize);
+            mapSide2.delete(price);
+          } else {
+            const newSize = Number(mapSide2.get(price)) - size;
+            mapSide2.set(price, newSize);
+            mapSide1.delete(price);
+          }
+        } else {
+          mapSide2.delete(price);
+          mapSide1.delete(price);
+        }
+      }
+    }
+
+    const out1 = Array.from(mapSide1.entries()).map(([price, size]) => ({ price, size }));
+    const out2 = Array.from(mapSide2.entries()).map(([price, size]) => ({ price, size }));
+
+    return [out1, out2];
+  };
+
+  const [bids1, bids2] = cancelOrders(orderBooks[0].bids, orderBooks[1].bids);
+  const [asks, asks2] = cancelOrders(orderBooks[0].asks, orderBooks[1].asks);
+
+  return [
+    { bids: bids1, asks },
+    { bids: bids2, asks: asks2 },
+  ];
+}
+
+export const getPolymarketOrderBooks = async (
+  params: MonitoringParams,
+  markets: PolymarketWithEventData[],
+  networker: NetworkerInterface
+): Promise<(PolymarketWithEventData & MarketOrderbooks)[]> => {
+  const results: (PolymarketWithEventData & MarketOrderbooks)[] = [];
+
+  await processMarketsInChunks(markets, 30, async (marketChunk: PolymarketWithEventData[]) => {
+    const chunkResults = await Promise.all(
+      marketChunk.map(async (market) => {
+        const marketOne = market.clobTokenIds[0];
+        const marketTwo = market.clobTokenIds[1];
+        const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
+        const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
+        const { bids: outcome1Bids, asks: outcome1Asks } = (await networker.getJson(apiUrlOne, {
+          method: "get",
+        })) as PolymarketOrderBook;
+
+        const { bids: outcome2Bids, asks: outcome2Asks } = (await networker.getJson(apiUrlTwo, {
+          method: "get",
+        })) as PolymarketOrderBook;
+
+        const stringToNumber = (orderBook: {
+          bids: {
+            price: string;
+            size: string;
+          }[];
+          asks: {
+            price: string;
+            size: string;
+          }[];
+        }) => {
+          return {
+            bids: orderBook.bids.map((bid) => {
+              return {
+                price: Number(bid.price),
+                size: Number(bid.size),
+              };
+            }),
+            asks: orderBook.asks.map((ask) => {
+              return {
+                price: Number(ask.price),
+                size: Number(ask.size),
+              };
+            }),
+          };
+        };
+
+        return {
+          ...market,
+          ...({
+            orderBooks: [
+              stringToNumber({ bids: outcome1Bids || [], asks: outcome1Asks || [] }),
+              stringToNumber({ bids: outcome2Bids || [], asks: outcome2Asks || [] }),
+            ],
+          } as MarketOrderbooks),
+        };
+      })
+    );
+
+    results.push(...chunkResults);
+  });
+
+  return results;
+};
+
+export const getPolymarketOrderBooksAndSignals = async (
+  params: MonitoringParams,
+  markets: PolymarketWithEventData[],
+  networker: NetworkerInterface
+): Promise<(PolymarketWithEventData & MarketOrderbooks)[]> => {
+  const orderBooks = await getPolymarketOrderBooks(params, markets, networker);
+
+  // Merge and cancel orders
+  return orderBooks.map((market) => {
+    const [outcomeOne, outcomeTwo] = mergeAndCancelOrders(market.orderBooks);
+    return {
+      ...market,
+      orderBooks: [outcomeOne, outcomeTwo],
+    };
+  });
+};
+
 export const getHistoricOrdersAndSignals = async (
   params: MonitoringParams,
   markets: PolymarketWithEventData[],
@@ -675,7 +814,9 @@ export const getMarketKeyToStore = (market: { txHash: string; question: string; 
   return market.txHash + "_" + market.question + "_" + market.proposedPrice;
 };
 
-export const storeNotifiedProposals = async (notifiedContracts: PolymarketWithTrades[]): Promise<void> => {
+export const storeNotifiedProposals = async (
+  notifiedContracts: { txHash: string; question: string; proposedPrice: string }[]
+): Promise<void> => {
   const currentTime = new Date().getTime();
   const promises = notifiedContracts.map((contract) => {
     const key = datastore.key(["NotifiedProposals", getMarketKeyToStore(contract)]);

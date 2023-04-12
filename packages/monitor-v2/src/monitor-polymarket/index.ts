@@ -1,6 +1,6 @@
 import { delay } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel, waitNextBlockRange } from "./common";
-import { monitorTransactionsProposed } from "./MonitorProposals";
+import { monitorTransactionsProposedOrderBook } from "./MonitorProposalsOrderBook";
 
 const logger = Logger;
 
@@ -14,7 +14,7 @@ async function main() {
   });
 
   const cmds = {
-    transactionsProposedEnabled: monitorTransactionsProposed,
+    transactionsProposedEnabled: monitorTransactionsProposedOrderBook,
   };
 
   for (;;) {
