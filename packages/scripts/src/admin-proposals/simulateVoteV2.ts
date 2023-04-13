@@ -32,6 +32,7 @@ const assert = require("assert").strict;
 // VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
 // GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 // EXECUTOR_ADDRESS=<EXECUTOR-ADDRESS> \  Optional. If not provided, the first signer will be used.
+// SKIP_EXECUTE=1 \  Optional. If 1, then the script will not execute the proposal. Default is 0.
 // REAL_VOTERS=1 \  Optional. If 1, then the script simulate vote from real stakers. Default is 0.
 // NODE_URL_1=http://127.0.0.1:9545/ \
 // yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost
@@ -49,6 +50,8 @@ async function simulateVoteV2() {
   } else {
     executorSigner = (await hre.ethers.getSigners())[0];
   }
+
+  const skipExecute = process.env["SKIP_EXECUTE"] === "1" ? true : false;
   const realVoters = process.env["REAL_VOTERS"] === "1" ? true : false;
 
   const governorV2 = await getContractInstance<GovernorV2Ethers>("GovernorV2", governorV2Address);
@@ -213,28 +216,30 @@ async function simulateVoteV2() {
     );
   }
 
-  // Execute the most recent admin votes that we just passed through.
-  console.group("\n📢 Executing Governor Proposals");
-  console.group("\nNumber of proposals:", requestsToVoteOn.length);
-  for (let i = requestsToVoteOn.length; i > 0; i--) {
-    // Set `proposalId` to index of most recent proposal in voting.sol
-    const proposalId = Number(await governorV2.numProposals()) - i;
-    console.group("\nProposal ID:", proposalId.toString());
-    const proposal = await governorV2.getProposal(proposalId.toString());
-    for (let j = 0; j < proposal.transactions.length; j++) {
-      console.log(`- Submitting transaction #${j + 1} from proposal #${proposalId}`);
-      try {
-        const txn = await governorV2.connect(executorSigner).executeProposal(proposalId.toString(), j.toString());
-        console.log(`    - Success, receipt: ${txn.hash}`);
-      } catch (err) {
-        console.error("    - Failure: Txn was likely executed previously, skipping to next one");
-        continue;
+  if (!skipExecute) {
+    // Execute the most recent admin votes that we just passed through.
+    console.group("\n📢 Executing Governor Proposals");
+    console.group("\nNumber of proposals:", requestsToVoteOn.length);
+    for (let i = requestsToVoteOn.length; i > 0; i--) {
+      // Set `proposalId` to index of most recent proposal in voting.sol
+      const proposalId = Number(await governorV2.numProposals()) - i;
+      console.group("\nProposal ID:", proposalId.toString());
+      const proposal = await governorV2.getProposal(proposalId.toString());
+      for (let j = 0; j < proposal.transactions.length; j++) {
+        console.log(`- Submitting transaction #${j + 1} from proposal #${proposalId}`);
+        try {
+          const txn = await governorV2.connect(executorSigner).executeProposal(proposalId.toString(), j.toString());
+          console.log(`    - Success, receipt: ${txn.hash}`);
+        } catch (err) {
+          console.error("    - Failure: Txn was likely executed previously, skipping to next one");
+          continue;
+        }
       }
+      console.groupEnd();
     }
     console.groupEnd();
+    console.groupEnd();
   }
-  console.groupEnd();
-  console.groupEnd();
 
   // Unstake all tokens from the foundation wallet if not using real voters.
   if (!realVoters) {
