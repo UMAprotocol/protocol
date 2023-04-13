@@ -35,7 +35,7 @@ Please see our [contributing guidelines](./CONTRIBUTING.md).
 ## Developer Information and Tools 👩‍💻
 
 For detailed information on how to initialize and interact with our smart contracts, please see the
-[documentation site](https://docs.umaproject.org).
+[documentation site](https://docs.uma.xyz).
 
 ### Install dependencies 👷‍♂️
 
