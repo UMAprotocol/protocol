@@ -18,8 +18,8 @@ async function main() {
   const params = await initMonitoringParams(process.env);
 
   logger[startupLogLevel(params)]({
-    at: "OOv3Monitor",
-    message: "Optimistic Oracle V3 Monitor started 🔭",
+    at: "OptimisticGovernorMonitor",
+    message: "Optimistic Governor Monitor started 🔭",
     botModes: params.botModes,
   });
 
@@ -70,8 +70,8 @@ main().then(
   },
   async (error) => {
     logger.error({
-      at: "OOv3Monitor",
-      message: "Optimistic Oracle V3 Monitor execution error🚨",
+      at: "OptimisticGovernorMonitor",
+      message: "Optimistic Governor Monitor execution error🚨",
       error,
     });
     await delay(5); // Wait 5 seconds to allow logger to flush.
