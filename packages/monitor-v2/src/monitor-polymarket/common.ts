@@ -268,8 +268,7 @@ export const getPolymarketOrderBooks = async (
   await processMarketsInChunks(markets, 30, async (marketChunk: PolymarketWithEventData[]) => {
     const chunkResults = await Promise.all(
       marketChunk.map(async (market) => {
-        const marketOne = market.clobTokenIds[0];
-        const marketTwo = market.clobTokenIds[1];
+        const [marketOne, marketTwo] = market.clobTokenIds;
         const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
         const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
         const { bids: outcome1Bids, asks: outcome1Asks } = (await networker.getJson(apiUrlOne, {
