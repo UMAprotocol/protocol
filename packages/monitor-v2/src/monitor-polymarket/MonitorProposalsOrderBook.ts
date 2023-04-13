@@ -67,7 +67,7 @@ export async function monitorTransactionsProposedOrderBook(
 
   const notifiedProposals = [];
   for (const market of marketsWithOrderBooks) {
-    const proposedOutcome = market.proposedPrice == "1.0" ? 0 : 1;
+    const proposedOutcome = market.proposedPrice === "1.0" ? 0 : 1;
     const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
     const thresholdAsks = Number(process.env["THRESHOLD_ASKS"]) || 0.95;
     const thresholdBids = Number(process.env["THRESHOLD_BIDS"]) || 0.05;
