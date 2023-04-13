@@ -6,6 +6,7 @@ const logger = Logger;
 
 async function main() {
   const params = await initMonitoringParams(process.env);
+  const cache = { ancillaryData: new Map<string, string>() };
 
   logger[startupLogLevel(params)]({
     at: "PolymarketMonitor",
@@ -33,7 +34,7 @@ async function main() {
 
     const runCmds = Object.entries(cmds)
       .filter(([mode]) => params.botModes[mode as keyof BotModes])
-      .map(([, cmd]) => cmd(logger, params));
+      .map(([, cmd]) => cmd(logger, params, cache));
 
     await Promise.all(runCmds);
 

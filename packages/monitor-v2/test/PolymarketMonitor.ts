@@ -20,6 +20,7 @@ const ethers = hre.ethers;
 describe("PolymarketNotifier", function () {
   let oov2: OptimisticOracleV2Ethers;
   let deployer: Signer;
+  const cache = { ancillaryData: new Map<string, string>() };
   const indentifier = formatBytes32String("TEST_IDENTIFIER");
 
   const mockData: any[] = [
@@ -99,11 +100,11 @@ describe("PolymarketNotifier", function () {
       ZERO_ADDRESS
     )) as OptimisticOracleV2Ethers;
 
-    const multicall = await (await getContractFactory("MulticallMakerDao", deployer)).deploy();
+    const multicall = await (await getContractFactory("Multicall3", deployer)).deploy();
 
     addGlobalHardhatTestingAddress("OptimisticOracle", oo.address);
     addGlobalHardhatTestingAddress("OptimisticOracleV2", oov2.address);
-    addGlobalHardhatTestingAddress("MulticallMakerDao", multicall.address);
+    addGlobalHardhatTestingAddress("Multicall3", multicall.address);
 
     await (await identifierWhitelist.addSupportedIdentifier(indentifier)).wait();
     await (await collateralWhitelist.addToWhitelist(votingToken.address)).wait();
@@ -146,7 +147,7 @@ describe("PolymarketNotifier", function () {
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams(), cache);
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
@@ -180,7 +181,7 @@ describe("PolymarketNotifier", function () {
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams(), cache);
 
     // The spy should not have been called as the order book is empty.
     assert.equal(spy.callCount, 0);

@@ -1,5 +1,4 @@
 import { getRetryProvider } from "@uma/common";
-import { MulticallMakerDaoEthers } from "@uma/contracts-node";
 import {
   aggregateTransactionsAndCall,
   delay,
@@ -13,19 +12,15 @@ import request from "graphql-request";
 
 import { ethers } from "ethers";
 
-import Web3 from "web3";
+import { Multicall3Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
+import Web3 from "web3";
 
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 
 const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
-
-// Helper function to sleep for a given duration
-const sleep = (ms: number) => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-};
 
 export interface BotModes {
   transactionsProposedEnabled: boolean;
@@ -87,9 +82,9 @@ interface PolymarketOrderBook {
   hash: string;
 }
 
-export type OrderBookSide = { price: number; size: number }[];
+export type Order = { price: number; size: number }[];
 export interface MarketOrderbooks {
-  orderBooks: [{ bids: OrderBookSide; asks: OrderBookSide }, { bids: OrderBookSide; asks: OrderBookSide }];
+  orderBooks: { bids: Order; asks: Order }[];
 }
 
 export interface StoredNotifiedProposal {
@@ -98,19 +93,6 @@ export interface StoredNotifiedProposal {
   proposedPrice: string;
   notificationTimestamp: number;
 }
-
-// Helper function to process markets in chunks
-const processMarketsInChunks = async (
-  markets: PolymarketWithEventData[],
-  chunkSize: number,
-  callback: (m: PolymarketWithEventData[]) => Promise<void>
-) => {
-  for (let i = 0; i < markets.length; i += chunkSize) {
-    const chunk = markets.slice(i, i + chunkSize);
-    await callback(chunk);
-    await sleep(500); // Introduce a 0.5 second delay between each chunk
-  }
-};
 
 export const formatPriceEvents = async (
   events: ProposePriceEvent[]
@@ -153,15 +135,11 @@ export const formatPriceEvents = async (
 };
 
 export const getPolymarketMarkets = async (params: MonitoringParams): Promise<PolymarketMarket[]> => {
-  const whereClause =
-    " created_at > '2023-01-01'" +
-    " AND question_ID IS NOT NULL" +
-    " AND clob_Token_Ids IS NOT NULL" +
-    ` AND (resolved_by = '${params.binaryAdapterAddress}' OR resolved_by = '${params.ctfAdapterAddress}')`;
+  const whereClause = "question_ID IS NOT NULL" + " AND clob_Token_Ids IS NOT NULL";
 
   const query = `
     {
-      markets(where: "${whereClause}", order: "EXTRACT(EPOCH FROM TO_TIMESTAMP(end_date, 'Month DD, YYYY')) desc") {
+      markets(where: "${whereClause}") {
         resolvedBy
         questionID
         createdAt
@@ -171,13 +149,22 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
         liquidityNum
         volumeNum
         clobTokenIds
+        endDate
       }
     }
   `;
 
   const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as any;
 
-  return polymarketContracts.map((contract: { [k: string]: any }) => ({
+  // Remove markets with endDate after 1 week from now.
+  const now = Math.floor(Date.now() / 1000);
+  const oneWeek = 60 * 60 * 24 * 7;
+  const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
+    const endDate = new Date(contract.endDate).getTime() / 1000;
+    return endDate > now - oneWeek;
+  });
+
+  return filtered.map((contract: { [k: string]: any }) => ({
     ...contract,
     outcomes: JSON.parse(contract.outcomes),
     outcomePrices: JSON.parse(contract.outcomePrices),
@@ -187,8 +174,12 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
 
 export const getMarketsAncillary = async (
   params: MonitoringParams,
-  markets: PolymarketMarket[]
+  markets: PolymarketMarket[],
+  cache: Map<string, string>
 ): Promise<PolymarketMarketWithAncillaryData[]> => {
+  console.log("Fetching ancillary data for markets...");
+  console.log("Market cache length: ", cache.size);
+  const failed = "failed";
   const binaryAdapterAbi = require("./abi/binaryAdapter.json");
   const ctfAdapterAbi = require("./abi/ctfAdapter.json");
   const binaryAdapter = new ethers.Contract(params.binaryAdapterAddress, binaryAdapterAbi, params.provider);
@@ -199,12 +190,13 @@ export const getMarketsAncillary = async (
   decoder.abiDecoder.addABI(binaryAdapterAbi);
   decoder.abiDecoder.addABI(ctfAdapterAbi);
 
-  const multicall = await getContractInstanceWithProvider<MulticallMakerDaoEthers>(
-    "MulticallMakerDao",
-    params.provider
+  const multicall = await getContractInstanceWithProvider<Multicall3Ethers>("Multicall3", params.provider);
+  // Filter out markets with cached data and create calls for the remaining markets
+  const filteredMarkets = markets.filter(
+    (market) => !cache.has(market.questionID) && cache.get(market.questionID) !== failed
   );
 
-  const calls = markets.map((market) => {
+  const calls = filteredMarkets.map((market) => {
     const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
     return {
       target: adapter.address,
@@ -226,34 +218,43 @@ export const getMarketsAncillary = async (
   }
 
   // Process the chunks sequentially, if the chunk fails, process the contents of the chunk individually.
-  const results: { ancillaryData: string }[] = [];
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     try {
+      // log progress
+      console.log(`Processing ancillary fetching chunk ${i + 1} of ${chunks.length}`);
       const chunkResults = (await aggregateTransactionsAndCall(multicall.address, web3, chunk)) as {
         ancillaryData: string;
       }[];
-      results.push(...chunkResults);
+      // Update the cache and results with the chunkResults
+      chunkResults.forEach((result, index) => {
+        const market = filteredMarkets[i * chunkSize + index];
+        cache.set(market.questionID, result.ancillaryData);
+      });
     } catch (error) {
       for (let j = 0; j < chunk.length; j++) {
         const call = chunk[j];
+        const market = filteredMarkets[i * chunkSize + j];
+        let ancillaryData;
         try {
-          const market = markets[i * chunkSize + j];
           const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
           const result = await adapter.callStatic.questions(market.questionID);
-          results.push(result);
+          ancillaryData = result.ancillaryData;
         } catch {
-          results.push({ ancillaryData: "0x" });
-          console.log("Failed to get ancillary data for market", call);
+          ancillaryData = failed;
+          console.error("Failed to get ancillary data for market ", JSON.stringify(call), JSON.stringify(market));
         }
+        cache.set(market.questionID, ancillaryData);
       }
     }
   }
 
-  return markets.map((market, index) => {
+  console.log("Finished fetching ancillary data for markets...");
+  return markets.map((market) => {
     return {
       ...market,
-      ancillaryData: results[index].ancillaryData,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      ancillaryData: cache.get(market.questionID)!,
     };
   });
 };
@@ -263,64 +264,56 @@ export const getPolymarketOrderBooks = async (
   markets: PolymarketWithEventData[],
   networker: NetworkerInterface
 ): Promise<(PolymarketWithEventData & MarketOrderbooks)[]> => {
-  const results: (PolymarketWithEventData & MarketOrderbooks)[] = [];
+  return await Promise.all(
+    markets.map(async (market) => {
+      const [marketOne, marketTwo] = market.clobTokenIds;
+      const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
+      const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
+      const { bids: outcome1Bids, asks: outcome1Asks } = (await networker.getJson(apiUrlOne, {
+        method: "get",
+      })) as PolymarketOrderBook;
 
-  await processMarketsInChunks(markets, 30, async (marketChunk: PolymarketWithEventData[]) => {
-    const chunkResults = await Promise.all(
-      marketChunk.map(async (market) => {
-        const [marketOne, marketTwo] = market.clobTokenIds;
-        const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
-        const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
-        const { bids: outcome1Bids, asks: outcome1Asks } = (await networker.getJson(apiUrlOne, {
-          method: "get",
-        })) as PolymarketOrderBook;
+      const { bids: outcome2Bids, asks: outcome2Asks } = (await networker.getJson(apiUrlTwo, {
+        method: "get",
+      })) as PolymarketOrderBook;
 
-        const { bids: outcome2Bids, asks: outcome2Asks } = (await networker.getJson(apiUrlTwo, {
-          method: "get",
-        })) as PolymarketOrderBook;
-
-        const stringToNumber = (orderBook: {
-          bids: {
-            price: string;
-            size: string;
-          }[];
-          asks: {
-            price: string;
-            size: string;
-          }[];
-        }) => {
-          return {
-            bids: orderBook.bids.map((bid) => {
-              return {
-                price: Number(bid.price),
-                size: Number(bid.size),
-              };
-            }),
-            asks: orderBook.asks.map((ask) => {
-              return {
-                price: Number(ask.price),
-                size: Number(ask.size),
-              };
-            }),
-          };
-        };
-
+      const stringToNumber = (orderBook: {
+        bids: {
+          price: string;
+          size: string;
+        }[];
+        asks: {
+          price: string;
+          size: string;
+        }[];
+      }) => {
         return {
-          ...market,
-          ...({
-            orderBooks: [
-              stringToNumber({ bids: outcome1Bids || [], asks: outcome1Asks || [] }),
-              stringToNumber({ bids: outcome2Bids || [], asks: outcome2Asks || [] }),
-            ],
-          } as MarketOrderbooks),
+          bids: orderBook.bids.map((bid) => {
+            return {
+              price: Number(bid.price),
+              size: Number(bid.size),
+            };
+          }),
+          asks: orderBook.asks.map((ask) => {
+            return {
+              price: Number(ask.price),
+              size: Number(ask.size),
+            };
+          }),
         };
-      })
-    );
+      };
 
-    results.push(...chunkResults);
-  });
-
-  return results;
+      return {
+        ...market,
+        ...{
+          orderBooks: [
+            stringToNumber({ bids: outcome1Bids || [], asks: outcome1Asks || [] }),
+            stringToNumber({ bids: outcome2Bids || [], asks: outcome2Asks || [] }),
+          ],
+        },
+      };
+    })
+  );
 };
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {

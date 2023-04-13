@@ -19,7 +19,8 @@ import { logProposalOrderBook } from "./MonitorLogger";
 
 export async function monitorTransactionsProposedOrderBook(
   logger: typeof Logger,
-  params: MonitoringParams
+  params: MonitoringParams,
+  cache: { ancillaryData: Map<string, string> }
 ): Promise<void> {
   const networker = new Networker(logger);
   const currentBlockNumber = await params.provider.getBlockNumber();
@@ -47,8 +48,8 @@ export async function monitorTransactionsProposedOrderBook(
   const proposalEvents = await formatPriceEvents([...eventsOo, ...eventsOov2]);
 
   const markets = await getPolymarketMarkets(params);
-  const marketsWithAncillary = await getMarketsAncillary(params, markets);
 
+  const marketsWithAncillary = await getMarketsAncillary(params, markets, cache.ancillaryData);
   // Filter out markets that do not have a proposal event.
   const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
     .filter((market) => proposalEvents.find((event) => event.ancillaryData === market.ancillaryData))
@@ -66,11 +67,12 @@ export async function monitorTransactionsProposedOrderBook(
   const marketsWithOrderBooks = await getPolymarketOrderBooks(params, marketsWithEventData, networker);
 
   const notifiedProposals = [];
+  console.log(`Checking proposal price for ${marketsWithOrderBooks.length} markets...`);
   for (const market of marketsWithOrderBooks) {
     const proposedOutcome = market.proposedPrice === "1.0" ? 0 : 1;
     const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
-    const thresholdAsks = Number(process.env["THRESHOLD_ASKS"]) || 0.95;
-    const thresholdBids = Number(process.env["THRESHOLD_BIDS"]) || 0.05;
+    const thresholdAsks = Number(process.env["THRESHOLD_ASKS"]) || 1;
+    const thresholdBids = Number(process.env["THRESHOLD_BIDS"]) || 0;
 
     const sellingWinnerSide = market.orderBooks[proposedOutcome].asks.find((ask) => ask.price < thresholdAsks);
     const buyingLoserSide = market.orderBooks[complementaryOutcome].bids.find((bid) => bid.price > thresholdBids);
@@ -96,4 +98,6 @@ export async function monitorTransactionsProposedOrderBook(
     }
   }
   await storeNotifiedProposals(notifiedProposals);
+
+  console.log("All proposals have been checked!");
 }
