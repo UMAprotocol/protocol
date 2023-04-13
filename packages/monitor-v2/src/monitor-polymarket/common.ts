@@ -156,7 +156,8 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
 
   const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as any;
 
-  // Remove markets with endDate after 1 week from now.
+  // Remove markets with 1 week old endDate or more. So we only monitor markets that ended in the last week
+  // (or are still ongoing).
   const now = Math.floor(Date.now() / 1000);
   const oneWeek = 60 * 60 * 24 * 7;
   const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
