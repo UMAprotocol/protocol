@@ -280,8 +280,9 @@ export const getMarketsAncillary = async (
     };
   });
 
-  const rpcUrl = process.env[`NODE_URL_${params.chainId}`];
-  if (!rpcUrl) throw new Error(`NODE_URL_${params.chainId} not found in env`);
+  const rpcUrl =
+    process.env[`NODE_URL_${params.chainId}`] || JSON.parse(process.env[`NODE_URLS_${params.chainId}`] || "[]")[0];
+  if (!rpcUrl) throw new Error(`NODE_URL_${params.chainId} or NODE_URLS_${params.chainId} not found in env`);
 
   const web3Provider = new Web3.providers.HttpProvider(rpcUrl);
   const web3 = new Web3(web3Provider);
