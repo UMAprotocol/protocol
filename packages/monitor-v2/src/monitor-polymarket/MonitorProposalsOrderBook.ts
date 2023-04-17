@@ -11,6 +11,7 @@ import {
   getMarketKeyToStore,
   getMarketsAncillary,
   getNotifiedProposals,
+  getOrderFilledEvents,
   getPolymarketMarkets,
   getPolymarketOrderBooks,
   storeNotifiedProposals,
@@ -30,7 +31,7 @@ export async function monitorTransactionsProposedOrderBook(
   const daysToLookup = 1; // This bot only looks back 1 day for proposals.
 
   // These values are hardcoded for the Polygon network as this bot is only intended to run on Polygon.
-  const maxBlockLookBack = 3499; // Polygons max block look back is 3499 blocks.
+  const maxBlockLookBack = params.maxBlockLookBack;
   const blockLookup = 43200 * daysToLookup; // 1 day in blocks on Polygon is 43200 blocks.
 
   const searchConfig = {
@@ -64,11 +65,15 @@ export async function monitorTransactionsProposedOrderBook(
     .filter((market) => market.expirationTimestamp > Date.now() / 1000)
     .filter((market) => !Object.keys(pastNotifiedProposals).includes(getMarketKeyToStore(market)));
 
+  // Get live order books for markets that have a proposal event.
   const marketsWithOrderBooks = await getPolymarketOrderBooks(params, marketsWithEventData, networker);
+
+  // Get trades that have occurred since the proposal event
+  const marketsWithOrderBooksAndTrades = await getOrderFilledEvents(params, marketsWithOrderBooks);
 
   const notifiedProposals = [];
   console.log(`Checking proposal price for ${marketsWithOrderBooks.length} markets...`);
-  for (const market of marketsWithOrderBooks) {
+  for (const market of marketsWithOrderBooksAndTrades) {
     const proposedOutcome = market.proposedPrice === "1.0" ? 0 : 1;
     const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
     const thresholdAsks = Number(process.env["THRESHOLD_ASKS"]) || 1;
@@ -77,7 +82,14 @@ export async function monitorTransactionsProposedOrderBook(
     const sellingWinnerSide = market.orderBooks[proposedOutcome].asks.find((ask) => ask.price < thresholdAsks);
     const buyingLoserSide = market.orderBooks[complementaryOutcome].bids.find((bid) => bid.price > thresholdBids);
 
-    if (sellingWinnerSide || buyingLoserSide) {
+    const soldWinnerSide = market.orderFilledEvents[proposedOutcome].filter(
+      (event) => event.type == "sell" && event.price < thresholdAsks
+    );
+    const boughtLoserSide = market.orderFilledEvents[complementaryOutcome].filter(
+      (event) => event.type == "buy" && event.price > thresholdBids
+    );
+
+    if (sellingWinnerSide || buyingLoserSide || soldWinnerSide.length > 0 || boughtLoserSide.length > 0) {
       await logProposalOrderBook(
         logger,
         {
@@ -88,6 +100,8 @@ export async function monitorTransactionsProposedOrderBook(
           tx: market.txHash,
           sellingWinnerSide,
           buyingLoserSide,
+          soldWinnerSide,
+          boughtLoserSide,
           outcomes: market.outcomes,
           expirationTimestamp: market.expirationTimestamp,
           eventIndex: market.eventIndex,

@@ -1,5 +1,5 @@
 import { createEtherscanLinkMarkdown } from "@uma/common";
-import { Logger } from "./common";
+import { Logger, TradeInformation } from "./common";
 
 import type { MonitoringParams } from "./common";
 
@@ -27,6 +27,8 @@ export async function logProposalOrderBook(
           size: number;
         }
       | undefined;
+    soldWinnerSide: TradeInformation[];
+    boughtLoserSide: TradeInformation[];
     outcomes: [string, string];
     expirationTimestamp: number;
     eventIndex: number;
@@ -46,6 +48,16 @@ export async function logProposalOrderBook(
         : "") +
       (market.buyingLoserSide
         ? ` Someone is trying to buy ${market.buyingLoserSide?.size} loser outcome tokens at a price of ${market.buyingLoserSide?.price} on the orderbook.`
+        : "") +
+      (market.soldWinnerSide.length > 0
+        ? ` Someone has already sold winner outcome tokens at a price below the threshold. These are the trades: ${JSON.stringify(
+            market.soldWinnerSide
+          )}.`
+        : "") +
+      (market.boughtLoserSide.length > 0
+        ? ` Someone has already bought loser outcome tokens at a price above the threshold. These are the trades: ${JSON.stringify(
+            market.boughtLoserSide
+          )}.`
         : "") +
       " The proposal can be disputed until " +
       new Date(market.expirationTimestamp * 1000).toUTCString() +

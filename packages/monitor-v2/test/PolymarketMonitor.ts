@@ -10,7 +10,7 @@ import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma
 import { assert } from "chai";
 import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
-import { BotModes, MonitoringParams } from "../src/monitor-polymarket/common";
+import { BotModes, MonitoringParams, TradeInformation } from "../src/monitor-polymarket/common";
 import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer } from "./utils";
@@ -37,6 +37,7 @@ describe("PolymarketNotifier", function () {
         "41909194383884489857051533149267887932706513238474711698327450766299364965897",
         "46296129944740145134028887886488800558338482961897658822042889421944724008114",
       ],
+      orderFilledEvents: [[], []],
       ancillaryData: "0x123",
       txHash: "0xffc94945ccdfced83fb9c4ea3aaecd145130f7d4065f78656b05f4afc33d6e06",
       requester: "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74",
@@ -60,12 +61,15 @@ describe("PolymarketNotifier", function () {
 
     const binaryAdapterAddress = "dummy";
     const ctfAdapterAddress = "dummy";
+    const ctfExchangeAddress = "dummy";
     const graphqlEndpoint = "dummy";
     const apiEndpoint = "dummy";
 
     return {
       binaryAdapterAddress,
       ctfAdapterAddress,
+      ctfExchangeAddress,
+      maxBlockLookBack: 3499,
       graphqlEndpoint,
       apiEndpoint,
       provider: ethers.provider as Provider,
@@ -143,6 +147,7 @@ describe("PolymarketNotifier", function () {
     sinon.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
     sinon.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
     sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -177,6 +182,7 @@ describe("PolymarketNotifier", function () {
     sinon.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
     sinon.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
     sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -185,5 +191,111 @@ describe("PolymarketNotifier", function () {
 
     // The spy should not have been called as the order book is empty.
     assert.equal(spy.callCount, 0);
+  });
+  it("It should notify if there are sell trades over the threshold", async function () {
+    mockData[0].proposedPrice = "1.0";
+    mockData[0].orderBooks = [
+      {
+        bids: [],
+        asks: [],
+      },
+      {
+        bids: [],
+        asks: [],
+      },
+    ];
+    mockData[0].orderFilledEvents = [
+      [
+        {
+          price: 0.9,
+          amount: 100,
+          timestamp: 123,
+          type: "sell",
+        },
+      ] as TradeInformation[],
+      [],
+    ];
+
+    const mockDataFunction = sinon.stub();
+    mockDataFunction.returns(mockData);
+    sinon.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+
+    // Call monitorAssertions directly for the block when the assertion was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams(), cache);
+
+    // The spy should have been called as the order book is not empty.
+    assert.equal(spy.callCount, 1);
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketNotifier");
+    assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
+    assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.isTrue(
+      spy
+        .getCall(0)
+        .toString()
+        .includes(
+          ` Someone has already sold winner outcome tokens at a price below the threshold. These are the trades: ${JSON.stringify(
+            mockData[0].orderFilledEvents[0]
+          )}`
+        )
+    ); // price
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
+  });
+  it("It should notify if there are sell trades over the threshold", async function () {
+    mockData[0].proposedPrice = "1.0";
+    mockData[0].orderBooks = [
+      {
+        bids: [],
+        asks: [],
+      },
+      {
+        bids: [],
+        asks: [],
+      },
+    ];
+    mockData[0].orderFilledEvents = [
+      [],
+      [
+        {
+          price: 0.9,
+          amount: 100,
+          timestamp: 123,
+          type: "buy",
+        },
+      ] as TradeInformation[],
+    ];
+
+    const mockDataFunction = sinon.stub();
+    mockDataFunction.returns(mockData);
+    sinon.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+
+    // Call monitorAssertions directly for the block when the assertion was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams(), cache);
+
+    // The spy should have been called as the order book is not empty.
+    assert.equal(spy.callCount, 1);
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketNotifier");
+    assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
+    assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.isTrue(
+      spy
+        .getCall(0)
+        .toString()
+        .includes(
+          ` Someone has already bought loser outcome tokens at a price above the threshold. These are the trades: ${JSON.stringify(
+            mockData[0].orderFilledEvents[1]
+          )}`
+        )
+    ); // price
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
 });

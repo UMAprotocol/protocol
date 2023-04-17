@@ -15,6 +15,7 @@ import { ethers } from "ethers";
 import { Multicall3Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import Web3 from "web3";
+import { paginatedEventQuery } from "../utils/EventUtils";
 
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
@@ -31,9 +32,18 @@ export interface BlockRange {
   end: number;
 }
 
+export interface TradeInformation {
+  price: number;
+  type: "buy" | "sell";
+  amount: number;
+  timestamp: number;
+}
+
 export interface MonitoringParams {
   binaryAdapterAddress: string;
   ctfAdapterAddress: string;
+  ctfExchangeAddress: string;
+  maxBlockLookBack: number;
   graphqlEndpoint: string;
   apiEndpoint: string;
   provider: Provider;
@@ -72,6 +82,12 @@ export interface PolymarketWithEventData extends PolymarketMarketWithAncillaryDa
   identifier: string;
   ancillaryData: string;
   proposedPrice: string;
+}
+
+export type PolymarketWithOrderbook = PolymarketWithEventData & MarketOrderbooks;
+
+export interface PolymarketWithOrderbookAndTradeInfo extends PolymarketWithOrderbook {
+  orderFilledEvents: [TradeInformation[], TradeInformation[]];
 }
 
 interface PolymarketOrderBook {
@@ -162,6 +178,74 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
     outcomePrices: JSON.parse(contract.outcomePrices),
     clobTokenIds: JSON.parse(contract.clobTokenIds),
   }));
+};
+
+const getTradeInfoFromOrderFilledEvent = async (provider: Provider, event: any): Promise<TradeInformation> => {
+  const blockTimestamp = (await provider.getBlock(event.blockNumber)).timestamp;
+  const isBuy = event.args.makerAssetId.toString() === "0";
+  const numerator = (isBuy ? event.args.makerAmountFilled : event.args.takerAmountFilled).mul(1000);
+  const denominator = isBuy ? event.args.takerAmountFilled : event.args.makerAmountFilled;
+  const price = numerator.div(denominator).toNumber() / 1000;
+  return {
+    price,
+    type: isBuy ? "buy" : "sell",
+    timestamp: blockTimestamp,
+    // Convert to decimal value with 2 decimals
+    amount: (isBuy ? event.args.takerAmountFilled : event.args.makerAmountFilled).div(10_000).toNumber() / 100,
+  };
+};
+
+export const getOrderFilledEvents = async (
+  params: MonitoringParams,
+  markets: PolymarketWithOrderbook[]
+): Promise<PolymarketWithOrderbookAndTradeInfo[]> => {
+  if (markets.length === 0) return [];
+
+  const ctfExchange = new ethers.Contract(
+    params.ctfExchangeAddress,
+    require("./abi/ctfExchange.json"),
+    params.provider
+  );
+
+  const currentBlockNumber = await params.provider.getBlockNumber();
+  const maxBlockLookBack = params.maxBlockLookBack;
+
+  return Promise.all(
+    markets.map(async (market) => {
+      const searchConfig = {
+        fromBlock: market.eventBlockNumber,
+        toBlock: currentBlockNumber,
+        maxBlockLookBack,
+      };
+
+      const events = await paginatedEventQuery(
+        ctfExchange,
+        ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
+        searchConfig
+      );
+
+      const outcomeTokenOne = await Promise.all(
+        events
+          .filter((event) => {
+            return market.clobTokenIds[0] == event?.args?.takerAssetId.toString();
+          })
+          .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
+      );
+
+      const outcomeTokenTwo = await Promise.all(
+        events
+          .filter((event) => {
+            return market.clobTokenIds[1] == event?.args?.makerAssetId.toString();
+          })
+          .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
+      );
+
+      return {
+        ...market,
+        orderFilledEvents: [outcomeTokenOne, outcomeTokenTwo],
+      };
+    })
+  );
 };
 
 export const getMarketsAncillary = async (
@@ -255,7 +339,7 @@ export const getPolymarketOrderBooks = async (
   params: MonitoringParams,
   markets: PolymarketWithEventData[],
   networker: NetworkerInterface
-): Promise<(PolymarketWithEventData & MarketOrderbooks)[]> => {
+): Promise<PolymarketWithOrderbook[]> => {
   return await Promise.all(
     markets.map(async (market) => {
       const [marketOne, marketTwo] = market.clobTokenIds;
@@ -305,6 +389,7 @@ export const getPolymarketOrderBooks = async (
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
   const binaryAdapterAddress = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
   const ctfAdapterAddress = "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74";
+  const ctfExchangeAddress = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E";
 
   const graphqlEndpoint = "https://gamma-api.polymarket.com/query";
   const apiEndpoint = "https://clob.polymarket.com";
@@ -334,6 +419,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     throw new Error(`${STARTING_BLOCK_KEY} must be less than or equal to ${ENDING_BLOCK_KEY}`);
   }
 
+  const maxBlockLookBack = env.MAX_BLOCK_LOOK_BACK ? Number(env.MAX_BLOCK_LOOK_BACK) : 3499;
+
   const botModes = {
     transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
   };
@@ -341,6 +428,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   return {
     binaryAdapterAddress,
     ctfAdapterAddress,
+    ctfExchangeAddress,
+    maxBlockLookBack,
     graphqlEndpoint,
     apiEndpoint,
     provider,
