@@ -94,5 +94,9 @@
   {
     "contractName": "OptimisticGovernor",
     "address": "0x3Cc4b597E9c3f51288c6Cd0c087DC14c3FfdD966"
+  },
+  {
+    "contractName": "Multicall3",
+    "address": "0xcA11bde05977b3631167028862bE2a173976CA11"
   }
 ]
