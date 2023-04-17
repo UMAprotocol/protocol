@@ -156,16 +156,7 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
 
   const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as any;
 
-  // Remove markets with 1 week old endDate or more. So we only monitor markets that ended in the last week
-  // (or are still ongoing).
-  const now = Math.floor(Date.now() / 1000);
-  const oneWeek = 60 * 60 * 24 * 7;
-  const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
-    const endDate = new Date(contract.endDate).getTime() / 1000;
-    return endDate > now - oneWeek;
-  });
-
-  return filtered.map((contract: { [k: string]: any }) => ({
+  return polymarketContracts.map((contract: { [k: string]: any }) => ({
     ...contract,
     outcomes: JSON.parse(contract.outcomes),
     outcomePrices: JSON.parse(contract.outcomePrices),
@@ -278,38 +269,32 @@ export const getPolymarketOrderBooks = async (
         method: "get",
       })) as PolymarketOrderBook;
 
-      const stringToNumber = (orderBook: {
-        bids: {
+      const stringToNumber = (
+        orders: {
           price: string;
           size: string;
-        }[];
-        asks: {
-          price: string;
-          size: string;
-        }[];
-      }) => {
-        return {
-          bids: orderBook.bids.map((bid) => {
-            return {
-              price: Number(bid.price),
-              size: Number(bid.size),
-            };
-          }),
-          asks: orderBook.asks.map((ask) => {
-            return {
-              price: Number(ask.price),
-              size: Number(ask.size),
-            };
-          }),
-        };
+        }[]
+      ) => {
+        return orders.map((order) => {
+          return {
+            price: Number(order.price),
+            size: Number(order.size),
+          };
+        });
       };
 
       return {
         ...market,
         ...{
           orderBooks: [
-            stringToNumber({ bids: outcome1Bids || [], asks: outcome1Asks || [] }),
-            stringToNumber({ bids: outcome2Bids || [], asks: outcome2Asks || [] }),
+            {
+              bids: stringToNumber(outcome1Bids),
+              asks: stringToNumber(outcome1Asks),
+            },
+            {
+              bids: stringToNumber(outcome2Bids),
+              asks: stringToNumber(outcome2Asks),
+            },
           ],
         },
       };

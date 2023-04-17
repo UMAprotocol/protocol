@@ -51,7 +51,7 @@ export async function logProposalOrderBook(
       new Date(market.expirationTimestamp * 1000).toUTCString() +
       ". " +
       generateUILink(market.tx, params.chainId, market.eventIndex) +
-      ".",
+      ". Please check the market proposal and dispute if necessary.",
     notificationPath: "polymarket-notifier",
   });
 }
