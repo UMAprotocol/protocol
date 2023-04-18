@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.32.0...@uma/common@2.33.0) (2023-04-18)
 
-
 ### Features
 
-* settle assertions bot ([#4501](https://github.com/UMAprotocol/protocol/issues/4501)) ([8e282c9](https://github.com/UMAprotocol/protocol/commit/8e282c9592fa5d9b95cece9dd8992abb03cb005c))
-
-
-
-
+- settle assertions bot ([#4501](https://github.com/UMAprotocol/protocol/issues/4501)) ([8e282c9](https://github.com/UMAprotocol/protocol/commit/8e282c9592fa5d9b95cece9dd8992abb03cb005c))
 
 # [2.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.31.0...@uma/common@2.32.0) (2023-03-30)
 

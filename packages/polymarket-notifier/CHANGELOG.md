@@ -5,15 +5,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.3.27...@uma/polymarket-notifier@1.4.0) (2023-04-18)
 
-
 ### Features
 
-* configure polymarket notifier ([#4510](https://github.com/UMAprotocol/protocol/issues/4510)) ([4e0a476](https://github.com/UMAprotocol/protocol/commit/4e0a476b4118d941aab1f2f3fd20e60691e4d20b))
-* filter markets with low liquidity in polymarket notifier ([#4511](https://github.com/UMAprotocol/protocol/issues/4511)) ([665e8da](https://github.com/UMAprotocol/protocol/commit/665e8dabfba15c7d287a8dcef7f87a25370c4ef8))
-
-
-
-
+- configure polymarket notifier ([#4510](https://github.com/UMAprotocol/protocol/issues/4510)) ([4e0a476](https://github.com/UMAprotocol/protocol/commit/4e0a476b4118d941aab1f2f3fd20e60691e4d20b))
+- filter markets with low liquidity in polymarket notifier ([#4511](https://github.com/UMAprotocol/protocol/issues/4511)) ([665e8da](https://github.com/UMAprotocol/protocol/commit/665e8dabfba15c7d287a8dcef7f87a25370c4ef8))
 
 ## [1.3.27](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.3.26...@uma/polymarket-notifier@1.3.27) (2023-03-30)
 

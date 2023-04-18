@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.14.15...@uma/monitors@2.15.0) (2023-04-18)
 
-
 ### Features
 
-* change logging levels ([#4514](https://github.com/UMAprotocol/protocol/issues/4514)) ([758b1b5](https://github.com/UMAprotocol/protocol/commit/758b1b58cd749079c2175bcde44fd720fee7292c))
-
-
-
-
+- change logging levels ([#4514](https://github.com/UMAprotocol/protocol/issues/4514)) ([758b1b5](https://github.com/UMAprotocol/protocol/commit/758b1b58cd749079c2175bcde44fd720fee7292c))
 
 ## [2.14.15](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.14.14...@uma/monitors@2.14.15) (2023-03-30)
 

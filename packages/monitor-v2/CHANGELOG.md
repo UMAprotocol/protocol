@@ -5,19 +5,13 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [1.2.0](https://github.com/UMAprotocol/protocol/compare/monitor-v2@1.1.2...monitor-v2@1.2.0) (2023-04-18)
 
-
 ### Bug Fixes
 
-* **monitor-v2:** og startup and error messages ([#4525](https://github.com/UMAprotocol/protocol/issues/4525)) ([205a329](https://github.com/UMAprotocol/protocol/commit/205a329c059441f3103757083d47274ee251c167))
-
+- **monitor-v2:** og startup and error messages ([#4525](https://github.com/UMAprotocol/protocol/issues/4525)) ([205a329](https://github.com/UMAprotocol/protocol/commit/205a329c059441f3103757083d47274ee251c167))
 
 ### Features
 
-* settle assertions bot ([#4501](https://github.com/UMAprotocol/protocol/issues/4501)) ([8e282c9](https://github.com/UMAprotocol/protocol/commit/8e282c9592fa5d9b95cece9dd8992abb03cb005c))
-
-
-
-
+- settle assertions bot ([#4501](https://github.com/UMAprotocol/protocol/issues/4501)) ([8e282c9](https://github.com/UMAprotocol/protocol/commit/8e282c9592fa5d9b95cece9dd8992abb03cb005c))
 
 ## [1.1.2](https://github.com/UMAprotocol/protocol/compare/monitor-v2@1.1.1...monitor-v2@1.1.2) (2023-03-30)
 
