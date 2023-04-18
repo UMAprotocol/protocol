@@ -9,7 +9,7 @@ import { defaultLiveness } from "./constants";
 import { optimisticOracleV3Fixture } from "./fixtures/OptimisticOracleV3.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { getBlockNumberFromTx, hardhatTime, hre, Signer, toUtf8Bytes, toUtf8String } from "./utils";
-
+import "@nomiclabs/hardhat-ethers";
 const ethers = hre.ethers;
 
 // Create monitoring params for single block to pass to monitor modules.
@@ -23,13 +23,11 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
   return {
     provider: ethers.provider as Provider,
     chainId: (await ethers.provider.getNetwork()).chainId,
-    runFrequency: 60,
     botModes,
     signer,
-    warmingUpBlockLookback: 2000,
     blockLookback: 2000,
     maxBlockLookBack: 1000,
-    firstRun: true,
+    pollingDelay: 0,
   };
 };
 

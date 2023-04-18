@@ -21,18 +21,16 @@ async function main() {
   const cmds = {
     settleAssertionsEnabled: settleAssertions,
   };
-  let firstRun = true;
+
   for (;;) {
     const runCmds = Object.entries(cmds)
       .filter(([mode]) => params.botModes[mode as keyof BotModes])
-      .map(([, cmd]) => cmd(logger, { ...params, firstRun }));
+      .map(([, cmd]) => cmd(logger, { ...params }));
 
     await Promise.all(runCmds);
 
-    firstRun = false;
-
-    if (params.runFrequency !== 0) {
-      await delay(params.runFrequency);
+    if (params.pollingDelay !== 0) {
+      await delay(params.pollingDelay);
     } else {
       await delay(5); // Set a delay to let the transports flush fully.
       break;

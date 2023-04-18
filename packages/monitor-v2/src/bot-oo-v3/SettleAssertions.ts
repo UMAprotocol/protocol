@@ -11,7 +11,7 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
 
   const currentBlockNumber = await params.provider.getBlockNumber();
 
-  const loopBack = params.firstRun ? params.warmingUpBlockLookback : params.blockLookback;
+  const loopBack = params.blockLookback;
   const searchConfig = {
     fromBlock: currentBlockNumber - loopBack < 0 ? 0 : currentBlockNumber - loopBack,
     toBlock: currentBlockNumber,
