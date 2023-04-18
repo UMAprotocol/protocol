@@ -52,20 +52,7 @@ export async function monitorTransactionsProposedOrderBook(
   const marketsWithAncillary = await getMarketsAncillary(params, markets);
   // Filter out markets that do not have a proposal event.
   const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
-    .filter((market) => {
-      const found = proposalEvents.find((event) => event.ancillaryData === market.ancillaryData);
-      if (!found && market.umaResolutionStatus == "proposed") {
-        // Log a warning if the market has a proposal event but no ancillary data was found.
-        // This would mean that getMarketsAncillary is not working properly.
-        logger.warn({
-          at: "PolymarketNotifier",
-          message: "Market has a proposal event but no ancillary data was found",
-          mrkdwn: `Market: ${market.questionID} | Question: ${market.question} | Market Status: ${market.endDate}`,
-          notificationPath: "polymarket-notifier",
-        });
-      }
-      return found;
-    })
+    .filter((market) => proposalEvents.find((event) => event.ancillaryData === market.ancillaryData))
     .map((market) => {
       const event = proposalEvents.find((event) => event.ancillaryData === market.ancillaryData);
       if (!event) throw new Error("Could not find event for market");
