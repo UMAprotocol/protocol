@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.55.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.54.0...@uma/core@2.55.0) (2023-04-18)
+
+
+### Bug Fixes
+
+* remove temp forge directory ([#4526](https://github.com/UMAprotocol/protocol/issues/4526)) ([01d9b1b](https://github.com/UMAprotocol/protocol/commit/01d9b1b273352854081aacc6a3083e3bad86e923))
+
+
+### Features
+
+* **core:** reference requests by hash in mock oracle ([#4515](https://github.com/UMAprotocol/protocol/issues/4515)) ([ffbe2df](https://github.com/UMAprotocol/protocol/commit/ffbe2df755df67e98aca2f14c22c9fd3ce28bb56))
+* **scripts:** optimistic governor scripts ([#4520](https://github.com/UMAprotocol/protocol/issues/4520)) ([62e58e8](https://github.com/UMAprotocol/protocol/commit/62e58e8cc9f69bcce46bd656a7a2728db85f0a71))
+
+
+
+
+
 # [2.54.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.53.0...@uma/core@2.54.0) (2023-03-30)
 
 ### Features

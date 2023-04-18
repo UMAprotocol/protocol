@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.17.0...@uma/affiliates@1.18.0) (2023-04-18)
+
+
+### Bug Fixes
+
+* add unapplied changes ([#4506](https://github.com/UMAprotocol/protocol/issues/4506)) ([fabd2e4](https://github.com/UMAprotocol/protocol/commit/fabd2e4790270f54241610d9c04d5f7eafe72e74))
+
+
+### Features
+
+* initial DVM2.0 gas rebate payout ([#4513](https://github.com/UMAprotocol/protocol/issues/4513)) ([8d1aace](https://github.com/UMAprotocol/protocol/commit/8d1aacea12e7036b195af142022175c0fb3d189d))
+
+
+
+
+
 # [1.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.16.1...@uma/affiliates@1.17.0) (2023-03-30)
 
 ### Features

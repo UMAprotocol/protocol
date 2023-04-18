@@ -1,6 +1,6 @@
 {
   "name": "monitor-v2",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Set of monitor and health check runners for oracle system",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@ethersproject/abstract-provider": "^5.4.0",
-    "@uma/common": "^2.32.0",
-    "@uma/contracts-node": "^0.4.15",
-    "@uma/financial-templates-lib": "^2.32.10",
+    "@uma/common": "^2.33.0",
+    "@uma/contracts-node": "^0.4.16",
+    "@uma/financial-templates-lib": "^2.32.11",
     "ethers": "^5.4.2"
   },
   "devDependencies": {

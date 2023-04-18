@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.26.0...@uma/scripts@1.27.0) (2023-04-18)
+
+
+### Bug Fixes
+
+* **scripts:** allow js imports ([#4523](https://github.com/UMAprotocol/protocol/issues/4523)) ([0440fa1](https://github.com/UMAprotocol/protocol/commit/0440fa1b3b862c7600576a0805133e4530bce012))
+* dvm2.0 health checks simulation gas issues ([#4512](https://github.com/UMAprotocol/protocol/issues/4512)) ([dbebfc5](https://github.com/UMAprotocol/protocol/commit/dbebfc5045d4707969a3eccefe7f6f255c8af782))
+
+
+### Features
+
+* **scripts:** optimistic governor scripts ([#4520](https://github.com/UMAprotocol/protocol/issues/4520)) ([62e58e8](https://github.com/UMAprotocol/protocol/commit/62e58e8cc9f69bcce46bd656a7a2728db85f0a71))
+* **scripts:** option to skip simulated vote execution ([#4522](https://github.com/UMAprotocol/protocol/issues/4522)) ([997ecc9](https://github.com/UMAprotocol/protocol/commit/997ecc91dadd66a5fe2ee896e6dcd07f9d4246ea))
+* **scripts:** revoke minter role ([#4516](https://github.com/UMAprotocol/protocol/issues/4516)) ([9bfbbe9](https://github.com/UMAprotocol/protocol/commit/9bfbbe98bed0ac7d9c924115018bb0e26987e2b5))
+* **scripts:** simulate vote by all real stakers ([#4521](https://github.com/UMAprotocol/protocol/issues/4521)) ([add05f1](https://github.com/UMAprotocol/protocol/commit/add05f1db253f5a437f6ee9dd526fd8611da2ede))
+* **scripts:** vote simulation health check ([#4519](https://github.com/UMAprotocol/protocol/issues/4519)) ([587bbfc](https://github.com/UMAprotocol/protocol/commit/587bbfc82f734f44725ded5f732b99e13c6270cc))
+* add minimal viable test script to produce requests on all versions of the OO ([#4517](https://github.com/UMAprotocol/protocol/issues/4517)) ([06a6530](https://github.com/UMAprotocol/protocol/commit/06a653060d729498f7ee78b306ede79b898872f9))
+
+
+
+
+
 # [1.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.25.1...@uma/scripts@1.26.0) (2023-03-30)
 
 ### Features
