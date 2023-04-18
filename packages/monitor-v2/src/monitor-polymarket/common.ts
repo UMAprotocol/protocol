@@ -38,6 +38,7 @@ export interface MonitoringParams {
   apiEndpoint: string;
   provider: Provider;
   chainId: number;
+  pollingDelay: number;
 }
 
 interface PolymarketMarket {
@@ -396,6 +397,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
 
+  // Default to 1 minute polling delay.
+  const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
+
   const maxBlockLookBack = env.MAX_BLOCK_LOOK_BACK ? Number(env.MAX_BLOCK_LOOK_BACK) : 3499;
 
   return {
@@ -407,6 +411,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     apiEndpoint,
     provider,
     chainId,
+    pollingDelay,
   };
 };
 

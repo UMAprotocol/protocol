@@ -12,8 +12,17 @@ async function main() {
     message: "Polymarket Monitor started 🔭",
   });
 
-  await monitorTransactionsProposedOrderBook(logger, params);
-  await delay(5);
+  for (;;) {
+    await monitorTransactionsProposedOrderBook(logger, params);
+
+    // If polling delay is 0 then we are running in serverless mode and should exit after one iteration.
+    if (params.pollingDelay === 0) {
+      await delay(5); // Set a delay to let the transports flush fully.
+      break;
+    }
+
+    await delay(params.pollingDelay);
+  }
 }
 
 main().then(

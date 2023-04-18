@@ -68,6 +68,7 @@ describe("PolymarketNotifier", function () {
       apiEndpoint,
       provider: ethers.provider as Provider,
       chainId: (await ethers.provider.getNetwork()).chainId,
+      pollingDelay: 0,
     };
   };
 
