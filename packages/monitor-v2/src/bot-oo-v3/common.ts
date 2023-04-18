@@ -1,5 +1,5 @@
-import { getMnemonicSigner, getRetryProvider } from "@uma/common";
-import { Signer } from "ethers";
+import { getGckmsSigner, getMnemonicSigner, getRetryProvider } from "@uma/common";
+import { Signer, Wallet } from "ethers";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 
@@ -19,49 +19,41 @@ export interface BlockRange {
 export interface MonitoringParams {
   provider: Provider;
   chainId: number;
-  runFrequency: number;
   botModes: BotModes;
   signer: Signer;
-  warmingUpBlockLookback: number;
   blockLookback: number;
   maxBlockLookBack: number;
-  firstRun?: boolean;
+  pollingDelay: number;
 }
 
 const blockDefaults = {
   "1": {
     // Mainnet
-    hour: 300, // 12 seconds per block
-    day: 7200,
+    oneHour: 300, // 12 seconds per block
     maxBlockLookBack: 20000,
   },
   "137": {
     // Polygon
-    hour: 1800, // 2 seconds per block
-    day: 43200,
+    oneHour: 1800, // 2 seconds per block
     maxBlockLookBack: 3499,
   },
   "10": {
     // Optimism
-    hour: 1800, // 2 seconds per block
-    day: 43200,
+    oneHour: 1800, // 2 seconds per block
     maxBlockLookBack: 10000,
   },
   "42161": {
     // Arbitrum
-    hour: 240, // 15 seconds per block
-    day: 5760,
+    oneHour: 240, // 15 seconds per block
     maxBlockLookBack: 10000,
   },
   "43114": {
     // Avalanche
-    hour: 1800, // 2 seconds per block
-    day: 43200,
+    oneHour: 1800, // 2 seconds per block
     maxBlockLookBack: 2000,
   },
   other: {
-    hour: 240, // 15 seconds per block
-    day: 5760,
+    oneHour: 240, // 15 seconds per block
     maxBlockLookBack: 1000,
   },
 };
@@ -73,25 +65,25 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
 
-  // Throws if MNEMONIC env var is not defined.
-  const signer = (getMnemonicSigner() as Signer).connect(provider);
+  // Default to 1 minute polling delay.
+  const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
 
-  // Default to 1 minute run frequency.
-  const runFrequency = env.RUN_FREQUENCY ? Number(env.RUN_FREQUENCY) : 60;
+  let signer;
+  if (process.env.GCKMS_WALLET) {
+    signer = ((await getGckmsSigner()) as Wallet).connect(provider);
+  } else {
+    // Throws if MNEMONIC env var is not defined.
+    signer = (getMnemonicSigner() as Signer).connect(provider);
+  }
 
   const botModes = {
     settleAssertionsEnabled: env.SETTLEMENTS_ENABLED === "true",
   };
 
   const blockLookback =
-    Number(env.WARMING_UP_BLOCK_LOOKBACK) ||
-    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.hour ||
-    blockDefaults.other.hour;
-
-  const warmingUpBlockLookback =
     Number(env.BLOCK_LOOKBACK) ||
-    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.day ||
-    blockDefaults.other.day;
+    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.oneHour ||
+    blockDefaults.other.oneHour;
 
   const maxBlockLookBack =
     Number(env.MAX_BLOCK_LOOKBACK) ||
@@ -101,15 +93,14 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   return {
     provider,
     chainId,
-    runFrequency,
     botModes,
     signer,
-    warmingUpBlockLookback,
     blockLookback,
     maxBlockLookBack,
+    pollingDelay,
   };
 };
 
 export const startupLogLevel = (params: MonitoringParams): "debug" | "info" => {
-  return params.runFrequency === 0 ? "debug" : "info";
+  return params.pollingDelay === 0 ? "debug" : "info";
 };
