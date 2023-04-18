@@ -20,8 +20,7 @@ import { logProposalOrderBook } from "./MonitorLogger";
 
 export async function monitorTransactionsProposedOrderBook(
   logger: typeof Logger,
-  params: MonitoringParams,
-  cache: { ancillaryData: Map<string, string> }
+  params: MonitoringParams
 ): Promise<void> {
   const networker = new Networker(logger);
   const currentBlockNumber = await params.provider.getBlockNumber();
@@ -50,10 +49,23 @@ export async function monitorTransactionsProposedOrderBook(
 
   const markets = await getPolymarketMarkets(params);
 
-  const marketsWithAncillary = await getMarketsAncillary(params, markets, cache.ancillaryData);
+  const marketsWithAncillary = await getMarketsAncillary(params, markets);
   // Filter out markets that do not have a proposal event.
   const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
-    .filter((market) => proposalEvents.find((event) => event.ancillaryData === market.ancillaryData))
+    .filter((market) => {
+      const found = proposalEvents.find((event) => event.ancillaryData === market.ancillaryData);
+      if (!found && market.umaResolutionStatus == "proposed") {
+        // Log a warning if the market has a proposal event but no ancillary data was found.
+        // This would mean that getMarketsAncillary is not working properly.
+        logger.warn({
+          at: "PolymarketNotifier",
+          message: "Market has a proposal event but no ancillary data was found",
+          mrkdwn: `Market: ${market.questionID} | Question: ${market.question} | Market Status: ${market.endDate}`,
+          notificationPath: "polymarket-notifier",
+        });
+      }
+      return found;
+    })
     .map((market) => {
       const event = proposalEvents.find((event) => event.ancillaryData === market.ancillaryData);
       if (!event) throw new Error("Could not find event for market");

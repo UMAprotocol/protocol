@@ -1,10 +1,5 @@
 import { getRetryProvider } from "@uma/common";
-import {
-  aggregateTransactionsAndCall,
-  delay,
-  NetworkerInterface,
-  TransactionDataDecoder,
-} from "@uma/financial-templates-lib";
+import { aggregateTransactionsAndCall, NetworkerInterface, TransactionDataDecoder } from "@uma/financial-templates-lib";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 
 import type { Provider } from "@ethersproject/abstract-provider";
@@ -27,11 +22,6 @@ export interface BotModes {
   transactionsProposedEnabled: boolean;
 }
 
-export interface BlockRange {
-  start: number;
-  end: number;
-}
-
 export interface TradeInformation {
   price: number;
   type: "buy" | "sell";
@@ -48,9 +38,6 @@ export interface MonitoringParams {
   apiEndpoint: string;
   provider: Provider;
   chainId: number;
-  blockRange: BlockRange;
-  pollingDelay: number;
-  botModes: BotModes;
 }
 
 interface PolymarketMarket {
@@ -63,6 +50,8 @@ interface PolymarketMarket {
   liquidityNum: number;
   volumeNum: number;
   clobTokenIds: [string, string];
+  endDate: string;
+  umaResolutionStatus: string;
 }
 
 interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
@@ -166,13 +155,23 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
         volumeNum
         clobTokenIds
         endDate
+        umaResolutionStatus
       }
     }
   `;
 
   const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as any;
 
-  return polymarketContracts.map((contract: { [k: string]: any }) => ({
+  // Remove markets with 1 week old endDate or more. So we only monitor markets that ended in the last week
+  // (or are still ongoing).
+  const now = Math.floor(Date.now() / 1000);
+  const oneWeek = 60 * 60 * 24 * 7;
+  const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
+    const endDate = new Date(contract.endDate).getTime() / 1000;
+    return endDate > now - oneWeek;
+  });
+
+  return filtered.map((contract: { [k: string]: any }) => ({
     ...contract,
     outcomes: JSON.parse(contract.outcomes),
     outcomePrices: JSON.parse(contract.outcomePrices),
@@ -250,11 +249,9 @@ export const getOrderFilledEvents = async (
 
 export const getMarketsAncillary = async (
   params: MonitoringParams,
-  markets: PolymarketMarket[],
-  cache: Map<string, string>
+  markets: PolymarketMarket[]
 ): Promise<PolymarketMarketWithAncillaryData[]> => {
-  console.log("Fetching ancillary data for markets...");
-  console.log("Market cache length: ", cache.size);
+  console.log(`Fetching ancillary data for ${markets.length} markets...`);
   const failed = "failed";
   const binaryAdapterAbi = require("./abi/binaryAdapter.json");
   const ctfAdapterAbi = require("./abi/ctfAdapter.json");
@@ -267,12 +264,8 @@ export const getMarketsAncillary = async (
   decoder.abiDecoder.addABI(ctfAdapterAbi);
 
   const multicall = await getContractInstanceWithProvider<Multicall3Ethers>("Multicall3", params.provider);
-  // Filter out markets with cached data and create calls for the remaining markets
-  const filteredMarkets = markets.filter(
-    (market) => !cache.has(market.questionID) && cache.get(market.questionID) !== failed
-  );
 
-  const calls = filteredMarkets.map((market) => {
+  const calls = markets.map((market) => {
     const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
     return {
       target: adapter.address,
@@ -294,24 +287,22 @@ export const getMarketsAncillary = async (
     chunks.push(calls.slice(i, i + chunkSize));
   }
 
-  // Process the chunks sequentially, if the chunk fails, process the contents of the chunk individually.
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
+  const ancillaryMap = new Map<string, string>();
+
+  const chunkPromises = chunks.map(async (chunk, i) => {
     try {
-      // log progress
-      console.log(`Processing ancillary fetching chunk ${i + 1} of ${chunks.length}`);
       const chunkResults = (await aggregateTransactionsAndCall(multicall.address, web3, chunk)) as {
         ancillaryData: string;
       }[];
-      // Update the cache and results with the chunkResults
+      // Update the ancillaryMap and results with the chunkResults
       chunkResults.forEach((result, index) => {
-        const market = filteredMarkets[i * chunkSize + index];
-        cache.set(market.questionID, result.ancillaryData);
+        const market = markets[i * chunkSize + index];
+        ancillaryMap.set(market.questionID, result.ancillaryData);
       });
     } catch (error) {
       for (let j = 0; j < chunk.length; j++) {
         const call = chunk[j];
-        const market = filteredMarkets[i * chunkSize + j];
+        const market = markets[i * chunkSize + j];
         let ancillaryData;
         try {
           const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
@@ -321,17 +312,19 @@ export const getMarketsAncillary = async (
           ancillaryData = failed;
           console.error("Failed to get ancillary data for market ", JSON.stringify(call), JSON.stringify(market));
         }
-        cache.set(market.questionID, ancillaryData);
+        ancillaryMap.set(market.questionID, ancillaryData);
       }
     }
-  }
+  });
+
+  await Promise.all(chunkPromises);
 
   console.log("Finished fetching ancillary data for markets...");
   return markets.map((market) => {
     return {
       ...market,
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      ancillaryData: cache.get(market.questionID)!,
+      ancillaryData: ancillaryMap.get(market.questionID)!,
     };
   });
 };
@@ -398,33 +391,10 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
-  const STARTING_BLOCK_KEY = `STARTING_BLOCK_NUMBER_${chainId}`;
-  const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${chainId}`;
-
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
 
-  // Default to 1 minute polling delay.
-  const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
-
-  if (pollingDelay === 0 && (!env[STARTING_BLOCK_KEY] || !env[ENDING_BLOCK_KEY])) {
-    throw new Error(`Must provide ${STARTING_BLOCK_KEY} and ${ENDING_BLOCK_KEY} if running serverless`);
-  }
-
-  // If no block numbers are provided, default to the latest block.
-  const latestBlockNumber: number = await provider.getBlockNumber();
-  const startingBlock = env[STARTING_BLOCK_KEY] ? Number(env[STARTING_BLOCK_KEY]) : latestBlockNumber;
-  const endingBlock = env[ENDING_BLOCK_KEY] ? Number(env[ENDING_BLOCK_KEY]) : latestBlockNumber;
-  // In serverless it is possible for start block to be larger than end block if no new blocks were mined since last run.
-  if (startingBlock > endingBlock && pollingDelay !== 0) {
-    throw new Error(`${STARTING_BLOCK_KEY} must be less than or equal to ${ENDING_BLOCK_KEY}`);
-  }
-
   const maxBlockLookBack = env.MAX_BLOCK_LOOK_BACK ? Number(env.MAX_BLOCK_LOOK_BACK) : 3499;
-
-  const botModes = {
-    transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
-  };
 
   return {
     binaryAdapterAddress,
@@ -435,20 +405,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     apiEndpoint,
     provider,
     chainId,
-    blockRange: { start: startingBlock, end: endingBlock },
-    pollingDelay,
-    botModes,
   };
-};
-
-export const waitNextBlockRange = async (params: MonitoringParams): Promise<BlockRange> => {
-  await delay(Number(params.pollingDelay));
-  const latestBlockNumber: number = await params.provider.getBlockNumber();
-  return { start: params.blockRange.end + 1, end: latestBlockNumber };
-};
-
-export const startupLogLevel = (params: MonitoringParams): "debug" | "info" => {
-  return params.pollingDelay === 0 ? "debug" : "info";
 };
 
 export const getMarketKeyToStore = (market: { txHash: string; question: string; proposedPrice: string }): string => {
