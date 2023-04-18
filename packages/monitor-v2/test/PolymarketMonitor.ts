@@ -10,7 +10,7 @@ import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma
 import { assert } from "chai";
 import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
-import { BotModes, MonitoringParams, TradeInformation } from "../src/monitor-polymarket/common";
+import { MonitoringParams, TradeInformation } from "../src/monitor-polymarket/common";
 import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer } from "./utils";
@@ -20,7 +20,6 @@ const ethers = hre.ethers;
 describe("PolymarketNotifier", function () {
   let oov2: OptimisticOracleV2Ethers;
   let deployer: Signer;
-  const cache = { ancillaryData: new Map<string, string>() };
   const indentifier = formatBytes32String("TEST_IDENTIFIER");
 
   const mockData: any[] = [
@@ -54,11 +53,6 @@ describe("PolymarketNotifier", function () {
 
   // Create monitoring params for single block to pass to monitor modules.
   const createMonitoringParams = async (): Promise<MonitoringParams> => {
-    // Bot modes are not used as we are calling monitor modules directly.
-    const botModes: BotModes = {
-      transactionsProposedEnabled: true,
-    };
-
     const binaryAdapterAddress = "dummy";
     const ctfAdapterAddress = "dummy";
     const ctfExchangeAddress = "dummy";
@@ -74,9 +68,7 @@ describe("PolymarketNotifier", function () {
       apiEndpoint,
       provider: ethers.provider as Provider,
       chainId: (await ethers.provider.getNetwork()).chainId,
-      blockRange: { start: 0, end: 0 },
       pollingDelay: 0,
-      botModes,
     };
   };
 
@@ -152,7 +144,7 @@ describe("PolymarketNotifier", function () {
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams(), cache);
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
@@ -187,7 +179,7 @@ describe("PolymarketNotifier", function () {
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams(), cache);
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
     // The spy should not have been called as the order book is empty.
     assert.equal(spy.callCount, 0);
@@ -226,7 +218,7 @@ describe("PolymarketNotifier", function () {
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams(), cache);
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
@@ -279,7 +271,7 @@ describe("PolymarketNotifier", function () {
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams(), cache);
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);

@@ -14,15 +14,12 @@ All the configuration should be provided with following environment variables:
 
 - `CHAIN_ID` is network number.
 - `NODE_URLS_X` is an array of RPC node URLs replacing `X` in variable name with network number from `CHAIN_ID`.
-- `NODE_URL_X` is a single RPC node URL replacing `X` in variable name with network number from `CHAIN_ID`. This is
+- `NODE_URL_X` is a single RPC node URL replacing `X` in variable name with network number from `CHAIN_ID`.
   considered only if matching `NODE_URLS_X` is not provided.
 - `NODE_RETRIES` is the number of retries to make when a node request fails (defaults to `2`).
 - `NODE_RETRY_DELAY` is the delay in seconds between retries (defaults to `1`).
 - `NODE_TIMEOUT` is the timeout in seconds for node requests (defaults to `60`).
-- `POLLING_DELAY` is value in seconds for delay between consecutive runs, defaults to 1 minute. If set to 0 then running
+- `POLLING_DELAY` is value in seconds for delay between consecutive runs, defaults to 1 minute. If set to 0 then running in serverless mode will exit after the loop.
   in serverless mode will exit after the loop.
-- `STARTING_BLOCK_NUMBER` and `ENDING_BLOCK_NUMBER` defines block range to look for events on the `CHAIN_ID` network.
-  These are mandatory when `POLLING_DELAY=0`.
-- `TRANSACTIONS_PROPOSED_ENABLED` is boolean enabling/disabling monitoring transactions proposed (`false` by default).
 - `THRESHOLD_ASKS` Price threshold for winner outcome asks in the orderbook that triggers a notification (defaults to `1`).
 - `THRESHOLD_BIDS` Price threshold for loser outcome bids in the orderbook that triggers a notification (defaults to `0`).

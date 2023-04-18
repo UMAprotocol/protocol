@@ -20,8 +20,7 @@ import { logProposalOrderBook } from "./MonitorLogger";
 
 export async function monitorTransactionsProposedOrderBook(
   logger: typeof Logger,
-  params: MonitoringParams,
-  cache: { ancillaryData: Map<string, string> }
+  params: MonitoringParams
 ): Promise<void> {
   const networker = new Networker(logger);
   const currentBlockNumber = await params.provider.getBlockNumber();
@@ -50,7 +49,7 @@ export async function monitorTransactionsProposedOrderBook(
 
   const markets = await getPolymarketMarkets(params);
 
-  const marketsWithAncillary = await getMarketsAncillary(params, markets, cache.ancillaryData);
+  const marketsWithAncillary = await getMarketsAncillary(params, markets);
   // Filter out markets that do not have a proposal event.
   const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
     .filter((market) => proposalEvents.find((event) => event.ancillaryData === market.ancillaryData))
