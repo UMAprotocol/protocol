@@ -18,7 +18,7 @@ export async function logTransactions(
   },
   params: MonitoringParams
 ): Promise<void> {
-  logger.warn({
+  logger.error({
     at: "OptimisticGovernorMonitor",
     message: "Transactions Proposed 📝",
     mrkdwn:
@@ -86,7 +86,7 @@ export async function logProposalDeleted(
   transaction: { assertionId: string; proposalHash: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
-  logger.warn({
+  logger.error({
     at: "OptimisticGovernorMonitor",
     message: "Proposal Deleted 🗑️",
     mrkdwn:

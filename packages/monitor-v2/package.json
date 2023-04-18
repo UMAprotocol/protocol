@@ -6,7 +6,8 @@
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && yarn run monitor-polymarket-post-build",
+    "monitor-polymarket-post-build": "mkdir -p ./dist/monitor-polymarket/abi && cp ./src/monitor-polymarket/abi/* ./dist/monitor-polymarket/abi",
     "test": "hardhat test"
   },
   "dependencies": {
@@ -14,7 +15,8 @@
     "@uma/common": "^2.33.0",
     "@uma/contracts-node": "^0.4.16",
     "@uma/financial-templates-lib": "^2.32.11",
-    "ethers": "^5.4.2"
+    "ethers": "^5.4.2",
+    "graphql-request": "^5.2.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
