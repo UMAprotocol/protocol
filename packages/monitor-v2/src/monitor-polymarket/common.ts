@@ -167,7 +167,9 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
   const now = Math.floor(Date.now() / 1000);
   const oneWeek = 60 * 60 * 24 * 7;
   const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
-    const endDate = new Date(contract.endDate).getTime() / 1000;
+    const parsedDateTime = new Date(contract.endDate).getTime();
+    if (isNaN(parsedDateTime)) return true; // If endDate is not a valid date we keep the market.
+    const endDate = parsedDateTime / 1000;
     return endDate > now - oneWeek;
   });
 
