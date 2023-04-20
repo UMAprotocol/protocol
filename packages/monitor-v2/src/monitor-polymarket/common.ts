@@ -369,12 +369,12 @@ export const getPolymarketOrderBooks = async (
         ...{
           orderBooks: [
             {
-              bids: stringToNumber(outcome1Bids),
-              asks: stringToNumber(outcome1Asks),
+              bids: outcome1Bids ? stringToNumber(outcome1Bids) : [],
+              asks: outcome1Asks ? stringToNumber(outcome1Asks) : [],
             },
             {
-              bids: stringToNumber(outcome2Bids),
-              asks: stringToNumber(outcome2Asks),
+              bids: outcome2Bids ? stringToNumber(outcome2Bids) : [],
+              asks: outcome2Asks ? stringToNumber(outcome2Asks) : [],
             },
           ],
         },
