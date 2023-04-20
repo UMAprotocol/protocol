@@ -342,11 +342,15 @@ export const getPolymarketOrderBooks = async (
       const [marketOne, marketTwo] = market.clobTokenIds;
       const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
       const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
-      const { bids: outcome1Bids, asks: outcome1Asks } = (await networker.getJson(apiUrlOne, {
+
+      // TODO: defaulting to [] is a temporary fix to handle the case where the API returns an error.
+      // This means we just assume there are no orders on that side. We don't expect this to happen, but it
+      // does occasionally. We should get to the bottom of this.
+      const { bids: outcome1Bids = [], asks: outcome1Asks = [] } = (await networker.getJson(apiUrlOne, {
         method: "get",
       })) as PolymarketOrderBook;
 
-      const { bids: outcome2Bids, asks: outcome2Asks } = (await networker.getJson(apiUrlTwo, {
+      const { bids: outcome2Bids = [], asks: outcome2Asks = [] } = (await networker.getJson(apiUrlTwo, {
         method: "get",
       })) as PolymarketOrderBook;
 
