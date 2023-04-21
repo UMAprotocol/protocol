@@ -141,7 +141,11 @@ export const formatPriceEvents = async (
 };
 
 export const getPolymarketMarkets = async (params: MonitoringParams): Promise<PolymarketMarket[]> => {
-  const whereClause = "question_ID IS NOT NULL" + " AND clob_Token_Ids IS NOT NULL";
+  const whereClause =
+    "uma_resolution_status!='settled'" +
+    " AND uma_resolution_status!='resolved'" +
+    " AND question_ID IS NOT NULL" +
+    " AND clob_Token_Ids IS NOT NULL";
 
   const query = `
     {
