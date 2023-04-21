@@ -31,9 +31,10 @@ main().then(
   },
   async (error) => {
     logger.error({
-      at: "PolymarketNotifier",
-      message: "Polymarket Notifier execution error 🚨",
+      at: "PolymarketMonitor",
+      message: "Polymarket Monitor execution error 🚨",
       error,
+      notificationPath: "infrastructure-error",
     });
     await delay(5); // Wait 5 seconds to allow logger to flush.
     process.exit(1);
