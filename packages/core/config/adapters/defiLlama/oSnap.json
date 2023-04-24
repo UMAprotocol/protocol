@@ -2,6 +2,7 @@
   "ethereum": {
     "avatars": ["0xB524735356985D2f267FA010D681f061DfF03715", "0x90A48D5CF7343B08dA12E067680B4C6dbfE551Be"],
     "tokens": [
+      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
       "0x44108f0223a3c3028f5fe7aec7f9bb2e66bef82f",
       "0x04fa0d235c4abf4bcf4787af4cf447de572ef828",
       "0xc770eefad204b5180df6a14ee197d99d808ee52d",
@@ -17,7 +18,7 @@
   },
   "polygon": {
     "avatars": [],
-    "tokens": []
+    "tokens": ["0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"]
   },
   "optimism": {
     "avatars": [],
@@ -25,14 +26,14 @@
   },
   "arbitrum": {
     "avatars": [],
-    "tokens": []
+    "tokens": ["0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"]
   },
   "avax": {
     "avatars": [],
-    "tokens": []
+    "tokens": ["0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"]
   },
   "xdai": {
     "avatars": [],
-    "tokens": []
+    "tokens": ["0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"]
   }
 }
