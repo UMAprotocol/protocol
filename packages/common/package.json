@@ -29,7 +29,6 @@
     "/types/**/*"
   ],
   "dependencies": {
-    "@across-protocol/contracts": "^0.1.4",
     "@ethersproject/bignumber": "^5.0.5",
     "@google-cloud/kms": "^3.0.1",
     "@google-cloud/storage": "^6.4.2",

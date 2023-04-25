@@ -9,7 +9,7 @@ import { CombinedHRE } from "./types";
 // /build/artifacts.json -> JSON file with [relativePath] where each relativePath points to a hardhat artifact json file.
 // /networks/[CHAIN_ID].json that matches the structure in core.
 // /typechain
-const EXTERNAL_PACKAGES: string[] = ["@across-protocol/contracts"];
+const EXTERNAL_PACKAGES: string[] = [];
 
 function removeFileIfExists(filename: string): void {
   try {

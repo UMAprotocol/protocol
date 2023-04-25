@@ -102,6 +102,4 @@ To add an external package:
 
 - Add the external package name to the `EXTERNAL_PACKAGES` array in `/packages/common/hardhat/tasks/artifacts.ts`.
 - Add the external package to this package as a `devDependency`.
-- Copy the `copy-across-types` package.json script in this package replacing the name and `@across-protocol/contracts`
-  with the new package.
-- Add your new package.json script to the `generate-ts` script in package.json similar to how `copy-across-types` is.
+- Add a package.json script to the `generate-ts` script in package.json.

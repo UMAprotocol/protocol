@@ -3,7 +3,6 @@
   "version": "0.4.16",
   "description": "UMA smart contracts and unit tests",
   "devDependencies": {
-    "@across-protocol/contracts": "^0.1.4",
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
     "@ethersproject/contracts": "^5.4.0",
@@ -33,8 +32,7 @@
   "scripts": {
     "test": "echo 'No tests configured'",
     "clean": "rm -rf dist generated typechain",
-    "copy-across-types": "mkdir -p typechain/@across-protocol/contracts && rsync -a $(dirname $(node -p 'require.resolve(\"@across-protocol/contracts/package.json\")'))/contract-types/ typechain/@across-protocol/contracts",
-    "generate-ts": "yarn clean && mkdir -p generated typechain/core && cp -R ../core/contract-types/* typechain/core/ && yarn copy-across-types && yarn hardhat generate-contracts-node --out ./generated/index.ts",
+    "generate-ts": "yarn clean && mkdir -p generated typechain/core && cp -R ../core/contract-types/* typechain/core/ && yarn hardhat generate-contracts-node --out ./generated/index.ts",
     "build": "yarn generate-ts && yarn tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/packages/contracts-node/",
     "prepublish": "yarn build"
   },

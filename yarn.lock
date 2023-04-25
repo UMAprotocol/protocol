@@ -2,15 +2,6 @@
 # yarn lockfile v1
 
 
-"@across-protocol/contracts@^0.1.4":
-  version "0.1.4"
-  resolved "https://registry.yarnpkg.com/@across-protocol/contracts/-/contracts-0.1.4.tgz#64b3d91e639d2bb120ea94ddef3d160967047fa5"
-  integrity sha512-y9FVRSFdPgEdGWBcf8rUmmzdYhzGdy0752HwpaAFtMJ1pn+HFgNaI0EZc/UudMKIPOkk+/BxPIHYPy7tKad5/A==
-  dependencies:
-    "@eth-optimism/contracts" "^0.5.5"
-    "@openzeppelin/contracts" "4.1.0"
-    "@uma/core" "^2.18.0"
-
 "@ampproject/remapping@^2.2.0":
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/@ampproject/remapping/-/remapping-2.2.0.tgz#56c133824780de3174aed5ab6834f3026790154d"
@@ -1247,7 +1238,7 @@
     minimatch "^3.0.4"
     strip-json-comments "^3.1.1"
 
-"@eth-optimism/contracts@^0.5.40", "@eth-optimism/contracts@^0.5.5":
+"@eth-optimism/contracts@^0.5.40":
   version "0.5.40"
   resolved "https://registry.yarnpkg.com/@eth-optimism/contracts/-/contracts-0.5.40.tgz#d13a04a15ea947a69055e6fc74d87e215d4c936a"
   integrity sha512-MrzV0nvsymfO/fursTB7m/KunkPsCndltVgfdHaT1Aj5Vi6R/doKIGGkOofHX+8B6VMZpuZosKCMQ5lQuqjt8w==
@@ -3879,11 +3870,6 @@
   version "3.4.2-solc-0.7"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.4.2-solc-0.7.tgz#38f4dbab672631034076ccdf2f3201fab1726635"
   integrity sha512-W6QmqgkADuFcTLzHL8vVoNBtkwjvQRpYIAom7KiUNoLKghyx3FgH0GBjt8NRvigV1ZmMOBllvE1By1C+bi8WpA==
-
-"@openzeppelin/contracts@4.1.0":
-  version "4.1.0"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.1.0.tgz#baec89a7f5f73e3d8ea582a78f1980134b605375"
-  integrity sha512-TihZitscnaHNcZgXGj9zDLDyCqjziytB4tMCwXq0XimfWkAjBYyk5/pOsDbbwcavhlc79HhpTEpQcrMnPVa1mw==
 
 "@openzeppelin/contracts@4.4.2":
   version "4.4.2"
