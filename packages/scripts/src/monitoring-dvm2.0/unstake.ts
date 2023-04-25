@@ -25,14 +25,7 @@ async function main() {
   await updateTrackers(votingV2, uniqueVoters);
 
   console.log("Unstaking from all voters");
-  for (const voter of uniqueVoters) {
-    try {
-      await unstakeFromStakedAccount(votingV2, voter);
-    } catch (err) {
-      console.log("Unstake failed for voter", voter, err);
-      throw err;
-    }
-  }
+  await Promise.all(uniqueVoters.map((voter) => unstakeFromStakedAccount(votingV2, voter)));
 
   const numberSlashedEvents = await getNumberSlashedEvents(votingV2);
   const votingV2BalanceWithoutExternalTransfers = await votingV2VotingBalanceWithoutExternalTransfers(
