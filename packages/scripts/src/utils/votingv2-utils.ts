@@ -103,7 +103,7 @@ export const getVotingTokenExternalTransfersAmount = async (
   votingV2: VotingV2Ethers
 ): Promise<BigNumber> => {
   const searchConfig = await getVotingV2EventSearchConfig(votingV2);
-  const transferEvents = (await paginatedEventQuery<VoterSlashedEvent>(
+  const transferEvents = (await paginatedEventQuery<TransferEvent>(
     votingToken,
     votingToken.filters.Transfer(null, votingV2.address, null),
     searchConfig
