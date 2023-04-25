@@ -1,7 +1,7 @@
 import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { Networker } from "@uma/financial-templates-lib";
-import { paginatedEventQuery } from "../utils/EventUtils";
+import { paginatedEventQuery } from "@uma/common";
 import {
   Logger,
   MonitoringParams,

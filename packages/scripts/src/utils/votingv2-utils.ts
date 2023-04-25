@@ -1,9 +1,12 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { computeVoteHashAncillary, getRandomSignedInt } from "@uma/common";
+import { computeVoteHashAncillary, getRandomSignedInt, paginatedEventQuery } from "@uma/common";
 import { VotingTokenEthers, VotingV2Ethers, TypedEventFilterEthers as TypedEventFilter } from "@uma/contracts-node";
 import { BigNumber, BigNumberish, BytesLike, Signer } from "ethers";
 import { getContractInstance } from "./contracts";
 import { forkNetwork, getForkChainId, increaseEvmTime } from "./utils";
+import { StakedEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
+import { VoterSlashedEvent } from "@uma/contracts-node/typechain/core/ethers/VotingV2";
+import { TransferEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/ERC20";
 
 const hre = require("hardhat");
 const { ethers } = hre;
@@ -20,6 +23,14 @@ export interface CommittedVote {
   price: BigNumberish;
   voteHash: BytesLike;
 }
+
+const getVotingV2EventSearchConfig = async (votingV2: VotingV2Ethers) => {
+  return {
+    fromBlock: 16697232, // VotingV2 deployment block
+    toBlock: await votingV2.provider.getBlockNumber(),
+    maxBlockLookBack: 20000, // Mainnet max block lookback
+  };
+};
 
 export const getVotingContracts = async (): Promise<{ votingV2: VotingV2Ethers; votingToken: VotingTokenEthers }> => {
   let chainId: number;
@@ -39,34 +50,51 @@ export const getVotingContracts = async (): Promise<{ votingV2: VotingV2Ethers; 
 };
 
 export const getUniqueVoters = async (votingV2: VotingV2Ethers): Promise<string[]> => {
-  const stakedEvents = await votingV2.queryFilter(votingV2.filters.Staked(null, null, null));
+  const searchConfig = await getVotingV2EventSearchConfig(votingV2);
+  const stakedEvents = (await paginatedEventQuery<StakedEvent>(
+    votingV2,
+    votingV2.filters.Staked(null, null, null),
+    searchConfig
+  )) as StakedEvent[];
   const uniqueVoters = new Set<string>(stakedEvents.map((event) => event.args.voter));
   return Array.from(uniqueVoters);
 };
 
 export const updateTrackers = async (votingV2: VotingV2Ethers, voters: string[]): Promise<void> => {
   console.log("Updating trackers for all voters");
-  // process voters in batches of 25 to avoid hitting the gas limit with multicall
   const batchSize = 25;
+  const batches = [];
   for (let i = 0; i < voters.length; i += batchSize) {
     const batch = voters.slice(i, i + batchSize);
-    const tx = await votingV2.multicall(
-      batch.map((voter) => votingV2.interface.encodeFunctionData("updateTrackers", [voter]))
+    batches.push(
+      votingV2
+        .multicall(batch.map((voter) => votingV2.interface.encodeFunctionData("updateTrackers", [voter])))
+        .then((tx) => tx.wait())
     );
-    await tx.wait();
   }
+  await Promise.all(batches);
   console.log("Done updating trackers for all voters");
 };
 
 export const getSumSlashedEvents = async (votingV2: VotingV2Ethers): Promise<BigNumber> => {
-  const voterSlashedEvents = await votingV2.queryFilter(votingV2.filters.VoterSlashed(), 0, "latest");
+  const searchConfig = await getVotingV2EventSearchConfig(votingV2);
+  const voterSlashedEvents = (await paginatedEventQuery<VoterSlashedEvent>(
+    votingV2,
+    votingV2.filters.VoterSlashed(),
+    searchConfig
+  )) as VoterSlashedEvent[];
   return voterSlashedEvents
     .map((voterSlashedEvent) => voterSlashedEvent.args.slashedTokens)
     .reduce((a, b) => a.add(b), ethers.BigNumber.from(0));
 };
 
 export const getNumberSlashedEvents = async (votingV2: VotingV2Ethers): Promise<number> => {
-  const voterSlashedEvents = await votingV2.queryFilter(votingV2.filters.VoterSlashed(), 0, "latest");
+  const searchConfig = await getVotingV2EventSearchConfig(votingV2);
+  const voterSlashedEvents = (await paginatedEventQuery<VoterSlashedEvent>(
+    votingV2,
+    votingV2.filters.VoterSlashed(),
+    searchConfig
+  )) as VoterSlashedEvent[];
   return voterSlashedEvents.length;
 };
 
@@ -74,11 +102,12 @@ export const getVotingTokenExternalTransfersAmount = async (
   votingToken: VotingTokenEthers,
   votingV2: VotingV2Ethers
 ): Promise<BigNumber> => {
-  const transferEvents = await votingToken.queryFilter(
+  const searchConfig = await getVotingV2EventSearchConfig(votingV2);
+  const transferEvents = (await paginatedEventQuery<TransferEvent>(
+    votingToken,
     votingToken.filters.Transfer(null, votingV2.address, null),
-    0,
-    "latest"
-  );
+    searchConfig
+  )) as TransferEvent[];
 
   let sumExternalTransfers = BigNumber.from(0);
 

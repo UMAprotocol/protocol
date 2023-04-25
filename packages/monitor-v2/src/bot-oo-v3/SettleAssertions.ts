@@ -1,6 +1,6 @@
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV3Ethers } from "./common";
 import { logSettleAssertion } from "./BotLogger";
-import { paginatedEventQuery } from "../utils/EventUtils";
+import { paginatedEventQuery } from "@uma/common";
 import {
   AssertionSettledEvent,
   AssertionMadeEvent,

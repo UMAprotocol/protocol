@@ -1,16 +1,15 @@
-import { getRetryProvider } from "@uma/common";
+import { getRetryProvider, paginatedEventQuery } from "@uma/common";
 import { aggregateTransactionsAndCall, NetworkerInterface, TransactionDataDecoder } from "@uma/financial-templates-lib";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 import request from "graphql-request";
 
-import { ethers } from "ethers";
+import { Event, ethers } from "ethers";
 
 import { Multicall3Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import Web3 from "web3";
-import { paginatedEventQuery } from "../utils/EventUtils";
 
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
@@ -224,7 +223,7 @@ export const getOrderFilledEvents = async (
         maxBlockLookBack,
       };
 
-      const events = await paginatedEventQuery(
+      const events: Event[] = await paginatedEventQuery(
         ctfExchange,
         ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
         searchConfig

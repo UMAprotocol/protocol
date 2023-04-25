@@ -1,4 +1,3 @@
-import { delay } from "@uma/financial-templates-lib";
 import { Promise } from "bluebird";
 import { Contract, Event, EventFilter } from "ethers";
 
@@ -6,6 +5,9 @@ const defaultConcurrency = 200;
 const maxRetries = 3;
 const retrySleepTime = 10;
 
+function delay(s: number) {
+  return new Promise((resolve) => setTimeout(resolve, s * 1000));
+}
 export interface EventSearchConfig {
   fromBlock: number;
   toBlock: number;
