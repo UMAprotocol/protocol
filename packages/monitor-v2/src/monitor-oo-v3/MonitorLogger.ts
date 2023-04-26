@@ -39,6 +39,7 @@ export async function logAssertion(
       ". The assertion can be disputed till " +
       new Date(Number(assertion.assertionData.expirationTime) * 1000).toUTCString(),
     notificationPath: "optimistic-oracle",
+    discordPaths: ["oo-fact-checking", "oo-events"],
   });
 }
 
@@ -66,6 +67,7 @@ export async function logDispute(
       ". Identifier: " +
       utils.parseBytes32String(dispute.assertionData.identifier),
     notificationPath: "optimistic-oracle",
+    discordPaths: ["oo-fact-checking", "oo-events"],
   });
 }
 
@@ -94,5 +96,6 @@ export async function logSettlement(
       ". Result: assertion was " +
       (settlement.assertionData.settlementResolution ? "true" : "false"),
     notificationPath: "optimistic-oracle",
+    discordPaths: ["oo-fact-checking", "oo-events"],
   });
 }
