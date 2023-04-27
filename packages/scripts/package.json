@@ -31,5 +31,9 @@
   "scripts": {
     "test": "mocha 'test/**/*.js'",
     "build": "tsc --build"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
   }
 }
