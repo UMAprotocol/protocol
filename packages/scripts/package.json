@@ -20,7 +20,6 @@
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
-  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
@@ -31,5 +30,9 @@
   "scripts": {
     "test": "mocha 'test/**/*.js'",
     "build": "tsc --build"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
   }
 }
