@@ -148,7 +148,7 @@ describe("PolymarketNotifier", function () {
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
-    assert.equal(spy.getCall(0).lastArg.at, "PolymarketNotifier");
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(
@@ -222,7 +222,7 @@ describe("PolymarketNotifier", function () {
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
-    assert.equal(spy.getCall(0).lastArg.at, "PolymarketNotifier");
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(
@@ -275,7 +275,7 @@ describe("PolymarketNotifier", function () {
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
-    assert.equal(spy.getCall(0).lastArg.at, "PolymarketNotifier");
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(
