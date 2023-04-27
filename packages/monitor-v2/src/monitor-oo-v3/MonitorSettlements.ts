@@ -8,6 +8,7 @@ export async function monitorSettlements(logger: typeof Logger, params: Monitori
     await oo.queryFilter(oo.filters.AssertionSettled(), params.blockRange.start, params.blockRange.end)
   ).map(async (event) => ({
     tx: event.transactionHash,
+    eventIndex: event.logIndex,
     assertionId: event.args.assertionId,
     claim: (await oo.queryFilter(oo.filters.AssertionMade(event.args.assertionId))).map((event) => event.args.claim)[0],
     assertionData: await oo.getAssertion(event.args.assertionId),
