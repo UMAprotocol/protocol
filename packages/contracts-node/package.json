@@ -33,7 +33,7 @@
     "test": "echo 'No tests configured'",
     "clean": "rm -rf dist generated typechain",
     "generate-ts": "yarn clean && mkdir -p generated typechain/core && cp -R ../core/contract-types/* typechain/core/ && yarn hardhat generate-contracts-node --out ./generated/index.ts",
-    "build": "yarn generate-ts && mkdir -p ./dist && yarn tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/packages/contracts-node/",
+    "build": "yarn generate-ts && yarn tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/packages/contracts-node/",
     "prepublish": "yarn build"
   },
   "bugs": {
