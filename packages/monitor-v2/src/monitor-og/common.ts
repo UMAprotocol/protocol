@@ -3,13 +3,14 @@ import { ERC20Ethers } from "@uma/contracts-node";
 import { delay } from "@uma/financial-templates-lib";
 import { utils } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
-import { OptimisticGovernorEthers } from "./common";
+import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 
-export { OptimisticGovernorEthers } from "@uma/contracts-node";
+export { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
+export { generateOOv3UILink } from "../utils/logger";
 
 export interface BotModes {
   transactionsProposedEnabled: boolean;
@@ -135,7 +136,7 @@ export const getCurrencySymbol = async (provider: Provider, currencyAddress: str
 };
 
 export const runQueryFilter = async (
-  contract: OptimisticGovernorEthers,
+  contract: OptimisticGovernorEthers | OptimisticOracleV3Ethers,
   filter: any,
   blockRange: BlockRange
 ): Promise<any> => {
@@ -148,4 +149,8 @@ export const getOg = async (params: MonitoringParams): Promise<OptimisticGoverno
     params.provider,
     params.ogAddress
   );
+};
+
+export const getOo = async (params: MonitoringParams): Promise<OptimisticOracleV3Ethers> => {
+  return await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
 };

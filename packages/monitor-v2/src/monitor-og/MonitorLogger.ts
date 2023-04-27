@@ -1,6 +1,6 @@
 import { createEtherscanLinkMarkdown } from "@uma/common";
 import { BigNumber } from "ethers";
-import { Logger, tryHexToUtf8String } from "./common";
+import { generateOOv3UILink, Logger, tryHexToUtf8String } from "./common";
 
 import type { MonitoringParams } from "./common";
 
@@ -15,6 +15,7 @@ export async function logTransactions(
     rules: string;
     challengeWindowEnds: BigNumber;
     tx: string;
+    ooEventIndex: number;
   },
   params: MonitoringParams
 ): Promise<void> {
@@ -36,7 +37,10 @@ export async function logTransactions(
       ". Explanation: " +
       tryHexToUtf8String(transaction.explanation) +
       ". The proposal can be disputed till " +
-      new Date(Number(transaction.challengeWindowEnds.toString()) * 1000).toUTCString(),
+      new Date(Number(transaction.challengeWindowEnds.toString()) * 1000).toUTCString() +
+      ": " +
+      generateOOv3UILink(transaction.tx, transaction.ooEventIndex, params.chainId) +
+      ".",
     notificationPath: "optimistic-governor",
   });
 }
