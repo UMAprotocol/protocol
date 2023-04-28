@@ -6,6 +6,7 @@ import type { Provider } from "@ethersproject/abstract-provider";
 export { OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
+export { generateOOv3UILink } from "../utils/logger";
 
 export interface BotModes {
   assertionsEnabled: boolean;

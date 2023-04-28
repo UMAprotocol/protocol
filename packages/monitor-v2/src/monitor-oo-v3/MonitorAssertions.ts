@@ -8,6 +8,7 @@ export async function monitorAssertions(logger: typeof Logger, params: Monitorin
     await oo.queryFilter(oo.filters.AssertionMade(), params.blockRange.start, params.blockRange.end)
   ).map(async (event) => ({
     tx: event.transactionHash,
+    eventIndex: event.logIndex,
     assertionId: event.args.assertionId,
     claim: event.args.claim,
     assertionData: await oo.getAssertion(event.args.assertionId),
