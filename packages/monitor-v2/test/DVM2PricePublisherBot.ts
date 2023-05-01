@@ -9,6 +9,7 @@ import {
   OracleHubEthers,
   OracleMessengerMockEthers,
   OracleRootTunnelEthers,
+  OracleRootTunnelMockEthers,
   OracleSpokeEthers,
   RegistryEthers,
   StateSyncMockEthers,
@@ -51,7 +52,7 @@ describe("DVM2 Price Publisher", function () {
   let votingToken: VotingTokenEthers;
   let votingV2: VotingV2Ethers;
   let oracleHub: OracleHubEthers;
-  let oracleRootTunnel: OracleRootTunnelEthers;
+  let oracleRootTunnel: OracleRootTunnelMockEthers;
   let oracleSpoke: OracleSpokeEthers;
   let arbitrumParentMessenger: ArbitrumParentMessenger;
   let messengerMock: OracleMessengerMockEthers;
@@ -73,6 +74,7 @@ describe("DVM2 Price Publisher", function () {
 
   const testAncillaryData = ethers.utils.toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
   const testIdentifier = formatBytes32String("NUMERICAL");
+  const testRequestTime = 1234567890;
 
   const commitAndReveal = async (
     signer: SignerWithAddress,
@@ -122,6 +124,47 @@ describe("DVM2 Price Publisher", function () {
       umaEcosystemContracts.votingToken.address
     )) as OracleHubEthers;
 
+    oracleSpoke = (await (await getContractFactory("OracleSpoke", deployer)).deploy(
+      umaEcosystemContracts.finder.address
+    )) as OracleSpokeEthers;
+
+    // const stateSync = (await (await getContractFactory("StateSyncMock", deployer)).deploy()) as StateSyncMockEthers;
+    // const fxRoot = (await (await getContractFactory("FxRootMock", deployer)).deploy(
+    //   stateSync.address
+    // )) as FxRootMockEthers;
+    // const fxChild = (await (await getContractFactory("FxChildMock", deployer)).deploy(
+    //   await deployer.getAddress()
+    // )) as FxChildMockEthers;
+
+    // await (await fxChild.setFxRoot(fxRoot.address)).wait();
+    // await (await fxRoot.setFxChild(fxChild.address)).wait();
+
+    // const oracleChild = (await (await getContractFactory("OracleChildTunnel", deployer)).deploy(
+    //   fxChild.address,
+    //   umaEcosystemContracts.finder.address
+    // )) as OracleChildTunnelEthers;
+
+    oracleRootTunnel = (await (await getContractFactory("OracleRootTunnelMock", deployer)).deploy(
+      await deployer.getAddress(),
+      await deployer.getAddress(),
+      umaEcosystemContracts.finder.address
+    )) as OracleRootTunnelMockEthers;
+
+    messengerMock = (await (
+      await getContractFactory("OracleMessengerMock", deployer)
+    ).deploy()) as OracleMessengerMockEthers;
+
+    // Add test identifier to whitelist.
+    await (await identifierWhitelist.addSupportedIdentifier(testIdentifier)).wait();
+
+    // Register contract with Registry.
+    await (await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployerAddress)).wait();
+    await (await registry.registerContract([], registeredContractAddress)).wait();
+    await (await registry.registerContract([], oracleHub.address)).wait();
+    await (await registry.registerContract([], oracleRootTunnel.address)).wait();
+
+    // Arbitrum parent messenger setup
+
     const TEST = "0x0000000000000000000000000000000000000001";
 
     arbitrumBridgeMock = await (await getContractFactory("Arbitrum_BridgeMock", deployer)).deploy();
@@ -142,56 +185,9 @@ describe("DVM2 Price Publisher", function () {
     await arbitrumParentMessenger.setOracleHub(oracleHub.address);
 
     await (await oracleHub.setMessenger(10, arbitrumParentMessenger.address)).wait();
-
-    oracleSpoke = (await (await getContractFactory("OracleSpoke", deployer)).deploy(
-      umaEcosystemContracts.finder.address
-    )) as OracleSpokeEthers;
-
-    const stateSync = (await (await getContractFactory("StateSyncMock", deployer)).deploy()) as StateSyncMockEthers;
-    const fxRoot = (await (await getContractFactory("FxRootMock", deployer)).deploy(
-      stateSync.address
-    )) as FxRootMockEthers;
-    const fxChild = (await (await getContractFactory("FxChildMock", deployer)).deploy(
-      await deployer.getAddress()
-    )) as FxChildMockEthers;
-
-    await (await fxChild.setFxRoot(fxRoot.address)).wait();
-    await (await fxRoot.setFxChild(fxChild.address)).wait();
-
-    const oracleChild = (await (await getContractFactory("OracleChildTunnel", deployer)).deploy(
-      fxChild.address,
-      umaEcosystemContracts.finder.address
-    )) as OracleChildTunnelEthers;
-
-    oracleRootTunnel = (await (await getContractFactory("OracleRootTunnel", deployer)).deploy(
-      await deployer.getAddress(),
-      fxRoot.address,
-      umaEcosystemContracts.finder.address
-    )) as OracleRootTunnelEthers;
-
-    messengerMock = (await (
-      await getContractFactory("OracleMessengerMock", deployer)
-    ).deploy()) as OracleMessengerMockEthers;
-
-    await (await oracleHub.setMessenger(chainId, messengerMock.address)).wait();
-
-    // Add test identifier to whitelist.
-    await (await identifierWhitelist.addSupportedIdentifier(testIdentifier)).wait();
-
-    // Register contract with Registry.
-    await (await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployerAddress)).wait();
-    await (await registry.registerContract([], registeredContractAddress)).wait();
-    await (await registry.registerContract([], oracleHub.address)).wait();
-
-    // Fund staker and stake tokens.
-    const TEN_MILLION = ethers.utils.parseEther("10000000");
-    await (await votingToken.addMinter(await deployer.getAddress())).wait();
-    await (await votingToken.mint(await stakerAddress, TEN_MILLION)).wait();
-    await (await votingToken.connect(staker).approve(votingV2.address, TEN_MILLION)).wait();
-    await (await votingV2.connect(staker).stake(TEN_MILLION)).wait();
   });
 
-  it("Testing", async function () {
+  xit("Testing", async function () {
     const time = BigNumber.from("0");
     await (
       await votingV2
@@ -253,14 +249,11 @@ describe("DVM2 Price Publisher", function () {
   });
 
   it("Message received arbitrum", async function () {
-    const requestTime = 1234567890; // example uint256 value
-    const ancillaryData = "0xabcdef"; // example bytes value
-
-    const ancillaryDataStamp = await oracleSpoke.stampAncillaryData(ancillaryData);
+    const ancillaryDataStamp = await oracleSpoke.stampAncillaryData(testAncillaryData);
 
     const encodedData = defaultAbiCoder.encode(
       ["bytes32", "uint256", "bytes"],
-      [testIdentifier, requestTime, ancillaryDataStamp]
+      [testIdentifier, testRequestTime, ancillaryDataStamp]
     );
 
     await hre.network.provider.send("hardhat_setBalance", [
@@ -271,5 +264,21 @@ describe("DVM2 Price Publisher", function () {
     const bridgeSigner = (await ethers.getImpersonatedSigner(arbitrumBridgeMock.address)) as Signer;
 
     await arbitrumParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
+
+    const messagesReceivedFilter = arbitrumParentMessenger.filters.MessageReceivedFromChild(null, null, null);
+    const messagesReceived = await arbitrumParentMessenger.queryFilter(messagesReceivedFilter);
+
+    console.log(messagesReceived[0]);
+  });
+
+  it("Message received polygon", async function () {
+    const ancillaryDataStamp = await oracleSpoke.stampAncillaryData(testAncillaryData);
+
+    const encodedData = defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bytes"],
+      [testIdentifier, testRequestTime, ancillaryDataStamp]
+    );
+
+    await oracleRootTunnel.processMessageFromChild(encodedData);
   });
 });
