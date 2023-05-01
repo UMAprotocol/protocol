@@ -38,7 +38,7 @@ export const getVotingContracts = async (): Promise<{ votingV2: VotingV2Ethers; 
     chainId = (await ethers.provider.getNetwork()).chainId;
   } else {
     if (!process.env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
-    await forkNetwork(process.env.CUSTOM_NODE_URL);
+    await forkNetwork(process.env.CUSTOM_NODE_URL, process.env.ENDING_BLOCK_NUMBER);
     chainId = await getForkChainId(process.env.CUSTOM_NODE_URL);
   }
 
