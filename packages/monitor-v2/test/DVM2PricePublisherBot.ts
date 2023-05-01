@@ -9,16 +9,24 @@ import {
   OracleHubEthers,
   OracleMessengerMockEthers,
   OracleRootTunnelEthers,
+  OracleSpokeEthers,
   RegistryEthers,
   StateSyncMockEthers,
   VotingTokenEthers,
   VotingV2Ethers,
 } from "@uma/contracts-node";
-import { BigNumber, BytesLike } from "ethers";
+import hre from "hardhat";
+import { BigNumber, BytesLike, utils } from "ethers";
 import { BotModes, MonitoringParams } from "../src/bot-oo-v3/common";
 import { dvm2Fixture } from "./fixtures/DVM2.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
-import { formatBytes32String, getContractFactory, hre, moveToNextPhase, moveToNextRound, Signer } from "./utils";
+import { formatBytes32String, getContractFactory, moveToNextPhase, moveToNextRound, Signer } from "./utils";
+import { ArbitrumParentMessenger } from "@uma/contracts-frontend/dist/typechain/core/ethers";
+import { ArbitrumInboxMock } from "@uma/contracts-frontend/dist/typechain/@across-protocol/contracts/ethers";
+
+import { getAbi } from "@uma/contracts-node";
+
+const { defaultAbiCoder } = utils;
 
 const ethers = hre.ethers;
 
@@ -44,6 +52,8 @@ describe("DVM2 Price Publisher", function () {
   let votingV2: VotingV2Ethers;
   let oracleHub: OracleHubEthers;
   let oracleRootTunnel: OracleRootTunnelEthers;
+  let oracleSpoke: OracleSpokeEthers;
+  let arbitrumParentMessenger: ArbitrumParentMessenger;
   let messengerMock: OracleMessengerMockEthers;
   // let governorV2: GovernorV2Ethers;
   // let proposerV2: ProposerV2Ethers;
@@ -59,6 +69,7 @@ describe("DVM2 Price Publisher", function () {
   // let proposerAddress: string;
   let registeredContractAddress: string;
   let chainId: number;
+  let arbitrumBridgeMock;
 
   const testAncillaryData = ethers.utils.toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
   const testIdentifier = formatBytes32String("NUMERICAL");
@@ -87,6 +98,7 @@ describe("DVM2 Price Publisher", function () {
 
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.
+    chainId = (await ethers.provider.getNetwork()).chainId;
     [deployer, staker, registeredContract] = (await ethers.getSigners()) as Signer[];
     deployerAddress = await deployer.getAddress();
     stakerAddress = await staker.getAddress();
@@ -109,6 +121,31 @@ describe("DVM2 Price Publisher", function () {
       umaEcosystemContracts.finder.address,
       umaEcosystemContracts.votingToken.address
     )) as OracleHubEthers;
+
+    const TEST = "0x0000000000000000000000000000000000000001";
+
+    arbitrumBridgeMock = await (await getContractFactory("Arbitrum_BridgeMock", deployer)).deploy();
+
+    const arbitrumInboxMock = await hre.waffle.deployMockContract(deployer, getAbi("Arbitrum_InboxMock"));
+    const arbitrumOutboxMock = await hre.waffle.deployMockContract(deployer, getAbi("Arbitrum_OutboxMock"));
+
+    await arbitrumBridgeMock.setOutbox(arbitrumOutboxMock.address);
+    await arbitrumInboxMock.mock.bridge.returns(arbitrumBridgeMock.address);
+    await arbitrumOutboxMock.mock.l2ToL1Sender.returns(TEST);
+
+    arbitrumParentMessenger = (await (await getContractFactory("Arbitrum_ParentMessenger", deployer)).deploy(
+      arbitrumInboxMock.address,
+      10
+    )) as ArbitrumParentMessenger;
+
+    await arbitrumParentMessenger.setChildMessenger(TEST);
+    await arbitrumParentMessenger.setOracleHub(oracleHub.address);
+
+    await (await oracleHub.setMessenger(10, arbitrumParentMessenger.address)).wait();
+
+    oracleSpoke = (await (await getContractFactory("OracleSpoke", deployer)).deploy(
+      umaEcosystemContracts.finder.address
+    )) as OracleSpokeEthers;
 
     const stateSync = (await (await getContractFactory("StateSyncMock", deployer)).deploy()) as StateSyncMockEthers;
     const fxRoot = (await (await getContractFactory("FxRootMock", deployer)).deploy(
@@ -136,7 +173,6 @@ describe("DVM2 Price Publisher", function () {
       await getContractFactory("OracleMessengerMock", deployer)
     ).deploy()) as OracleMessengerMockEthers;
 
-    chainId = (await ethers.provider.getNetwork()).chainId;
     await (await oracleHub.setMessenger(chainId, messengerMock.address)).wait();
 
     // Add test identifier to whitelist.
@@ -214,5 +250,26 @@ describe("DVM2 Price Publisher", function () {
     // await settleAssertions(spyLogger, await createMonitoringParams());
     // // There should be no logs as there are no assertions to settle.
     // assert.isNull(spy.getCall(0));
+  });
+
+  it("Message received arbitrum", async function () {
+    const requestTime = 1234567890; // example uint256 value
+    const ancillaryData = "0xabcdef"; // example bytes value
+
+    const ancillaryDataStamp = await oracleSpoke.stampAncillaryData(ancillaryData);
+
+    const encodedData = defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bytes"],
+      [testIdentifier, requestTime, ancillaryDataStamp]
+    );
+
+    await hre.network.provider.send("hardhat_setBalance", [
+      arbitrumBridgeMock.address,
+      ethers.utils.parseEther("10.0").toHexString(),
+    ]);
+
+    const bridgeSigner = (await ethers.getImpersonatedSigner(arbitrumBridgeMock.address)) as Signer;
+
+    await arbitrumParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
   });
 });
