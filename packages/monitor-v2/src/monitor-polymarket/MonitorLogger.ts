@@ -35,7 +35,7 @@ export async function logProposalOrderBook(
   },
   params: MonitoringParams
 ): Promise<void> {
-  logger.warn({
+  logger.error({
     at: "PolymarketMonitor",
     message: "Difference between proposed price and market signal! 🚨",
     mrkdwn:
