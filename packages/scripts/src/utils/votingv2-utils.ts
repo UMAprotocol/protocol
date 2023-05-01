@@ -38,9 +38,11 @@ export const getVotingContracts = async (): Promise<{ votingV2: VotingV2Ethers; 
     chainId = (await ethers.provider.getNetwork()).chainId;
   } else {
     if (!process.env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
-    const blockNumber = process.env.ENDING_BLOCK_NUMBER ? parseInt(process.env.ENDING_BLOCK_NUMBER) : undefined;
+    // Forking from block with less than 6 confirmations will affect Hardhat Network's performance, so we subtract 6
+    // blocks if serverless hub injected the latest block number.
+    const blockNumber = process.env.ENDING_BLOCK_NUMBER ? parseInt(process.env.ENDING_BLOCK_NUMBER) - 6 : undefined;
     if (blockNumber !== undefined && (isNaN(blockNumber) || blockNumber < 0))
-      throw new Error("ENDING_BLOCK_NUMBER must be non-negative number");
+      throw new Error("Invalid ENDING_BLOCK_NUMBER");
     await forkNetwork(process.env.CUSTOM_NODE_URL, blockNumber);
     chainId = await getForkChainId(process.env.CUSTOM_NODE_URL);
   }
