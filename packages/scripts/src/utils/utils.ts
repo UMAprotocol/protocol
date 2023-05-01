@@ -17,7 +17,7 @@ export const revertToSnapshot = async (snapshotId: string): Promise<void> => {
   await ethers.provider.send("evm_revert", [snapshotId]);
 };
 
-export const forkNetwork = (jsonRpcUrl: string, blockNumber?: string): Promise<void> => {
+export const forkNetwork = (jsonRpcUrl: string, blockNumber?: number): Promise<void> => {
   return hre.network.provider.request({
     method: "hardhat_reset",
     params: [{ forking: { jsonRpcUrl, blockNumber } }],

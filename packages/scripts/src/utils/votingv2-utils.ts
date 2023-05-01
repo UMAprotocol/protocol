@@ -38,7 +38,10 @@ export const getVotingContracts = async (): Promise<{ votingV2: VotingV2Ethers; 
     chainId = (await ethers.provider.getNetwork()).chainId;
   } else {
     if (!process.env.CUSTOM_NODE_URL) throw new Error("CUSTOM_NODE_URL must be defined in env");
-    await forkNetwork(process.env.CUSTOM_NODE_URL, process.env.ENDING_BLOCK_NUMBER);
+    const blockNumber = process.env.ENDING_BLOCK_NUMBER ? parseInt(process.env.ENDING_BLOCK_NUMBER) : undefined;
+    if (blockNumber !== undefined && (isNaN(blockNumber) || blockNumber < 0))
+      throw new Error("ENDING_BLOCK_NUMBER must be non-negative number");
+    await forkNetwork(process.env.CUSTOM_NODE_URL, blockNumber);
     chainId = await getForkChainId(process.env.CUSTOM_NODE_URL);
   }
 
