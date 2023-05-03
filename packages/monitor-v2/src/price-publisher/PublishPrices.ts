@@ -1,3 +1,4 @@
+import "@nomiclabs/hardhat-ethers";
 import { paginatedEventQuery } from "@uma/common";
 import { OracleHubEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { ArbitrumParentMessenger } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
@@ -26,10 +27,6 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     "Arbitrum_ParentMessenger",
     params.provider
   );
-  // const optimistmParentMessenger = await getContractInstanceWithProvider<OptimismParentMessenger>(
-  //   "Optimism_ParentMessenger",
-  //   params.provider
-  // );
 
   const currentBlockNumber = await params.provider.getBlockNumber();
 
@@ -39,18 +36,6 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     toBlock: currentBlockNumber,
     maxBlockLookBack: params.maxBlockLookBack,
   };
-
-  // const messagesReceivedOptimism = await paginatedEventQuery<MessageReceivedFromChildOptimism>(
-  //   optimistmParentMessenger,
-  //   optimistmParentMessenger.filters.MessageReceivedFromChild(),
-  //   searchConfig
-  // );
-
-  // const messageSentOptimism = await paginatedEventQuery<MessageSentToChildOptimism>(
-  //   optimistmParentMessenger,
-  //   optimistmParentMessenger.filters.MessageSentToChild(),
-  //   searchConfig
-  // );
 
   // Find resolved events
   const resolvedEvents = await paginatedEventQuery<RequestResolvedEvent>(

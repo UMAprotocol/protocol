@@ -54,9 +54,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     publishPricesEnabled: env.PUBLISH_ENABLED === "true",
   };
 
-  const blockLookbackPublication = Number(env.BLOCK_LOOKBACK) || BLOCKS_WEEK_MAINNET;
+  const blockLookbackPublication = Number(env.BLOCK_LOOKBACK_PUBLICATION) || BLOCKS_WEEK_MAINNET;
 
-  const blockLookbackResolution = Number(env.BLOCK_LOOKBACK) || BLOCKS_WEEK_MAINNET;
+  const blockLookbackResolution = Number(env.BLOCK_LOOKBACK_RESOLUTION) || BLOCKS_WEEK_MAINNET;
 
   const maxBlockLookBack = Number(env.MAX_BLOCK_LOOKBACK) || MAX_BLOCK_LOOPBACK_MAINNET;
 
