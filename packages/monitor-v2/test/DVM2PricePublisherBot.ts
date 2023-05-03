@@ -1,4 +1,5 @@
 import type { Provider } from "@ethersproject/abstract-provider";
+import "@nomiclabs/hardhat-ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { RegistryRolesEnum, addGlobalHardhatTestingAddress } from "@uma/common";
 import { ArbitrumParentMessenger } from "@uma/contracts-frontend/dist/typechain/core/ethers";

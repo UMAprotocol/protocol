@@ -2,7 +2,6 @@ import { OracleHubEthers } from "@uma/contracts-frontend";
 import {
   FxChildMockEthers,
   FxRootMockEthers,
-  OracleChildTunnelEthers,
   OracleMessengerMockEthers,
   OracleRootTunnelEthers,
   StateSyncMockEthers,
@@ -46,11 +45,6 @@ export const deployOracleCrossChain = hre.deployments.createFixture(
 
     await (await fxChild.setFxRoot(fxRoot.address)).wait();
     await (await fxRoot.setFxChild(fxChild.address)).wait();
-
-    const oracleChild = (await (await getContractFactory("OracleChildTunnel", deployer)).deploy(
-      fxChild.address,
-      parentFixture.finder.address
-    )) as OracleChildTunnelEthers;
 
     const oracleRootTunnel = (await (await getContractFactory("OracleRootTunnel", deployer)).deploy(
       await deployer.getAddress(),

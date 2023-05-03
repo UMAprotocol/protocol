@@ -2,19 +2,14 @@ import { delay } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
 import { publishPrices } from "./PublishPrices";
 
-export {
-  AssertionSettledEvent,
-  AssertionMadeEvent,
-} from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV3";
-
 const logger = Logger;
 
 async function main() {
   const params = await initMonitoringParams(process.env);
 
   logger[startupLogLevel(params)]({
-    at: "OOv3Bot",
-    message: "Optimistic Oracle V3 Bot started 🤖",
+    at: "PricePublisher",
+    message: "Price Publisher started 🤖",
     botModes: params.botModes,
   });
 
@@ -44,8 +39,8 @@ main().then(
   },
   async (error) => {
     logger.error({
-      at: "OOv3Bot",
-      message: "Optimistic Oracle V3 Bot execution error🚨",
+      at: "PricePublisher",
+      message: "Price Publisher execution error🚨",
       error,
     });
     // Wait 5 seconds to allow logger to flush.
