@@ -1,124 +1,56 @@
 import { paginatedEventQuery } from "@uma/common";
-import { OracleHubEthers, OracleRootTunnelEthers, VotingV2Ethers } from "@uma/contracts-node";
-import {
-  ArbitrumParentMessenger,
-  OptimismParentMessenger,
-} from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
+import { OracleHubEthers, VotingV2Ethers } from "@uma/contracts-node";
+import { ArbitrumParentMessenger } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
+import { MessageReceivedFromChildEvent as MessageReceivedFromChildArbitrum } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/ArbitrumParentMessenger";
+import { MessageSentToChildEvent as MessageSentToChildArbitrum } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimismParentMessenger";
 import { RequestResolvedEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
-import { BigNumber, utils } from "ethers";
+import { utils } from "ethers";
+import hre from "hardhat";
 import { logPricePublished } from "./BotLogger";
 import {
   ARBITRUM_CHAIN_ID,
   BLOCKS_WEEK_MAINNET,
   Logger,
   MonitoringParams,
-  OPTIMISM_CHAIN_ID,
-  POLYGON_CHAIN_ID,
   getContractInstanceWithProvider,
 } from "./common";
-
-const shouldPublish = async (oracle: OracleHubEthers | OracleRootTunnelEthers, event: RequestResolvedEvent) => {
-  const { identifier, time, ancillaryData } = event.args;
-
-  const requestHash = utils.keccak256(
-    utils.defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData])
-  );
-
-  const messagesSent = await oracle.queryFilter(oracle.filters.PushedPrice(null, null, null, null, requestHash));
-
-  return !messagesSent.length;
-};
-
-const processOracleRoot = async (
-  logger: typeof Logger,
-  params: MonitoringParams,
-  oracleRootTunnel: OracleRootTunnelEthers,
-  event: RequestResolvedEvent
-) => {
-  const { identifier, time, ancillaryData, price } = event.args;
-
-  if (await shouldPublish(oracleRootTunnel, event)) {
-    const tx = await (
-      await oracleRootTunnel.connect(params.signer).publishPrice(identifier, time, ancillaryData)
-    ).wait();
-
-    await logPricePublished(
-      logger,
-      {
-        tx: tx.transactionHash,
-        identifier,
-        ancillaryData,
-        time,
-        price,
-        destinationChain: POLYGON_CHAIN_ID,
-      },
-      params
-    );
-  }
-};
-
-const processOracleHub = async (
-  logger: typeof Logger,
-  params: MonitoringParams,
-  oracleHub: OracleHubEthers,
-  event: RequestResolvedEvent,
-  chainId: number,
-  callValue: BigNumber
-) => {
-  const { identifier, time, ancillaryData, price } = event.args;
-
-  if (await shouldPublish(oracleHub, event)) {
-    const tx = await (
-      await oracleHub
-        .connect(params.signer)
-        .publishPrice(chainId, identifier, time, ancillaryData, { value: callValue })
-    ).wait();
-
-    await logPricePublished(
-      logger,
-      {
-        tx: tx.transactionHash,
-        identifier,
-        ancillaryData,
-        time,
-        price,
-        destinationChain: chainId,
-      },
-      params
-    );
-  }
-};
+const { defaultAbiCoder } = utils;
+const ethers = hre.ethers;
 
 export async function publishPrices(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const votingV2 = await getContractInstanceWithProvider<VotingV2Ethers>("VotingV2", params.provider);
 
   const oracleHub = await getContractInstanceWithProvider<OracleHubEthers>("OracleHub", params.provider);
 
-  const oracleRootTunnel = await getContractInstanceWithProvider<OracleRootTunnelEthers>(
-    "OracleRootTunnel",
-    params.provider
-  );
-
   const arbitrumParentMessenger = await getContractInstanceWithProvider<ArbitrumParentMessenger>(
     "Arbitrum_ParentMessenger",
     params.provider
   );
+  // const optimistmParentMessenger = await getContractInstanceWithProvider<OptimismParentMessenger>(
+  //   "Optimism_ParentMessenger",
+  //   params.provider
+  // );
 
-  const optimismParentMessenger = await getContractInstanceWithProvider<OptimismParentMessenger>(
-    "Optimism_ParentMessenger",
-    params.provider
-  );
-
-  const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
-  const optimismL1CallValue = await optimismParentMessenger.getL1CallValue();
   const currentBlockNumber = await params.provider.getBlockNumber();
 
-  const lookback = params.blockLookbackResolution || BLOCKS_WEEK_MAINNET;
+  const loopBack = params.blockLookbackResolution || BLOCKS_WEEK_MAINNET;
   const searchConfig = {
-    fromBlock: currentBlockNumber - lookback < 0 ? 0 : currentBlockNumber - lookback,
+    fromBlock: currentBlockNumber - loopBack < 0 ? 0 : currentBlockNumber - loopBack,
     toBlock: currentBlockNumber,
     maxBlockLookBack: params.maxBlockLookBack,
   };
+
+  // const messagesReceivedOptimism = await paginatedEventQuery<MessageReceivedFromChildOptimism>(
+  //   optimistmParentMessenger,
+  //   optimistmParentMessenger.filters.MessageReceivedFromChild(),
+  //   searchConfig
+  // );
+
+  // const messageSentOptimism = await paginatedEventQuery<MessageSentToChildOptimism>(
+  //   optimistmParentMessenger,
+  //   optimistmParentMessenger.filters.MessageSentToChild(),
+  //   searchConfig
+  // );
 
   // Find resolved events
   const resolvedEvents = await paginatedEventQuery<RequestResolvedEvent>(
@@ -128,23 +60,79 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
   );
 
   for (const event of resolvedEvents) {
-    const decodedAncillary = utils.toUtf8String(event.args.ancillaryData);
-    const isPolygon = decodedAncillary.endsWith(`,childChainId:${POLYGON_CHAIN_ID}`);
-    const isArbitrum = decodedAncillary.endsWith(`,childChainId:${ARBITRUM_CHAIN_ID}`);
-    const isOptimism = decodedAncillary.endsWith(`,childChainId:${OPTIMISM_CHAIN_ID}`);
+    const { identifier, time, ancillaryData, price } = event.args;
 
-    if (isPolygon) {
-      await processOracleRoot(logger, params, oracleRootTunnel, event);
-    } else if (isOptimism || isArbitrum) {
-      await processOracleHub(
+    const encodedData = defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData]);
+
+    // Search for requested price from Arbitrum via ArbitrumParentMessenger
+    const publishLoopBack = params.blockLookbackPublication || BLOCKS_WEEK_MAINNET;
+    const publishSearchConfig = {
+      fromBlock: event.blockNumber - publishLoopBack < 0 ? 0 : event.blockNumber - publishLoopBack,
+      toBlock: currentBlockNumber,
+      maxBlockLookBack: params.maxBlockLookBack,
+    };
+
+    const messagesReceivedArbitrum = await paginatedEventQuery<MessageReceivedFromChildArbitrum>(
+      arbitrumParentMessenger,
+      arbitrumParentMessenger.filters.MessageReceivedFromChild(),
+      publishSearchConfig
+    );
+
+    const messageArbitrum = messagesReceivedArbitrum.find((message) => {
+      const data = message.args.data;
+      return encodedData === data;
+    });
+
+    if (!messageArbitrum) continue; // This price request was not requested from Arbitrum
+
+    const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
+
+    await (
+      await oracleHub
+        .connect(params.signer)
+        .publishPrice(ARBITRUM_CHAIN_ID, identifier, time, ancillaryData, { value: arbitrumL1CallValue })
+    ).wait();
+
+    const messagesSentArbitrum = await paginatedEventQuery<MessageSentToChildArbitrum>(
+      arbitrumParentMessenger,
+      arbitrumParentMessenger.filters.MessageSentToChild(),
+      { ...publishSearchConfig }
+    );
+
+    // Try to find the corresponding message sent to Arbitrum
+    const iface = new ethers.utils.Interface(["function processMessageFromCrossChainParent(bytes,address)"]);
+    const messageSentArbitrum = messagesSentArbitrum.find((message) => {
+      const functionData = iface.decodeFunctionData("processMessageFromCrossChainParent", message.args.data);
+
+      const [decodedIdentifier, decodedTime, decodedAncillaryData] = defaultAbiCoder.decode(
+        ["bytes32", "uint256", "bytes", "int256"],
+        functionData[0]
+      );
+
+      return identifier === decodedIdentifier && time.eq(decodedTime) && ancillaryData === decodedAncillaryData;
+    });
+
+    if (!messageSentArbitrum) {
+      const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
+
+      const tx = await (
+        await oracleHub
+          .connect(params.signer)
+          .publishPrice(ARBITRUM_CHAIN_ID, identifier, time, ancillaryData, { value: arbitrumL1CallValue })
+      ).wait();
+
+      await logPricePublished(
         logger,
-        params,
-        oracleHub,
-        event,
-        isArbitrum ? ARBITRUM_CHAIN_ID : OPTIMISM_CHAIN_ID,
-        isArbitrum ? arbitrumL1CallValue : optimismL1CallValue
+        {
+          tx: tx.transactionHash,
+          identifier,
+          ancillaryData,
+          time,
+          price,
+          destinationChain: ARBITRUM_CHAIN_ID,
+        },
+        params
       );
     }
   }
-  console.log("Done publishing prices.");
 }

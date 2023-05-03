@@ -9,7 +9,6 @@ export { getContractInstanceWithProvider } from "../utils/contracts";
 
 export const ARBITRUM_CHAIN_ID = 42161;
 export const OPTIMISM_CHAIN_ID = 10;
-export const POLYGON_CHAIN_ID = 137;
 export const BLOCKS_WEEK_MAINNET = 50400;
 export const MAX_BLOCK_LOOPBACK_MAINNET = 20000;
 
@@ -30,6 +29,7 @@ export interface MonitoringParams {
   pollingDelay: number;
   maxBlockLookBack?: number;
   blockLookbackResolution?: number;
+  blockLookbackPublication?: number;
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -54,7 +54,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     publishPricesEnabled: env.PUBLISH_ENABLED === "true",
   };
 
-  const blockLookbackResolution = Number(env.BLOCK_LOOKBACK_RESOLUTION) || BLOCKS_WEEK_MAINNET;
+  const blockLookbackPublication = Number(env.BLOCK_LOOKBACK) || BLOCKS_WEEK_MAINNET;
+
+  const blockLookbackResolution = Number(env.BLOCK_LOOKBACK) || BLOCKS_WEEK_MAINNET;
 
   const maxBlockLookBack = Number(env.MAX_BLOCK_LOOKBACK) || MAX_BLOCK_LOOPBACK_MAINNET;
 
@@ -63,6 +65,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     provider,
     botModes,
     signer,
+    blockLookbackPublication,
     blockLookbackResolution,
     maxBlockLookBack,
     pollingDelay,
