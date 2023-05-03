@@ -24,16 +24,16 @@
   "files": [
     "dist/**/*"
   ],
-  "main": "dist/packages/contracts-node/generated/index.js",
-  "module": "dist/packages/contracts-node/generated/index.js",
-  "types": "dist/packages/contracts-node/generated/index.d.ts",
+  "main": "dist/contracts-node/generated/index.js",
+  "module": "dist/contracts-node/generated/index.js",
+  "types": "dist/contracts-node/generated/index.d.ts",
   "sideEffects": false,
   "side-effects": false,
   "scripts": {
     "test": "echo 'No tests configured'",
     "clean": "rm -rf dist generated typechain",
     "generate-ts": "yarn clean && mkdir -p generated typechain/core && cp -R ../core/contract-types/* typechain/core/ && yarn hardhat generate-contracts-node --out ./generated/index.ts",
-    "build": "yarn generate-ts && yarn tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/packages/contracts-node/",
+    "build": "yarn generate-ts && yarn tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/contracts-node/",
     "prepublish": "yarn build"
   },
   "bugs": {
