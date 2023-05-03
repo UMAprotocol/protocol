@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  hub:
+    image: localhost:5000/protocol:dev
+    env_file:
+      - hub.env
+      - bot-config.env
+    ports:
+      - "8080:8080"
+  spoke:
+    image: localhost:5000/protocol:dev
+    env_file: spoke.env
