@@ -1,6 +1,6 @@
 import { delay } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
-import { settleAssertions } from "./SettleAssertions";
+import { publishPrices } from "./PublishPrices";
 
 export {
   AssertionSettledEvent,
@@ -19,18 +19,18 @@ async function main() {
   });
 
   const cmds = {
-    settleAssertionsEnabled: settleAssertions,
+    publishPricesEnabled: publishPrices,
   };
 
   for (;;) {
     const runCmds = Object.entries(cmds)
       .filter(([mode]) => params.botModes[mode as keyof BotModes])
-      .map(([, cmd]) => cmd(logger, params));
+      .map(([, cmd]) => cmd(logger, { ...params }));
 
     await Promise.all(runCmds);
 
-    if (params.runFrequency !== 0) {
-      await delay(params.runFrequency);
+    if (params.pollingDelay !== 0) {
+      await delay(params.pollingDelay);
     } else {
       await delay(5); // Set a delay to let the transports flush fully.
       break;
