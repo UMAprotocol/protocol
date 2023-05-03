@@ -1,6 +1,6 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
 import { utils } from "ethers";
-import { Logger, OptimisticOracleV3Ethers } from "./common";
+import { generateOOv3UILink, Logger, OptimisticOracleV3Ethers } from "./common";
 
 import type { MonitoringParams } from "./common";
 import { getCurrencyDecimals, getCurrencySymbol, tryHexToUtf8String } from "../utils/contracts";
@@ -9,6 +9,7 @@ export async function logAssertion(
   logger: typeof Logger,
   assertion: {
     tx: string;
+    eventIndex: number;
     assertionId: string;
     claim: string;
     assertionData: Awaited<ReturnType<typeof OptimisticOracleV3Ethers.prototype.getAssertion>>;
@@ -37,8 +38,12 @@ export async function logAssertion(
       " " +
       currencySymbol +
       ". The assertion can be disputed till " +
-      new Date(Number(assertion.assertionData.expirationTime) * 1000).toUTCString(),
+      new Date(Number(assertion.assertionData.expirationTime) * 1000).toUTCString() +
+      ": " +
+      generateOOv3UILink(assertion.tx, assertion.eventIndex, params.chainId) +
+      ".",
     notificationPath: "optimistic-oracle",
+    discordPaths: ["oo-fact-checking", "oo-events"],
   });
 }
 
@@ -46,6 +51,7 @@ export async function logDispute(
   logger: typeof Logger,
   dispute: {
     tx: string;
+    eventIndex: number;
     assertionId: string;
     claim: string;
     assertionData: Awaited<ReturnType<typeof OptimisticOracleV3Ethers.prototype.getAssertion>>;
@@ -64,8 +70,12 @@ export async function logDispute(
       ". Claim: " +
       tryHexToUtf8String(dispute.claim) +
       ". Identifier: " +
-      utils.parseBytes32String(dispute.assertionData.identifier),
+      utils.parseBytes32String(dispute.assertionData.identifier) +
+      ". " +
+      generateOOv3UILink(dispute.tx, dispute.eventIndex, params.chainId) +
+      ".",
     notificationPath: "optimistic-oracle",
+    discordPaths: ["oo-fact-checking", "oo-events"],
   });
 }
 
@@ -73,6 +83,7 @@ export async function logSettlement(
   logger: typeof Logger,
   settlement: {
     tx: string;
+    eventIndex: number;
     assertionId: string;
     claim: string;
     assertionData: Awaited<ReturnType<typeof OptimisticOracleV3Ethers.prototype.getAssertion>>;
@@ -92,7 +103,11 @@ export async function logSettlement(
       ". Identifier: " +
       utils.parseBytes32String(settlement.assertionData.identifier) +
       ". Result: assertion was " +
-      (settlement.assertionData.settlementResolution ? "true" : "false"),
+      (settlement.assertionData.settlementResolution ? "true" : "false") +
+      ". " +
+      generateOOv3UILink(settlement.tx, settlement.eventIndex, params.chainId) +
+      ".",
     notificationPath: "optimistic-oracle",
+    discordPaths: ["oo-fact-checking", "oo-events"],
   });
 }

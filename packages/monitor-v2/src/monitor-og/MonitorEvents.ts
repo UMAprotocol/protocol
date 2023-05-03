@@ -1,4 +1,4 @@
-import { Logger, MonitoringParams, runQueryFilter, getOg } from "./common";
+import { Logger, MonitoringParams, runQueryFilter, getOg, getOo } from "./common";
 import { logProposalDeleted, logProposalExecuted, logSetCollateralAndBond, logSetRules } from "./MonitorLogger";
 import {
   logSetIdentifier,
@@ -10,7 +10,14 @@ import {
 
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const og = await getOg(params);
+  const oo = await getOo(params);
   const transactions = await runQueryFilter(og, og.filters.TransactionsProposed(), params.blockRange);
+
+  const getAssertionEventIndex = async (assertionId: string): Promise<number> => {
+    const assertionMade = await runQueryFilter(oo, oo.filters.AssertionMade(assertionId), params.blockRange);
+    return assertionMade[0].logIndex; // There should only be one event matching unique assertionId.
+  };
+
   for (const transaction of transactions) {
     await logTransactions(
       logger,
@@ -23,6 +30,7 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         rules: transaction.args.rules,
         challengeWindowEnds: transaction.args.challengeWindowEnds,
         tx: transaction.transactionHash,
+        ooEventIndex: await getAssertionEventIndex(transaction.args.assertionId),
       },
       params
     );
