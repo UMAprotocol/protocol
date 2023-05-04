@@ -192,5 +192,9 @@
   {
     "contractName": "OptimisticGovernor",
     "address": "0x28CeBFE94a03DbCA9d17143e9d2Bd1155DC26D5d"
+  },
+  {
+    "contractName": "OriginValidator",
+    "address": "0xed883ce9bb10416FF3113FDB4Abcb9830617aD27"
   }
 ]
