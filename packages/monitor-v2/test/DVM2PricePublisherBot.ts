@@ -26,6 +26,7 @@ import { getAbi } from "@uma/contracts-node";
 import { SpyTransport, createNewLogger, spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
 import { ARBITRUM_CHAIN_ID } from "../src/price-publisher/common";
 import { tryHexToUtf8String } from "../src/utils/contracts";
+import { PolygonParentMessengerMock } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
 
 const { defaultAbiCoder } = utils;
 
@@ -147,6 +148,12 @@ describe("DVM2 Price Publisher", function () {
     await (await registry.registerContract([], registeredContractAddress)).wait();
     await (await registry.registerContract([], oracleHub.address)).wait();
     await (await registry.registerContract([], oracleRootTunnel.address)).wait();
+
+    // Polygon parent messenger setup
+
+    const polygonParentMessengerMock = (await (
+      await getContractFactory("Polygon_ParentMessengerMock", deployer)
+    ).deploy()) as PolygonParentMessengerMock;
 
     // Arbitrum parent messenger setup
     const TEST = "0x0000000000000000000000000000000000000001";

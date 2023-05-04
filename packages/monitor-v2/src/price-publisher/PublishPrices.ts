@@ -18,6 +18,172 @@ import {
 const { defaultAbiCoder } = utils;
 const ethers = hre.ethers;
 
+const processArbitrum = async (
+  logger: typeof Logger,
+  params: MonitoringParams,
+  oracleHub: OracleHubEthers,
+  arbitrumParentMessenger: ArbitrumParentMessenger,
+  event: RequestResolvedEvent,
+  currentBlockNumber: number
+) => {
+  const { identifier, time, ancillaryData, price } = event.args;
+  const encodedData = defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData]);
+
+  // Search for requested price from Arbitrum via ArbitrumParentMessenger
+  const publishLoopBack = params.blockLookbackPublication || BLOCKS_WEEK_MAINNET;
+  const publishSearchConfig = {
+    fromBlock: event.blockNumber - publishLoopBack < 0 ? 0 : event.blockNumber - publishLoopBack,
+    toBlock: currentBlockNumber,
+    maxBlockLookBack: params.maxBlockLookBack,
+  };
+
+  const messagesReceivedArbitrum = await paginatedEventQuery<MessageReceivedFromChildArbitrum>(
+    arbitrumParentMessenger,
+    arbitrumParentMessenger.filters.MessageReceivedFromChild(),
+    publishSearchConfig
+  );
+
+  const messageArbitrum = messagesReceivedArbitrum.find((message) => {
+    const data = message.args.data;
+    return encodedData === data;
+  });
+
+  if (!messageArbitrum) return; // This price request was not requested from Arbitrum
+
+  const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
+
+  await (
+    await oracleHub
+      .connect(params.signer)
+      .publishPrice(ARBITRUM_CHAIN_ID, identifier, time, ancillaryData, { value: arbitrumL1CallValue })
+  ).wait();
+
+  const messagesSentArbitrum = await paginatedEventQuery<MessageSentToChildArbitrum>(
+    arbitrumParentMessenger,
+    arbitrumParentMessenger.filters.MessageSentToChild(),
+    { ...publishSearchConfig }
+  );
+
+  // Try to find the corresponding message sent to Arbitrum
+  const iface = new ethers.utils.Interface(["function processMessageFromCrossChainParent(bytes,address)"]);
+  const messageSentArbitrum = messagesSentArbitrum.find((message) => {
+    const functionData = iface.decodeFunctionData("processMessageFromCrossChainParent", message.args.data);
+
+    const [decodedIdentifier, decodedTime, decodedAncillaryData] = defaultAbiCoder.decode(
+      ["bytes32", "uint256", "bytes", "int256"],
+      functionData[0]
+    );
+
+    return identifier === decodedIdentifier && time.eq(decodedTime) && ancillaryData === decodedAncillaryData;
+  });
+
+  if (!messageSentArbitrum) {
+    const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
+
+    const tx = await (
+      await oracleHub
+        .connect(params.signer)
+        .publishPrice(ARBITRUM_CHAIN_ID, identifier, time, ancillaryData, { value: arbitrumL1CallValue })
+    ).wait();
+
+    await logPricePublished(
+      logger,
+      {
+        tx: tx.transactionHash,
+        identifier,
+        ancillaryData,
+        time,
+        price,
+        destinationChain: ARBITRUM_CHAIN_ID,
+      },
+      params
+    );
+  }
+};
+
+const processPolygon = async (
+  logger: typeof Logger,
+  params: MonitoringParams,
+  oracleHub: OracleHubEthers,
+  arbitrumParentMessenger: ArbitrumParentMessenger,
+  event: RequestResolvedEvent,
+  currentBlockNumber: number
+) => {
+  const { identifier, time, ancillaryData, price } = event.args;
+  const encodedData = defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData]);
+
+  // Search for requested price from Arbitrum via ArbitrumParentMessenger
+  const publishLoopBack = params.blockLookbackPublication || BLOCKS_WEEK_MAINNET;
+  const publishSearchConfig = {
+    fromBlock: event.blockNumber - publishLoopBack < 0 ? 0 : event.blockNumber - publishLoopBack,
+    toBlock: currentBlockNumber,
+    maxBlockLookBack: params.maxBlockLookBack,
+  };
+
+  const messagesReceivedArbitrum = await paginatedEventQuery<MessageReceivedFromChildArbitrum>(
+    arbitrumParentMessenger,
+    arbitrumParentMessenger.filters.MessageReceivedFromChild(),
+    publishSearchConfig
+  );
+
+  const messageArbitrum = messagesReceivedArbitrum.find((message) => {
+    const data = message.args.data;
+    return encodedData === data;
+  });
+
+  if (!messageArbitrum) return; // This price request was not requested from Arbitrum
+
+  const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
+
+  await (
+    await oracleHub
+      .connect(params.signer)
+      .publishPrice(ARBITRUM_CHAIN_ID, identifier, time, ancillaryData, { value: arbitrumL1CallValue })
+  ).wait();
+
+  const messagesSentArbitrum = await paginatedEventQuery<MessageSentToChildArbitrum>(
+    arbitrumParentMessenger,
+    arbitrumParentMessenger.filters.MessageSentToChild(),
+    { ...publishSearchConfig }
+  );
+
+  // Try to find the corresponding message sent to Arbitrum
+  const iface = new ethers.utils.Interface(["function processMessageFromCrossChainParent(bytes,address)"]);
+  const messageSentArbitrum = messagesSentArbitrum.find((message) => {
+    const functionData = iface.decodeFunctionData("processMessageFromCrossChainParent", message.args.data);
+
+    const [decodedIdentifier, decodedTime, decodedAncillaryData] = defaultAbiCoder.decode(
+      ["bytes32", "uint256", "bytes", "int256"],
+      functionData[0]
+    );
+
+    return identifier === decodedIdentifier && time.eq(decodedTime) && ancillaryData === decodedAncillaryData;
+  });
+
+  if (!messageSentArbitrum) {
+    const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
+
+    const tx = await (
+      await oracleHub
+        .connect(params.signer)
+        .publishPrice(ARBITRUM_CHAIN_ID, identifier, time, ancillaryData, { value: arbitrumL1CallValue })
+    ).wait();
+
+    await logPricePublished(
+      logger,
+      {
+        tx: tx.transactionHash,
+        identifier,
+        ancillaryData,
+        time,
+        price,
+        destinationChain: ARBITRUM_CHAIN_ID,
+      },
+      params
+    );
+  }
+};
+
 export async function publishPrices(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const votingV2 = await getContractInstanceWithProvider<VotingV2Ethers>("VotingV2", params.provider);
 
@@ -45,79 +211,6 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
   );
 
   for (const event of resolvedEvents) {
-    const { identifier, time, ancillaryData, price } = event.args;
-
-    const encodedData = defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData]);
-
-    // Search for requested price from Arbitrum via ArbitrumParentMessenger
-    const publishLoopBack = params.blockLookbackPublication || BLOCKS_WEEK_MAINNET;
-    const publishSearchConfig = {
-      fromBlock: event.blockNumber - publishLoopBack < 0 ? 0 : event.blockNumber - publishLoopBack,
-      toBlock: currentBlockNumber,
-      maxBlockLookBack: params.maxBlockLookBack,
-    };
-
-    const messagesReceivedArbitrum = await paginatedEventQuery<MessageReceivedFromChildArbitrum>(
-      arbitrumParentMessenger,
-      arbitrumParentMessenger.filters.MessageReceivedFromChild(),
-      publishSearchConfig
-    );
-
-    const messageArbitrum = messagesReceivedArbitrum.find((message) => {
-      const data = message.args.data;
-      return encodedData === data;
-    });
-
-    if (!messageArbitrum) continue; // This price request was not requested from Arbitrum
-
-    const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
-
-    await (
-      await oracleHub
-        .connect(params.signer)
-        .publishPrice(ARBITRUM_CHAIN_ID, identifier, time, ancillaryData, { value: arbitrumL1CallValue })
-    ).wait();
-
-    const messagesSentArbitrum = await paginatedEventQuery<MessageSentToChildArbitrum>(
-      arbitrumParentMessenger,
-      arbitrumParentMessenger.filters.MessageSentToChild(),
-      { ...publishSearchConfig }
-    );
-
-    // Try to find the corresponding message sent to Arbitrum
-    const iface = new ethers.utils.Interface(["function processMessageFromCrossChainParent(bytes,address)"]);
-    const messageSentArbitrum = messagesSentArbitrum.find((message) => {
-      const functionData = iface.decodeFunctionData("processMessageFromCrossChainParent", message.args.data);
-
-      const [decodedIdentifier, decodedTime, decodedAncillaryData] = defaultAbiCoder.decode(
-        ["bytes32", "uint256", "bytes", "int256"],
-        functionData[0]
-      );
-
-      return identifier === decodedIdentifier && time.eq(decodedTime) && ancillaryData === decodedAncillaryData;
-    });
-
-    if (!messageSentArbitrum) {
-      const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
-
-      const tx = await (
-        await oracleHub
-          .connect(params.signer)
-          .publishPrice(ARBITRUM_CHAIN_ID, identifier, time, ancillaryData, { value: arbitrumL1CallValue })
-      ).wait();
-
-      await logPricePublished(
-        logger,
-        {
-          tx: tx.transactionHash,
-          identifier,
-          ancillaryData,
-          time,
-          price,
-          destinationChain: ARBITRUM_CHAIN_ID,
-        },
-        params
-      );
-    }
+    await processArbitrum(logger, params, oracleHub, arbitrumParentMessenger, event, currentBlockNumber);
   }
 }
