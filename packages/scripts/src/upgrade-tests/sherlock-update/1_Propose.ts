@@ -11,7 +11,7 @@ import { IdentifierWhitelistEthers, ProposerV2Ethers, VotingTokenEthers } from "
 
 import { Provider } from "@ethersproject/abstract-provider";
 import { getGckmsSigner } from "@uma/common";
-import { OriginValidator } from "@uma/contracts-node/typechain/core/ethers";
+import { OriginValidatorEthers as OriginValidator } from "@uma/contracts-node";
 import { BigNumberish, Signer, Wallet } from "ethers";
 import { BytesLike, formatBytes32String } from "ethers/lib/utils";
 import { getContractInstance } from "../../utils/contracts";
