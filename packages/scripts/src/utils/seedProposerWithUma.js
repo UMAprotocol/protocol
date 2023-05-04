@@ -4,7 +4,6 @@ const { toWei } = Web3.utils;
 const { getContract, web3 } = hre;
 const { _getContractAddressByName } = require("./index.js");
 const { REQUIRED_SIGNER_ADDRESSES } = require("./constants");
-const { getAddress } = require("@uma/contracts-node");
 
 const ExpandedERC20 = getContract("ExpandedERC20");
 
@@ -22,16 +21,18 @@ async function _seedProposerWithUma(proposer, amountToSend = toWei("50000")) {
     .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"] });
   console.log(`Transaction: ${txn?.transactionHash}`);
 
-  const votingV2Address = await getAddress("VotingV2", 1);
-  const etherAmount = hre.ethers.utils.parseEther("10.0").toHexString();
-  await hre.network.provider.send("hardhat_setBalance", [votingV2Address, etherAmount]);
-  await hre.network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [votingV2Address],
+  await web3.eth.sendTransaction({
+    from: accounts[0],
+    to: REQUIRED_SIGNER_ADDRESSES["account_with_uma"],
+    value: toWei("1"),
   });
-  await uma.methods.mint(REQUIRED_SIGNER_ADDRESSES["foundation"], toWei("50000000")).send({
-    from: votingV2Address,
-  });
+
+  await uma.methods
+    .transfer(
+      REQUIRED_SIGNER_ADDRESSES["foundation"],
+      await uma.methods.balanceOf(REQUIRED_SIGNER_ADDRESSES["account_with_uma"]).call()
+    )
+    .send({ from: REQUIRED_SIGNER_ADDRESSES["account_with_uma"] });
 
   console.log(
     "Balance UMA foundation wallet:",
