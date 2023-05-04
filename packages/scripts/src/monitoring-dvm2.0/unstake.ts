@@ -25,7 +25,11 @@ async function main() {
   await updateTrackers(votingV2, uniqueVoters);
 
   console.log("Unstaking from all voters");
-  await Promise.all(uniqueVoters.map((voter) => unstakeFromStakedAccount(votingV2, voter)));
+
+  // We must process these in series since these functions have concurrency issues due to changing the block time.
+  for (const voter of uniqueVoters) {
+    await unstakeFromStakedAccount(votingV2, voter);
+  }
 
   const numberSlashedEvents = await getNumberSlashedEvents(votingV2);
   const votingV2BalanceWithoutExternalTransfers = await votingV2VotingBalanceWithoutExternalTransfers(
