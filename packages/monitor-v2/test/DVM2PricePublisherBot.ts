@@ -10,7 +10,6 @@ import {
   OracleChildTunnelEthers,
   OracleHubEthers,
   OracleRootTunnelMockEthers,
-  OracleSpokeEthers,
   RegistryEthers,
   StateSyncMockEthers,
   VotingTokenEthers,
@@ -27,9 +26,9 @@ import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { Signer, formatBytes32String, getContractFactory, moveToNextPhase, moveToNextRound } from "./utils";
 
 import { getAbi } from "@uma/contracts-node";
+import { OptimismParentMessenger } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
 import { SpyTransport, createNewLogger, spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
 import { ARBITRUM_CHAIN_ID } from "../src/price-publisher/common";
-import { OptimismParentMessenger } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
 
 const { defaultAbiCoder } = utils;
 
