@@ -1,6 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
 import { paginatedEventQuery } from "@uma/common";
-import { PriceRequestAddedEvent } from "@uma/contracts-frontend/dist/typechain/core/ethers/OracleBase";
 import { OracleHubEthers, OracleRootTunnelEthers, VotingV2Ethers } from "@uma/contracts-node";
 import {
   ArbitrumParentMessenger,
