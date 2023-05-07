@@ -22,35 +22,15 @@ import {
 const shouldPublish = async (
   params: MonitoringParams,
   oracle: OracleHubEthers | OracleRootTunnelEthers,
-  event: RequestResolvedEvent,
-  currentBlockNumber: number
+  event: RequestResolvedEvent
 ) => {
   const { identifier, time, ancillaryData } = event.args;
 
-  // Search for requested price from l2 chain
-  const publishLoopBack = params.blockLookbackPublication || BLOCKS_WEEK_MAINNET;
-  const publishSearchConfig = {
-    fromBlock: event.blockNumber - publishLoopBack < 0 ? 0 : event.blockNumber - publishLoopBack,
-    toBlock: currentBlockNumber,
-    maxBlockLookBack: params.maxBlockLookBack,
-  };
-
-  const priceRequestAdded = await paginatedEventQuery<PriceRequestAddedEvent>(
-    oracle,
-    oracle.filters.PriceRequestAdded(),
-    publishSearchConfig
+  const requestHash = utils.keccak256(
+    utils.defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData])
   );
 
-  const message = priceRequestAdded.find((message) => {
-    const { identifier: decodedIdentifier, time: decodedTime, ancillaryData: decodedAncillaryData } = message.args;
-    return identifier === decodedIdentifier && time.eq(decodedTime) && ancillaryData === decodedAncillaryData;
-  });
-
-  if (!message) return; // This price request was not requested from l2 chain
-
-  const messagesSent = await oracle.queryFilter(
-    oracle.filters.PushedPrice(null, null, null, null, message.args.requestHash)
-  );
+  const messagesSent = await oracle.queryFilter(oracle.filters.PushedPrice(null, null, null, null, requestHash));
 
   return !messagesSent.length;
 };
@@ -59,12 +39,11 @@ const processOracleRoot = async (
   logger: typeof Logger,
   params: MonitoringParams,
   oracleRootTunnel: OracleRootTunnelEthers,
-  event: RequestResolvedEvent,
-  currentBlockNumber: number
+  event: RequestResolvedEvent
 ) => {
   const { identifier, time, ancillaryData, price } = event.args;
 
-  if (await shouldPublish(params, oracleRootTunnel, event, currentBlockNumber)) {
+  if (await shouldPublish(params, oracleRootTunnel, event)) {
     const tx = await (
       await oracleRootTunnel.connect(params.signer).publishPrice(identifier, time, ancillaryData)
     ).wait();
@@ -89,13 +68,12 @@ const processOracleHub = async (
   params: MonitoringParams,
   oracleHub: OracleHubEthers,
   event: RequestResolvedEvent,
-  currentBlockNumber: number,
   chainId: number,
   callValue: BigNumber
 ) => {
   const { identifier, time, ancillaryData, price } = event.args;
 
-  if (await shouldPublish(params, oracleHub, event, currentBlockNumber)) {
+  if (await shouldPublish(params, oracleHub, event)) {
     const tx = await (
       await oracleHub
         .connect(params.signer)
@@ -166,14 +144,13 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     }
 
     if (isPolygon) {
-      await processOracleRoot(logger, params, oracleRootTunnel, event, currentBlockNumber);
+      await processOracleRoot(logger, params, oracleRootTunnel, event);
     } else {
       await processOracleHub(
         logger,
         params,
         oracleHub,
         event,
-        currentBlockNumber,
         isArbitrum ? ARBITRUM_CHAIN_ID : OPTIMISM_CHAIN_ID,
         isArbitrum ? arbitrumL1CallValue : optimismL1CallValue
       );
