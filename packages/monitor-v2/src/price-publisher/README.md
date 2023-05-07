@@ -5,7 +5,7 @@ The Price Publisher is responsible for publishing the prices resolved in the DVM
 The main entry point to Price Publisher is running:
 
 ```
-node ./packages/monitor-v2/dist/bot-oo-v3/index.js
+node ./packages/monitor-v2/dist/price-publisher/index.js
 ```
 
 All the configuration should be provided with following environment variables:
