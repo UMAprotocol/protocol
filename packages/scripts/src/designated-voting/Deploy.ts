@@ -1,6 +1,6 @@
 // This script deploys DesignatedVotingV2 contracts and produces a gnosis-safe JSON file that can be used to fund the contracts.
 
-const hre = require("hardhat");
+import hre from "hardhat";
 import { utils } from "ethers";
 import path from "path";
 import fs from "fs";
