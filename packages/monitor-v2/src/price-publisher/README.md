@@ -23,7 +23,6 @@ All the configuration should be provided with following environment variables:
 - `PUBLISH_ENABLED` is boolean enabling/disabling price publishing (`false` by default).
 - `BOT_IDENTIFIER` identifies the application name in the logs.
 - `SLACK_CONFIG` is a JSON object containing `defaultWebHookUrl` for the default Slack webhook URL.
-- `BLOCK_LOOKBACK_PUBLICATION`(Optional) is the number of blocks to look back from the current block to look for past publication events.
 - `BLOCK_LOOKBACK_RESOLUTION`(Optional) is the number of blocks to look back from the current block to look for past resolution events.
   See default values in blockDefaults in index.ts
 - `MAX_BLOCK_LOOKBACK`(Optional) is the maximum number of blocks to look back per query.
