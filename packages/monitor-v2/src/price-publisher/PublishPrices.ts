@@ -154,4 +154,5 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
       );
     }
   }
+  console.log("Done publishing prices.");
 }
