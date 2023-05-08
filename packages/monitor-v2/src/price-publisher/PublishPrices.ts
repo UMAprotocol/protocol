@@ -1,4 +1,3 @@
-import "@nomiclabs/hardhat-ethers";
 import { paginatedEventQuery } from "@uma/common";
 import { OracleHubEthers, OracleRootTunnelEthers, VotingV2Ethers } from "@uma/contracts-node";
 import {
@@ -144,7 +143,7 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
 
     if (isPolygon) {
       await processOracleRoot(logger, params, oracleRootTunnel, event);
-    } else {
+    } else if (isOptimism || isArbitrum) {
       await processOracleHub(
         logger,
         params,
