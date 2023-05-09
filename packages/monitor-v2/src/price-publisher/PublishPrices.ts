@@ -17,11 +17,7 @@ import {
   getContractInstanceWithProvider,
 } from "./common";
 
-const shouldPublish = async (
-  params: MonitoringParams,
-  oracle: OracleHubEthers | OracleRootTunnelEthers,
-  event: RequestResolvedEvent
-) => {
+const shouldPublish = async (oracle: OracleHubEthers | OracleRootTunnelEthers, event: RequestResolvedEvent) => {
   const { identifier, time, ancillaryData } = event.args;
 
   const requestHash = utils.keccak256(
@@ -41,7 +37,7 @@ const processOracleRoot = async (
 ) => {
   const { identifier, time, ancillaryData, price } = event.args;
 
-  if (await shouldPublish(params, oracleRootTunnel, event)) {
+  if (await shouldPublish(oracleRootTunnel, event)) {
     const tx = await (
       await oracleRootTunnel.connect(params.signer).publishPrice(identifier, time, ancillaryData)
     ).wait();
@@ -71,7 +67,7 @@ const processOracleHub = async (
 ) => {
   const { identifier, time, ancillaryData, price } = event.args;
 
-  if (await shouldPublish(params, oracleHub, event)) {
+  if (await shouldPublish(oracleHub, event)) {
     const tx = await (
       await oracleHub
         .connect(params.signer)
