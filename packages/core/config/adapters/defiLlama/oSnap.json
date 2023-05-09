@@ -1,6 +1,22 @@
 {
   "ethereum": {
-    "avatars": ["0xB524735356985D2f267FA010D681f061DfF03715", "0x90A48D5CF7343B08dA12E067680B4C6dbfE551Be"],
+    "avatars": [
+      {
+        "address": "0xB524735356985D2f267FA010D681f061DfF03715",
+        "tokens": [],
+        "excludedTokens": ["0x44108f0223a3c3028f5fe7aec7f9bb2e66bef82f"]
+      },
+      {
+        "address": "0x90A48D5CF7343B08dA12E067680B4C6dbfE551Be",
+        "tokens": [],
+        "excludedTokens": []
+      },
+      {
+        "address": "0x4461258ADDa4085a93cf96A01F55A894d4bb2F5b",
+        "tokens": [],
+        "excludedTokens": ["0x0391d2021f89dc339f60fff84546ea23e337750f"]
+      }
+    ],
     "tokens": [
       "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
       "0x44108f0223a3c3028f5fe7aec7f9bb2e66bef82f",
@@ -13,7 +29,12 @@
       "0x2e9d63788249371f1dfc918a52f8d799f4a38c94",
       "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72",
       "0xdbdb4d16eda451d0503b854cf79d55697f90c8df",
-      "0x6b175474e89094c44da98b954eedeac495271d0f"
+      "0x6b175474e89094c44da98b954eedeac495271d0f",
+      "0x0391d2021f89dc339f60fff84546ea23e337750f",
+      "0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
+      "0x03ab458634910aad20ef5f1c8ee96f1d6ac54919",
+      "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
     ]
   },
   "polygon": {
