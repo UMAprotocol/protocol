@@ -133,10 +133,6 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     const isArbitrum = decodedAncillary.endsWith(`,childChainId:${ARBITRUM_CHAIN_ID}`);
     const isOptimism = decodedAncillary.endsWith(`,childChainId:${OPTIMISM_CHAIN_ID}`);
 
-    if (!isPolygon && !isArbitrum && !isOptimism) {
-      new Error(`Unsupported chainId in ancillaryData: ${decodedAncillary}`);
-    }
-
     if (isPolygon) {
       await processOracleRoot(logger, params, oracleRootTunnel, event);
     } else if (isOptimism || isArbitrum) {
