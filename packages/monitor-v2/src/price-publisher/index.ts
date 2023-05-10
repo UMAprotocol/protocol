@@ -1,6 +1,7 @@
 import { delay } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
 import { publishPrices } from "./PublishPrices";
+import { resolvePrices } from "./ResolvePrices";
 
 const logger = Logger;
 
@@ -14,6 +15,7 @@ async function main() {
   });
 
   const cmds = {
+    resolvePricesEnabled: resolvePrices, // should be run before publishPrices
     publishPricesEnabled: publishPrices,
   };
 
@@ -22,7 +24,9 @@ async function main() {
       .filter(([mode]) => params.botModes[mode as keyof BotModes])
       .map(([, cmd]) => cmd(logger, { ...params }));
 
-    await Promise.all(runCmds);
+    for (const cmd of runCmds) {
+      await cmd;
+    }
 
     if (params.pollingDelay !== 0) {
       await delay(params.pollingDelay);
