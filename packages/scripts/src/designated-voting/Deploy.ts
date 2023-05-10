@@ -28,9 +28,9 @@ async function main() {
     return { hotWallet: utils.getAddress(wallet), amount: utils.parseEther(amount).toString() };
   });
 
-  // Log all designated voting and the associated hot wallets. remove the owner element from the object to keep it short.
+  // Log all designated voting and the associated hot wallets.
   console.log(`Deploying the following DV wallets for owner ${owner}:`);
-  console.table(walletsAndAmounts.map(({ hotWallet, amount }) => ({ hotWallet, amount: amount })));
+  console.table(walletsAndAmounts);
 
   // Construct payload to deploy new DesignatedVotingV2 contracts for each hot wallet.
   const factoryV2 = await getContractInstance<DesignatedVotingV2FactoryEthers>("DesignatedVotingV2Factory");
@@ -48,7 +48,7 @@ async function main() {
 
   // Log the designated voting contracts that were deployed.
   console.log("Deployed the following DesignatedVotingV2 contracts:");
-  console.table(designatedVotingData.map(({ hotWallet, amount, dvAddress }) => ({ hotWallet, amount, dvAddress })));
+  console.table(designatedVotingData);
 
   // Construct the JSON file to instruct the gnosis safe to fund, stake, and delegate the designated voting contracts.
 
