@@ -41,7 +41,11 @@
     "/src/**/*.js"
   ],
   "scripts": {
-    "test": "HARDHAT_NETWORK=localhost yarn mocha 'test/**/*.js'"
+    "test": "HARDHAT_NETWORK=localhost yarn mocha 'test/**/*.js'",
+    "local-build": "sh local-docker/scripts/docker-build.sh local-docker",
+    "local-config": "sh local-docker/scripts/update-bot-config.sh local-docker",
+    "local-up": "sh local-docker/scripts/docker-up.sh local-docker",
+    "local-down": "sh local-docker/scripts/docker-down.sh local-docker"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
