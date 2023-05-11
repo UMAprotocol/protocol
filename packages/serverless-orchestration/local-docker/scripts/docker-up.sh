@@ -12,7 +12,7 @@ fi
 [ ! -f "$ROOT_DIR/compose.yml" ] && { echo "Error: compose.yml file not found"; exit 1; }
 [ ! -f "$ROOT_DIR/hub.env" ] && { echo "Error: hub.env file not found"; exit 1; }
 [ ! -f "$ROOT_DIR/spoke.env" ] && { echo "Error: spoke.env file not found"; exit 1; }
-[ ! -f "$ROOT_DIR/scripts/update-bot-config.sh" ] && { echo "Error: scripts/update-bot-config.sh file not found"; exit 1; }
+[ ! -f "$ROOT_DIR/scripts/update-config.sh" ] && { echo "Error: scripts/update-config.sh file not found"; exit 1; }
 
 # Convert JSON files under bot-configs to bot-config.env file and update scheduler.env.
 sh "$ROOT_DIR/scripts/update-config.sh" "$ROOT_DIR"
