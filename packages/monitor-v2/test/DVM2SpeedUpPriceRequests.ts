@@ -4,9 +4,13 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { RegistryRolesEnum } from "@uma/common";
 import {
   FinderEthers,
+  FxChildMockEthers,
+  FxRootMockEthers,
   IdentifierWhitelistEthers,
+  OracleChildTunnelEthers,
   OracleSpokeEthers,
   RegistryEthers,
+  StateSyncMockEthers,
   VotingTokenEthers,
   VotingV2Ethers,
   getAbi,
@@ -67,6 +71,7 @@ describe("DVM2 Price Resolver", function () {
   let oracleSpokeOptimism: OracleSpokeEthers;
   let oracleSpokeArbitrum: OracleSpokeEthers;
   let finder: FinderEthers;
+  let oracleChildTunnel: OracleChildTunnelEthers;
   let optimismChildMessengerMock: any;
   let arbitrumChildMessengerMock: any;
   let polygonChildMessengerMock: any;
@@ -74,28 +79,6 @@ describe("DVM2 Price Resolver", function () {
   const testAncillaryData = toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
   const testIdentifier = formatBytes32String("NUMERICAL");
   const testRequestTime = BigNumber.from("1234567890");
-
-  const commitAndReveal = async (
-    signer: SignerWithAddress,
-    price: BigNumber,
-    time: BigNumber,
-    identifier: BytesLike,
-    ancillaryData: BytesLike
-  ): Promise<void> => {
-    const salt = "123";
-    const roundId = Number(await votingV2.getCurrentRoundId());
-
-    const voteHash = ethers.utils.solidityKeccak256(
-      ["uint", "uint", "address", "uint", "bytes", "uint", "bytes32"],
-      [price, salt, signer.address, time, ancillaryData, roundId, identifier]
-    );
-
-    (await votingV2.connect(signer as Signer).commitVote(identifier, time, ancillaryData, voteHash)).wait();
-
-    await moveToNextPhase(votingV2);
-
-    await (await votingV2.connect(signer as Signer).revealVote(identifier, time, price, ancillaryData, salt)).wait();
-  };
 
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.
@@ -123,7 +106,6 @@ describe("DVM2 Price Resolver", function () {
 
     optimismChildMessengerMock = await hre.waffle.deployMockContract(deployer, getAbi("Optimism_ChildMessenger"));
     arbitrumChildMessengerMock = await hre.waffle.deployMockContract(deployer, getAbi("Arbitrum_ChildMessenger"));
-    polygonChildMessengerMock = await hre.waffle.deployMockContract(deployer, getAbi("Polygon_ChildMessenger"));
 
     oracleSpokeOptimism = (await (await getContractFactory("OracleSpoke", deployer)).deploy(
       finder.address
@@ -150,15 +132,6 @@ describe("DVM2 Price Resolver", function () {
   });
 
   it("Arbitrum", async function () {
-    await finder.changeImplementationAddress(formatBytes32String("ChildMessenger"), arbitrumChildMessengerMock.address);
-    await arbitrumChildMessengerMock.mock.sendMessageToParent.returns();
-
-    await oracleSpokeArbitrum
-      .connect(registeredContract)
-      ["requestPrice(bytes32,uint256,bytes)"](testIdentifier, testRequestTime, testAncillaryData);
-  });
-
-  it("Polygon", async function () {
     await finder.changeImplementationAddress(formatBytes32String("ChildMessenger"), arbitrumChildMessengerMock.address);
     await arbitrumChildMessengerMock.mock.sendMessageToParent.returns();
 
