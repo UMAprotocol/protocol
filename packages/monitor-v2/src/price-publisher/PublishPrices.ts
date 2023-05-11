@@ -113,9 +113,9 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
   const optimismL1CallValue = await optimismParentMessenger.getL1CallValue();
   const currentBlockNumber = await params.provider.getBlockNumber();
 
-  const loopBack = params.blockLookbackResolution || BLOCKS_WEEK_MAINNET;
+  const lookback = params.blockLookbackResolution || BLOCKS_WEEK_MAINNET;
   const searchConfig = {
-    fromBlock: currentBlockNumber - loopBack < 0 ? 0 : currentBlockNumber - loopBack,
+    fromBlock: currentBlockNumber - lookback < 0 ? 0 : currentBlockNumber - lookback,
     toBlock: currentBlockNumber,
     maxBlockLookBack: params.maxBlockLookBack,
   };
