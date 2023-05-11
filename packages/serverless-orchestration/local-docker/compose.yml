@@ -15,8 +15,6 @@ services:
   scheduler:
     image: scheduler:local
     build: scheduler
-    configs:
-      - crontab
-configs:
-  crontab:
-    file: scheduler/crontab
+    env_file: scheduler.env
+    environment:
+      - HUB_URL=http://hub:8080

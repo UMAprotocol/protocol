@@ -8,12 +8,17 @@ WORKDIR /scheduler
 RUN apk update && \
 apk upgrade --available && sync
 
-# Installing curl
+# Installing curl and jq
 RUN apk add curl
+RUN apk add jq
 
-# Copying bot runner script into container
-#COPY scripts/run-bots.sh .
+# Copying bot runner and entrypoint script into container
+COPY run-bots.sh .
+COPY entrypoint.sh .
 
-# Creating entry point for crond with crontab config
-#ENTRYPOINT ["crond", "-f", "-c", "/scheduler/", "-l", "0", "-L", "/dev/stdout"]
-ENTRYPOINT ["crond", "-f"]
+# Setting up permissions for the scripts
+RUN chmod +x run-bots.sh
+RUN chmod +x entrypoint.sh
+
+# Creating entry point to the script that parses environment and starts crond
+ENTRYPOINT ["/scheduler/entrypoint.sh"]

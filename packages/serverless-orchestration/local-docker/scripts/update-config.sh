@@ -20,4 +20,13 @@ echo "Processing JSON files in $CONFIG_DIR and storing environment in $ENV_FILE 
 rm -f "$ENV_FILE"
 find "$CONFIG_DIR" -name "*.json" -exec sh "$CONVERT_SCRIPT" {} "$ENV_FILE" \;
 
+# Update scheduler.env if bot-configs/schedule.json exists. Otherwise use empty environment.
+SCHEDULE_FILE="$ROOT_DIR/bot-configs/schedule.json"
+SCHEDULE_ENV_FILE="$ROOT_DIR/scheduler.env"
+if [ -f "$SCHEDULE_FILE" ]; then
+    echo "Processing $SCHEDULE_FILE ..."
+    BOT_SCHEDULE=$(cat "$SCHEDULE_FILE" | jq tostring | sed -e 's/\\//g' -e 's/^\"//' -e 's/\"$//')
+fi
+echo "BOT_SCHEDULE=$BOT_SCHEDULE" > "$SCHEDULE_ENV_FILE"
+
 exit 0
