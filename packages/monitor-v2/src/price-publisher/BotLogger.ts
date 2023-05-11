@@ -69,3 +69,38 @@ export async function logPriceResolved(
     notificationPath: "price-publisher",
   });
 }
+
+export async function logPriceRequestSpeedUp(
+  logger: typeof Logger,
+  priceRequestInfo: {
+    tx: string;
+    originChainTx: string;
+    time: BigNumber;
+    ancillaryData: string;
+    identifier: string;
+    l2ChainId: number;
+  },
+  params: MonitoringParams
+): Promise<void> {
+  logger.warn({
+    at: "PricePublisher",
+    message: "Price Request Sped Up ✅",
+    mrkdwn:
+      "Price request with identifier " +
+      parseBytes32String(priceRequestInfo.identifier) +
+      " time " +
+      priceRequestInfo.time +
+      " ancillary data " +
+      tryHexToUtf8String(priceRequestInfo.ancillaryData) +
+      " originating from chain " +
+      priceRequestInfo.l2ChainId +
+      " in tx " +
+      createEtherscanLinkMarkdown(priceRequestInfo.originChainTx, priceRequestInfo.l2ChainId) +
+      " has been sped up in chain " +
+      params.chainId +
+      " in tx " +
+      createEtherscanLinkMarkdown(priceRequestInfo.tx, params.chainId) +
+      ". ",
+    notificationPath: "price-publisher",
+  });
+}

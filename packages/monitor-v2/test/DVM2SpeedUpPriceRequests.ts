@@ -1,40 +1,29 @@
 import type { Provider } from "@ethersproject/abstract-provider";
 import "@nomiclabs/hardhat-ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { RegistryRolesEnum } from "@uma/common";
 import {
   FinderEthers,
-  FxChildMockEthers,
-  FxRootMockEthers,
   IdentifierWhitelistEthers,
-  OracleChildTunnelEthers,
   OracleSpokeEthers,
   RegistryEthers,
-  StateSyncMockEthers,
   VotingTokenEthers,
   VotingV2Ethers,
   getAbi,
 } from "@uma/contracts-node";
 import { assert } from "chai";
-import { BigNumber, BytesLike, utils } from "ethers";
+import { BigNumber, utils } from "ethers";
 import hre from "hardhat";
 import sinon from "sinon";
-import { resolvePrices } from "../src/price-publisher/ResolvePrices";
+import { speedUpPriceRequests } from "../src/price-publisher/SpeedUpPriceRequests";
 import { BotModes, MonitoringParams } from "../src/price-publisher/common";
 import { dvm2Fixture } from "./fixtures/DVM2.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
-import {
-  Signer,
-  formatBytes32String,
-  getContractFactory,
-  moveToNextPhase,
-  moveToNextRound,
-  toUtf8Bytes,
-} from "./utils";
+import { Signer, formatBytes32String, getContractFactory, toUtf8Bytes } from "./utils";
 
+import { addGlobalHardhatTestingAddress } from "@uma/common";
+import { OracleHubEthers } from "@uma/contracts-node";
 import { SpyTransport, createNewLogger, spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
-import { OptimismChildMessenger } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
-import { ArbitrumParentMessenger, OracleSpoke } from "@uma/contracts-frontend/dist/typechain/core/ethers";
+import { StoreEthers } from "@uma/contracts-node";
 
 const ethers = hre.ethers;
 
@@ -50,31 +39,30 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
   };
   return {
     chainId: chainId,
+    l2ChainId: chainId,
     provider: ethers.provider as Provider,
+    l2Provider: ethers.provider as Provider,
     pollingDelay: 0,
     botModes,
     signer,
   };
 };
 
-describe("DVM2 Price Resolver", function () {
+describe("DVM2 Price Speed up", function () {
   let votingToken: VotingTokenEthers;
   let votingV2: VotingV2Ethers;
   let registry: RegistryEthers;
   let deployer: Signer;
-  let staker: Signer;
   let registeredContract: Signer;
-  let parentMessenger: Signer;
+  let store: StoreEthers;
   let deployerAddress: string;
-  let stakerAddress: string;
   let registeredContractAddress: string;
   let oracleSpokeOptimism: OracleSpokeEthers;
   let oracleSpokeArbitrum: OracleSpokeEthers;
+  let oracleHub: OracleHubEthers;
   let finder: FinderEthers;
-  let oracleChildTunnel: OracleChildTunnelEthers;
   let optimismChildMessengerMock: any;
   let arbitrumChildMessengerMock: any;
-  let polygonChildMessengerMock: any;
 
   const testAncillaryData = toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
   const testIdentifier = formatBytes32String("NUMERICAL");
@@ -82,9 +70,8 @@ describe("DVM2 Price Resolver", function () {
 
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.
-    [deployer, staker, registeredContract, parentMessenger] = (await ethers.getSigners()) as Signer[];
+    [deployer, registeredContract] = (await ethers.getSigners()) as Signer[];
     deployerAddress = await deployer.getAddress();
-    stakerAddress = await staker.getAddress();
     registeredContractAddress = await registeredContract.getAddress();
 
     // Get contract instances.
@@ -94,10 +81,7 @@ describe("DVM2 Price Resolver", function () {
     const dvm2Contracts = await dvm2Fixture();
     votingV2 = dvm2Contracts.votingV2;
     finder = umaEcosystemContracts.finder;
-
-    // Register contract with Registry.
-    await (await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployerAddress)).wait();
-    await (await registry.registerContract([], registeredContractAddress)).wait();
+    store = umaEcosystemContracts.store;
 
     // Add identifier to IdentifierWhitelist.
     await (umaEcosystemContracts.identifierWhitelist as IdentifierWhitelistEthers).addSupportedIdentifier(
@@ -114,29 +98,98 @@ describe("DVM2 Price Resolver", function () {
       finder.address
     )) as OracleSpokeEthers;
 
+    oracleHub = (await (await getContractFactory("OracleHub", deployer)).deploy(
+      umaEcosystemContracts.finder.address,
+      umaEcosystemContracts.votingToken.address
+    )) as OracleHubEthers;
+
+    addGlobalHardhatTestingAddress("OracleHub", oracleHub.address);
+    addGlobalHardhatTestingAddress("VotingV2", votingV2.address);
+
+    // Register contract with Registry.
+    await (await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployerAddress)).wait();
+    await (await registry.registerContract([], registeredContractAddress)).wait();
+    await (await registry.registerContract([], oracleHub.address)).wait();
+
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
     await (await votingToken.addMinter(await deployer.getAddress())).wait();
-    await (await votingToken.mint(await stakerAddress, TEN_MILLION)).wait();
-    await (await votingToken.connect(staker).approve(votingV2.address, TEN_MILLION)).wait();
-    await (await votingV2.connect(staker).stake(TEN_MILLION)).wait();
+    await (await votingToken.mint(await deployer.getAddress(), TEN_MILLION)).wait();
   });
 
-  it("Optimism", async function () {
+  it("Optimism speed up", async function () {
     await finder.changeImplementationAddress(formatBytes32String("ChildMessenger"), optimismChildMessengerMock.address);
     await optimismChildMessengerMock.mock.sendMessageToParent.returns();
 
     await oracleSpokeOptimism
       .connect(registeredContract)
       ["requestPrice(bytes32,uint256,bytes)"](testIdentifier, testRequestTime, testAncillaryData);
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+
+    addGlobalHardhatTestingAddress("OracleSpoke", oracleSpokeOptimism.address);
+    await speedUpPriceRequests(spyLogger, await createMonitoringParams());
+
+    assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
+    assert.equal(spy.getCall(0).lastArg.message, "Price Request Sped Up ✅");
+    assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
+    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(utils.toUtf8String(testAncillaryData)));
+    assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-publisher");
   });
 
-  it("Arbitrum", async function () {
+  it("Optimism speed up already done", async function () {
+    await finder.changeImplementationAddress(formatBytes32String("ChildMessenger"), optimismChildMessengerMock.address);
+    await optimismChildMessengerMock.mock.sendMessageToParent.returns();
+
+    await oracleSpokeOptimism
+      .connect(registeredContract)
+      ["requestPrice(bytes32,uint256,bytes)"](testIdentifier, testRequestTime, testAncillaryData);
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+
+    addGlobalHardhatTestingAddress("OracleSpoke", oracleSpokeOptimism.address);
+
+    const finalFee = await store.computeFinalFee(votingToken.address);
+    await votingToken.approve(oracleHub.address, finalFee.rawValue);
+    await (
+      await oracleHub
+        .connect(deployer)
+        .requestPrice(
+          testIdentifier,
+          testRequestTime,
+          await (oracleSpokeOptimism as OracleSpokeEthers).stampAncillaryData(testAncillaryData)
+        )
+    ).wait();
+
+    await speedUpPriceRequests(spyLogger, await createMonitoringParams());
+
+    assert.equal(spy.callCount, 0);
+  });
+
+  it("Arbitrum speed up", async function () {
     await finder.changeImplementationAddress(formatBytes32String("ChildMessenger"), arbitrumChildMessengerMock.address);
     await arbitrumChildMessengerMock.mock.sendMessageToParent.returns();
 
     await oracleSpokeArbitrum
       .connect(registeredContract)
       ["requestPrice(bytes32,uint256,bytes)"](testIdentifier, testRequestTime, testAncillaryData);
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+
+    addGlobalHardhatTestingAddress("OracleSpoke", oracleSpokeArbitrum.address);
+    await speedUpPriceRequests(spyLogger, await createMonitoringParams());
+
+    assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
+    assert.equal(spy.getCall(0).lastArg.message, "Price Request Sped Up ✅");
+    assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
+    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(utils.toUtf8String(testAncillaryData)));
+    assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-publisher");
   });
 });

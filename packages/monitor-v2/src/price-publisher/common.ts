@@ -25,11 +25,13 @@ export interface BlockRange {
 export interface MonitoringParams {
   chainId: number;
   provider: Provider;
+  l2ChainId?: number;
+  l2Provider?: Provider;
   botModes: BotModes;
   signer: Signer;
   pollingDelay: number;
   maxBlockLookBack?: number;
-  blockLookbackResolution?: number;
+  blockLookback?: number;
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -38,6 +40,12 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
+
+  let l2ChainId, l2Provider;
+  if (env.L2_CHAIN_ID) {
+    l2ChainId = Number(env.L2_CHAIN_ID);
+    l2Provider = getRetryProvider(l2ChainId) as Provider;
+  }
 
   // Default to 1 minute polling delay.
   const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
@@ -54,7 +62,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     publishPricesEnabled: env.PUBLISH_ENABLED === "true",
   };
 
-  const blockLookbackResolution = Number(env.BLOCK_LOOKBACK_RESOLUTION) || BLOCKS_WEEK_MAINNET;
+  const blockLookback = Number(env.BLOCK_LOOKBACK_RESOLUTION) || BLOCKS_WEEK_MAINNET;
 
   const maxBlockLookBack = Number(env.MAX_BLOCK_LOOKBACK) || MAX_BLOCK_LOOPBACK_MAINNET;
 
@@ -63,9 +71,11 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     provider,
     botModes,
     signer,
-    blockLookbackResolution,
+    blockLookback,
     maxBlockLookBack,
     pollingDelay,
+    l2ChainId,
+    l2Provider,
   };
 };
 
