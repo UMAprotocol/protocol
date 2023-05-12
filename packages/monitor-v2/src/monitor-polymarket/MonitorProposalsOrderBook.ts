@@ -54,7 +54,14 @@ export async function monitorTransactionsProposedOrderBook(
   const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
     .filter((market) => proposalEvents.find((event) => event.ancillaryData === market.ancillaryData))
     .map((market) => {
-      const event = proposalEvents.find((event) => event.ancillaryData === market.ancillaryData);
+      const events = proposalEvents.filter((event) => event.ancillaryData === market.ancillaryData);
+      // get last proposal event
+      const event = events.reduce((maxEvent, currentEvent) => {
+        if (currentEvent.proposalTimestamp > maxEvent.proposalTimestamp) {
+          return currentEvent;
+        }
+        return maxEvent;
+      });
       if (!event) throw new Error("Could not find event for market");
       return {
         ...market,
