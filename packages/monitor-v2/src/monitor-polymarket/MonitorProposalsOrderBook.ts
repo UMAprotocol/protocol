@@ -57,8 +57,12 @@ export async function monitorTransactionsProposedOrderBook(
       const events = proposalEvents.filter((event) => event.ancillaryData === market.ancillaryData);
       // get last proposal event
       const event = events.reduce((maxEvent, currentEvent) => {
-        if (currentEvent.proposalTimestamp > maxEvent.proposalTimestamp) {
+        if (currentEvent.eventBlockNumber > maxEvent.eventBlockNumber) {
           return currentEvent;
+        } else if (currentEvent.eventBlockNumber === maxEvent.eventBlockNumber) {
+          if (currentEvent.eventIndex > maxEvent.eventIndex) {
+            return currentEvent;
+          }
         }
         return maxEvent;
       });
