@@ -1,5 +1,5 @@
 # Script to stringify json file $1 and append to env file $2.
-# This is used by update-bot-config.sh script.
+# This is used by update-config.sh script.
 # Requires jq being installed.
 
 echo "Processing $1 ..."

@@ -9,10 +9,10 @@ else
 fi
 
 # Verify required compose file exists.
-[ ! -f "$ROOT_DIR/compose.yml" ] && { echo "Error: compose.yml file not found"; exit 1; }
+[ ! -f "$ROOT_DIR/docker-compose.yml" ] && { echo "Error: docker-compose.yml file not found"; exit 1; }
 
 # Stop hub and spoke services.
 echo "Stopping hub and spoke services ..."
-docker compose -f "$ROOT_DIR/compose.yml" -p local-serverless down
+docker compose -f "$ROOT_DIR/docker-compose.yml" down
 
 exit 0

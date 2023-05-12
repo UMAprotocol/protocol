@@ -9,7 +9,7 @@ else
 fi
 
 # Verify required files exist.
-[ ! -f "$ROOT_DIR/compose.yml" ] && { echo "Error: compose.yml file not found"; exit 1; }
+[ ! -f "$ROOT_DIR/docker-compose.yml" ] && { echo "Error: docker-compose.yml file not found"; exit 1; }
 [ ! -f "$ROOT_DIR/hub.env" ] && { echo "Error: hub.env file not found"; exit 1; }
 [ ! -f "$ROOT_DIR/spoke.env" ] && { echo "Error: spoke.env file not found"; exit 1; }
 [ ! -f "$ROOT_DIR/scripts/update-config.sh" ] && { echo "Error: scripts/update-config.sh file not found"; exit 1; }
@@ -22,6 +22,6 @@ sh "$ROOT_DIR/scripts/update-config.sh" "$ROOT_DIR"
 
 # Start or update hub and spoke services.
 echo "Starting or updating hub and spoke services ..."
-docker compose -f "$ROOT_DIR/compose.yml" -p local-serverless up -d
+docker compose -f "$ROOT_DIR/docker-compose.yml" up -d
 
 exit 0
