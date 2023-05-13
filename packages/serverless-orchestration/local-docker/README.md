@@ -3,45 +3,59 @@
 This document describes how to run the UMA Serverless Orchestration scripts locally using Docker. This is useful for
 testing and debugging bots locally before deploying them to the cloud.
 
-The instructions below assume you have [Docker](https://www.docker.com/) installed and its server daemon is running on
-the local machine. Also make sure to add your user to `docker` group in order to avoid running commands as root.
-
-Start by enabling swarm mode so that hub and spoke services can be configured in a single [compose file](./uma.yml):
-
-```sh
-docker swarm init
-```
+The instructions below assume you have [Docker](https://www.docker.com/) and its Compose plugin installed and its server
+daemon is running on the local machine. Also make sure to add your user to `docker` group in order to avoid running
+commands as root.
 
 ## Build UMA Protocol Docker Image
 
-This step is only required if you are testing against a local development branch of the UMA protocol. If you are
-testing bot configuration against the published protocol docker image, you can skip this step.
-
-Start the `registry` service:
+In order to build local UMA protocol docker image, run the build script:
 
 ```sh
-docker service create --name registry --publish published=5000,target=5000 registry:2
+yarn workspace @uma/serverless-orchestration local-build
 ```
 
-Start the docker build from the root of `protocol` repository:
+This will build two docker images:
 
-```sh
-docker build -t localhost:5000/protocol:dev .
-```
-
-Once build is complete, push it to the local registry service:
-
-```sh
-docker push localhost:5000/protocol:dev
-```
+- `umaprotocol/protocol:local` for the UMA protocol
+- `scheduler:local` for the cron scheduler that will trigger bots through local hub service
 
 ## Service configuration
 
-In the same directory where `uma.yml` compose file is located create the required `hub.env` and `spoke.env` files using
-the provided templates in [hub.env.template](./hub.env.template) and [spoke.env.template](./spoke.env.template)
+In the `packages/serverless-orchestration/local-docker/` directory create the required `hub.env` and `spoke.env` files
+using the provided templates in [hub.env.template](./hub.env.template) and [spoke.env.template](./spoke.env.template)
 respectively.
 
-Place all the tested bot configuration files under the [./bot-configs/serverless-bots](./bot-configs/serverless-bots)
+Place all the tested bot configuration files under the [`./bot-configs/serverless-bots`](./bot-configs/serverless-bots)
 directory. Configuration files must be formatted as JSON and have a `.json` extension.
 
+In the [`./bot-configs`](./bot-configs) directory create the required `schedule.json` file using the provided template
+in [schedule.json.example](./bot-configs/schedule.json.example). This configuration will be used by the cron scheduler
+service to trigger bots through the local hub service.
+
 ## Start UMA Serverless Orchestration
+
+To start the UMA Serverless Orchestration services run:
+
+```sh
+yarn workspace @uma/serverless-orchestration local-up
+```
+
+This will start the following services:
+
+- `hub`: local hub service
+- `spoke`: local spoke service
+- `scheduler`: cron scheduler service
+
+## Stop UMA Serverless Orchestration
+
+To stop the UMA Serverless Orchestration services run:
+
+```sh
+yarn workspace @uma/serverless-orchestration local-down
+```
+
+## Limitations
+
+Currently, the local UMA Serverless Orchestration does not support running bots that require access to GCP Datastore and
+caching service.
