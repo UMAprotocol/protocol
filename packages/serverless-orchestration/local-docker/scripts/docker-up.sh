@@ -1,4 +1,4 @@
-# Script to parse bot-configs and start or update hub and spoke docker services.
+# Script to parse bot-configs and start or update docker services.
 
 # Resolve provided root directory. Defaults to current directory if not provided.
 if [ -z "$1" ]; then
