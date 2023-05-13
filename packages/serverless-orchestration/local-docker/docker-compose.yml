@@ -6,8 +6,6 @@ services:
     env_file:
       - hub.env
       - bot-config.env
-    ports:
-      - "8080:8080"
   spoke:
     image: umaprotocol/protocol:local
     build: ../../..
