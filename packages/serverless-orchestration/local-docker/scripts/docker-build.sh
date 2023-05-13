@@ -15,4 +15,4 @@ fi
 echo "Building local docker image ..."
 docker compose -f "$ROOT_DIR/docker-compose.yml" build
 
-exit 0
+exit $?

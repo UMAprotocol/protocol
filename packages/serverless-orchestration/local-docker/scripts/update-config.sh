@@ -40,4 +40,4 @@ echo "Processing JSON files in $CONFIG_DIR and storing environment in $CONFIG_EN
 rm -f "$CONFIG_ENV_FILE"
 find "$CONFIG_DIR" -name "*.json" -exec sh "$CONVERT_SCRIPT" {} "$CONFIG_ENV_FILE" \;
 
-exit 0
+exit $?

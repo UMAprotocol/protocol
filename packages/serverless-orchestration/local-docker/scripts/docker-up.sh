@@ -24,4 +24,4 @@ sh "$ROOT_DIR/scripts/update-config.sh" "$ROOT_DIR"
 echo "Starting or updating hub and spoke services ..."
 docker compose -f "$ROOT_DIR/docker-compose.yml" up -d
 
-exit 0
+exit $?

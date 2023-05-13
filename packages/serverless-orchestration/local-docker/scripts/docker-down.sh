@@ -15,4 +15,4 @@ fi
 echo "Stopping hub and spoke services ..."
 docker compose -f "$ROOT_DIR/docker-compose.yml" down
 
-exit 0
+exit $?
