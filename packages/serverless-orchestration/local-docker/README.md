@@ -23,14 +23,14 @@ This will build two docker images:
 ## Service configuration
 
 In the `packages/serverless-orchestration/local-docker/` directory create the required `hub.env` and `spoke.env` files
-using the provided templates in [hub.env.template](./hub.env.template) and [spoke.env.template](./spoke.env.template)
+using the provided templates in [`hub.env.template`](./hub.env.template) and [`spoke.env.template`](./spoke.env.template)
 respectively.
 
 Place all the tested bot configuration files under the `packages/serverless-orchestration/local-docker/bot-configs/serverless-bots`
 directory. Configuration files must be formatted as JSON and have a `.json` extension.
 
 In the [`./bot-configs`](./bot-configs) directory create the required `schedule.json` file using the provided template
-in [schedule.json.example](./bot-configs/schedule.json.example). This configuration will be used by the cron scheduler
+in [`schedule.json.example`](./bot-configs/schedule.json.example). This configuration will be used by the cron scheduler
 service to trigger bots through the local hub service.
 
 ## Start UMA Serverless Orchestration
