@@ -26,7 +26,7 @@ In the `packages/serverless-orchestration/local-docker/` directory create the re
 using the provided templates in [hub.env.template](./hub.env.template) and [spoke.env.template](./spoke.env.template)
 respectively.
 
-Place all the tested bot configuration files under the [`./bot-configs/serverless-bots`](./bot-configs/serverless-bots)
+Place all the tested bot configuration files under the `packages/serverless-orchestration/local-docker/bot-configs/serverless-bots`
 directory. Configuration files must be formatted as JSON and have a `.json` extension.
 
 In the [`./bot-configs`](./bot-configs) directory create the required `schedule.json` file using the provided template
