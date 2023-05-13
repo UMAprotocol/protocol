@@ -1,6 +1,6 @@
 # Running UMA Serverless Orchestration Locally With Docker
 
-This document describes how to run the UMA Serverless Orchestration scripts locally using Docker. This is useful for
+This document describes how to run the UMA Serverless Orchestration service locally using Docker. This is useful for
 testing and debugging bots locally before deploying them to the cloud.
 
 The instructions below assume you have [Docker](https://www.docker.com/) and its Compose plugin installed and its server
