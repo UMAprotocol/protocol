@@ -24,7 +24,7 @@ if [ -f "$SCHEDULE_FILE" ]; then
 
     # Verify all bucket/configFile values in schedule.json exist as bot-configs files.
     cat "$SCHEDULE_FILE" | jq -r '.[] | [.bucket, .configFile] | @tsv' |
-      while IFS=$'\t' read -r bucket configFile
+      while read -r bucket configFile
         do [ ! -f "$CONFIG_DIR/$bucket/$configFile" ] && { echo "Error: $CONFIG_DIR/$bucket/$configFile not found"; exit 1; }
       done
 
