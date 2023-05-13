@@ -9,10 +9,10 @@ else
 fi
 
 # Verify required compose file exists.
-[ ! -f "$ROOT_DIR/docker-docker-compose.yml" ] && { echo "Error: docker-compose.yml file not found"; exit 1; }
+[ ! -f "$ROOT_DIR/docker-compose.yml" ] && { echo "Error: docker-compose.yml file not found"; exit 1; }
 
 # Build docker image.
 echo "Building local docker image ..."
-docker compose -f "$ROOT_DIR/docker-compose.yml"
+docker compose -f "$ROOT_DIR/docker-compose.yml" build
 
 exit 0
