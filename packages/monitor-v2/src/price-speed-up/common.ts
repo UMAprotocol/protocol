@@ -12,7 +12,7 @@ export const OPTIMISM_CHAIN_ID = 10;
 export const POLYGON_CHAIN_ID = 137;
 
 export interface BotModes {
-  speedUpPriceEnabled: boolean;
+  speedUpPricesEnabled: boolean;
 }
 
 export interface BlockRange {
@@ -57,7 +57,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   }
 
   const botModes = {
-    speedUpPriceEnabled: env.SPEED_UP_ENABLED === "true",
+    speedUpPricesEnabled: env.SPEED_UP_ENABLED === "true",
   };
 
   if (!env.BLOCK_LOOKBACK) throw new Error("BLOCK_LOOKBACK must be defined in env");

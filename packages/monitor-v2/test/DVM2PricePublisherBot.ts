@@ -44,7 +44,6 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
   const botModes: BotModes = {
     publishPricesEnabled: true,
     resolvePricesEnabled: true,
-    speedUpPriceEnabled: true,
   };
 
   return {
