@@ -60,10 +60,10 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     speedUpPriceEnabled: env.SPEED_UP_ENABLED === "true",
   };
 
-  if (!env.BLOCK_LOOKBACK_RESOLUTION) throw new Error("BLOCK_LOOKBACK_RESOLUTION must be defined in env");
+  if (!env.BLOCK_LOOKBACK) throw new Error("BLOCK_LOOKBACK must be defined in env");
   if (!env.MAX_BLOCK_LOOKBACK) throw new Error("MAX_BLOCK_LOOKBACK must be defined in env");
 
-  const blockLookback = Number(env.BLOCK_LOOKBACK_RESOLUTION);
+  const blockLookback = Number(env.BLOCK_LOOKBACK);
   const maxBlockLookBack = Number(env.MAX_BLOCK_LOOKBACK);
 
   return {

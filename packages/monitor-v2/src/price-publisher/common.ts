@@ -64,7 +64,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     resolvePricesEnabled: env.RESOLVE_ENABLED === "true",
   };
 
-  const blockLookback = Number(env.BLOCK_LOOKBACK_RESOLUTION) || BLOCKS_WEEK_MAINNET;
+  const blockLookback = Number(env.BLOCK_LOOKBACK) || BLOCKS_WEEK_MAINNET;
 
   const maxBlockLookBack = Number(env.MAX_BLOCK_LOOKBACK) || MAX_BLOCK_LOOPBACK_MAINNET;
 
