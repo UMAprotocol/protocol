@@ -62,7 +62,6 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const botModes = {
     publishPricesEnabled: env.PUBLISH_ENABLED === "true",
     resolvePricesEnabled: env.RESOLVE_ENABLED === "true",
-    speedUpPriceEnabled: env.SPEED_UP_ENABLED === "true",
   };
 
   const blockLookback = Number(env.BLOCK_LOOKBACK_RESOLUTION) || BLOCKS_WEEK_MAINNET;
