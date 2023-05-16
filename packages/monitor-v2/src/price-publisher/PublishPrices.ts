@@ -113,9 +113,9 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
   const optimismL1CallValue = await optimismParentMessenger.getL1CallValue();
   const currentBlockNumber = await params.provider.getBlockNumber();
 
-  const loopBack = params.blockLookback || BLOCKS_WEEK_MAINNET;
+  const lookBack = params.blockLookback || BLOCKS_WEEK_MAINNET;
   const searchConfig = {
-    fromBlock: currentBlockNumber - loopBack < 0 ? 0 : currentBlockNumber - loopBack,
+    fromBlock: currentBlockNumber - lookBack < 0 ? 0 : currentBlockNumber - lookBack,
     toBlock: currentBlockNumber,
     maxBlockLookBack: params.maxBlockLookBack,
   };
@@ -132,10 +132,6 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     const isPolygon = decodedAncillary.endsWith(`,childChainId:${POLYGON_CHAIN_ID}`);
     const isArbitrum = decodedAncillary.endsWith(`,childChainId:${ARBITRUM_CHAIN_ID}`);
     const isOptimism = decodedAncillary.endsWith(`,childChainId:${OPTIMISM_CHAIN_ID}`);
-
-    if (!isPolygon && !isArbitrum && !isOptimism) {
-      new Error(`Unsupported chainId in ancillaryData: ${decodedAncillary}`);
-    }
 
     if (isPolygon) {
       await processOracleRoot(logger, params, oracleRootTunnel, event);
