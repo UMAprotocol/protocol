@@ -1,10 +1,10 @@
 import { paginatedEventQuery } from "@uma/common";
 import { OracleHubEthers, StoreEthers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { RequestResolvedEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
-import { BLOCKS_WEEK_MAINNET, Logger, MonitoringParams, getContractInstanceWithProvider } from "./common";
+import { Logger, MonitoringParams, getContractInstanceWithProvider } from "./common";
 import { logPriceRequestSpeedUp } from "./BotLogger";
 
-export async function speedUpPriceRequests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function speedUpPrices(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const votingV2 = await getContractInstanceWithProvider<VotingV2Ethers>("VotingV2", params.provider);
   const votingToken = await getContractInstanceWithProvider<VotingTokenEthers>("VotingToken", params.provider);
   const store = await getContractInstanceWithProvider<StoreEthers>("Store", params.provider);
@@ -17,7 +17,7 @@ export async function speedUpPriceRequests(logger: typeof Logger, params: Monito
 
   const currentBlockNumberL2 = await params.l2Provider.getBlockNumber();
 
-  const lookback = params.blockLookback || BLOCKS_WEEK_MAINNET;
+  const lookback = params.blockLookback;
   const searchConfig = {
     fromBlock: currentBlockNumberL2 - lookback < 0 ? 0 : currentBlockNumberL2 - lookback,
     toBlock: currentBlockNumberL2,

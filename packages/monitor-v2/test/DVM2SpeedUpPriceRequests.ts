@@ -14,7 +14,7 @@ import { assert } from "chai";
 import { BigNumber, utils } from "ethers";
 import hre from "hardhat";
 import sinon from "sinon";
-import { speedUpPriceRequests } from "../src/price-publisher/SpeedUpPriceRequests";
+import { speedUpPrices } from "../src/price-publisher/SpeedUpPriceRequests";
 import { BotModes, MonitoringParams } from "../src/price-publisher/common";
 import { dvm2Fixture } from "./fixtures/DVM2.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
@@ -35,7 +35,9 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
   const [signer] = await ethers.getSigners();
   // Bot modes are not used as we are calling monitor modules directly.
   const botModes: BotModes = {
-    publishPricesEnabled: false,
+    publishPricesEnabled: true,
+    resolvePricesEnabled: true,
+    speedUpPriceEnabled: true,
   };
   return {
     chainId: chainId,
@@ -45,6 +47,8 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
     pollingDelay: 0,
     botModes,
     signer,
+    maxBlockLookBack: 1000,
+    blockLookback: 1000,
   };
 };
 
@@ -129,7 +133,7 @@ describe("DVM2 Price Speed up", function () {
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
 
     addGlobalHardhatTestingAddress("OracleSpoke", oracleSpokeOptimism.address);
-    await speedUpPriceRequests(spyLogger, await createMonitoringParams());
+    await speedUpPrices(spyLogger, await createMonitoringParams());
 
     assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
     assert.equal(spy.getCall(0).lastArg.message, "Price Request Sped Up ✅");
@@ -165,7 +169,7 @@ describe("DVM2 Price Speed up", function () {
         )
     ).wait();
 
-    await speedUpPriceRequests(spyLogger, await createMonitoringParams());
+    await speedUpPrices(spyLogger, await createMonitoringParams());
 
     assert.equal(spy.callCount, 0);
   });
@@ -182,7 +186,7 @@ describe("DVM2 Price Speed up", function () {
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
 
     addGlobalHardhatTestingAddress("OracleSpoke", oracleSpokeArbitrum.address);
-    await speedUpPriceRequests(spyLogger, await createMonitoringParams());
+    await speedUpPrices(spyLogger, await createMonitoringParams());
 
     assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
     assert.equal(spy.getCall(0).lastArg.message, "Price Request Sped Up ✅");

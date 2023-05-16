@@ -9,7 +9,6 @@ import { BigNumber, utils } from "ethers";
 import { logPricePublished } from "./BotLogger";
 import {
   ARBITRUM_CHAIN_ID,
-  BLOCKS_WEEK_MAINNET,
   Logger,
   MonitoringParams,
   OPTIMISM_CHAIN_ID,
@@ -113,7 +112,7 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
   const optimismL1CallValue = await optimismParentMessenger.getL1CallValue();
   const currentBlockNumber = await params.provider.getBlockNumber();
 
-  const lookBack = params.blockLookback || BLOCKS_WEEK_MAINNET;
+  const lookBack = params.blockLookback;
   const searchConfig = {
     fromBlock: currentBlockNumber - lookBack < 0 ? 0 : currentBlockNumber - lookBack,
     toBlock: currentBlockNumber,

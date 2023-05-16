@@ -10,11 +10,11 @@ export { getContractInstanceWithProvider } from "../utils/contracts";
 export const ARBITRUM_CHAIN_ID = 42161;
 export const OPTIMISM_CHAIN_ID = 10;
 export const POLYGON_CHAIN_ID = 137;
-export const BLOCKS_WEEK_MAINNET = 50400;
-export const MAX_BLOCK_LOOPBACK_MAINNET = 20000;
 
 export interface BotModes {
   publishPricesEnabled: boolean;
+  resolvePricesEnabled: boolean;
+  speedUpPriceEnabled: boolean;
 }
 
 export interface BlockRange {
@@ -30,8 +30,8 @@ export interface MonitoringParams {
   botModes: BotModes;
   signer: Signer;
   pollingDelay: number;
-  maxBlockLookBack?: number;
-  blockLookback?: number;
+  maxBlockLookBack: number;
+  blockLookback: number;
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -60,11 +60,16 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const botModes = {
     publishPricesEnabled: env.PUBLISH_ENABLED === "true",
+    resolvePricesEnabled: env.RESOLVE_ENABLED === "true",
+    speedUpPriceEnabled: env.SPEED_UP_ENABLED === "true",
   };
 
-  const blockLookback = Number(env.BLOCK_LOOKBACK_RESOLUTION) || BLOCKS_WEEK_MAINNET;
+  if (!env.BLOCK_LOOKBACK_RESOLUTION || !env.MAX_BLOCK_LOOKBACK)
+    throw new Error("BLOCK_LOOKBACK_RESOLUTION and MAX_BLOCK_LOOKBACK must be defined in env");
 
-  const maxBlockLookBack = Number(env.MAX_BLOCK_LOOKBACK) || MAX_BLOCK_LOOPBACK_MAINNET;
+  const blockLookback = Number(env.BLOCK_LOOKBACK_RESOLUTION);
+
+  const maxBlockLookBack = Number(env.MAX_BLOCK_LOOKBACK);
 
   return {
     chainId,

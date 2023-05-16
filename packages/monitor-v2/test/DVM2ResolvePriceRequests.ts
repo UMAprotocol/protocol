@@ -25,7 +25,9 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
   const [signer] = await ethers.getSigners();
   // Bot modes are not used as we are calling monitor modules directly.
   const botModes: BotModes = {
-    publishPricesEnabled: false,
+    publishPricesEnabled: true,
+    resolvePricesEnabled: true,
+    speedUpPriceEnabled: true,
   };
   return {
     chainId: chainId,
@@ -33,6 +35,8 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
     pollingDelay: 0,
     botModes,
     signer,
+    maxBlockLookBack: 1000,
+    blockLookback: 1000,
   };
 };
 
