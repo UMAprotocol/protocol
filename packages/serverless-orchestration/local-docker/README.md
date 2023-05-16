@@ -7,6 +7,8 @@ The instructions below assume you have [Docker](https://www.docker.com/) and its
 daemon is running on the local machine. Also make sure to add your user to `docker` group in order to avoid running
 commands as root.
 
+You also need to have `jq` installed on your machine as it is used for scripts parsing tested bot configuration files.
+
 ## Build UMA Protocol Docker Image
 
 In order to build local UMA protocol docker image, run the build script:
