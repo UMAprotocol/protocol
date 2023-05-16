@@ -1,3 +1,4 @@
+/* eslint-disable no-unexpected-multiline */
 import type { Provider } from "@ethersproject/abstract-provider";
 import "@nomiclabs/hardhat-ethers";
 import { RegistryRolesEnum } from "@uma/common";
@@ -125,9 +126,10 @@ describe("DVM2 Price Speed up", function () {
     await finder.changeImplementationAddress(formatBytes32String("ChildMessenger"), optimismChildMessengerMock.address);
     await optimismChildMessengerMock.mock.sendMessageToParent.returns();
 
-    await oracleSpokeOptimism
-      .connect(registeredContract)
-      ["requestPrice(bytes32,uint256,bytes)"](testIdentifier, testRequestTime, testAncillaryData);
+    await oracleSpokeOptimism.connect(registeredContract)[
+      // eslint-disable-next-line no-unexpected-multiline
+      "requestPrice(bytes32,uint256,bytes)"
+    ](testIdentifier, testRequestTime, testAncillaryData);
 
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);

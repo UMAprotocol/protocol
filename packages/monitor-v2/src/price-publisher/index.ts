@@ -2,7 +2,6 @@ import { delay } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
 import { publishPrices } from "./PublishPrices";
 import { resolvePrices } from "./ResolvePrices";
-import { speedUpPrices } from "./SpeedUpPriceRequests";
 
 const logger = Logger;
 

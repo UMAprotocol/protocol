@@ -1,5 +1,5 @@
 import { createEtherscanLinkMarkdown } from "@uma/common";
-import { BigNumber, utils } from "ethers";
+import { BigNumber } from "ethers";
 import { Logger } from "./common";
 
 import { parseBytes32String } from "ethers/lib/utils";
