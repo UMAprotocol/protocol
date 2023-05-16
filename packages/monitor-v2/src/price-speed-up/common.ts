@@ -10,12 +10,9 @@ export { getContractInstanceWithProvider } from "../utils/contracts";
 export const ARBITRUM_CHAIN_ID = 42161;
 export const OPTIMISM_CHAIN_ID = 10;
 export const POLYGON_CHAIN_ID = 137;
-export const BLOCKS_WEEK_MAINNET = 50400;
-export const MAX_BLOCK_LOOPBACK_MAINNET = 20000;
 
 export interface BotModes {
-  publishPricesEnabled: boolean;
-  resolvePricesEnabled: boolean;
+  speedUpPriceEnabled: boolean;
 }
 
 export interface BlockRange {

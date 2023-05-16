@@ -14,8 +14,8 @@ import { assert } from "chai";
 import { BigNumber, utils } from "ethers";
 import hre from "hardhat";
 import sinon from "sinon";
-import { speedUpPrices } from "../src/price-publisher/SpeedUpPriceRequests";
-import { BotModes, MonitoringParams } from "../src/price-publisher/common";
+import { speedUpPrices } from "../src/price-speed-up/SpeedUpPriceRequests";
+import { BotModes, MonitoringParams } from "../src/price-speed-up/common";
 import { dvm2Fixture } from "./fixtures/DVM2.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { Signer, formatBytes32String, getContractFactory, toUtf8Bytes } from "./utils";
@@ -135,13 +135,13 @@ describe("DVM2 Price Speed up", function () {
     addGlobalHardhatTestingAddress("OracleSpoke", oracleSpokeOptimism.address);
     await speedUpPrices(spyLogger, await createMonitoringParams());
 
-    assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
+    assert.equal(spy.getCall(0).lastArg.at, "PriceSpeedUp");
     assert.equal(spy.getCall(0).lastArg.message, "Price Request Sped Up ✅");
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
     assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(utils.toUtf8String(testAncillaryData)));
     assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-publisher");
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-speed-up");
   });
 
   it("Optimism speed up already done", async function () {
@@ -188,12 +188,12 @@ describe("DVM2 Price Speed up", function () {
     addGlobalHardhatTestingAddress("OracleSpoke", oracleSpokeArbitrum.address);
     await speedUpPrices(spyLogger, await createMonitoringParams());
 
-    assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
+    assert.equal(spy.getCall(0).lastArg.at, "PriceSpeedUp");
     assert.equal(spy.getCall(0).lastArg.message, "Price Request Sped Up ✅");
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
     assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(utils.toUtf8String(testAncillaryData)));
     assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-publisher");
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-speed-up");
   });
 });
