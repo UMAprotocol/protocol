@@ -11,7 +11,6 @@ node ./packages/monitor-v2/dist/price-publisher/index.js
 All the configuration should be provided with following environment variables:
 
 - `CHAIN_ID` is network number.
-- `L2_CHAIN_ID` is network number of the L2 chain to speed up from. If provided then `NODE_URL_X` should be provided for the L2 chain.
 - `NODE_URLS_X` is an array of RPC node URLs replacing `X` in variable name with network number from `CHAIN_ID`.
 - `NODE_URL_X` is a single RPC node URL replacing `X` in variable name with network number from `CHAIN_ID`. This is
   considered only if matching `NODE_URLS_X` is not provided.
