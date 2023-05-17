@@ -1,6 +1,6 @@
 // This script deploys DesignatedVotingV2 contracts and produces a gnosis-safe JSON file that can be used to fund the contracts.
 
-import hre from "hardhat";
+const hre = require("hardhat");
 import { utils } from "ethers";
 import path from "path";
 import fs from "fs";
@@ -74,7 +74,7 @@ async function main() {
     payload = appendTxToSafePayload(payload, dvAddress, delegateToVoter, {});
   }
 
-  const savePath = `${path.resolve(__dirname)}/deploy.json`;
+  const savePath = `${path.resolve(__dirname)}/load_dv_contracts.json`;
   fs.writeFileSync(savePath, JSON.stringify(payload, null, 4));
 }
 
