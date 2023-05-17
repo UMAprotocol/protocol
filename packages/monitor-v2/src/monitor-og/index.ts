@@ -10,6 +10,7 @@ import {
   monitorSetRules,
   monitorTransactionsExecuted,
   monitorTransactionsProposed,
+  monitorProxyDeployments,
 } from "./MonitorEvents";
 
 const logger = Logger;
@@ -33,6 +34,7 @@ async function main() {
     setLivenessEnabled: monitorSetLiveness,
     setIdentifierEnabled: monitorSetIdentifier,
     setEscalationManagerEnabled: monitorSetEscalationManager,
+    proxyDeployedEnabled: monitorProxyDeployments,
   };
 
   for (;;) {
