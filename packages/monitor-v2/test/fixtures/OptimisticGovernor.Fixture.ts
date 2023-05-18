@@ -1,6 +1,7 @@
 import { addGlobalHardhatTestingAddress } from "@uma/common";
 import {
   ExpandedERC20Ethers,
+  ModuleProxyFactoryEthers,
   OptimisticGovernorEthers,
   OptimisticGovernorTestEthers,
   OptimisticOracleV3Ethers,
@@ -15,6 +16,7 @@ export interface OptimisticGovernorContracts {
   optimisticOracleV3: OptimisticOracleV3Ethers;
   optimisticGovernor: OptimisticGovernorEthers;
   avatar: TestAvatarEthers;
+  moduleProxyFactory: ModuleProxyFactoryEthers;
 }
 
 export const optimisticGovernorFixture = hre.deployments.createFixture(
@@ -87,6 +89,11 @@ export const deployOptimisticGovernor = hre.deployments.createFixture(
 
     await avatar.setModule(optimisticGovernor.address);
 
-    return { bondToken, optimisticOracleV3, optimisticGovernor, avatar };
+    // Deploy ModuleProxyFactory.
+    const moduleProxyFactory = (await (
+      await getContractFactory("ModuleProxyFactory", deployer)
+    ).deploy()) as ModuleProxyFactoryEthers;
+
+    return { bondToken, optimisticOracleV3, optimisticGovernor, avatar, moduleProxyFactory };
   }
 );
