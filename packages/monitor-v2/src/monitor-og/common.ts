@@ -34,7 +34,7 @@ export interface BotModes {
   setLivenessEnabled: boolean;
   setIdentifierEnabled: boolean;
   setEscalationManagerEnabled: boolean;
-  proxyDeployedEnabled?: boolean;
+  proxyDeployedEnabled: boolean;
 }
 
 export interface BlockRange {
