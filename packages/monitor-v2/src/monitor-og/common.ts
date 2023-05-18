@@ -206,16 +206,15 @@ export const getOo = async (params: MonitoringParams): Promise<OptimisticOracleV
 };
 
 export const getProxyDeploymentTxs = async (params: MonitoringParams): Promise<Array<ModuleProxyCreationEvent>> => {
-  const moduleProxyFactories = [];
-  for (const moduleProxyFactoryAddress of params.moduleProxyFactoryAddresses) {
-    moduleProxyFactories.push(
-      await getContractInstanceWithProvider<ModuleProxyFactoryEthers>(
+  const moduleProxyFactories = await Promise.all(
+    params.moduleProxyFactoryAddresses.map(async (moduleProxyFactoryAddress) => {
+      return await getContractInstanceWithProvider<ModuleProxyFactoryEthers>(
         "ModuleProxyFactory",
         params.provider,
         moduleProxyFactoryAddress
-      )
-    );
-  }
+      );
+    })
+  );
   const transactions = (
     await Promise.all(
       moduleProxyFactories.map(
