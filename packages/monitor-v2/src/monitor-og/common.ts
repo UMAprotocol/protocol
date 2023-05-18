@@ -1,5 +1,6 @@
 import { getRetryProvider } from "@uma/common";
-import { ERC20Ethers, TypedEventEthers } from "@uma/contracts-node";
+import { ERC20Ethers, ModuleProxyFactoryEthers } from "@uma/contracts-node";
+import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { delay } from "@uma/financial-templates-lib";
 import { Contract, Event, EventFilter, utils } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
@@ -12,17 +13,6 @@ export { Logger } from "@uma/financial-templates-lib";
 export { constants as ethersConstants } from "ethers";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 export { generateOOv3UILink } from "../utils/logger";
-
-const moduleProxyFactoryEventFragment = new utils.Interface([
-  "event ModuleProxyCreation(address indexed proxy, address indexed masterCopy)",
-]);
-
-type ModuleProxyFactoryEvent = TypedEventEthers<
-  [string, string] & {
-    proxy: string;
-    masterCopy: string;
-  }
->;
 
 export interface BotModes {
   transactionsProposedEnabled: boolean;
@@ -193,11 +183,15 @@ export const getOo = async (params: MonitoringParams): Promise<OptimisticOracleV
 export const getProxyDeploymentTxs = async (
   params: MonitoringParams,
   blockRangeOverride?: BlockRange
-): Promise<Array<ModuleProxyFactoryEvent>> => {
+): Promise<Array<ModuleProxyCreationEvent>> => {
   const moduleProxyFactories = [];
   for (const moduleProxyFactoryAddress of params.moduleProxyFactoryAddresses) {
     moduleProxyFactories.push(
-      new Contract(moduleProxyFactoryAddress, moduleProxyFactoryEventFragment, params.provider)
+      await getContractInstanceWithProvider<ModuleProxyFactoryEthers>(
+        "ModuleProxyFactory",
+        params.provider,
+        moduleProxyFactoryAddress
+      )
     );
   }
   const transactions = (
@@ -206,7 +200,7 @@ export const getProxyDeploymentTxs = async (
         async (moduleProxyFactory) =>
           await Promise.all(
             params.ogMasterCopyAddresses.map((ogMasterCopy) =>
-              runQueryFilter<ModuleProxyFactoryEvent>(
+              runQueryFilter<ModuleProxyCreationEvent>(
                 moduleProxyFactory,
                 moduleProxyFactory.filters.ModuleProxyCreation(null, ogMasterCopy),
                 blockRangeOverride || params.blockRange
