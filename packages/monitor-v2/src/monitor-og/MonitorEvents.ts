@@ -6,10 +6,20 @@ import {
   SetIdentifierEvent,
   SetLivenessEvent,
   SetRulesEvent,
+  TargetSetEvent,
   TransactionExecutedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
-import { getProxyDeployments, Logger, MonitoringParams, runQueryFilter, getOg, getOo } from "./common";
+import {
+  ethersConstants,
+  getProxyDeploymentTxs,
+  Logger,
+  MonitoringParams,
+  runQueryFilter,
+  getOg,
+  getOgByAddress,
+  getOo,
+} from "./common";
 import { logProposalDeleted, logProposalExecuted, logSetCollateralAndBond, logSetRules } from "./MonitorLogger";
 import {
   logProxyDeployed,
@@ -171,11 +181,28 @@ export async function monitorSetEscalationManager(logger: typeof Logger, params:
 }
 
 export async function monitorProxyDeployments(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const transactions = await getProxyDeployments(params);
+  const transactions = await getProxyDeploymentTxs(params);
+
+  const getInitialTarget = async (ogAddress: string, blockNumber: number): Promise<string> => {
+    const og = await getOgByAddress(params, ogAddress);
+    const initialTargetSetEvent = (
+      await runQueryFilter<TargetSetEvent>(og, og.filters.TargetSet(ethersConstants.AddressZero), {
+        start: blockNumber,
+        end: blockNumber,
+      })
+    )[0];
+    return initialTargetSetEvent.args.newTarget;
+  };
+
   for (const transaction of transactions) {
     await logProxyDeployed(
       logger,
-      { proxy: transaction.args.proxy, masterCopy: transaction.args.masterCopy, tx: transaction.transactionHash },
+      {
+        proxy: transaction.args.proxy,
+        masterCopy: transaction.args.masterCopy,
+        tx: transaction.transactionHash,
+        target: await getInitialTarget(transaction.args.proxy, transaction.blockNumber),
+      },
       params
     );
   }

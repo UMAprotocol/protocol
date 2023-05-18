@@ -193,16 +193,18 @@ export async function logSetEscalationManager(
 
 export async function logProxyDeployed(
   logger: typeof Logger,
-  transaction: { proxy: string; masterCopy: string; tx: string },
+  transaction: { proxy: string; masterCopy: string; tx: string; target: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
     at: "OptimisticGovernorMonitor",
-    message: "Proxy Deployed 📝",
+    message: "Optimistic Governor Deployed 📝",
     mrkdwn:
-      " Proxy " +
+      " Optimistic Governor " +
       createEtherscanLinkMarkdown(transaction.proxy, params.chainId) +
-      " has been deployed with master copy " +
+      " controlling target contract " +
+      createEtherscanLinkMarkdown(transaction.target, params.chainId) +
+      " has been deployed from master copy " +
       createEtherscanLinkMarkdown(transaction.masterCopy, params.chainId) +
       " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),

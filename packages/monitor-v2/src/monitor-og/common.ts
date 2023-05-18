@@ -9,6 +9,7 @@ import type { Provider } from "@ethersproject/abstract-provider";
 
 export { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
+export { constants as ethersConstants } from "ethers";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 export { generateOOv3UILink } from "../utils/logger";
 
@@ -177,11 +178,22 @@ export const getOg = async (params: MonitoringParams): Promise<OptimisticGoverno
   );
 };
 
+export const getOgByAddress = async (params: MonitoringParams, address: string): Promise<OptimisticGovernorEthers> => {
+  return await getContractInstanceWithProvider<OptimisticGovernorEthers>(
+    "OptimisticGovernor",
+    params.provider,
+    address
+  );
+};
+
 export const getOo = async (params: MonitoringParams): Promise<OptimisticOracleV3Ethers> => {
   return await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
 };
 
-export const getProxyDeployments = async (params: MonitoringParams): Promise<Array<ModuleProxyFactoryEvent>> => {
+export const getProxyDeploymentTxs = async (
+  params: MonitoringParams,
+  blockRangeOverride?: BlockRange
+): Promise<Array<ModuleProxyFactoryEvent>> => {
   const moduleProxyFactories = [];
   for (const moduleProxyFactoryAddress of params.moduleProxyFactoryAddresses) {
     moduleProxyFactories.push(
@@ -197,7 +209,7 @@ export const getProxyDeployments = async (params: MonitoringParams): Promise<Arr
               runQueryFilter<ModuleProxyFactoryEvent>(
                 moduleProxyFactory,
                 moduleProxyFactory.filters.ModuleProxyCreation(null, ogMasterCopy),
-                params.blockRange
+                blockRangeOverride || params.blockRange
               )
             )
           )
