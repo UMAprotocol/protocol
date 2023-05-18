@@ -1,5 +1,9 @@
+import {
+  ContractAddresses as zodiacContractAddresses,
+  SupportedNetworks as zodiacSupportedNetworks,
+} from "@gnosis.pm/zodiac";
 import { getRetryProvider } from "@uma/common";
-import { ERC20Ethers, ModuleProxyFactoryEthers } from "@uma/contracts-node";
+import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { delay } from "@uma/financial-templates-lib";
 import { Contract, Event, EventFilter, utils } from "ethers";
@@ -47,13 +51,30 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   if (!env.OG_ADDRESS) throw new Error("OG_ADDRESS must be defined in env");
   const ogAddress = String(env.OG_ADDRESS);
 
-  const moduleProxyFactoryAddresses: string[] = env.MODULE_PROXY_FACTORY_ADDRESSES
-    ? JSON.parse(env.MODULE_PROXY_FACTORY_ADDRESSES)
-    : [];
-  const ogMasterCopyAddresses: string[] = env.OG_MASTER_COPY_ADDRESSES ? JSON.parse(env.OG_MASTER_COPY_ADDRESSES) : [];
-
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
+
+  // If no module proxy factory addresses are provided, default to the latest version of zodiac factory address if
+  // chainId is supported. This can be empty if bot config does not require monitoring proxy deployments.
+  const fallbackModuleProxyFactoryAddresses = Object.values(zodiacSupportedNetworks).includes(chainId)
+    ? [zodiacContractAddresses[chainId as zodiacSupportedNetworks].factory]
+    : [];
+  const moduleProxyFactoryAddresses: string[] = env.MODULE_PROXY_FACTORY_ADDRESSES
+    ? JSON.parse(env.MODULE_PROXY_FACTORY_ADDRESSES)
+    : fallbackModuleProxyFactoryAddresses;
+
+  // If no OG mastercopy addresses are provided, default to the protocol deployment address if chainId is supported.
+  // This can be empty if bot config does not require monitoring proxy deployments.
+  const fallbackOgMasterCopyAddresses = [];
+  try {
+    const ogMasterCopyAddress = await getAddress("OptimisticGovernor", chainId);
+    fallbackOgMasterCopyAddresses.push(ogMasterCopyAddress);
+  } catch (err) {
+    // Fallback to empty array if no deployment was found.
+  }
+  const ogMasterCopyAddresses: string[] = env.OG_MASTER_COPY_ADDRESSES
+    ? JSON.parse(env.OG_MASTER_COPY_ADDRESSES)
+    : fallbackOgMasterCopyAddresses;
 
   const STARTING_BLOCK_KEY = `STARTING_BLOCK_NUMBER_${chainId}`;
   const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${chainId}`;
@@ -90,8 +111,12 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
   };
 
+  // If monitoring proxy deployements is enabled, ensure that the required env variables are set.
   if (botModes.proxyDeployedEnabled && ogMasterCopyAddresses.length === 0) {
     throw new Error("OG_MASTER_COPY_ADDRESSES must be set in env if PROXY_DEPLOYED_ENABLED is true");
+  }
+  if (botModes.proxyDeployedEnabled && moduleProxyFactoryAddresses.length === 0) {
+    throw new Error("MODULE_PROXY_FACTORY_ADDRESSES must be set in env if PROXY_DEPLOYED_ENABLED is true");
   }
 
   return {
