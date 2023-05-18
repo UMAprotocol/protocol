@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ethersproject/abstract-provider": "^5.4.0",
+    "@gnosis.pm/zodiac": "^3.3.2",
     "@uma/common": "^2.33.0",
     "@uma/contracts-node": "^0.4.16",
     "@uma/financial-templates-lib": "^2.32.11",
