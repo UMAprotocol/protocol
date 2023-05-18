@@ -13,9 +13,7 @@ Console 2
 
 IDENTIFIER=<IDENTIFIER> UMIP_NUMBER=<UMIP_NUMBER> yarn hardhat run ./packages/scripts/src/upgrade-tests/add-identifier/0_Propose.ts --network localhost
 
-SKIP_EXECUTE=1 yarn hardhat run ./packages/scripts/src/admin-proposals/simulateVoteV2.ts --network localhost
+yarn hardhat run ./packages/scripts/src/admin-proposals/simulateVoteV2.ts --network localhost
 
-MNEMONIC=<DEV-WALLET-MNEMONIC>  MULTICALL=1 yarn hardhat run ./packages/scripts/src/admin-proposals/executeProposalV2.ts --network localhost
-
-yarn hardhat run ./packages/scripts/src/upgrade-tests/sherlock-update/2_Verify.ts --network localhost
+IDENTIFIER=<IDENTIFIER> yarn hardhat run ./packages/scripts/src/upgrade-tests/add-identifier/1_Verify.ts --network localhost
 ```
