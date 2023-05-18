@@ -205,10 +205,7 @@ export const getOo = async (params: MonitoringParams): Promise<OptimisticOracleV
   return await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
 };
 
-export const getProxyDeploymentTxs = async (
-  params: MonitoringParams,
-  blockRangeOverride?: BlockRange
-): Promise<Array<ModuleProxyCreationEvent>> => {
+export const getProxyDeploymentTxs = async (params: MonitoringParams): Promise<Array<ModuleProxyCreationEvent>> => {
   const moduleProxyFactories = [];
   for (const moduleProxyFactoryAddress of params.moduleProxyFactoryAddresses) {
     moduleProxyFactories.push(
@@ -228,7 +225,7 @@ export const getProxyDeploymentTxs = async (
               runQueryFilter<ModuleProxyCreationEvent>(
                 moduleProxyFactory,
                 moduleProxyFactory.filters.ModuleProxyCreation(null, ogMasterCopy),
-                blockRangeOverride || params.blockRange
+                params.blockRange
               )
             )
           )
