@@ -1,4 +1,4 @@
-How to test this scripts:
+Adds a new identifier to IdentifierWhitelist through a proposal in ProposerV2 and vote in VotingV2.
 
 Console 1
 
