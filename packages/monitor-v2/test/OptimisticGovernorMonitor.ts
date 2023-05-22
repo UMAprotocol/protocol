@@ -1,17 +1,22 @@
+import { calculateProxyAddress } from "@gnosis.pm/zodiac";
 import {
   ExpandedERC20Ethers,
+  ModuleProxyFactoryEthers,
   OptimisticGovernorEthers,
   OptimisticOracleV3Ethers,
+  TestAvatarEthers,
   TimerEthers,
 } from "@uma/contracts-node";
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
 import { assert } from "chai";
+import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { network } from "hardhat";
 import sinon from "sinon";
 import { BotModes, MonitoringParams } from "../src/monitor-og/common";
 import {
   monitorProposalDeleted,
   monitorProposalExecuted,
+  monitorProxyDeployments,
   monitorSetCollateralAndBond,
   monitorSetEscalationManager,
   monitorSetIdentifier,
@@ -32,13 +37,21 @@ import {
   toUtf8Bytes,
   toUtf8String,
 } from "./utils";
+import { getContractInstanceWithProvider } from "../src/utils/contracts";
 
 const ethers = hre.ethers;
+
+interface OGModuleProxyDeployment {
+  ogModuleProxy: OptimisticGovernorEthers;
+  proxyCreationTx: TransactionResponse;
+}
 
 describe("OptimisticGovernorMonitor", function () {
   let bondToken: ExpandedERC20Ethers;
   let optimisticOracleV3: OptimisticOracleV3Ethers;
   let optimisticGovernor: OptimisticGovernorEthers;
+  let moduleProxyFactory: ModuleProxyFactoryEthers;
+  let avatar: TestAvatarEthers;
   let deployer: Signer;
   let disputer: Signer;
   let random: Signer;
@@ -58,15 +71,58 @@ describe("OptimisticGovernorMonitor", function () {
       setLivenessEnabled: false,
       setIdentifierEnabled: false,
       setEscalationManagerEnabled: false,
+      proxyDeployedEnabled: false,
     };
     return {
       ogAddress: optimisticGovernor.address,
+      moduleProxyFactoryAddresses: [moduleProxyFactory.address],
+      ogMasterCopyAddresses: [optimisticGovernor.address],
       provider: ethers.provider as Provider,
       chainId: (await ethers.provider.getNetwork()).chainId,
       blockRange: { start: blockNumber, end: blockNumber },
       pollingDelay: 0,
       botModes,
     };
+  };
+
+  const deployOgModuleProxy = async (): Promise<OGModuleProxyDeployment> => {
+    // Use the same parameters as mastercopy, except for the owner and rules.
+    const initializerParams = ethers.utils.defaultAbiCoder.encode(
+      ["address", "address", "uint256", "string", "bytes32", "uint64"],
+      [
+        avatar.address,
+        await optimisticGovernor.collateral(),
+        await optimisticGovernor.bondAmount(),
+        "test proxy rules",
+        await optimisticGovernor.identifier(),
+        await optimisticGovernor.liveness(),
+      ]
+    );
+    const initializer = optimisticGovernor.interface.encodeFunctionData("setUp", [initializerParams]);
+    const saltNonce = Number(new Date()).toString();
+    const proxyAddress = calculateProxyAddress(moduleProxyFactory, optimisticGovernor.address, initializer, saltNonce);
+
+    const proxyCreationTx = await moduleProxyFactory
+      .connect(deployer)
+      .deployModule(optimisticGovernor.address, initializer, saltNonce);
+    await proxyCreationTx.wait();
+
+    const proxyCreationEvent = (
+      await moduleProxyFactory.queryFilter(
+        moduleProxyFactory.filters.ModuleProxyCreation(),
+        proxyCreationTx.blockNumber,
+        proxyCreationTx.blockNumber
+      )
+    )[0];
+
+    assert.equal(proxyCreationEvent.args.proxy, proxyAddress);
+
+    const ogModuleProxy = await getContractInstanceWithProvider<OptimisticGovernorEthers>(
+      "OptimisticGovernor",
+      ethers.provider,
+      proxyAddress
+    );
+    return { ogModuleProxy, proxyCreationTx };
   };
 
   beforeEach(async function () {
@@ -79,10 +135,12 @@ describe("OptimisticGovernorMonitor", function () {
     bondToken = optimisticGovernorContracts.bondToken;
     optimisticOracleV3 = optimisticGovernorContracts.optimisticOracleV3;
     optimisticGovernor = optimisticGovernorContracts.optimisticGovernor;
+    moduleProxyFactory = optimisticGovernorContracts.moduleProxyFactory;
+    avatar = optimisticGovernorContracts.avatar;
     timer = umaContracts.timer;
 
     await bondToken.addMinter(await deployer.getAddress());
-    await bondToken.mint(optimisticGovernorContracts.avatar.address, parseEther("500"));
+    await bondToken.mint(avatar.address, parseEther("500"));
 
     await bondToken.mint(await proposer.getAddress(), await optimisticGovernor.getProposalBond());
     await bondToken.connect(proposer).approve(optimisticGovernor.address, await optimisticGovernor.getProposalBond());
@@ -326,6 +384,23 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Escalation Manager Set 📝");
     assert.isTrue(spyLogIncludes(spy, 0, newEscalationManager));
+    assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
+  });
+  it("Monitor proxy deployment", async function () {
+    const { ogModuleProxy, proxyCreationTx } = await deployOgModuleProxy();
+    const proxyDeployBlockNumber = await getBlockNumberFromTx(proxyCreationTx);
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorProxyDeployments(spyLogger, await createMonitoringParams(proxyDeployBlockNumber));
+
+    assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Optimistic Governor Deployed 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
+    assert.isTrue(spyLogIncludes(spy, 0, avatar.address));
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
+    assert.isTrue(spyLogIncludes(spy, 0, proxyCreationTx.hash));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
   });

@@ -1,7 +1,12 @@
+import {
+  ContractAddresses as zodiacContractAddresses,
+  SupportedNetworks as zodiacSupportedNetworks,
+} from "@gnosis.pm/zodiac";
 import { getRetryProvider } from "@uma/common";
-import { ERC20Ethers } from "@uma/contracts-node";
+import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
+import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { delay } from "@uma/financial-templates-lib";
-import { utils } from "ethers";
+import { Contract, Event, EventFilter, utils } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 
@@ -9,6 +14,7 @@ import type { Provider } from "@ethersproject/abstract-provider";
 
 export { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
+export { constants as ethersConstants } from "ethers";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 export { generateOOv3UILink } from "../utils/logger";
 
@@ -22,6 +28,7 @@ export interface BotModes {
   setLivenessEnabled: boolean;
   setIdentifierEnabled: boolean;
   setEscalationManagerEnabled: boolean;
+  proxyDeployedEnabled: boolean;
 }
 
 export interface BlockRange {
@@ -31,6 +38,8 @@ export interface BlockRange {
 
 export interface MonitoringParams {
   ogAddress: string;
+  moduleProxyFactoryAddresses: string[];
+  ogMasterCopyAddresses: string[];
   provider: Provider;
   chainId: number;
   blockRange: BlockRange;
@@ -44,6 +53,28 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
+
+  // If no module proxy factory addresses are provided, default to the latest version of zodiac factory address if
+  // chainId is supported. This can be empty if bot config does not require monitoring proxy deployments.
+  const fallbackModuleProxyFactoryAddresses = Object.values(zodiacSupportedNetworks).includes(chainId)
+    ? [zodiacContractAddresses[chainId as zodiacSupportedNetworks].factory]
+    : [];
+  const moduleProxyFactoryAddresses: string[] = env.MODULE_PROXY_FACTORY_ADDRESSES
+    ? JSON.parse(env.MODULE_PROXY_FACTORY_ADDRESSES)
+    : fallbackModuleProxyFactoryAddresses;
+
+  // If no OG mastercopy addresses are provided, default to the protocol deployment address if chainId is supported.
+  // This can be empty if bot config does not require monitoring proxy deployments.
+  const fallbackOgMasterCopyAddresses = [];
+  try {
+    const ogMasterCopyAddress = await getAddress("OptimisticGovernor", chainId);
+    fallbackOgMasterCopyAddresses.push(ogMasterCopyAddress);
+  } catch (err) {
+    // Fallback to empty array if no deployment was found.
+  }
+  const ogMasterCopyAddresses: string[] = env.OG_MASTER_COPY_ADDRESSES
+    ? JSON.parse(env.OG_MASTER_COPY_ADDRESSES)
+    : fallbackOgMasterCopyAddresses;
 
   const STARTING_BLOCK_KEY = `STARTING_BLOCK_NUMBER_${chainId}`;
   const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${chainId}`;
@@ -77,10 +108,21 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     setLivenessEnabled: env.SET_LIVENESS_ENABLED === "true",
     setIdentifierEnabled: env.SET_IDENTIFIER_ENABLED === "true",
     setEscalationManagerEnabled: env.SET_ESCALATION_MANAGER_ENABLED === "true",
+    proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
   };
+
+  // If monitoring proxy deployements is enabled, ensure that the required env variables are set.
+  if (botModes.proxyDeployedEnabled && ogMasterCopyAddresses.length === 0) {
+    throw new Error("OG_MASTER_COPY_ADDRESSES must be set in env if PROXY_DEPLOYED_ENABLED is true");
+  }
+  if (botModes.proxyDeployedEnabled && moduleProxyFactoryAddresses.length === 0) {
+    throw new Error("MODULE_PROXY_FACTORY_ADDRESSES must be set in env if PROXY_DEPLOYED_ENABLED is true");
+  }
 
   return {
     ogAddress,
+    moduleProxyFactoryAddresses,
+    ogMasterCopyAddresses,
     provider,
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
@@ -135,12 +177,12 @@ export const getCurrencySymbol = async (provider: Provider, currencyAddress: str
   }
 };
 
-export const runQueryFilter = async (
-  contract: OptimisticGovernorEthers | OptimisticOracleV3Ethers,
-  filter: any,
+export const runQueryFilter = async <T extends Event>(
+  contract: Contract,
+  filter: EventFilter,
   blockRange: BlockRange
-): Promise<any> => {
-  return contract.queryFilter(filter, blockRange.start, blockRange.end);
+): Promise<Array<T>> => {
+  return contract.queryFilter(filter, blockRange.start, blockRange.end) as Promise<Array<T>>;
 };
 
 export const getOg = async (params: MonitoringParams): Promise<OptimisticGovernorEthers> => {
@@ -151,6 +193,42 @@ export const getOg = async (params: MonitoringParams): Promise<OptimisticGoverno
   );
 };
 
+export const getOgByAddress = async (params: MonitoringParams, address: string): Promise<OptimisticGovernorEthers> => {
+  return await getContractInstanceWithProvider<OptimisticGovernorEthers>(
+    "OptimisticGovernor",
+    params.provider,
+    address
+  );
+};
+
 export const getOo = async (params: MonitoringParams): Promise<OptimisticOracleV3Ethers> => {
   return await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
+};
+
+export const getProxyDeploymentTxs = async (params: MonitoringParams): Promise<Array<ModuleProxyCreationEvent>> => {
+  const moduleProxyFactories = await Promise.all(
+    params.moduleProxyFactoryAddresses.map(async (moduleProxyFactoryAddress) => {
+      return await getContractInstanceWithProvider<ModuleProxyFactoryEthers>(
+        "ModuleProxyFactory",
+        params.provider,
+        moduleProxyFactoryAddress
+      );
+    })
+  );
+  const transactions = (
+    await Promise.all(
+      moduleProxyFactories.map((moduleProxyFactory) =>
+        Promise.all(
+          params.ogMasterCopyAddresses.map((ogMasterCopy) =>
+            runQueryFilter<ModuleProxyCreationEvent>(
+              moduleProxyFactory,
+              moduleProxyFactory.filters.ModuleProxyCreation(null, ogMasterCopy),
+              params.blockRange
+            )
+          )
+        )
+      )
+    )
+  ).flat(2);
+  return transactions;
 };
