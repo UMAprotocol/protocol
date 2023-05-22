@@ -7,7 +7,6 @@ import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contract
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { delay } from "@uma/financial-templates-lib";
 import { Contract, Event, EventFilter, utils } from "ethers";
-import { cloneDeep } from "lodash";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 
@@ -49,7 +48,7 @@ export interface MonitoringParams {
   botModes: BotModes;
 }
 
-export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
+export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
@@ -85,7 +84,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${chainId}`;
 
   // Creating provider will check for other chainId specific env variables.
-  const provider = getRetryProvider(chainId) as Provider;
+  // When testing, we can pass in a provider directly.
+  const provider = _provider === undefined ? ((await getRetryProvider(chainId)) as Provider) : _provider;
 
   // Default to 1 minute polling delay.
   const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
@@ -280,7 +280,7 @@ const getDeployedProxyAddresses = async (
   params: MonitoringParams,
   blockRangeOverride: BlockRange
 ): Promise<Array<string>> => {
-  const clonedParams = cloneDeep(params);
+  const clonedParams = Object.assign({}, params);
   clonedParams.blockRange = blockRangeOverride;
   const transactions = await getProxyDeploymentTxs(clonedParams);
   return transactions.map((tx) => utils.getAddress(tx.args.proxy));
