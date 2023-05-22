@@ -230,24 +230,3 @@ export async function logProxyDeployed(
     notificationPath: "optimistic-governor",
   });
 }
-
-export async function logProxyDeployed(
-  logger: typeof Logger,
-  transaction: { proxy: string; masterCopy: string; tx: string; target: string },
-  params: MonitoringParams
-): Promise<void> {
-  logger.warn({
-    at: "OptimisticGovernorMonitor",
-    message: "Optimistic Governor Deployed 📝",
-    mrkdwn:
-      " Optimistic Governor " +
-      createEtherscanLinkMarkdown(transaction.proxy, params.chainId) +
-      " controlling target contract " +
-      createEtherscanLinkMarkdown(transaction.target, params.chainId) +
-      " has been deployed from master copy " +
-      createEtherscanLinkMarkdown(transaction.masterCopy, params.chainId) +
-      " in transaction " +
-      createEtherscanLinkMarkdown(transaction.tx, params.chainId),
-    notificationPath: "optimistic-governor",
-  });
-}
