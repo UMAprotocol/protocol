@@ -74,7 +74,7 @@ describe("OptimisticGovernorMonitor", function () {
       proxyDeployedEnabled: false,
     };
     return {
-      ogAddress: optimisticGovernor.address,
+      ogAddresses: [optimisticGovernor.address],
       moduleProxyFactoryAddresses: [moduleProxyFactory.address],
       ogMasterCopyAddresses: [optimisticGovernor.address],
       provider: ethers.provider as Provider,
@@ -183,6 +183,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Transactions Proposed 📝");
     assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposer));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.rules));
@@ -232,6 +233,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Transactions Executed ✅");
     assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -243,6 +245,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spyTwo.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spyTwo.getCall(0).lastArg.message, "Proposal Executed ✅");
     assert.equal(spyLogLevel(spyTwo, 0), "warn");
+    assert.isTrue(spyLogIncludes(spyTwo, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spyTwo, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spyTwo, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spyTwo.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -292,6 +295,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Proposal Deleted 🗑️");
     assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -322,6 +326,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Collateral And Bond Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, bondToken.address));
     assert.isTrue(spyLogIncludes(spy, 0, parseEther("1").toString()));
     assert.equal(spyLogLevel(spy, 0), "warn");
@@ -338,6 +343,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Rules Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newRules));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -353,6 +359,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Liveness Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newLiveness.toString()));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -368,6 +375,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Identifier Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newIdentifier));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -383,6 +391,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Escalation Manager Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newEscalationManager));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
