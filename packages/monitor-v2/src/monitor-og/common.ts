@@ -217,17 +217,16 @@ export const getProxyDeploymentTxs = async (params: MonitoringParams): Promise<A
   );
   const transactions = (
     await Promise.all(
-      moduleProxyFactories.map(
-       (moduleProxyFactory) =>
-         Promise.all(
-            params.ogMasterCopyAddresses.map((ogMasterCopy) =>
-              runQueryFilter<ModuleProxyCreationEvent>(
-                moduleProxyFactory,
-                moduleProxyFactory.filters.ModuleProxyCreation(null, ogMasterCopy),
-                params.blockRange
-              )
+      moduleProxyFactories.map((moduleProxyFactory) =>
+        Promise.all(
+          params.ogMasterCopyAddresses.map((ogMasterCopy) =>
+            runQueryFilter<ModuleProxyCreationEvent>(
+              moduleProxyFactory,
+              moduleProxyFactory.filters.ModuleProxyCreation(null, ogMasterCopy),
+              params.blockRange
             )
           )
+        )
       )
     )
   ).flat(2);
