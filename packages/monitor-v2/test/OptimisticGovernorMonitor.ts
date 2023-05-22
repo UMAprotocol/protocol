@@ -62,7 +62,7 @@ describe("OptimisticGovernorMonitor", function () {
     env[STARTING_BLOCK_KEY] = blockNumber.toString();
     env[ENDING_BLOCK_KEY] = blockNumber.toString();
 
-    // If ogDiscovery is true, run the test in automatic OG address discovery mode. Otherwise, use the OG_ADDRESS.
+    // If ogDiscovery is not set or false, add static OG_ADDRESS. Otherwise, tests will use automatic OG discovery.
     if (!ogDiscovery) {
       env.OG_ADDRESS = optimisticGovernor.address;
     }
