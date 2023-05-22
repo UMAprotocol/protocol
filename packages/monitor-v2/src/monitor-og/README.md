@@ -11,11 +11,21 @@ node ./packages/monitor-v2/dist/monitor-og/index.js
 
 All the configuration should be provided with following environment variables:
 
-- `OG_ADDRESS` is the address of the deployed Optimistic Governor that this bot will monitor.
 - `OG_MASTER_COPY_ADDRESSES` is an array of addresses of the deployed Optimistic Governor master copies used to discover
   new deployments of Optimistic Governor proxies (defaults to protocol deployments)
 - `MODULE_PROXY_FACTORY_ADDRESSES` is an array of addresses of the deployed Module Proxy Factory used to discover new
   deployments of Optimistic Governor proxies (defaults to the latest Zodiac deployments).
+- Following mutually exclusive variables are used to determine which Optimistic Governor contract to monitor. If none
+  of them is provided then the bot will monitor all the Optimistic Governor contracts deployed through any of factory
+  contracts provided in `MODULE_PROXY_FACTORY_ADDRESSES` and using any of master copies provided in
+  `OG_MASTER_COPY_ADDRESSES`.
+  - `OG_ADDRESS` is the address of the deployed Optimistic Governor that this bot will monitor.
+  - `OG_WHITELIST` is an array of addresses of the deployed Optimistic Governor that this bot will monitor. All of them
+    must be deployed through any of factory contracts provided in `MODULE_PROXY_FACTORY_ADDRESSES` and using any of
+    master copies provided in `OG_MASTER_COPY_ADDRESSES`.
+  - `OG_BLACKLIST` is an array of addresses of the deployed Optimistic Governor that this bot will not monitor. All of
+    them must be deployed through any of factory contracts provided in `MODULE_PROXY_FACTORY_ADDRESSES` and using any
+    of master copies provided in `OG_MASTER_COPY_ADDRESSES`.
 - `CHAIN_ID` is network number.
 - `NODE_URLS_X` is an array of RPC node URLs replacing `X` in variable name with network number from `CHAIN_ID`.
 - `NODE_URL_X` is a single RPC node URL replacing `X` in variable name with network number from `CHAIN_ID`. This is
