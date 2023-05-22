@@ -16,8 +16,7 @@
     "@uma/contracts-node": "^0.4.16",
     "@uma/financial-templates-lib": "^2.32.11",
     "ethers": "^5.4.2",
-    "graphql-request": "^5.2.0",
-    "lodash": "^4.17.21"
+    "graphql-request": "^5.2.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
