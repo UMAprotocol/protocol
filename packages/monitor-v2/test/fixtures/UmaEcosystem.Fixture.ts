@@ -11,6 +11,7 @@ import {
 } from "@uma/contracts-node";
 import { zeroRawValue } from "../constants";
 import { formatBytes32String, getContractFactory, hre, Signer } from "../utils";
+import { utils } from "ethers";
 
 export interface UmaEcosystemContracts {
   finder: FinderEthers;
@@ -57,8 +58,10 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
     await finder.changeImplementationAddress(formatBytes32String("IdentifierWhitelist"), identifierWhitelist.address);
     await finder.changeImplementationAddress(formatBytes32String("Oracle"), mockOracle.address);
 
+    await store.setFinalFee(votingToken.address, { rawValue: utils.parseEther("1.0") });
     // Add voting token to global hardhatTestingAddresses.
     addGlobalHardhatTestingAddress("VotingToken", votingToken.address);
+    addGlobalHardhatTestingAddress("Store", store.address);
 
     return {
       finder,

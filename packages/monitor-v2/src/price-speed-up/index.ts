@@ -1,7 +1,6 @@
 import { delay } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
-import { publishPrices } from "./PublishPrices";
-import { resolvePrices } from "./ResolvePrices";
+import { speedUpPrices } from "./SpeedUpPriceRequests";
 
 const logger = Logger;
 
@@ -9,14 +8,13 @@ async function main() {
   const params = await initMonitoringParams(process.env);
 
   logger[startupLogLevel(params)]({
-    at: "PricePublisher",
-    message: "Price Publisher started 🤖",
+    at: "PriceSpeedUp",
+    message: "Price Speed Up started 🤖",
     botModes: params.botModes,
   });
 
   const cmds = {
-    resolvePricesEnabled: resolvePrices, // should be run before publishPrices
-    publishPricesEnabled: publishPrices,
+    speedUpPricesEnabled: speedUpPrices,
   };
 
   for (;;) {
@@ -43,8 +41,8 @@ main().then(
   },
   async (error) => {
     logger.error({
-      at: "PricePublisher",
-      message: "Price Publisher execution error🚨",
+      at: "PriceSpeedUp",
+      message: "Price Speed Up execution error🚨",
       error,
     });
     // Wait 5 seconds to allow logger to flush.
