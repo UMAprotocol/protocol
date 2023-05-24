@@ -5,7 +5,7 @@ import { getContractInstanceWithProvider } from "../utils/contracts";
 import type { Provider } from "@ethersproject/abstract-provider";
 import request from "graphql-request";
 
-import { Event, ethers } from "ethers";
+import { BigNumber, Event, ethers } from "ethers";
 
 import { Multicall3Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
@@ -117,7 +117,7 @@ export const formatPriceEvents = async (
     ancillaryData: string;
     proposedPrice: string;
     eventIndex: number;
-    oracleAddress: string,
+    oracleAddress: string;
   }[]
 > => {
   const ooDefaultLiveness = 7200;
@@ -149,9 +149,10 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
   let offset = 0;
 
   const whereClause =
-    // "uma_resolution_status!='settled'" +
-    // " AND uma_resolution_status!='resolved'" +
-    "question_ID IS NOT NULL" + " AND clob_Token_Ids IS NOT NULL";
+    "uma_resolution_status!='settled'" +
+    " AND uma_resolution_status!='resolved'" +
+    " AND question_ID IS NOT NULL" +
+    " AND clob_Token_Ids IS NOT NULL";
 
   let moreMarketsAvailable = true;
   while (moreMarketsAvailable) {
@@ -179,16 +180,17 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
     // (or are still ongoing).
     const now = Math.floor(Date.now() / 1000);
     const oneWeek = 60 * 60 * 24 * 7;
-    // const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
-    //   const parsedDateTime = new Date(contract.endDate).getTime();
-    //   if (isNaN(parsedDateTime)) return true; // If endDate is not a valid date we keep the market.
-    //   const endDate = parsedDateTime / 1000;
-    //   return endDate > now - oneWeek;
-    // });
+
+    const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
+      const parsedDateTime = new Date(contract.endDate).getTime();
+      if (isNaN(parsedDateTime)) return true; // If endDate is not a valid date we keep the market.
+      const endDate = parsedDateTime / 1000;
+      return endDate > now - oneWeek;
+    });
 
     // Add retrieved markets to the results array
     markets.push(
-      ...polymarketContracts.map((contract: { [k: string]: any }) => ({
+      ...filtered.map((contract: { [k: string]: any }) => ({
         ...contract,
         outcomes: JSON.parse(contract.outcomes),
         outcomePrices: JSON.parse(contract.outcomePrices),
@@ -327,14 +329,14 @@ export const getMarketsAncillary = async (
     try {
       const chunkResults = (await aggregateTransactionsAndCall(multicall.address, web3, chunk)) as {
         ancillaryData: string;
-        requestTimestamp: string;
+        requestTimestamp: BigNumber;
       }[];
       // Update the ancillaryMap and results with the chunkResults
       chunkResults.forEach((result, index) => {
         const market = markets[i * chunkSize + index];
         ancillaryMap.set(market.questionID, {
           ancillaryData: result.ancillaryData,
-          requestTimestamp: result.requestTimestamp,
+          requestTimestamp: result.requestTimestamp.toString(),
         });
       });
     } catch (error) {
@@ -346,7 +348,7 @@ export const getMarketsAncillary = async (
           const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
           const result = await adapter.callStatic.questions(market.questionID);
           ancillaryData = result.ancillaryData;
-          requestTimestamp = result.requestTimestamp;
+          requestTimestamp = result.requestTimestamp.toString();
         } catch {
           ancillaryData = failed;
           console.error("Failed to get ancillary data for market ", JSON.stringify(call), JSON.stringify(market));

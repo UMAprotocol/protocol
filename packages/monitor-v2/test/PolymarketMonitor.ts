@@ -13,14 +13,16 @@ import * as commonModule from "../src/monitor-polymarket/common";
 import { MonitoringParams, TradeInformation } from "../src/monitor-polymarket/common";
 import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
-import { formatBytes32String, getContractFactory, hre, Provider, Signer } from "./utils";
+import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
 
 const ethers = hre.ethers;
 
 describe("PolymarketNotifier", function () {
   let oov2: OptimisticOracleV2Ethers;
   let deployer: Signer;
-  const indentifier = formatBytes32String("TEST_IDENTIFIER");
+  let votingToken: VotingTokenEthers;
+  const identifier = formatBytes32String("TEST_IDENTIFIER");
+  const ancillaryData = toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
 
   const mockData: any[] = [
     {
@@ -37,7 +39,7 @@ describe("PolymarketNotifier", function () {
         "46296129944740145134028887886488800558338482961897658822042889421944724008114",
       ],
       orderFilledEvents: [[], []],
-      ancillaryData: "0x123",
+      ancillaryData,
       txHash: "0xffc94945ccdfced83fb9c4ea3aaecd145130f7d4065f78656b05f4afc33d6e06",
       requester: "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74",
       proposer: "0xdebA18a1CD3fd1c8FE74640d3959bA03AC7DB5f3",
@@ -46,7 +48,7 @@ describe("PolymarketNotifier", function () {
       eventBlockNumber: 41135219,
       expirationTimestamp: 1680622875,
       proposalTimestamp: 1680615675,
-      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000",
+      identifier,
       eventIndex: 366,
     },
   ];
@@ -77,12 +79,13 @@ describe("PolymarketNotifier", function () {
     [deployer] = (await ethers.getSigners()) as Signer[];
 
     // Get contract instances.
-    const { finder, votingToken, identifierWhitelist, collateralWhitelist } = (await umaEcosystemFixture()) as {
+    const { finder, votingToken: vt, identifierWhitelist, collateralWhitelist } = (await umaEcosystemFixture()) as {
       votingToken: VotingTokenEthers;
       finder: FinderEthers;
       identifierWhitelist: IdentifierWhitelistEthers;
       collateralWhitelist: AddressWhitelistEthers;
     };
+    votingToken = vt;
     const defaultLiveness = 7200; // 2 hours
 
     const oo = (await (await getContractFactory("OptimisticOracle", deployer)).deploy(
@@ -102,7 +105,7 @@ describe("PolymarketNotifier", function () {
     addGlobalHardhatTestingAddress("OptimisticOracleV2", oov2.address);
     addGlobalHardhatTestingAddress("Multicall3", multicall.address);
 
-    await (await identifierWhitelist.addSupportedIdentifier(indentifier)).wait();
+    await (await identifierWhitelist.addSupportedIdentifier(identifier)).wait();
     await (await collateralWhitelist.addToWhitelist(votingToken.address)).wait();
 
     // clear all mocks
@@ -115,6 +118,12 @@ describe("PolymarketNotifier", function () {
     const storeNotifiedProposalsMock = sinon.stub();
     storeNotifiedProposalsMock.returns({});
     sinon.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
+
+    // Fund staker and stake tokens.
+    const TEN_MILLION = ethers.utils.parseEther("10000000");
+    await (await votingToken.addMinter(await deployer.getAddress())).wait();
+    await (await votingToken.mint(await deployer.getAddress(), TEN_MILLION)).wait();
+    await (await votingToken.connect(deployer).approve(oov2.address, TEN_MILLION)).wait();
   });
 
   it("It should notify if there are orders over the threshold", async function () {
@@ -140,6 +149,9 @@ describe("PolymarketNotifier", function () {
     sinon.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
     sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
     sinon.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+
+    await oov2.requestPrice(identifier, 1, mockData[0].ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, mockData[0].ancillaryData, 1);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -215,6 +227,9 @@ describe("PolymarketNotifier", function () {
     sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
     sinon.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
 
+    await oov2.requestPrice(identifier, 1, mockData[0].ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, mockData[0].ancillaryData, 1);
+
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
@@ -230,14 +245,14 @@ describe("PolymarketNotifier", function () {
         .getCall(0)
         .toString()
         .includes(
-          ` Someone has already sold winner outcome tokens at a price below the threshold. These are the trades: ${JSON.stringify(
+          ` Someone sold winner outcome tokens at a price below the threshold. These are the trades: ${JSON.stringify(
             mockData[0].orderFilledEvents[0]
           )}`
         )
     ); // price
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
-  it("It should notify if there are sell trades over the threshold", async function () {
+  it("It should notify if there are buy trades over the threshold", async function () {
     mockData[0].proposedPrice = "1.0";
     mockData[0].orderBooks = [
       {
@@ -283,11 +298,52 @@ describe("PolymarketNotifier", function () {
         .getCall(0)
         .toString()
         .includes(
-          ` Someone has already bought loser outcome tokens at a price above the threshold. These are the trades: ${JSON.stringify(
+          ` Someone bought loser outcome tokens at a price above the threshold. These are the trades: ${JSON.stringify(
             mockData[0].orderFilledEvents[1]
           )}`
         )
     ); // price
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
+  });
+
+  it("It should notify if there are sell proposals with high volume", async function () {
+    mockData[0].proposedPrice = "1.0";
+    mockData[0].orderBooks = [
+      {
+        bids: [],
+        asks: [],
+      },
+      {
+        bids: [],
+        asks: [],
+      },
+    ];
+    mockData[0].orderFilledEvents = [[], [] as TradeInformation[]];
+
+    const mockDataFunction = sinon.stub();
+    mockDataFunction.returns([{ ...mockData[0], volumeNum: 2_000_000 }]);
+    sinon.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+
+    await oov2.requestPrice(identifier, 1, mockData[0].ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, mockData[0].ancillaryData, 1);
+
+    // Call monitorAssertions directly for the block when the assertion was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
+
+    // The spy should have been called as the order book is not empty.
+    assert.equal(spy.callCount, 1);
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
+    assert.equal(
+      spy.getCall(0).lastArg.message,
+      "A market with high volume has been proposed and needs to be checked! 🚨"
+    );
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spy.getCall(0).toString().includes(mockData[0].question));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
 });
