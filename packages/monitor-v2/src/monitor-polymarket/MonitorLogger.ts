@@ -50,12 +50,12 @@ export async function logProposalOrderBook(
         ? ` Someone is trying to buy ${market.buyingLoserSide?.size} loser outcome tokens at a price of ${market.buyingLoserSide?.price} on the orderbook.`
         : "") +
       (market.soldWinnerSide.length > 0
-        ? ` Someone has already sold winner outcome tokens at a price below the threshold. These are the trades: ${JSON.stringify(
+        ? ` Someone sold winner outcome tokens at a price below the threshold. These are the trades: ${JSON.stringify(
             market.soldWinnerSide
           )}.`
         : "") +
       (market.boughtLoserSide.length > 0
-        ? ` Someone has already bought loser outcome tokens at a price above the threshold. These are the trades: ${JSON.stringify(
+        ? ` Someone bought loser outcome tokens at a price above the threshold. These are the trades: ${JSON.stringify(
             market.boughtLoserSide
           )}.`
         : "") +
@@ -63,7 +63,39 @@ export async function logProposalOrderBook(
       new Date(market.expirationTimestamp * 1000).toUTCString() +
       ". " +
       generateUILink(market.tx, params.chainId, market.eventIndex) +
-      ". Please check the market proposal and dispute if necessary.",
+      " Please check the market proposal and dispute if necessary.",
+    notificationPath: "polymarket-notifier",
+  });
+}
+
+export async function logProposalHighVolume(
+  logger: typeof Logger,
+  market: {
+    proposedPrice: string;
+    proposalTime: number;
+    proposedOutcome: string;
+    question: string;
+    tx: string;
+    volumeNum: number;
+    outcomes: [string, string];
+    expirationTimestamp: number;
+    eventIndex: number;
+  },
+  params: MonitoringParams
+): Promise<void> {
+  logger.error({
+    at: "PolymarketMonitor",
+    message: "A market with high volume has been proposed and needs to be checked! 🚨",
+    mrkdwn:
+      ` A price of ${market.proposedPrice} corresponding to outcome ${market.proposedOutcome} was proposed at ${market.proposalTime} for the following question:` +
+      ` ${market.question}.` +
+      ` In the following transaction: ` +
+      createEtherscanLinkMarkdown(market.tx, params.chainId) +
+      +" The proposal can be disputed until " +
+      new Date(market.expirationTimestamp * 1000).toUTCString() +
+      ". " +
+      generateUILink(market.tx, params.chainId, market.eventIndex) +
+      " Please check the market proposal and dispute if necessary.",
     notificationPath: "polymarket-notifier",
   });
 }
