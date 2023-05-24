@@ -73,7 +73,7 @@ export async function monitorTransactionsProposedOrderBook(
         ...event,
       };
     })
-    // .filter((market) => market.expirationTimestamp > Date.now() / 1000)
+    .filter((market) => market.expirationTimestamp > Date.now() / 1000)
     .filter((market) => !Object.keys(pastNotifiedProposals).includes(getMarketKeyToStore(market)));
 
   // Get live order books for markets that have a proposal event.
