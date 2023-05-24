@@ -53,9 +53,15 @@ export async function monitorTransactionsProposedOrderBook(
 
   // Filter out markets that do not have a proposal event.
   const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
-    .filter((market) => proposalEvents.find((event) => event.ancillaryData === market.ancillaryData))
+    .filter((market) =>
+      proposalEvents.find(
+        (event) => event.ancillaryData === market.ancillaryData && event.timestamp === market.requestTimestamp
+      )
+    )
     .map((market) => {
-      const events = proposalEvents.filter((event) => event.ancillaryData === market.ancillaryData);
+      const events = proposalEvents.filter(
+        (event) => event.ancillaryData === market.ancillaryData && event.timestamp === market.requestTimestamp
+      );
       // get last proposal event
       const event = events.reduce((maxEvent, currentEvent) => {
         if (currentEvent.eventBlockNumber > maxEvent.eventBlockNumber) {
