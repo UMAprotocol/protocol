@@ -59,10 +59,9 @@ export async function monitorTransactionsProposedOrderBook(
       )
     )
     .map((market) => {
-      const events = proposalEvents.filter(
+      const event = proposalEvents.find(
         (event) => event.ancillaryData === market.ancillaryData && event.timestamp === market.requestTimestamp
       );
-      const event = events[0];
       if (!event) throw new Error("Could not find event for market");
       return {
         ...market,
