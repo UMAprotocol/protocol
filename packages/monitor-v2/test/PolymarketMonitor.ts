@@ -306,7 +306,7 @@ describe("PolymarketNotifier", function () {
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
 
-  it("It should notify if there are sell proposals with high volume", async function () {
+  it("It should notify if there are proposals with high volume", async function () {
     mockData[0].proposedPrice = "1.0";
     mockData[0].orderBooks = [
       {
@@ -345,5 +345,53 @@ describe("PolymarketNotifier", function () {
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.isTrue(spy.getCall(0).toString().includes(mockData[0].question));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
+  });
+
+  it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
+    mockData[0].proposedPrice = "1.0";
+    mockData[0].orderBooks = [
+      {
+        bids: [],
+        asks: [],
+      },
+      {
+        bids: [],
+        asks: [],
+      },
+    ];
+    mockData[0].orderFilledEvents = [
+      [],
+      [
+        {
+          price: 0.9,
+          amount: 100,
+          timestamp: 123,
+          type: "buy",
+        },
+      ] as TradeInformation[],
+    ];
+
+    const mockDataFunction = sinon.stub();
+    mockDataFunction.returns([{ ...mockData[0], volumeNum: 2_000_000 }]);
+    sinon.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
+    sinon.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+
+    // unwrap the storeNotifiedProposals function to check the arguments
+    const storeNotifiedProposalsMock = sinon.stub();
+    storeNotifiedProposalsMock.returns({});
+    sinon.replace(commonModule, "storeNotifiedProposals", storeNotifiedProposalsMock);
+
+    // Call monitorAssertions directly for the block when the assertion was made.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
+
+    // Two notifications should have been sent
+    assert.equal(spy.callCount, 2);
+
+    // Only store once
+    assert.equal(storeNotifiedProposalsMock.callCount, 1);
   });
 });

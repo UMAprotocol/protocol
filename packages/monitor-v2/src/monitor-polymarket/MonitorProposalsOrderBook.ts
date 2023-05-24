@@ -95,7 +95,7 @@ export async function monitorTransactionsProposedOrderBook(
     const boughtLoserSide = market.orderFilledEvents[complementaryOutcome].filter(
       (event) => event.type == "buy" && event.price > thresholdBids
     );
-
+    let notified = false;
     if (market.volumeNum > thresholdVolume) {
       await logProposalHighVolume(
         logger,
@@ -112,7 +112,10 @@ export async function monitorTransactionsProposedOrderBook(
         },
         params
       );
-      notifiedProposals.push(market);
+      if (!notified) {
+        notified = true;
+        notifiedProposals.push(market);
+      }
     }
 
     if (sellingWinnerSide || buyingLoserSide || soldWinnerSide.length > 0 || boughtLoserSide.length > 0) {
@@ -134,7 +137,10 @@ export async function monitorTransactionsProposedOrderBook(
         },
         params
       );
-      notifiedProposals.push(market);
+      if (!notified) {
+        notified = true;
+        notifiedProposals.push(market);
+      }
     }
   }
   await storeNotifiedProposals(notifiedProposals);
