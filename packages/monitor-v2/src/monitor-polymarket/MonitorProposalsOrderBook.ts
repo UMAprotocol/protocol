@@ -62,17 +62,7 @@ export async function monitorTransactionsProposedOrderBook(
       const events = proposalEvents.filter(
         (event) => event.ancillaryData === market.ancillaryData && event.timestamp === market.requestTimestamp
       );
-      // get last proposal event
-      const event = events.reduce((maxEvent, currentEvent) => {
-        if (currentEvent.eventBlockNumber > maxEvent.eventBlockNumber) {
-          return currentEvent;
-        } else if (currentEvent.eventBlockNumber === maxEvent.eventBlockNumber) {
-          if (currentEvent.eventIndex > maxEvent.eventIndex) {
-            return currentEvent;
-          }
-        }
-        return maxEvent;
-      });
+      const event = events[0];
       if (!event) throw new Error("Could not find event for market");
       return {
         ...market,
@@ -95,7 +85,7 @@ export async function monitorTransactionsProposedOrderBook(
     const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
     const thresholdAsks = Number(process.env["THRESHOLD_ASKS"]) || 1;
     const thresholdBids = Number(process.env["THRESHOLD_BIDS"]) || 0;
-    const thresholdVolume = Number(process.env["THRESHOLD_VOLUME"]) || 1_000_000;
+    const thresholdVolume = Number(process.env["THRESHOLD_VOLUME"]) || 500000;
 
     const sellingWinnerSide = market.orderBooks[proposedOutcome].asks.find((ask) => ask.price < thresholdAsks);
     const buyingLoserSide = market.orderBooks[complementaryOutcome].bids.find((bid) => bid.price > thresholdBids);
