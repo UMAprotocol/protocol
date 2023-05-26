@@ -10,12 +10,15 @@ import { BigNumber, Event, ethers } from "ethers";
 import { Multicall3Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import Web3 from "web3";
+import { formatBytes32String } from "ethers/lib/utils";
 
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 
 const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
+
+export const YES_OR_NO_QUERY = formatBytes32String("YES_OR_NO_QUERY");
 
 export interface BotModes {
   transactionsProposedEnabled: boolean;
@@ -50,6 +53,20 @@ interface PolymarketMarket {
   liquidityNum: number;
   volumeNum: number;
   clobTokenIds: [string, string];
+  endDate: string;
+  umaResolutionStatus: string;
+}
+
+interface PolymarketMarketGraphql {
+  resolvedBy: string;
+  questionID: string;
+  createdAt: string;
+  question: string;
+  outcomes: string;
+  outcomePrices: string;
+  liquidityNum: number;
+  volumeNum: number;
+  clobTokenIds: string;
   endDate: string;
   umaResolutionStatus: string;
 }
@@ -174,14 +191,16 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
       }
     `;
 
-    const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as any;
+    const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as {
+      markets: PolymarketMarketGraphql[];
+    };
 
     // Remove markets with 1 week old endDate or more. So we only monitor markets that ended in the last week
     // (or are still ongoing).
     const now = Math.floor(Date.now() / 1000);
     const oneWeek = 60 * 60 * 24 * 7;
 
-    const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
+    const filtered = polymarketContracts.filter((contract) => {
       const parsedDateTime = new Date(contract.endDate).getTime();
       if (isNaN(parsedDateTime)) return true; // If endDate is not a valid date we keep the market.
       const endDate = parsedDateTime / 1000;
@@ -190,7 +209,7 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
 
     // Add retrieved markets to the results array
     markets.push(
-      ...filtered.map((contract: { [k: string]: any }) => ({
+      ...filtered.map((contract) => ({
         ...contract,
         outcomes: JSON.parse(contract.outcomes),
         outcomePrices: JSON.parse(contract.outcomePrices),

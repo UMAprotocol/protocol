@@ -6,6 +6,7 @@ import {
   Logger,
   MonitoringParams,
   PolymarketWithEventData,
+  YES_OR_NO_QUERY,
   formatPriceEvents,
   getContractInstanceWithProvider,
   getMarketKeyToStore,
@@ -55,12 +56,18 @@ export async function monitorTransactionsProposedOrderBook(
   const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
     .filter((market) =>
       proposalEvents.find(
-        (event) => event.ancillaryData === market.ancillaryData && event.timestamp === market.requestTimestamp
+        (event) =>
+          event.ancillaryData === market.ancillaryData &&
+          event.timestamp === market.requestTimestamp &&
+          event.identifier === YES_OR_NO_QUERY
       )
     )
     .map((market) => {
       const event = proposalEvents.find(
-        (event) => event.ancillaryData === market.ancillaryData && event.timestamp === market.requestTimestamp
+        (event) =>
+          event.ancillaryData === market.ancillaryData &&
+          event.timestamp === market.requestTimestamp &&
+          event.identifier === YES_OR_NO_QUERY
       );
       if (!event) throw new Error("Could not find event for market");
       return {
