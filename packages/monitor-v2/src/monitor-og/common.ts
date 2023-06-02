@@ -37,7 +37,8 @@ export interface BlockRange {
 }
 
 export interface MonitoringParams {
-  ogAddress: string;
+  ogAddresses: string[];
+  ogBlacklist?: string[]; // Optional. Only used in automatic OG address discovery mode.
   moduleProxyFactoryAddresses: string[];
   ogMasterCopyAddresses: string[];
   provider: Provider;
@@ -47,15 +48,18 @@ export interface MonitoringParams {
   botModes: BotModes;
 }
 
-export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
-  if (!env.OG_ADDRESS) throw new Error("OG_ADDRESS must be defined in env");
-  const ogAddress = String(env.OG_ADDRESS);
-
+export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
-  // If no module proxy factory addresses are provided, default to the latest version of zodiac factory address if
-  // chainId is supported. This can be empty if bot config does not require monitoring proxy deployments.
+  // OG_ADDRESS, OG_WHITELIST and OG_BLACKLIST are mutually exclusive.
+  // If none are provided, the bots will monitor all deployed proxies.
+  if ([env.OG_ADDRESS, env.OG_WHITELIST, env.OG_BLACKLIST].filter(Boolean).length > 1) {
+    throw new Error("OG_ADDRESS, OG_WHITELIST and OG_BLACKLIST are mutually exclusive");
+  }
+
+  // If no module proxy factory addresses are provided, default to the latest version of Zodiac factory address if
+  // chainId is supported. This can be empty as not all bot configs require monitoring proxy deployments.
   const fallbackModuleProxyFactoryAddresses = Object.values(zodiacSupportedNetworks).includes(chainId)
     ? [zodiacContractAddresses[chainId as zodiacSupportedNetworks].factory]
     : [];
@@ -64,7 +68,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     : fallbackModuleProxyFactoryAddresses;
 
   // If no OG mastercopy addresses are provided, default to the protocol deployment address if chainId is supported.
-  // This can be empty if bot config does not require monitoring proxy deployments.
+  // This can be empty as not all bot configs require monitoring proxy deployments.
   const fallbackOgMasterCopyAddresses = [];
   try {
     const ogMasterCopyAddress = await getAddress("OptimisticGovernor", chainId);
@@ -80,7 +84,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${chainId}`;
 
   // Creating provider will check for other chainId specific env variables.
-  const provider = getRetryProvider(chainId) as Provider;
+  // When testing, we can pass in a provider directly.
+  const provider = _provider === undefined ? ((await getRetryProvider(chainId)) as Provider) : _provider;
 
   // Default to 1 minute polling delay.
   const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
@@ -111,16 +116,20 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
   };
 
-  // If monitoring proxy deployements is enabled, ensure that the required env variables are set.
-  if (botModes.proxyDeployedEnabled && ogMasterCopyAddresses.length === 0) {
-    throw new Error("OG_MASTER_COPY_ADDRESSES must be set in env if PROXY_DEPLOYED_ENABLED is true");
-  }
-  if (botModes.proxyDeployedEnabled && moduleProxyFactoryAddresses.length === 0) {
-    throw new Error("MODULE_PROXY_FACTORY_ADDRESSES must be set in env if PROXY_DEPLOYED_ENABLED is true");
+  // Mastercopy and module proxy factory addresses are required when monitoring proxy deployments or when not
+  // explicitly providing OG_ADDRESS to monitor in other modes.
+  if (
+    (botModes.proxyDeployedEnabled || !env.OG_ADDRESS) &&
+    (ogMasterCopyAddresses.length === 0 || moduleProxyFactoryAddresses.length === 0)
+  ) {
+    throw new Error(
+      "No mastercopy or module proxy factory addresses found: required when monitoring proxy deployments" +
+        " or OG_ADDRESS is not set"
+    );
   }
 
-  return {
-    ogAddress,
+  const initialParams: MonitoringParams = {
+    ogAddresses: [], // Will be added later after validation.
     moduleProxyFactoryAddresses,
     ogMasterCopyAddresses,
     provider,
@@ -129,6 +138,47 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     pollingDelay,
     botModes,
   };
+
+  // If OG_ADDRESS is provided, use it in the monitored address list and return monitoring params.
+  // Invalid address will throw an error in getAddress call.
+  if (env.OG_ADDRESS) {
+    initialParams.ogAddresses = [utils.getAddress(env.OG_ADDRESS)];
+    return initialParams;
+  }
+
+  // Verify that OG whitelist and blacklist contain only deployed proxy addresses.
+  // Invalid addresses will throw an error in getAddress call.
+  const deployedProxyAddresses = await getDeployedProxyAddresses(initialParams, {
+    start: 0,
+    end: initialParams.blockRange.end,
+  });
+  const ogWhitelist: string[] = env.OG_WHITELIST ? JSON.parse(env.OG_WHITELIST) : [];
+  const ogBlacklist: string[] = env.OG_BLACKLIST ? JSON.parse(env.OG_BLACKLIST) : [];
+  ogWhitelist.forEach((address) => {
+    if (!deployedProxyAddresses.includes(utils.getAddress(address))) {
+      throw new Error(`OG_WHITELIST contains address ${address} that is not a deployed proxy`);
+    }
+  });
+  ogBlacklist.forEach((address) => {
+    if (!deployedProxyAddresses.includes(utils.getAddress(address))) {
+      throw new Error(`OG_BLACKLIST contains address ${address} that is not a deployed proxy`);
+    }
+  });
+
+  // If OG whitelist is provided, use it in the monitored address list and return monitoring params.
+  if (env.OG_WHITELIST) {
+    initialParams.ogAddresses = ogWhitelist.map((address) => utils.getAddress(address));
+    return initialParams;
+  }
+
+  // We are in automatic OG address discovery mode. Return monitoring params with all deployed proxies except those
+  // in the blacklist.
+  initialParams.ogAddresses = deployedProxyAddresses.filter(
+    (address) => !ogBlacklist.includes(utils.getAddress(address))
+  );
+  initialParams.ogBlacklist = ogBlacklist.map((address) => utils.getAddress(address));
+
+  return initialParams;
 };
 
 export const waitNextBlockRange = async (params: MonitoringParams): Promise<BlockRange> => {
@@ -185,14 +235,6 @@ export const runQueryFilter = async <T extends Event>(
   return contract.queryFilter(filter, blockRange.start, blockRange.end) as Promise<Array<T>>;
 };
 
-export const getOg = async (params: MonitoringParams): Promise<OptimisticGovernorEthers> => {
-  return await getContractInstanceWithProvider<OptimisticGovernorEthers>(
-    "OptimisticGovernor",
-    params.provider,
-    params.ogAddress
-  );
-};
-
 export const getOgByAddress = async (params: MonitoringParams, address: string): Promise<OptimisticGovernorEthers> => {
   return await getContractInstanceWithProvider<OptimisticGovernorEthers>(
     "OptimisticGovernor",
@@ -231,4 +273,25 @@ export const getProxyDeploymentTxs = async (params: MonitoringParams): Promise<A
     )
   ).flat(2);
   return transactions;
+};
+
+const getDeployedProxyAddresses = async (
+  params: MonitoringParams,
+  blockRangeOverride: BlockRange
+): Promise<Array<string>> => {
+  const clonedParams = Object.assign({}, params);
+  clonedParams.blockRange = blockRangeOverride;
+  const transactions = await getProxyDeploymentTxs(clonedParams);
+  return transactions.map((tx) => utils.getAddress(tx.args.proxy));
+};
+
+export const getOgAddresses = async (params: MonitoringParams): Promise<Array<string>> => {
+  // Return the same list of addresses if not in automatic OG address discovery mode.
+  if (params.ogBlacklist === undefined) return params.ogAddresses;
+
+  const deployedProxyAddresses = await getDeployedProxyAddresses(params, params.blockRange);
+  const ogAddresses = deployedProxyAddresses.filter(
+    (address) => !params.ogBlacklist?.includes(utils.getAddress(address))
+  );
+  return [...params.ogAddresses, ...ogAddresses];
 };
