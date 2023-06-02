@@ -57,6 +57,7 @@ export async function monitorTransactionsProposedOrderBook(
     .filter((market) =>
       proposalEvents.find(
         (event) =>
+          [params.binaryAdapterAddress, params.ctfAdapterAddress].includes(event.requester) &&
           event.ancillaryData === market.ancillaryData &&
           event.timestamp === market.requestTimestamp &&
           event.identifier === YES_OR_NO_QUERY
@@ -65,6 +66,7 @@ export async function monitorTransactionsProposedOrderBook(
     .map((market) => {
       const event = proposalEvents.find(
         (event) =>
+          [params.binaryAdapterAddress, params.ctfAdapterAddress].includes(event.requester) &&
           event.ancillaryData === market.ancillaryData &&
           event.timestamp === market.requestTimestamp &&
           event.identifier === YES_OR_NO_QUERY
