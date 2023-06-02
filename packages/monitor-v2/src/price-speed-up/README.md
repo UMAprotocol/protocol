@@ -1,11 +1,11 @@
-# Price Publisher
+# Price Speed Up
 
-The Price Publisher is responsible for publishing the prices resolved in the DVM to the requester layer two chains.
+The Price Speed Up is meant to be run in Arbitrum and Optimism. This scripts run oracleHub.requestPrice in mainnet when a dispute is raised in Arbitrum or Optimism, this mechanism short cuts the delay of relaying this message through the native bridges.
 
-The main entry point to Price Publisher is running:
+The main entry point to Price Speed Up is running:
 
 ```
-node ./packages/monitor-v2/dist/price-publisher/index.js
+node ./packages/monitor-v2/dist/price-speed-up/index.js
 ```
 
 All the configuration should be provided with following environment variables:
