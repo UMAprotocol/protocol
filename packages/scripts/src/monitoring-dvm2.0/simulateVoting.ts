@@ -14,7 +14,7 @@ import { BigNumber, BigNumberish, BytesLike, Signer } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import { OptimisticOracleRequestStatesEnum, PriceRequestStatusEnum } from "@uma/common";
-import { OptimisticOracleV2Ethers, StoreEthers } from "@uma/contracts-node";
+import { OptimisticOracleV2Ethers, StoreEthers, getAddress } from "@uma/contracts-node";
 
 import { REQUIRED_SIGNER_ADDRESSES, SECONDS_PER_DAY } from "../utils/constants";
 import { getContractInstance } from "../utils/contracts";
@@ -41,7 +41,6 @@ interface RewardTrackers {
 }
 
 const foundationAddress = REQUIRED_SIGNER_ADDRESSES.foundation;
-const accountWithUma = REQUIRED_SIGNER_ADDRESSES.account_with_uma;
 
 const zeroBigNumber = hre.ethers.BigNumber.from(0);
 
@@ -199,16 +198,15 @@ async function main() {
   const finalFee = (await store.computeFinalFee(votingToken.address)).rawValue;
 
   console.log(" 1. Funding foundation account...");
-  // Consolidate foundation balance with other large UMA holder account to be able to fund simulated voters.
-  // Make sure both accounts have enough ETH to pay for gas.
   const etherAmount = hre.ethers.utils.parseEther("10.0").toHexString();
-  await hre.network.provider.send("hardhat_setBalance", [accountWithUma, etherAmount]);
   await hre.network.provider.send("hardhat_setBalance", [foundationAddress, etherAmount]);
-  const accountWithUmaSigner = await hre.ethers.getImpersonatedSigner(accountWithUma);
   const foundationSigner = await hre.ethers.getImpersonatedSigner(foundationAddress);
-  await votingToken
-    .connect(accountWithUmaSigner)
-    .transfer(foundationAddress, await votingToken.balanceOf(accountWithUma));
+
+  const votingV2Address = await getAddress("VotingV2", 1);
+  await hre.network.provider.send("hardhat_setBalance", [votingV2Address, etherAmount]);
+  const votingMinterSigner = await hre.ethers.getImpersonatedSigner(votingV2Address);
+  await votingToken.connect(votingMinterSigner).mint(foundationAddress, hre.ethers.utils.parseEther("50000000"));
+
   let foundationBalance = await votingToken.balanceOf(foundationAddress);
 
   console.log(` 2. Foundation has ${formatEther(foundationBalance)} UMA, funding requester and voters...`);

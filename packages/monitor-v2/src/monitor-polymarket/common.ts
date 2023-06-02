@@ -232,7 +232,9 @@ export const getOrderFilledEvents = async (
       const outcomeTokenOne = await Promise.all(
         events
           .filter((event) => {
-            return market.clobTokenIds[0] == event?.args?.takerAssetId.toString();
+            return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(
+              market.clobTokenIds[0]
+            );
           })
           .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
       );
@@ -240,7 +242,9 @@ export const getOrderFilledEvents = async (
       const outcomeTokenTwo = await Promise.all(
         events
           .filter((event) => {
-            return market.clobTokenIds[1] == event?.args?.makerAssetId.toString();
+            return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(
+              market.clobTokenIds[1]
+            );
           })
           .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
       );

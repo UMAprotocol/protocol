@@ -2,7 +2,6 @@
 const REQUIRED_SIGNER_ADDRESSES = {
   deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25",
   foundation: "0x8180d59b7175d4064bdfa8138a58e9babffda44a",
-  account_with_uma: "0xc19B1ac01eb8c9d75b996B030110353C8F09d1Af",
 };
 
 // Net ID that this script should simulate with.

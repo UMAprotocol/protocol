@@ -62,14 +62,33 @@ export const getUniqueVoters = async (votingV2: VotingV2Ethers): Promise<string[
 
 export const updateTrackers = async (votingV2: VotingV2Ethers, voters: string[]): Promise<void> => {
   console.log("Updating trackers for all voters");
-  const batchSize = 25;
+  const priceRequests = await votingV2.callStatic.getNumberOfPriceRequestsPostUpdate();
+  const batchSize = 10;
   const batches = [];
   for (let i = 0; i < voters.length; i += batchSize) {
     const batch = voters.slice(i, i + batchSize);
     batches.push(
-      votingV2
-        .multicall(batch.map((voter) => votingV2.interface.encodeFunctionData("updateTrackers", [voter])))
-        .then((tx) => tx.wait())
+      (async () => {
+        try {
+          await votingV2
+            .multicall(batch.map((voter) => votingV2.interface.encodeFunctionData("updateTrackers", [voter])))
+            .then((tx) => tx.wait());
+        } catch {
+          for (const voter of batch) {
+            try {
+              await votingV2.updateTrackers(voter);
+            } catch (err) {
+              console.log(`Error updating trackers for voter: ${voter}`);
+              let voterStake = await votingV2.voterStakes(voter);
+              while (!voterStake.nextIndexToProcess.eq(priceRequests[1].sub(1))) {
+                await votingV2.updateTrackersRange(voter, 10);
+                voterStake = await votingV2.voterStakes(voter);
+              }
+              console.log("Finished updateTrackersRange for voter");
+            }
+          }
+        }
+      })()
     );
   }
   await Promise.all(batches);
