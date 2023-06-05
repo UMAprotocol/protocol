@@ -19,6 +19,7 @@ import {
   getOg,
   getOgByAddress,
   getOo,
+  tryHexToUtf8String,
 } from "./common";
 import { logProposalDeleted, logProposalExecuted, logSetCollateralAndBond, logSetRules } from "./MonitorLogger";
 import {
@@ -29,6 +30,47 @@ import {
   logTransactionsExecuted,
   logSetEscalationManager,
 } from "./MonitorLogger";
+
+// TEMP
+import request from "graphql-request";
+
+// If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
+interface MainTransaction {
+  to: string;
+  data: string;
+  value: string;
+  operation: string;
+}
+
+// We only include properties that will be verified by the bot.
+interface SafeSnapSafe {
+  txs: { mainTransaction: MainTransaction }[];
+  network: string;
+  umaAddress: string;
+}
+
+interface SafeSnapPlugin {
+  safeSnap: { safes: SafeSnapSafe[] };
+}
+
+// We only type the properties requested in the GraphQL query.
+// Properties that are optional in the GraphQL schema are set as potentially null.
+interface SnapshotProposal {
+  id: string;
+  type: string | null;
+  choices: string[];
+  start: number;
+  end: number;
+  state: string;
+  space: { id: string } | null;
+  scores: number[] | null;
+  quorum: number;
+  scores_total: number | null;
+  plugins: Partial<SafeSnapPlugin>; // This is any in the GraphQL schema, but we only care about potential safeSnap plugin.
+}
+export interface graphqlData {
+  proposals: SnapshotProposal[];
+}
 
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const og = await getOg(params);
@@ -44,6 +86,37 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
     return assertionMade[0].logIndex; // There should only be one event matching unique assertionId.
   };
 
+  const getGraphqlData = async (ipfsHash: string): Promise<graphqlData> => {
+    const query = `
+    {
+      proposals (
+        first: 2
+        where: {
+          ipfs: "${ipfsHash}"
+        }
+        orderBy: "created"
+        orderDirection: desc
+      ) {
+        id
+        type
+        choices
+        start
+        end
+        state
+        space {
+          id
+        }
+        scores
+        quorum
+        scores_total
+        plugins
+      }
+    }
+  `;
+    const data = (await request(params.graphqlEndpoint, query)) as graphqlData;
+    return data;
+  };
+
   for (const transaction of transactions) {
     await logTransactions(
       logger,
@@ -57,6 +130,7 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         challengeWindowEnds: transaction.args.challengeWindowEnds,
         tx: transaction.transactionHash,
         ooEventIndex: await getAssertionEventIndex(transaction.args.assertionId),
+        graphqlData: await getGraphqlData(tryHexToUtf8String(transaction.args.explanation)),
       },
       params
     );

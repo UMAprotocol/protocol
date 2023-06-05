@@ -44,6 +44,9 @@ export interface MonitoringParams {
   chainId: number;
   blockRange: BlockRange;
   pollingDelay: number;
+  snapshotVerificationEnabled: boolean;
+  graphqlEndpoint: string;
+  ipfsEndpoint: string;
   botModes: BotModes;
 }
 
@@ -98,6 +101,11 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     throw new Error(`${STARTING_BLOCK_KEY} must be less than or equal to ${ENDING_BLOCK_KEY}`);
   }
 
+  // Parameters for Snapshot proposal verification.
+  const snapshotVerificationEnabled = env.SNAPSHOT_VERIFICATION_ENABLED === "true";
+  const graphqlEndpoint = env.GRAPHQL_ENDPOINT || "https://hub.snapshot.org/graphql";
+  const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
+
   const botModes = {
     transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
     transactionsExecutedEnabled: env.TRANSACTIONS_EXECUTED_ENABLED === "true",
@@ -127,6 +135,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
+    snapshotVerificationEnabled,
+    graphqlEndpoint,
+    ipfsEndpoint,
     botModes,
   };
 };
