@@ -16,7 +16,6 @@ import {
   Logger,
   MonitoringParams,
   runQueryFilter,
-  getOg,
   getOgByAddress,
   getOo,
   tryHexToUtf8String,
@@ -73,13 +72,16 @@ export interface graphqlData {
 }
 
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
   const oo = await getOo(params);
-  const transactions = await runQueryFilter<TransactionsProposedEvent>(
-    og,
-    og.filters.TransactionsProposed(),
-    params.blockRange
-  );
+
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<TransactionsProposedEvent>(og, og.filters.TransactionsProposed(), params.blockRange);
+      })
+    )
+  ).flat();
 
   const getAssertionEventIndex = async (assertionId: string): Promise<number> => {
     const assertionMade = await runQueryFilter(oo, oo.filters.AssertionMade(assertionId), params.blockRange);
@@ -121,6 +123,7 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
     await logTransactions(
       logger,
       {
+        og: transaction.address,
         proposer: transaction.args.proposer,
         proposalTime: transaction.args.proposalTime,
         assertionId: transaction.args.assertionId,
@@ -138,16 +141,19 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
 }
 
 export async function monitorTransactionsExecuted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter<TransactionExecutedEvent>(
-    og,
-    og.filters.TransactionExecuted(),
-    params.blockRange
-  );
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<TransactionExecutedEvent>(og, og.filters.TransactionExecuted(), params.blockRange);
+      })
+    )
+  ).flat();
   for (const transaction of transactions) {
     await logTransactionsExecuted(
       logger,
       {
+        og: transaction.address,
         assertionId: transaction.args.assertionId,
         proposalHash: transaction.args.proposalHash,
         transactionIndex: transaction.args.transactionIndex,
@@ -159,16 +165,19 @@ export async function monitorTransactionsExecuted(logger: typeof Logger, params:
 }
 
 export async function monitorProposalExecuted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter<ProposalExecutedEvent>(
-    og,
-    og.filters.ProposalExecuted(),
-    params.blockRange
-  );
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), params.blockRange);
+      })
+    )
+  ).flat();
   for (const transaction of transactions) {
     await logProposalExecuted(
       logger,
       {
+        og: transaction.address,
         assertionId: transaction.args.assertionId,
         proposalHash: transaction.args.proposalHash,
         tx: transaction.transactionHash,
@@ -179,12 +188,19 @@ export async function monitorProposalExecuted(logger: typeof Logger, params: Mon
 }
 
 export async function monitorProposalDeleted(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), params.blockRange);
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), params.blockRange);
+      })
+    )
+  ).flat();
   for (const transaction of transactions) {
     await logProposalDeleted(
       logger,
       {
+        og: transaction.address,
         assertionId: transaction.args.assertionId,
         proposalHash: transaction.args.proposalHash,
         tx: transaction.transactionHash,
@@ -195,60 +211,99 @@ export async function monitorProposalDeleted(logger: typeof Logger, params: Moni
 }
 
 export async function monitorSetCollateralAndBond(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter<SetCollateralAndBondEvent>(
-    og,
-    og.filters.SetCollateralAndBond(),
-    params.blockRange
-  );
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<SetCollateralAndBondEvent>(og, og.filters.SetCollateralAndBond(), params.blockRange);
+      })
+    )
+  ).flat();
   for (const transaction of transactions) {
     await logSetCollateralAndBond(
       logger,
-      { collateral: transaction.args.collateral, bond: transaction.args.bondAmount, tx: transaction.transactionHash },
+      {
+        og: transaction.address,
+        collateral: transaction.args.collateral,
+        bond: transaction.args.bondAmount,
+        tx: transaction.transactionHash,
+      },
       params
     );
   }
 }
 
 export async function monitorSetRules(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter<SetRulesEvent>(og, og.filters.SetRules(), params.blockRange);
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<SetRulesEvent>(og, og.filters.SetRules(), params.blockRange);
+      })
+    )
+  ).flat();
   for (const transaction of transactions) {
-    await logSetRules(logger, { rules: transaction.args.rules, tx: transaction.transactionHash }, params);
+    await logSetRules(
+      logger,
+      { og: transaction.address, rules: transaction.args.rules, tx: transaction.transactionHash },
+      params
+    );
   }
 }
 
 export async function monitorSetLiveness(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter<SetLivenessEvent>(og, og.filters.SetLiveness(), params.blockRange);
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<SetLivenessEvent>(og, og.filters.SetLiveness(), params.blockRange);
+      })
+    )
+  ).flat();
   for (const transaction of transactions) {
-    await logSetLiveness(logger, { liveness: transaction.args.liveness, tx: transaction.transactionHash }, params);
+    await logSetLiveness(
+      logger,
+      { og: transaction.address, liveness: transaction.args.liveness, tx: transaction.transactionHash },
+      params
+    );
   }
 }
 
 export async function monitorSetIdentifier(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter<SetIdentifierEvent>(og, og.filters.SetIdentifier(), params.blockRange);
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<SetIdentifierEvent>(og, og.filters.SetIdentifier(), params.blockRange);
+      })
+    )
+  ).flat();
   for (const transaction of transactions) {
     await logSetIdentifier(
       logger,
-      { identifier: transaction.args.identifier, tx: transaction.transactionHash },
+      { og: transaction.address, identifier: transaction.args.identifier, tx: transaction.transactionHash },
       params
     );
   }
 }
 
 export async function monitorSetEscalationManager(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const og = await getOg(params);
-  const transactions = await runQueryFilter<SetEscalationManagerEvent>(
-    og,
-    og.filters.SetEscalationManager(),
-    params.blockRange
-  );
+  const transactions = (
+    await Promise.all(
+      params.ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<SetEscalationManagerEvent>(og, og.filters.SetEscalationManager(), params.blockRange);
+      })
+    )
+  ).flat();
   for (const transaction of transactions) {
     await logSetEscalationManager(
       logger,
-      { escalationManager: transaction.args.escalationManager, tx: transaction.transactionHash },
+      {
+        og: transaction.address,
+        escalationManager: transaction.args.escalationManager,
+        tx: transaction.transactionHash,
+      },
       params
     );
   }

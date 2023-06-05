@@ -12,7 +12,7 @@ import { assert } from "chai";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { network } from "hardhat";
 import sinon from "sinon";
-import { BotModes, MonitoringParams } from "../src/monitor-og/common";
+import { initMonitoringParams, MonitoringParams } from "../src/monitor-og/common";
 import {
   monitorProposalDeleted,
   monitorProposalExecuted,
@@ -27,16 +27,7 @@ import {
 } from "../src/monitor-og/MonitorEvents";
 import { optimisticGovernorFixture } from "./fixtures/OptimisticGovernor.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
-import {
-  formatBytes32String,
-  getBlockNumberFromTx,
-  hre,
-  parseEther,
-  Provider,
-  Signer,
-  toUtf8Bytes,
-  toUtf8String,
-} from "./utils";
+import { formatBytes32String, getBlockNumberFromTx, hre, parseEther, Signer, toUtf8Bytes, toUtf8String } from "./utils";
 import { getContractInstanceWithProvider } from "../src/utils/contracts";
 
 const ethers = hre.ethers;
@@ -59,30 +50,24 @@ describe("OptimisticGovernorMonitor", function () {
   let timer: TimerEthers;
 
   // Create monitoring params for single block to pass to monitor modules.
-  const createMonitoringParams = async (blockNumber: number): Promise<MonitoringParams> => {
-    // Bot modes are not used as we are calling monitor modules directly.
-    const botModes: BotModes = {
-      transactionsProposedEnabled: false,
-      transactionsExecutedEnabled: false,
-      proposalExecutedEnabled: false,
-      proposalDeletedEnabled: false,
-      setCollateralAndBondEnabled: false,
-      setRulesEnabled: false,
-      setLivenessEnabled: false,
-      setIdentifierEnabled: false,
-      setEscalationManagerEnabled: false,
-      proxyDeployedEnabled: false,
+  const createMonitoringParams = async (blockNumber: number, ogDiscovery?: boolean): Promise<MonitoringParams> => {
+    const env: NodeJS.ProcessEnv = {
+      CHAIN_ID: (await ethers.provider.getNetwork()).chainId.toString(),
+      MODULE_PROXY_FACTORY_ADDRESSES: JSON.stringify([moduleProxyFactory.address]),
+      OG_MASTER_COPY_ADDRESSES: JSON.stringify([optimisticGovernor.address]),
+      POLLING_DELAY: "0",
     };
-    return {
-      ogAddress: optimisticGovernor.address,
-      moduleProxyFactoryAddresses: [moduleProxyFactory.address],
-      ogMasterCopyAddresses: [optimisticGovernor.address],
-      provider: ethers.provider as Provider,
-      chainId: (await ethers.provider.getNetwork()).chainId,
-      blockRange: { start: blockNumber, end: blockNumber },
-      pollingDelay: 0,
-      botModes,
-    };
+    const STARTING_BLOCK_KEY = `STARTING_BLOCK_NUMBER_${env.CHAIN_ID}`;
+    const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${env.CHAIN_ID}`;
+    env[STARTING_BLOCK_KEY] = blockNumber.toString();
+    env[ENDING_BLOCK_KEY] = blockNumber.toString();
+
+    // If ogDiscovery is not set or false, add static OG_ADDRESS. Otherwise, tests will use automatic OG discovery.
+    if (!ogDiscovery) {
+      env.OG_ADDRESS = optimisticGovernor.address;
+    }
+
+    return await initMonitoringParams(env, ethers.provider);
   };
 
   const deployOgModuleProxy = async (): Promise<OGModuleProxyDeployment> => {
@@ -183,6 +168,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Transactions Proposed 📝");
     assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposer));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.rules));
@@ -232,6 +218,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Transactions Executed ✅");
     assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -243,6 +230,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spyTwo.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spyTwo.getCall(0).lastArg.message, "Proposal Executed ✅");
     assert.equal(spyLogLevel(spyTwo, 0), "warn");
+    assert.isTrue(spyLogIncludes(spyTwo, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spyTwo, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spyTwo, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spyTwo.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -292,6 +280,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Proposal Deleted 🗑️");
     assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -322,6 +311,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Collateral And Bond Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, bondToken.address));
     assert.isTrue(spyLogIncludes(spy, 0, parseEther("1").toString()));
     assert.equal(spyLogLevel(spy, 0), "warn");
@@ -338,6 +328,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Rules Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newRules));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -353,6 +344,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Liveness Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newLiveness.toString()));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -368,6 +360,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Identifier Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newIdentifier));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -383,6 +376,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Escalation Manager Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newEscalationManager));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -402,6 +396,56 @@ describe("OptimisticGovernorMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, proxyCreationTx.hash));
     assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
+  });
+  it("Monitor TransactionsProposed with automatic OG discovery", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const { ogModuleProxy } = await deployOgModuleProxy();
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Construct the transaction data
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Call monitorTransactionsProposed directly for the block when the proposeTransactions was made using automatic OG discovery.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposed(spyLogger, await createMonitoringParams(proposeBlockNumber, true));
+
+    // When calling monitoring module directly there should be only one log (index 0) with the proposal caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Transactions Proposed 📝");
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposer));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.rules));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
+    assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(explanation)));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
   });
 });

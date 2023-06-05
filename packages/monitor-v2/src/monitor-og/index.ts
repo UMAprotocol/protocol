@@ -1,5 +1,5 @@
 import { delay } from "@uma/financial-templates-lib";
-import { BotModes, initMonitoringParams, Logger, startupLogLevel, waitNextBlockRange } from "./common";
+import { BotModes, getOgAddresses, initMonitoringParams, Logger, startupLogLevel, waitNextBlockRange } from "./common";
 import {
   monitorProposalDeleted,
   monitorProposalExecuted,
@@ -48,6 +48,7 @@ async function main() {
         break;
       }
       params.blockRange = await waitNextBlockRange(params);
+      params.ogAddresses = await getOgAddresses(params);
       continue;
     }
 
@@ -63,6 +64,7 @@ async function main() {
       break;
     }
     params.blockRange = await waitNextBlockRange(params);
+    params.ogAddresses = await getOgAddresses(params);
   }
 }
 

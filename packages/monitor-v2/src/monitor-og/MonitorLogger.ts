@@ -10,6 +10,7 @@ import { graphqlData } from "./MonitorEvents";
 export async function logTransactions(
   logger: typeof Logger,
   transaction: {
+    og: string;
     proposer: string;
     proposalTime: BigNumber;
     assertionId: string;
@@ -32,6 +33,8 @@ export async function logTransactions(
       transaction.proposalHash +
       " and assertion ID " +
       transaction.assertionId +
+      " on Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
       " at " +
       new Date(Number(transaction.proposalTime.toString()) * 1000).toUTCString() +
       " in transaction " +
@@ -52,7 +55,7 @@ export async function logTransactions(
 
 export async function logTransactionsExecuted(
   logger: typeof Logger,
-  transaction: { assertionId: string; proposalHash: string; transactionIndex: BigNumber; tx: string },
+  transaction: { og: string; assertionId: string; proposalHash: string; transactionIndex: BigNumber; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -63,7 +66,9 @@ export async function logTransactionsExecuted(
       transaction.proposalHash +
       " and assertion ID " +
       transaction.assertionId +
-      " have been executed in transaction " +
+      " have been executed on Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
+      " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId) +
       " with trasaaction index " +
       transaction.transactionIndex.toString(),
@@ -73,7 +78,7 @@ export async function logTransactionsExecuted(
 
 export async function logProposalExecuted(
   logger: typeof Logger,
-  transaction: { assertionId: string; proposalHash: string; tx: string },
+  transaction: { og: string; assertionId: string; proposalHash: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -84,7 +89,9 @@ export async function logProposalExecuted(
       transaction.proposalHash +
       " and assertion ID " +
       transaction.assertionId +
-      " has been executed in transaction " +
+      " has been executed on Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
+      " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
     notificationPath: "optimistic-governor",
   });
@@ -92,7 +99,7 @@ export async function logProposalExecuted(
 
 export async function logProposalDeleted(
   logger: typeof Logger,
-  transaction: { assertionId: string; proposalHash: string; tx: string },
+  transaction: { og: string; assertionId: string; proposalHash: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.error({
@@ -103,7 +110,9 @@ export async function logProposalDeleted(
       transaction.proposalHash +
       " and assertion ID " +
       transaction.assertionId +
-      " has been deleted in transaction " +
+      " has been deleted from Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
+      " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
     notificationPath: "optimistic-governor",
   });
@@ -111,7 +120,7 @@ export async function logProposalDeleted(
 
 export async function logSetCollateralAndBond(
   logger: typeof Logger,
-  transaction: { collateral: string; bond: BigNumber; tx: string },
+  transaction: { og: string; collateral: string; bond: BigNumber; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -122,6 +131,8 @@ export async function logSetCollateralAndBond(
       transaction.bond.toString() +
       " for collateral " +
       transaction.collateral +
+      " on Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
       " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
     notificationPath: "optimistic-governor",
@@ -130,7 +141,7 @@ export async function logSetCollateralAndBond(
 
 export async function logSetRules(
   logger: typeof Logger,
-  transaction: { rules: string; tx: string },
+  transaction: { og: string; rules: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -139,7 +150,9 @@ export async function logSetRules(
     mrkdwn:
       " Rules " +
       tryHexToUtf8String(transaction.rules) +
-      " have been set in transaction " +
+      " have been set on Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
+      " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
     notificationPath: "optimistic-governor",
   });
@@ -147,7 +160,7 @@ export async function logSetRules(
 
 export async function logSetLiveness(
   logger: typeof Logger,
-  transaction: { liveness: BigNumber; tx: string },
+  transaction: { og: string; liveness: BigNumber; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -156,6 +169,8 @@ export async function logSetLiveness(
     mrkdwn:
       " Liveness has been set to " +
       transaction.liveness.toString() +
+      " on Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
       " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
     notificationPath: "optimistic-governor",
@@ -164,7 +179,7 @@ export async function logSetLiveness(
 
 export async function logSetIdentifier(
   logger: typeof Logger,
-  transaction: { identifier: string; tx: string },
+  transaction: { og: string; identifier: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -173,7 +188,9 @@ export async function logSetIdentifier(
     mrkdwn:
       " Identifier " +
       transaction.identifier +
-      " has been set in transaction " +
+      " has been set on Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
+      " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
     notificationPath: "optimistic-governor",
   });
@@ -181,7 +198,7 @@ export async function logSetIdentifier(
 
 export async function logSetEscalationManager(
   logger: typeof Logger,
-  transaction: { escalationManager: string; tx: string },
+  transaction: { og: string; escalationManager: string; tx: string },
   params: MonitoringParams
 ): Promise<void> {
   logger.warn({
@@ -190,7 +207,9 @@ export async function logSetEscalationManager(
     mrkdwn:
       " Escalation Manager " +
       createEtherscanLinkMarkdown(transaction.escalationManager, params.chainId) +
-      " has been set in transaction " +
+      " has been set on Optimistic Governor " +
+      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
+      " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
     notificationPath: "optimistic-governor",
   });
