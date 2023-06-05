@@ -10,6 +10,7 @@ import {
   VotingAncillaryInterfaceTestingWeb3,
   OptimisticOracleWeb3Events,
   SkinnyOptimisticOracleWeb3Events,
+  OptimisticOracleV2Web3,
 } from "@uma/contracts-node";
 
 type SkinnyRequestPrice = SkinnyOptimisticOracleWeb3Events.RequestPrice;
@@ -48,7 +49,7 @@ interface SkinnyRequest {
   customLiveness: string;
 }
 
-export type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOracleWeb3;
+export type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOracleWeb3 | OptimisticOracleV2Web3;
 
 export enum OptimisticOracleType {
   OptimisticOracle = "OptimisticOracle",
@@ -286,15 +287,31 @@ export class OptimisticOracleClient {
               )
               .call();
 
+            let timestampForDvmRequest = disputeEvent.returnValues.timestamp;
+            if (this.oracleType === OptimisticOracleType.OptimisticOracleV2) {
+              const request = await (this.oracle as OptimisticOracleV2Web3).methods
+                .getRequest(
+                  disputeEvent.returnValues.requester,
+                  disputeEvent.returnValues.identifier,
+                  disputeEvent.returnValues.timestamp,
+                  disputeEvent.returnValues.ancillaryData
+                )
+                .call({ from: this.oracle.options.address });
+
+              // Check if the request is an event based request
+              if (request[4][0]) {
+                // If it's an event based request then we need to calculate the timestamp for the DVM request. See
+                // _getTimestampForDvmRequest function in the OptimisticOracleV2 contract for more details.
+                const liveness = request[4][6] != "0" ? request[4][6] : 7200;
+                timestampForDvmRequest = String(Number(request[7]) - Number(liveness)); // request.expirationTime - liveness
+              }
+            }
+
             // getPrice will return null or revert if there is no price available,
             // in which case we'll ignore this dispute.
             const resolvedPrice = revertWrapper(
               await this.voting.methods
-                .getPrice(
-                  disputeEvent.returnValues.identifier,
-                  disputeEvent.returnValues.timestamp,
-                  stampedAncillaryData
-                )
+                .getPrice(disputeEvent.returnValues.identifier, timestampForDvmRequest, stampedAncillaryData)
                 .call({ from: this.oracle.options.address })
             );
             if (resolvedPrice !== null) {
