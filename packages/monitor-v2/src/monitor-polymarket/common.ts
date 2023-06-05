@@ -31,6 +31,12 @@ export interface TradeInformation {
   timestamp: number;
 }
 
+export interface MarketKeyStoreData {
+  txHash: string;
+  question: string;
+  proposedPrice: string;
+}
+
 export interface MonitoringParams {
   binaryAdapterAddress: string;
   ctfAdapterAddress: string;
@@ -71,7 +77,7 @@ interface PolymarketMarketGraphql {
   umaResolutionStatus: string;
 }
 
-interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
+export interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
   ancillaryData: string;
   requestTimestamp: string;
 }
@@ -481,12 +487,14 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   };
 };
 
-export const getMarketKeyToStore = (market: {
-  txHash: string;
-  question: string;
-  proposedPrice: string;
-  requestTimestamp?: string;
-}): string => {
+export const getUnknownProposalKeyData = (question: string): MarketKeyStoreData & { requestTimestamp: string } => ({
+  txHash: "unknown",
+  question: question,
+  proposedPrice: "unknown",
+  requestTimestamp: "unknown",
+});
+
+export const getMarketKeyToStore = (market: MarketKeyStoreData & { requestTimestamp?: string }): string => {
   return market.txHash + "_" + market.question + "_" + market.proposedPrice + "_" + (market.requestTimestamp || "");
 };
 

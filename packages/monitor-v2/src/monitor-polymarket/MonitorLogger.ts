@@ -99,3 +99,29 @@ export async function logProposalHighVolume(
     notificationPath: "polymarket-notifier",
   });
 }
+
+export async function logUnknownMarketProposal(
+  logger: typeof Logger,
+  market: {
+    adapterAddress: string;
+    question: string;
+    questionID: string;
+    umaResolutionStatus: string;
+    endDate: string;
+    volumeNum: number;
+  }
+): Promise<void> {
+  logger.error({
+    at: "PolymarketMonitor",
+    message: "Market proposal event not found for proposed market! 🚨",
+    mrkdwn:
+      ` Proposal event not found for market: ${market.question}.` +
+      ` The question ID is ${market.questionID}.` +
+      ` The UMA resolution status is ${market.umaResolutionStatus}.` +
+      ` The end date is ${new Date(market.endDate).toUTCString()}.` +
+      ` The volume is ${market.volumeNum}.` +
+      ` The adapter address is ${market.adapterAddress}.` +
+      " The polymarket-notifier cannot check the market, please verify manually and dispute if necessary.",
+    notificationPath: "polymarket-notifier",
+  });
+}
