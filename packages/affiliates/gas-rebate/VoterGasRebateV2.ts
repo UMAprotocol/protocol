@@ -55,13 +55,21 @@ export async function run(): Promise<void> {
   const revealEvents = await voting.queryFilter(voting.filters.VoteRevealed(), fromBlock, toBlock);
 
   // For each event find the associated transaction. We want to refund all transactions that were sent by voters.
-  // Run in two batches to not overload the node provider.
-  const commitTransactions = await Promise.all(
-    commitEvents.map(async (commit: any) => voting.provider.getTransactionReceipt(commit.transactionHash))
-  );
-  const revealTransactions = await Promise.all(
-    revealEvents.map(async (reveal: any) => voting.provider.getTransactionReceipt(reveal.transactionHash))
-  );
+  // Function to process events sequentially
+  const getTransactionsFromEvents = async (events: any) => {
+    const transactions = [];
+    for (const event of events) {
+      const transaction = await voting.provider.getTransactionReceipt(event.transactionHash);
+      transactions.push(transaction);
+    }
+    return transactions;
+  };
+
+  // Process commitEvents sequentially
+  const commitTransactions = await getTransactionsFromEvents(commitEvents);
+
+  // Process revealEvents sequentially
+  const revealTransactions = await getTransactionsFromEvents(revealEvents);
 
   // The transactions to refund are the union of the commit and reveal transactions. We need to remove any duplicates
   // as a voter could have done multiple commits and reveals in the same transaction due to multicall. If we refund
