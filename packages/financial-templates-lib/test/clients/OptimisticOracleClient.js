@@ -535,7 +535,14 @@ describe("OptimisticOracleClient.js", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
       await optimisticOracle.methods
-        .proposePrice(accounts[0], identifier, requestTime, ancillaryData, priceRequest.returnValues.request, correctPrice)
+        .proposePrice(
+          accounts[0],
+          identifier,
+          requestTime,
+          ancillaryData,
+          priceRequest.returnValues.request,
+          correctPrice
+        )
         .send({ from: proposer });
       const priceProposal = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
 
@@ -616,7 +623,14 @@ describe("OptimisticOracleClient.js", function () {
       const priceRequest = (await optimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 }))[0];
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
-        .proposePrice(accounts[0], identifier, requestTime, ancillaryData, priceRequest.returnValues.request, correctPrice)
+        .proposePrice(
+          accounts[0],
+          identifier,
+          requestTime,
+          ancillaryData,
+          priceRequest.returnValues.request,
+          correctPrice
+        )
         .send({ from: proposer });
       const priceProposal = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
 
@@ -957,6 +971,73 @@ describe("OptimisticOracleClient.js", function () {
       await optimisticRequester.methods
         .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+
+      // Make a proposal:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, correctPrice)
+        .send({ from: proposer });
+
+      await client.update();
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+
+      // Dispute the proposal:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
+        .send({ from: disputer });
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+
+      // Resolve the dispute and check that the client detects the new state:
+      await pushPrice(correctPrice);
+      await client.update();
+      // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved
+      result = client.getSettleableDisputes([rando]);
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          proposer: proposer,
+          disputer: disputer,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: ancillaryData,
+          timestamp: requestTime.toString(),
+        },
+      ]);
+
+      // Settle the dispute and make sure that the client no longer sees it as settleable:
+      await optimisticOracle.methods
+        .settle(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+    });
+
+    it("Basic dispute lifecycle event based price request: request, propose, dispute, resolve & settle", async function () {
+      // Initial update.
+      await client.update();
+
+      // Initially, no settleable disputes:
+      let result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+
+      // Request a price:
+      await optimisticRequester.methods
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
+        .send({ from: accounts[0] });
+
+      // Set event based price request:
+      await optimisticRequester.methods
+        .setEventBased(identifier, requestTime, ancillaryData)
+        .send({ from: accounts[0] });
+
       await client.update();
       result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
