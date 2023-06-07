@@ -4,9 +4,6 @@ import { generateOOv3UILink, Logger, tryHexToUtf8String } from "./common";
 
 import type { MonitoringParams } from "./common";
 
-// TEMP
-import { graphqlData } from "./MonitorEvents";
-
 export async function logTransactions(
   logger: typeof Logger,
   transaction: {
@@ -20,7 +17,6 @@ export async function logTransactions(
     challengeWindowEnds: BigNumber;
     tx: string;
     ooEventIndex: number;
-    graphqlData: graphqlData;
   },
   params: MonitoringParams
 ): Promise<void> {
@@ -49,7 +45,6 @@ export async function logTransactions(
       generateOOv3UILink(transaction.tx, transaction.ooEventIndex, params.chainId) +
       ".",
     notificationPath: "optimistic-governor",
-    graphqlData: transaction.graphqlData.proposals[0].plugins.safeSnap?.safes,
   });
 }
 

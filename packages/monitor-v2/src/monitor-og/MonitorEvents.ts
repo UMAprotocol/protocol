@@ -1,4 +1,11 @@
 import {
+  ethersConstants,
+  getProxyDeploymentTxs,
+  Logger,
+  MonitoringParams,
+  runQueryFilter,
+  getOgByAddress,
+  getOo,
   ProposalDeletedEvent,
   ProposalExecutedEvent,
   SetCollateralAndBondEvent,
@@ -9,16 +16,6 @@ import {
   TargetSetEvent,
   TransactionExecutedEvent,
   TransactionsProposedEvent,
-} from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
-import {
-  ethersConstants,
-  getProxyDeploymentTxs,
-  Logger,
-  MonitoringParams,
-  runQueryFilter,
-  getOgByAddress,
-  getOo,
-  tryHexToUtf8String,
 } from "./common";
 import { logProposalDeleted, logProposalExecuted, logSetCollateralAndBond, logSetRules } from "./MonitorLogger";
 import {
@@ -29,9 +26,7 @@ import {
   logTransactionsExecuted,
   logSetEscalationManager,
 } from "./MonitorLogger";
-
-// TEMP
-import request from "graphql-request";
+import { verifyProposal } from "./SnapshotVerification";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
@@ -88,38 +83,10 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
     return assertionMade[0].logIndex; // There should only be one event matching unique assertionId.
   };
 
-  const getGraphqlData = async (ipfsHash: string): Promise<graphqlData> => {
-    const query = `
-    {
-      proposals (
-        first: 2
-        where: {
-          ipfs: "${ipfsHash}"
-        }
-        orderBy: "created"
-        orderDirection: desc
-      ) {
-        id
-        type
-        choices
-        start
-        end
-        state
-        space {
-          id
-        }
-        scores
-        quorum
-        scores_total
-        plugins
-      }
-    }
-  `;
-    const data = (await request(params.graphqlEndpoint, query)) as graphqlData;
-    return data;
-  };
-
   for (const transaction of transactions) {
+    const verification = await verifyProposal(transaction, params);
+    console.log(verification);
+    console.log(transaction.args);
     await logTransactions(
       logger,
       {
@@ -133,7 +100,6 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         challengeWindowEnds: transaction.args.challengeWindowEnds,
         tx: transaction.transactionHash,
         ooEventIndex: await getAssertionEventIndex(transaction.args.assertionId),
-        graphqlData: await getGraphqlData(tryHexToUtf8String(transaction.args.explanation)),
       },
       params
     );

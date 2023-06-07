@@ -13,8 +13,20 @@ import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 import type { Provider } from "@ethersproject/abstract-provider";
 
 export { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
+export {
+  ProposalDeletedEvent,
+  ProposalExecutedEvent,
+  SetCollateralAndBondEvent,
+  SetEscalationManagerEvent,
+  SetIdentifierEvent,
+  SetLivenessEvent,
+  SetRulesEvent,
+  TargetSetEvent,
+  TransactionExecutedEvent,
+  TransactionsProposedEvent,
+} from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 export { Logger } from "@uma/financial-templates-lib";
-export { constants as ethersConstants } from "ethers";
+export { constants as ethersConstants, utils as ethersUtils } from "ethers";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 export { generateOOv3UILink } from "../utils/logger";
 
@@ -48,6 +60,7 @@ export interface MonitoringParams {
   snapshotVerificationEnabled: boolean;
   graphqlEndpoint: string;
   ipfsEndpoint: string;
+  approvalChoices: string[];
   botModes: BotModes;
 }
 
@@ -110,6 +123,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
   const snapshotVerificationEnabled = env.SNAPSHOT_VERIFICATION_ENABLED === "true";
   const graphqlEndpoint = env.GRAPHQL_ENDPOINT || "https://hub.snapshot.org/graphql";
   const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
+  const approvalChoices = env.APPROVAL_CHOICES ? JSON.parse(env.APPROVAL_CHOICES) : ["Yes", "For", "YAE"];
 
   const botModes = {
     transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
@@ -147,6 +161,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     snapshotVerificationEnabled,
     graphqlEndpoint,
     ipfsEndpoint,
+    approvalChoices,
     botModes,
   };
 
