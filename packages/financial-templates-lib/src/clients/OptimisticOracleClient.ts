@@ -289,21 +289,28 @@ export class OptimisticOracleClient {
 
             let timestampForDvmRequest = disputeEvent.returnValues.timestamp;
             if (this.oracleType === OptimisticOracleType.OptimisticOracleV2) {
-              const request = await (this.oracle as OptimisticOracleV2Web3).methods
+              const request = ((await (this.oracle as OptimisticOracleV2Web3).methods
                 .getRequest(
                   disputeEvent.returnValues.requester,
                   disputeEvent.returnValues.identifier,
                   disputeEvent.returnValues.timestamp,
                   disputeEvent.returnValues.ancillaryData
                 )
-                .call({ from: this.oracle.options.address });
+                .call({ from: this.oracle.options.address })) as unknown) as {
+                expirationTime: string;
+                requestSettings: {
+                  eventBased: boolean;
+                  customLiveness: string;
+                };
+              };
 
               // Check if the request is an event based request
-              if (request[4][0]) {
+              if (request.requestSettings.eventBased) {
                 // If it's an event based request then we need to calculate the timestamp for the DVM request. See
                 // _getTimestampForDvmRequest function in the OptimisticOracleV2 contract for more details.
-                const liveness = request[4][6] != "0" ? request[4][6] : 7200;
-                timestampForDvmRequest = String(Number(request[7]) - Number(liveness)); // request.expirationTime - liveness
+                const liveness =
+                  request.requestSettings.customLiveness != "0" ? request.requestSettings.customLiveness : 7200;
+                timestampForDvmRequest = String(Number(request.expirationTime) - Number(liveness)); // request.expirationTime - liveness
               }
             }
 
