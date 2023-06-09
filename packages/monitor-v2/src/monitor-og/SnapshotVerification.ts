@@ -231,17 +231,17 @@ export const verifyProposal = async (
 
   // Verify that the proposal is in the closed state.
   if (proposal.state !== "closed") {
-    return { verified: false, error: `Proposal not in closed state` };
+    return { verified: false, error: "Proposal not in closed state" };
   }
 
   // Verify that the proposal voting period has ended.
   if (transaction.args.proposalTime.toNumber() < proposal.end) {
-    return { verified: false, error: `Proposal voting period has not ended` };
+    return { verified: false, error: "Proposal voting period has not ended" };
   }
 
   // Verify quorum.
   if (proposal.scores_total !== null && proposal.scores_total < proposal.quorum) {
-    return { verified: false, error: `Proposal did not meet Snapshot quorum` };
+    return { verified: false, error: `Proposal did not meet Snapshot quorum of ${proposal.quorum}` };
   }
 
   // Verify proposal choices and scores.
@@ -252,20 +252,20 @@ export const verifyProposal = async (
     return { verified: false, error: `No known approval choice found among ${JSON.stringify(proposal.choices)}` };
   }
   if (proposal.scores === null || proposal.scores.length !== proposal.choices.length) {
-    return { verified: false, error: `Proposal scores are not valid` };
+    return { verified: false, error: "Proposal scores are not valid" };
   }
 
   // Verify that the proposal was approved by majority and got more than 50% of the votes.
   if (approvalIndex !== proposal.scores.indexOf(Math.max(...proposal.scores))) {
-    return { verified: false, error: `Proposal was not approved by majority` };
+    return { verified: false, error: "Proposal was not approved by majority" };
   }
   if (proposal.scores_total !== null && proposal.scores[approvalIndex] <= proposal.scores_total / 2) {
-    return { verified: false, error: `Proposal did not get more than 50% votes` };
+    return { verified: false, error: "Proposal did not get more than 50% votes" };
   }
 
   // Verify that the proposal has a safeSnap plugin.
   if (proposal.plugins.safeSnap === undefined) {
-    return { verified: false, error: `No safeSnap plugin found` };
+    return { verified: false, error: "No safeSnap plugin found" };
   }
 
   // There must be one and only one matching safe.
@@ -273,9 +273,9 @@ export const verifyProposal = async (
     findSafe(safe, params.chainId, transaction.address)
   );
   if (matchingSafes.length === 0) {
-    return { verified: false, error: `No matching safe found` };
+    return { verified: false, error: "No matching safe found" };
   } else if (matchingSafes.length > 1) {
-    return { verified: false, error: `Multiple matching safes found` };
+    return { verified: false, error: "Multiple matching safes found" };
   }
 
   // Verify that on-chain proposed transactions match the transactions from the safeSnap plugin.
@@ -283,7 +283,7 @@ export const verifyProposal = async (
   const safeSnapTransactions = safe.txs.map((tx) => tx.mainTransaction);
   const onChainTransactions = transaction.args.proposal.transactions;
   if (safeSnapTransactions.length !== onChainTransactions.length) {
-    return { verified: false, error: `Number of transactions do not match` };
+    return { verified: false, error: "Number of transactions do not match" };
   }
   for (let i = 0; i < safeSnapTransactions.length; i++) {
     const safeSnapTransaction = safeSnapTransactions[i];
@@ -294,7 +294,7 @@ export const verifyProposal = async (
       safeSnapTransaction.value !== onChainTransaction.value.toString() ||
       safeSnapTransaction.operation !== onChainTransaction.operation.toString()
     ) {
-      return { verified: false, error: `Transactions do not match Snapshot proposal` };
+      return { verified: false, error: "Transactions do not match Snapshot proposal" };
     }
   }
 
@@ -304,13 +304,13 @@ export const verifyProposal = async (
     return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
   }
   if (!ipfsMatchGraphql(ipfsData, graphqlData)) {
-    return { verified: false, error: `IPFS data properties does not match GraphQL data` };
+    return { verified: false, error: "IPFS data properties do not match GraphQL data" };
   }
 
   // Verify rules and its parsed properties.
   const parsedRules = parseRules(transaction.args.rules);
   if (parsedRules === null) {
-    return { verified: false, error: `Rules do not match standard template` };
+    return { verified: false, error: "Rules do not match standard template" };
   }
   if (parsedRules.space !== proposal.space.id) {
     return {
