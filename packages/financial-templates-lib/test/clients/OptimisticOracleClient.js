@@ -55,6 +55,7 @@ describe("OptimisticOracleClient.js", function () {
   const totalDefaultBond = toWei("2"); // 2x final fee
   const correctPrice = toWei("-17");
   const identifier = web3.utils.utf8ToHex("Test Identifier");
+  const ancillaryData = web3.utils.utf8ToHex("Test Ancillary Data");
 
   const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
@@ -136,7 +137,7 @@ describe("OptimisticOracleClient.js", function () {
     });
     it("Update with no max blocks per search set", async function () {
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await client.update();
 
@@ -169,7 +170,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request and update again, should show no proposals.
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await chunkedClient.update();
 
@@ -190,7 +191,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           currency: collateral.options.address,
           reward: "0",
@@ -202,7 +203,7 @@ describe("OptimisticOracleClient.js", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
       await optimisticOracle.methods
-        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, correctPrice)
         .send({ from: proposer });
 
       await chunkedClient.update();
@@ -212,7 +213,7 @@ describe("OptimisticOracleClient.js", function () {
           requester: optimisticRequester.options.address,
           proposer: proposer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           currency: collateral.options.address,
           timestamp: requestTime.toString(),
           proposedPrice: correctPrice,
@@ -242,7 +243,7 @@ describe("OptimisticOracleClient.js", function () {
           requester: optimisticRequester.options.address,
           proposer: proposer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           currency: collateral.options.address,
           timestamp: requestTime.toString(),
           proposedPrice: correctPrice,
@@ -252,7 +253,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Once proposals are settled they no longer appear as settleable in the client.
       await optimisticOracle.methods
-        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .settle(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
         .send({ from: accounts[0] });
       await chunkedClient.update();
       result = chunkedClient.getSettleableProposals([proposer]);
@@ -273,7 +274,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request and update again, should show no proposals.
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getUndisputedProposals();
@@ -287,7 +288,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           currency: collateral.options.address,
           reward: "0",
@@ -299,7 +300,7 @@ describe("OptimisticOracleClient.js", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
       await optimisticOracle.methods
-        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, correctPrice)
         .send({ from: proposer });
 
       await client.update();
@@ -309,7 +310,7 @@ describe("OptimisticOracleClient.js", function () {
           requester: optimisticRequester.options.address,
           proposer: proposer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           currency: collateral.options.address,
           timestamp: requestTime.toString(),
           proposedPrice: correctPrice,
@@ -339,7 +340,7 @@ describe("OptimisticOracleClient.js", function () {
           requester: optimisticRequester.options.address,
           proposer: proposer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           currency: collateral.options.address,
           timestamp: requestTime.toString(),
           proposedPrice: correctPrice,
@@ -349,7 +350,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Once proposals are settled they no longer appear as settleable in the client.
       await optimisticOracle.methods
-        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .settle(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableProposals([proposer]);
@@ -366,7 +367,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request a price:
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableDisputes([disputer]);
@@ -375,7 +376,7 @@ describe("OptimisticOracleClient.js", function () {
       // Make a proposal:
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
-        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, correctPrice)
         .send({ from: proposer });
 
       await client.update();
@@ -385,7 +386,7 @@ describe("OptimisticOracleClient.js", function () {
       // Dispute the proposal:
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
       await optimisticOracle.methods
-        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
         .send({ from: disputer });
       result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
@@ -403,14 +404,14 @@ describe("OptimisticOracleClient.js", function () {
           proposer: proposer,
           disputer: disputer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
         },
       ]);
 
       // Settle the dispute and make sure that the client no longer sees it as settleable:
       await optimisticOracle.methods
-        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .settle(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableDisputes([disputer]);
@@ -432,7 +433,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request a price and check that the longer lookback client currently sees it
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await client.update();
       let result = client.getUnproposedPriceRequests();
@@ -440,7 +441,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           currency: collateral.options.address,
           reward: "0",
@@ -509,7 +510,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request and update again, should show no proposals.
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, finalFee, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0, finalFee, 0)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getUndisputedProposals();
@@ -524,7 +525,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: accounts[0],
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           request: priceRequest.returnValues.request,
         },
@@ -534,7 +535,14 @@ describe("OptimisticOracleClient.js", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
       await optimisticOracle.methods
-        .proposePrice(accounts[0], identifier, requestTime, "0x", priceRequest.returnValues.request, correctPrice)
+        .proposePrice(
+          accounts[0],
+          identifier,
+          requestTime,
+          ancillaryData,
+          priceRequest.returnValues.request,
+          correctPrice
+        )
         .send({ from: proposer });
       const priceProposal = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
 
@@ -544,7 +552,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: accounts[0],
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           request: priceProposal.returnValues.request,
         },
       ]);
@@ -570,7 +578,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: accounts[0],
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           request: priceProposal.returnValues.request,
         },
@@ -580,7 +588,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: accounts[0],
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           request: priceProposal.returnValues.request,
         },
@@ -588,7 +596,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Once proposals are settled they no longer appear as settleable in the client.
       await optimisticOracle.methods
-        .settle(accounts[0], identifier, requestTime, "0x", priceProposal.returnValues.request)
+        .settle(accounts[0], identifier, requestTime, ancillaryData, priceProposal.returnValues.request)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableProposals([proposer]);
@@ -605,7 +613,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request a price:
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, finalFee, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0, finalFee, 0)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableDisputes([disputer]);
@@ -615,7 +623,14 @@ describe("OptimisticOracleClient.js", function () {
       const priceRequest = (await optimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 }))[0];
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
-        .proposePrice(accounts[0], identifier, requestTime, "0x", priceRequest.returnValues.request, correctPrice)
+        .proposePrice(
+          accounts[0],
+          identifier,
+          requestTime,
+          ancillaryData,
+          priceRequest.returnValues.request,
+          correctPrice
+        )
         .send({ from: proposer });
       const priceProposal = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
 
@@ -626,7 +641,7 @@ describe("OptimisticOracleClient.js", function () {
       // Dispute the proposal:
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
       await optimisticOracle.methods
-        .disputePrice(accounts[0], identifier, requestTime, "0x", priceProposal.returnValues.request)
+        .disputePrice(accounts[0], identifier, requestTime, ancillaryData, priceProposal.returnValues.request)
         .send({ from: disputer });
       const priceDispute = (await optimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 }))[0];
       result = client.getSettleableDisputes([disputer]);
@@ -643,7 +658,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: accounts[0],
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           request: priceDispute.returnValues.request,
         },
@@ -653,7 +668,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: accounts[0],
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           request: priceDispute.returnValues.request,
         },
@@ -661,7 +676,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Settle the dispute and make sure that the client no longer sees it as settleable:
       await optimisticOracle.methods
-        .settle(accounts[0], identifier, requestTime, "0x", priceDispute.returnValues.request)
+        .settle(accounts[0], identifier, requestTime, ancillaryData, priceDispute.returnValues.request)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableDisputes([disputer]);
@@ -684,7 +699,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request a price and check that the longer lookback client currently sees it
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, finalFee, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0, finalFee, 0)
         .send({ from: accounts[0] });
       const priceRequest = (await optimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 }))[0];
       await client.update();
@@ -693,7 +708,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: accounts[0],
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           request: priceRequest.returnValues.request,
         },
@@ -757,7 +772,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request and update again, should show no proposals.
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await chunkedClient.update();
 
@@ -778,7 +793,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           currency: collateral.options.address,
           reward: "0",
@@ -790,7 +805,7 @@ describe("OptimisticOracleClient.js", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
       await optimisticOracle.methods
-        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, correctPrice)
         .send({ from: proposer });
 
       await chunkedClient.update();
@@ -800,7 +815,7 @@ describe("OptimisticOracleClient.js", function () {
           requester: optimisticRequester.options.address,
           proposer: proposer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           currency: collateral.options.address,
           timestamp: requestTime.toString(),
           proposedPrice: correctPrice,
@@ -830,7 +845,7 @@ describe("OptimisticOracleClient.js", function () {
           requester: optimisticRequester.options.address,
           proposer: proposer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           currency: collateral.options.address,
           timestamp: requestTime.toString(),
           proposedPrice: correctPrice,
@@ -840,7 +855,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Once proposals are settled they no longer appear as settleable in the client.
       await optimisticOracle.methods
-        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .settle(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
         .send({ from: accounts[0] });
       await chunkedClient.update();
       result = chunkedClient.getSettleableProposals([proposer]);
@@ -861,7 +876,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request and update again, should show no proposals.
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getUndisputedProposals();
@@ -875,7 +890,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           currency: collateral.options.address,
           reward: "0",
@@ -887,7 +902,7 @@ describe("OptimisticOracleClient.js", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
       await optimisticOracle.methods
-        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, correctPrice)
         .send({ from: proposer });
 
       await client.update();
@@ -897,7 +912,7 @@ describe("OptimisticOracleClient.js", function () {
           requester: optimisticRequester.options.address,
           proposer: proposer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           currency: collateral.options.address,
           timestamp: requestTime.toString(),
           proposedPrice: correctPrice,
@@ -927,7 +942,7 @@ describe("OptimisticOracleClient.js", function () {
           requester: optimisticRequester.options.address,
           proposer: proposer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           currency: collateral.options.address,
           timestamp: requestTime.toString(),
           proposedPrice: correctPrice,
@@ -937,7 +952,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Once proposals are settled they no longer appear as settleable in the client.
       await optimisticOracle.methods
-        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .settle(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableProposals([proposer]);
@@ -954,7 +969,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request a price:
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableDisputes([disputer]);
@@ -963,7 +978,7 @@ describe("OptimisticOracleClient.js", function () {
       // Make a proposal:
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
-        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, correctPrice)
         .send({ from: proposer });
 
       await client.update();
@@ -973,7 +988,7 @@ describe("OptimisticOracleClient.js", function () {
       // Dispute the proposal:
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
       await optimisticOracle.methods
-        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
         .send({ from: disputer });
       result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
@@ -991,14 +1006,81 @@ describe("OptimisticOracleClient.js", function () {
           proposer: proposer,
           disputer: disputer,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
         },
       ]);
 
       // Settle the dispute and make sure that the client no longer sees it as settleable:
       await optimisticOracle.methods
-        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .settle(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+    });
+
+    it("Basic dispute lifecycle event based price request: request, propose, dispute, resolve & settle", async function () {
+      // Initial update.
+      await client.update();
+
+      // Initially, no settleable disputes:
+      let result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+
+      // Request a price:
+      await optimisticRequester.methods
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
+        .send({ from: accounts[0] });
+
+      // Set event based price request:
+      await optimisticRequester.methods
+        .setEventBased(identifier, requestTime, ancillaryData)
+        .send({ from: accounts[0] });
+
+      await client.update();
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+
+      // Make a proposal:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, correctPrice)
+        .send({ from: proposer });
+
+      await client.update();
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+
+      // Dispute the proposal:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
+        .send({ from: disputer });
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, []);
+
+      // Resolve the dispute and check that the client detects the new state:
+      await pushPrice(correctPrice);
+      await client.update();
+      // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved
+      result = client.getSettleableDisputes([rando]);
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableDisputes([disputer]);
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          proposer: proposer,
+          disputer: disputer,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: ancillaryData,
+          timestamp: requestTime.toString(),
+        },
+      ]);
+
+      // Settle the dispute and make sure that the client no longer sees it as settleable:
+      await optimisticOracle.methods
+        .settle(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
         .send({ from: accounts[0] });
       await client.update();
       result = client.getSettleableDisputes([disputer]);
@@ -1020,7 +1102,7 @@ describe("OptimisticOracleClient.js", function () {
 
       // Request a price and check that the longer lookback client currently sees it
       await optimisticRequester.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, 0)
         .send({ from: accounts[0] });
       await client.update();
       let result = client.getUnproposedPriceRequests();
@@ -1028,7 +1110,7 @@ describe("OptimisticOracleClient.js", function () {
         {
           requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifier),
-          ancillaryData: "0x",
+          ancillaryData: ancillaryData,
           timestamp: requestTime.toString(),
           currency: collateral.options.address,
           reward: "0",
