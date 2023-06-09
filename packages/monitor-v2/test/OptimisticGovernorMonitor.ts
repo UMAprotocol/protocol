@@ -166,7 +166,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     // When calling monitoring module directly there should be only one log (index 0) with the proposal caught by spy.
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
-    assert.equal(spy.getCall(0).lastArg.message, "Transactions Proposed 📝");
+    assert.equal(spy.getCall(0).lastArg.message, "Unverified Transactions Proposed 🚩");
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
@@ -438,7 +438,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     // When calling monitoring module directly there should be only one log (index 0) with the proposal caught by spy.
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
-    assert.equal(spy.getCall(0).lastArg.message, "Transactions Proposed 📝");
+    assert.equal(spy.getCall(0).lastArg.message, "Unverified Transactions Proposed 🚩");
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
