@@ -3,6 +3,16 @@ import { BigNumber } from "ethers";
 import { generateOOv3UILink, Logger, tryHexToUtf8String } from "./common";
 
 import type { MonitoringParams } from "./common";
+import { VerificationResponse } from "./SnapshotVerification";
+
+interface ProposalLogContent {
+  at: string;
+  message: string;
+  mrkdwn: string;
+  rules: string;
+  notificationPath: string;
+  verificationError?: string;
+}
 
 export async function logTransactions(
   logger: typeof Logger,
@@ -18,11 +28,15 @@ export async function logTransactions(
     tx: string;
     ooEventIndex: number;
   },
-  params: MonitoringParams
+  params: MonitoringParams,
+  snapshotVerification: VerificationResponse
 ): Promise<void> {
-  logger.error({
+  const logLevel = snapshotVerification.verified ? "info" : "error";
+  const logContent: ProposalLogContent = {
     at: "OptimisticGovernorMonitor",
-    message: "Transactions Proposed 📝",
+    message: snapshotVerification.verified
+      ? "Verified Transactions Proposed 📝"
+      : "Unverified Transactions Proposed 🚩",
     mrkdwn:
       createEtherscanLinkMarkdown(transaction.proposer, params.chainId) +
       " made a proposal with hash " +
@@ -35,8 +49,6 @@ export async function logTransactions(
       new Date(Number(transaction.proposalTime.toString()) * 1000).toUTCString() +
       " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId) +
-      ". Rules: " +
-      tryHexToUtf8String(transaction.rules) +
       ". Explanation: " +
       tryHexToUtf8String(transaction.explanation) +
       ". The proposal can be disputed till " +
@@ -44,8 +56,13 @@ export async function logTransactions(
       ": " +
       generateOOv3UILink(transaction.tx, transaction.ooEventIndex, params.chainId) +
       ".",
+    rules: tryHexToUtf8String(transaction.rules),
     notificationPath: "optimistic-governor",
-  });
+  };
+  if (snapshotVerification.error !== undefined) {
+    logContent.verificationError = snapshotVerification.error;
+  }
+  logger[logLevel](logContent);
 }
 
 export async function logTransactionsExecuted(

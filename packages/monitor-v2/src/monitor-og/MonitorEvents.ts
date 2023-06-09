@@ -84,9 +84,7 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
   };
 
   for (const transaction of transactions) {
-    const verification = await verifyProposal(transaction, params);
-    console.log(verification);
-    console.log(transaction.args);
+    const snapshotVerification = await verifyProposal(transaction, params);
     await logTransactions(
       logger,
       {
@@ -101,7 +99,8 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         tx: transaction.transactionHash,
         ooEventIndex: await getAssertionEventIndex(transaction.args.assertionId),
       },
-      params
+      params,
+      snapshotVerification
     );
   }
 }
