@@ -57,7 +57,6 @@ export interface MonitoringParams {
   chainId: number;
   blockRange: BlockRange;
   pollingDelay: number;
-  snapshotVerificationEnabled: boolean;
   graphqlEndpoint: string;
   ipfsEndpoint: string;
   approvalChoices: string[];
@@ -120,7 +119,6 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
   }
 
   // Parameters for Snapshot proposal verification.
-  const snapshotVerificationEnabled = env.SNAPSHOT_VERIFICATION_ENABLED === "true";
   const graphqlEndpoint = env.GRAPHQL_ENDPOINT || "https://hub.snapshot.org/graphql";
   const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
   const approvalChoices = env.APPROVAL_CHOICES ? JSON.parse(env.APPROVAL_CHOICES) : ["Yes", "For", "YAE"];
@@ -158,7 +156,6 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
-    snapshotVerificationEnabled,
     graphqlEndpoint,
     ipfsEndpoint,
     approvalChoices,
