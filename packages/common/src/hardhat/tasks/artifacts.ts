@@ -225,11 +225,16 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
       if (
         fs.existsSync(`typechain/${packageName}/ethers/${contractName}.d.ts`) ||
         fs.existsSync(`typechain/${packageName}/ethers/${contractName}.ts`)
-      )
+      ) {
+        fs.appendFileSync(
+          out,
+          `export * as ${contractName}EthersTypes from "../typechain/${packageName}/ethers/${contractName}";\n`
+        );
         fs.appendFileSync(
           out,
           `export type { ${contractName} as ${contractName}Ethers } from "../typechain/${packageName}/ethers";\n`
         );
+      }
     });
 
     artifacts.forEach(({ contractName, packageName }) => {
