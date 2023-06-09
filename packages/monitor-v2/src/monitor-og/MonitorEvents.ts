@@ -1,11 +1,4 @@
 import {
-  ethersConstants,
-  getProxyDeploymentTxs,
-  Logger,
-  MonitoringParams,
-  runQueryFilter,
-  getOgByAddress,
-  getOo,
   ProposalDeletedEvent,
   ProposalExecutedEvent,
   SetCollateralAndBondEvent,
@@ -16,6 +9,15 @@ import {
   TargetSetEvent,
   TransactionExecutedEvent,
   TransactionsProposedEvent,
+} from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
+import {
+  ethersConstants,
+  getProxyDeploymentTxs,
+  Logger,
+  MonitoringParams,
+  runQueryFilter,
+  getOgByAddress,
+  getOo,
 } from "./common";
 import { logProposalDeleted, logProposalExecuted, logSetCollateralAndBond, logSetRules } from "./MonitorLogger";
 import {

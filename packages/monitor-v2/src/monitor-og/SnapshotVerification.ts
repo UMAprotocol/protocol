@@ -1,9 +1,10 @@
+import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import assert from "assert";
 import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { ethersUtils, MonitoringParams, TransactionsProposedEvent, tryHexToUtf8String } from "./common";
+import { ethersUtils, MonitoringParams, tryHexToUtf8String } from "./common";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {

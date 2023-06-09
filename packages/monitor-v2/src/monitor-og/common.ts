@@ -13,18 +13,6 @@ import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 import type { Provider } from "@ethersproject/abstract-provider";
 
 export { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
-export {
-  ProposalDeletedEvent,
-  ProposalExecutedEvent,
-  SetCollateralAndBondEvent,
-  SetEscalationManagerEvent,
-  SetIdentifierEvent,
-  SetLivenessEvent,
-  SetRulesEvent,
-  TargetSetEvent,
-  TransactionExecutedEvent,
-  TransactionsProposedEvent,
-} from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 export { Logger } from "@uma/financial-templates-lib";
 export { constants as ethersConstants, utils as ethersUtils } from "ethers";
 export { getContractInstanceWithProvider } from "../utils/contracts";
