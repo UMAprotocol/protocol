@@ -28,44 +28,6 @@ import {
 } from "./MonitorLogger";
 import { verifyProposal } from "./SnapshotVerification";
 
-// If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
-interface MainTransaction {
-  to: string;
-  data: string;
-  value: string;
-  operation: string;
-}
-
-// We only include properties that will be verified by the bot.
-interface SafeSnapSafe {
-  txs: { mainTransaction: MainTransaction }[];
-  network: string;
-  umaAddress: string;
-}
-
-interface SafeSnapPlugin {
-  safeSnap: { safes: SafeSnapSafe[] };
-}
-
-// We only type the properties requested in the GraphQL query.
-// Properties that are optional in the GraphQL schema are set as potentially null.
-interface SnapshotProposal {
-  id: string;
-  type: string | null;
-  choices: string[];
-  start: number;
-  end: number;
-  state: string;
-  space: { id: string } | null;
-  scores: number[] | null;
-  quorum: number;
-  scores_total: number | null;
-  plugins: Partial<SafeSnapPlugin>; // This is any in the GraphQL schema, but we only care about potential safeSnap plugin.
-}
-export interface graphqlData {
-  proposals: SnapshotProposal[];
-}
-
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oo = await getOo(params);
 
