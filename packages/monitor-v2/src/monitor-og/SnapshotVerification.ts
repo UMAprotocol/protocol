@@ -252,6 +252,15 @@ export const verifyProposal = async (
   if (approvalIndex === -1) {
     return { verified: false, error: `No known approval choice found among ${JSON.stringify(proposal.choices)}` };
   }
+  const matchingChoices = proposal.choices.filter((choice) =>
+    params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
+  );
+  if (matchingChoices.length > 1) {
+    return {
+      verified: false,
+      error: `Multiple approval choices found among among ${JSON.stringify(proposal.choices)}`,
+    };
+  }
   if (proposal.scores === null || proposal.scores.length !== proposal.choices.length) {
     return { verified: false, error: "Proposal scores are not valid" };
   }
