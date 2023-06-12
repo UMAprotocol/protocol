@@ -19,7 +19,9 @@ export async function averageBlockTimeSeconds(chainId?: number): Promise<number>
   switch (chainId) {
     // Source: https://polygonscan.com/chart/blocktime
     case 10:
-      return 0.5;
+      return 2;
+      // Bedrock produces blocks every 2 seconds 
+      // https://community.optimism.io/docs/developers/bedrock/how-is-bedrock-different/#block-production
     case 42161:
       return 0.5;
     case 288:
