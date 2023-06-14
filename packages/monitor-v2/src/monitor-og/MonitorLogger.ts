@@ -59,7 +59,7 @@ export async function logTransactions(
     rules: tryHexToUtf8String(transaction.rules),
     notificationPath: "optimistic-governor",
   };
-  if (snapshotVerification.error !== undefined) {
+  if (!snapshotVerification.verified) {
     logContent.verificationError = snapshotVerification.error;
   }
   logger[logLevel](logContent);

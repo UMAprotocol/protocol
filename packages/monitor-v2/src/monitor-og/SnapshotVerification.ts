@@ -56,10 +56,7 @@ interface IpfsData {
   };
 }
 
-export interface VerificationResponse {
-  verified: boolean;
-  error?: string;
-}
+export type VerificationResponse = { verified: true } | { verified: false; error: string };
 
 interface RulesParameters {
   space: string;
