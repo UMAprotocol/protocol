@@ -222,12 +222,35 @@ export const verifyProposal = async (
   if (proposal.type !== "single-choice" && proposal.type !== "basic") {
     return { verified: false, error: `Proposal type ${proposal.type} is not supported` };
   }
+
+  // Verify that the basic proposal has expected choices or the single-choice proposal has exactly one approval choice.
+  let approvalIndex: number;
   if (proposal.type === "basic") {
-    // Assert that the basic proposal has expected choices.
+    // Assert that the basic proposal has expected choices. We error immediately as this indicates a problem with the
+    // Snapshot backend.
     assert(proposal.choices.length === 3, "Basic proposal must have three choices");
     assert(proposal.choices[0] === "For", "Basic proposal must have 'For' as the first choice");
     assert(proposal.choices[1] === "Against", "Basic proposal must have 'Against' as the second choice");
     assert(proposal.choices[2] === "Abstain", "Basic proposal must have 'Abstain' as the third choice");
+    approvalIndex = 0; // For is the first choice.
+  } else {
+    // Try to find the approval choice among the single choice proposal choices. Make sure there is one and only one
+    // matching approval choice.
+    approvalIndex = proposal.choices.findIndex((choice) =>
+      params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
+    );
+    if (approvalIndex === -1) {
+      return { verified: false, error: `No known approval choice found among ${JSON.stringify(proposal.choices)}` };
+    }
+    const matchingChoices = proposal.choices.filter((choice) =>
+      params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
+    );
+    if (matchingChoices.length > 1) {
+      return {
+        verified: false,
+        error: `Multiple approval choices found among among ${JSON.stringify(proposal.choices)}`,
+      };
+    }
   }
 
   // Verify that the proposal is in the closed state.
@@ -245,22 +268,7 @@ export const verifyProposal = async (
     return { verified: false, error: `Proposal did not meet Snapshot quorum of ${proposal.quorum}` };
   }
 
-  // Verify proposal choices and scores.
-  const approvalIndex = proposal.choices.findIndex((choice) =>
-    params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
-  );
-  if (approvalIndex === -1) {
-    return { verified: false, error: `No known approval choice found among ${JSON.stringify(proposal.choices)}` };
-  }
-  const matchingChoices = proposal.choices.filter((choice) =>
-    params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
-  );
-  if (matchingChoices.length > 1) {
-    return {
-      verified: false,
-      error: `Multiple approval choices found among among ${JSON.stringify(proposal.choices)}`,
-    };
-  }
+  // Verify proposal scores.
   if (proposal.scores === null || proposal.scores.length !== proposal.choices.length) {
     return { verified: false, error: "Proposal scores are not valid" };
   }
