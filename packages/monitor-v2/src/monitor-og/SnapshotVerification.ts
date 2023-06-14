@@ -185,7 +185,7 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean
   return true;
 };
 
-const findSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
+const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
   return (
     safe.network === chainId.toString() && ethersUtils.getAddress(safe.umaAddress) === ethersUtils.getAddress(ogAddress)
   );
@@ -285,7 +285,7 @@ export const verifyProposal = async (
 
   // There must be one and only one matching safe.
   const matchingSafes = proposal.plugins.safeSnap.safes.filter((safe) =>
-    findSafe(safe, params.chainId, transaction.address)
+    isMatchingSafe(safe, params.chainId, transaction.address)
   );
   if (matchingSafes.length === 0) {
     return { verified: false, error: "No matching safe found" };
