@@ -245,7 +245,7 @@ export const verifyProposal = async (
     if (matchingChoices.length > 1) {
       return {
         verified: false,
-        error: `Multiple approval choices found among among ${JSON.stringify(proposal.choices)}`,
+        error: `Multiple approval choices found among ${JSON.stringify(proposal.choices)}`,
       };
     }
   }
