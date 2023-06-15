@@ -84,7 +84,6 @@ export const relayGovernanceMessages = async (
 > => {
   // The l1 governor for polygon is the GovernorRootTunnel and the l1 governor for the rest of l2's is the GovernorHub
   const isPolygon = chainId === 137;
-  console.log("isPolygon", isPolygon);
   if (isPolygon) {
     const relayedMessages = [];
     for (const message of messages) {
