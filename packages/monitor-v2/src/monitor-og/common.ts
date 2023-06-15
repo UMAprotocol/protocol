@@ -14,7 +14,7 @@ import type { Provider } from "@ethersproject/abstract-provider";
 
 export { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
-export { constants as ethersConstants } from "ethers";
+export { constants as ethersConstants, utils as ethersUtils } from "ethers";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 export { generateOOv3UILink } from "../utils/logger";
 
@@ -45,6 +45,9 @@ export interface MonitoringParams {
   chainId: number;
   blockRange: BlockRange;
   pollingDelay: number;
+  graphqlEndpoint: string;
+  ipfsEndpoint: string;
+  approvalChoices: string[];
   botModes: BotModes;
 }
 
@@ -103,6 +106,11 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     throw new Error(`${STARTING_BLOCK_KEY} must be less than or equal to ${ENDING_BLOCK_KEY}`);
   }
 
+  // Parameters for Snapshot proposal verification.
+  const graphqlEndpoint = env.GRAPHQL_ENDPOINT || "https://hub.snapshot.org/graphql";
+  const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
+  const approvalChoices = env.APPROVAL_CHOICES ? JSON.parse(env.APPROVAL_CHOICES) : ["Yes", "For", "YAE"];
+
   const botModes = {
     transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
     transactionsExecutedEnabled: env.TRANSACTIONS_EXECUTED_ENABLED === "true",
@@ -136,6 +144,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
+    graphqlEndpoint,
+    ipfsEndpoint,
+    approvalChoices,
     botModes,
   };
 

@@ -47,4 +47,11 @@ All the configuration should be provided with following environment variables:
 - `SET_LIVENESS_ENABLED` is boolean enabling/disabling monitoring set liveness (`false` by default).
 - `SET_IDENTIFIER_ENABLED` is boolean enabling/disabling monitoring set identifier (`false` by default).
 - `SET_ESCALATION_MANAGER_ENABLED` is boolean enabling/disabling monitoring set escalation manager (`false` by default).
-- `PROXY_DEPLOYED_ENABLED` is boolean enabling/disabling monitoring new proxy deployements (`false` by default).
+- `PROXY_DEPLOYED_ENABLED` is boolean enabling/disabling monitoring new proxy deployments (`false` by default).
+- `GRAPHQL_ENDPOINT` is the GraphQL endpoint used to verify Snapshot proposals. If not provided, this defaults to
+  `https://hub.snapshot.org/graphql`.
+- `IPFS_ENDPOINT` is the IPFS endpoint used to verify Snapshot proposals. If not provided, this defaults to
+  `https://cloudflare-ipfs.com/ipfs`.
+- `APPROVAL_CHOICES` is the list of choices representing approval of Snapshot proposals. If no choice in the proposal
+  corresponds to any of possible approval choices in this list, the bot will not be able to verify Snapshot proposal and
+  log an error. If not provided, this variable defaults to `["Yes", "For", "YAE"]`.

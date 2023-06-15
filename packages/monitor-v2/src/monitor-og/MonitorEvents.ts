@@ -28,6 +28,7 @@ import {
   logTransactionsExecuted,
   logSetEscalationManager,
 } from "./MonitorLogger";
+import { verifyProposal } from "./SnapshotVerification";
 
 export async function monitorTransactionsProposed(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oo = await getOo(params);
@@ -47,6 +48,7 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
   };
 
   for (const transaction of transactions) {
+    const snapshotVerification = await verifyProposal(transaction, params);
     await logTransactions(
       logger,
       {
@@ -61,7 +63,8 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         tx: transaction.transactionHash,
         ooEventIndex: await getAssertionEventIndex(transaction.args.assertionId),
       },
-      params
+      params,
+      snapshotVerification
     );
   }
 }
