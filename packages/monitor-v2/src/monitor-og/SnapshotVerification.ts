@@ -1,5 +1,7 @@
 import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import assert from "assert";
+import retry from "async-retry";
+import { Options as RetryOptions } from "async-retry";
 import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
@@ -112,19 +114,38 @@ const getGraphqlData = async (ipfsHash: string, url: string): Promise<GraphqlDat
 
 // We don't want to throw an error if the IPFS request fails for any reason, so we return a stringified Error object
 // instead that will be logged by the bot.
-const getIpfsData = async (ipfsHash: string, url: string): Promise<IpfsData | Error> => {
+const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<IpfsData | Error> => {
+  let lastTryError: Error | undefined;
   try {
-    const response = await fetch(`${url}/${ipfsHash}`);
-    if (!response.ok) {
-      return new Error(`Request on ${response.url} failed with status ${response.status}`);
-    }
+    const response = await retry(
+      async () => {
+        const fetchResponse = await fetch(`${url}/${ipfsHash}`);
+
+        if (!fetchResponse.ok) {
+          throw new Error(`Request on ${fetchResponse.url} failed with status ${fetchResponse.status}`);
+        }
+
+        return fetchResponse;
+      },
+      {
+        ...retryOptions,
+        onRetry(error) {
+          // We only log the error from the last retry if all attempts failed.
+          lastTryError = error;
+        },
+      }
+    );
+
     const data = await response.json();
 
     // Try to parse the plugins property as JSON.
     data.data.message.plugins = JSON.parse(data.data.message.plugins);
     return data;
   } catch (error) {
-    return new Error(JSON.stringify(error));
+    if (lastTryError instanceof Error) return lastTryError;
+    // Fetch succeeded, but there is an error from parsing the response.
+    assert(error instanceof Error);
+    return error;
   }
 };
 
@@ -314,7 +335,7 @@ export const verifyProposal = async (
   }
 
   // Verify IPFS data is available and matches GraphQL data.
-  const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint);
+  const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint, params.retryOptions);
   if (ipfsData instanceof Error) {
     return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
   }
