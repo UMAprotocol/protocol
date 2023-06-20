@@ -86,7 +86,12 @@ const parseRules = (rules: string): RulesParameters | null => {
 
 // We don't want to throw an error if the GraphQL request fails for any reason, so we return a stringified Error object
 // instead that will be logged by the bot.
-const getGraphqlData = async (ipfsHash: string, url: string): Promise<GraphqlData | Error> => {
+const getGraphqlData = async (
+  ipfsHash: string,
+  url: string,
+  retryOptions: RetryOptions
+): Promise<GraphqlData | Error> => {
+  let lastTryError: Error | undefined;
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
@@ -106,9 +111,22 @@ const getGraphqlData = async (ipfsHash: string, url: string): Promise<GraphqlDat
     }
   `);
   try {
-    return await request<GraphqlData, { ipfsHash: string }>(url, query, { ipfsHash });
-  } catch (error) {
-    return new Error(JSON.stringify(error));
+    return await retry(
+      async () => {
+        return await request<GraphqlData, { ipfsHash: string }>(url, query, { ipfsHash });
+      },
+      {
+        ...retryOptions,
+        onRetry(error) {
+          // We only log the error from the last retry if all attempts failed.
+          lastTryError = error;
+        },
+      }
+    );
+  } catch {
+    // We only try retry above. If that failed, there must be an error assigned to lastTryError.
+    assert(lastTryError instanceof Error);
+    return lastTryError;
   }
 };
 
@@ -223,7 +241,7 @@ export const verifyProposal = async (
   }
 
   // Get proposal data from GraphQL.
-  const graphqlData = await getGraphqlData(ipfsHash, params.graphqlEndpoint);
+  const graphqlData = await getGraphqlData(ipfsHash, params.graphqlEndpoint, params.retryOptions);
   if (graphqlData instanceof Error) {
     return { verified: false, error: `GraphQL request failed with error ${graphqlData.message}` };
   }
