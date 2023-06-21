@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import Web3 from "web3";
 
-import { Logger } from "winston";
+import type { Logger } from "winston";
 
 enum NetworkType {
   Legacy,
@@ -52,14 +52,14 @@ interface MaticResponse {
 export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   1: {
     url: "https://ethgasstation.info/api/ethgasAPI.json",
-    defaultMaxFeePerGasGwei: 500,
-    defaultMaxPriorityFeePerGasGwei: 5,
+    defaultMaxFeePerGasGwei: 450, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+    defaultMaxPriorityFeePerGasGwei: 150,
     type: NetworkType.London,
   },
   10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   137: {
     url: "https://gasstation.polygon.technology/v2",
-    defaultFastPriceGwei: 10,
+    defaultFastPriceGwei: 250,
     type: NetworkType.Legacy,
   },
   288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
