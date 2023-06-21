@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import Web3 from "web3";
 
-import type { Logger } from "winston";
+import { Logger } from "winston";
 
 enum NetworkType {
   Legacy,
@@ -21,43 +21,54 @@ interface GasEstimatorMapping {
     backupUrl?: string;
   };
 }
-
-interface EtherchainResponse {
-  safeLow: number;
-  standard: number;
+interface EthGasStationResponse {
   fast: number;
   fastest: number;
-  currentBaseFee: number;
-  recommendedBaseFee: number;
+  safeLow: number;
+  average: number;
+  block_time: number;
+  blockNum: number;
+  speed: number;
+  safeLowWait: number;
+  avgWait: number;
+  fastWait: number;
+  fastestWait: number;
+  gasPriceRange: Record<string, number>;
 }
 
+interface MaticGasPriceData {
+  maxPriorityFee: number | string;
+  maxFee: number | string;
+}
 interface MaticResponse {
-  safeLow: number;
-  standard: number;
-  fast: number;
-  fastest: number;
+  safeLow: MaticGasPriceData;
+  standard: MaticGasPriceData;
+  fast: MaticGasPriceData;
+  estimatedBaseFee: string;
   blockTime: number;
   blockNumber: number;
 }
 
 export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
-  // Expected shape:
-  // <netId>: {
-  //     url: <primary-gas-station-url>,
-  //     backupUrl: <optional-backup-gas-station-url>,
-  //     defaultFastPricesGwei: <default-gas-price-for-network>
-  // }
   1: {
-    url: "https://www.etherchain.org/api/gasPriceOracle",
+    url: "https://ethgasstation.info/api/ethgasAPI.json",
     defaultMaxFeePerGasGwei: 500,
     defaultMaxPriorityFeePerGasGwei: 5,
     type: NetworkType.London,
   },
   10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
-  137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10, type: NetworkType.Legacy },
+  137: {
+    url: "https://gasstation.polygon.technology/v2",
+    defaultFastPriceGwei: 10,
+    type: NetworkType.Legacy,
+  },
   288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   42161: { defaultFastPriceGwei: 10, type: NetworkType.Legacy },
-  80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20, type: NetworkType.Legacy },
+  80001: {
+    url: "https://gasstation-testnet.polygon.technology/v2",
+    defaultFastPriceGwei: 20,
+    type: NetworkType.Legacy,
+  },
 };
 
 const DEFAULT_NETWORK_ID = 1; // Ethereum Mainnet.
@@ -173,7 +184,7 @@ export class GasEstimator {
     else return this.lastFastPriceGwei * 1e9;
   }
 
-  async _update() {
+  async _update(): Promise<void> {
     // Fetch the latest gas info from the gas price API and fetch the latest block to extract baseFeePerGas, if London.
     const [gasInfo, latestBlock] = await Promise.all([
       this._getPrice(this.networkId),
@@ -205,24 +216,6 @@ export class GasEstimator {
     }
 
     try {
-      // Primary URL expected response structure for London.
-      // {
-      //    safeLow: 1, // slow maxPriorityFeePerGas
-      //    standard: 1.5, // standard maxPriorityFeePerGas
-      //    fast: 4, // fast maxPriorityFeePerGas
-      //    fastest: 6.2, // fastest maxPriorityFeePerGas
-      //    currentBaseFee: 33.1, // previous blocks base fee
-      //    recommendedBaseFee: 67.1 // maxFeePerGas
-      // }
-      // Primary URL expected response structure for legacy.
-      // {
-      //    "safeLow": 3,
-      //    "standard": 15,
-      //    "fast": 40,
-      //    "fastest": 311,
-      //    "blockTime": 2,
-      //    "blockNumber": 18040517
-      // }
       const response = await fetch(url);
       const json = await response.json();
       return this._extractFastGasPrice(json, url);
@@ -257,17 +250,17 @@ export class GasEstimator {
   }
 
   private _extractFastGasPrice(json: { [key: string]: any }, url: string): LondonGasData | LegacyGasData {
-    if (url.includes("etherchain.org")) {
-      const etherchainResponse = json as EtherchainResponse;
-      if (etherchainResponse.recommendedBaseFee === undefined) throw new Error(`Bad etherchain response ${json}`);
+    if (url.includes("ethgasstation.info")) {
+      const ethgasstationResponse = json as EthGasStationResponse;
+      if (ethgasstationResponse.safeLow === undefined) throw new Error(`Bad ethgasstation response ${json}`);
       return {
-        maxFeePerGas: etherchainResponse.recommendedBaseFee,
-        maxPriorityFeePerGas: etherchainResponse.fastest,
+        maxFeePerGas: Number(ethgasstationResponse.safeLow) * 3, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+        maxPriorityFeePerGas: Number(ethgasstationResponse.safeLow) * 2, // assuming baseFeePerGas <= safeLow
       } as LondonGasData;
-    } else if (url.includes("matic")) {
+    } else if (url.includes("polygon")) {
       const maticResponse = json as MaticResponse;
-      if (maticResponse.fastest === undefined) throw new Error(`Bad matic response ${json}`);
-      return { gasPrice: maticResponse.fastest } as LegacyGasData;
+      if (maticResponse?.fast.maxFee === undefined) throw new Error(`Bad matic response ${json}`);
+      return { gasPrice: Number(maticResponse.fast.maxFee) } as LegacyGasData;
     } else {
       throw new Error("Unknown api");
     }
