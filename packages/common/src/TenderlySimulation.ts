@@ -7,10 +7,9 @@ import { isAddress } from "@ethersproject/address";
 import { BigNumber } from "@ethersproject/bignumber";
 import { isHexString } from "@ethersproject/bytes";
 import { AddressZero } from "@ethersproject/constants";
-import retry from "async-retry";
-import { Options as RetryOptions } from "async-retry";
-import fetch from "node-fetch";
+import retry, { Options as RetryOptions } from "async-retry";
 import * as dotenv from "dotenv";
+import fetch from "node-fetch";
 
 interface TenderlyEnvironment {
   user: string;
