@@ -21,43 +21,54 @@ interface GasEstimatorMapping {
     backupUrl?: string;
   };
 }
-
-interface EtherchainResponse {
-  safeLow: number;
-  standard: number;
-  fast: number;
-  fastest: number;
-  currentBaseFee: number;
-  recommendedBaseFee: number;
+interface EtherscanGasResponse {
+  status: string;
+  message: string;
+  result: {
+    LastBlock: string;
+    SafeGasPrice: string;
+    ProposeGasPrice: string;
+    FastGasPrice: string;
+    suggestBaseFee: string;
+    gasUsedRatio: string;
+  };
 }
 
-interface MaticResponse {
-  safeLow: number;
-  standard: number;
-  fast: number;
-  fastest: number;
+interface MaticGasPriceData {
+  maxPriorityFee: number | string;
+  maxFee: number | string;
+}
+interface MumbaiResponseGasStation {
+  safeLow: MaticGasPriceData;
+  standard: MaticGasPriceData;
+  fast: MaticGasPriceData;
+  estimatedBaseFee: string;
   blockTime: number;
   blockNumber: number;
 }
 
 export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
-  // Expected shape:
-  // <netId>: {
-  //     url: <primary-gas-station-url>,
-  //     backupUrl: <optional-backup-gas-station-url>,
-  //     defaultFastPricesGwei: <default-gas-price-for-network>
-  // }
   1: {
-    url: "https://www.etherchain.org/api/gasPriceOracle",
-    defaultMaxFeePerGasGwei: 500,
-    defaultMaxPriorityFeePerGasGwei: 5,
+    url: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
+    defaultMaxFeePerGasGwei: 450, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+    defaultMaxPriorityFeePerGasGwei: 100,
     type: NetworkType.London,
   },
   10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
-  137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10, type: NetworkType.Legacy },
+  137: {
+    url: "https://api.polygonscan.com/api?module=gastracker&action=gasoracle",
+    defaultMaxFeePerGasGwei: 300, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+    defaultMaxPriorityFeePerGasGwei: 50,
+    type: NetworkType.London,
+  },
   288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   42161: { defaultFastPriceGwei: 10, type: NetworkType.Legacy },
-  80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20, type: NetworkType.Legacy },
+  80001: {
+    url: "https://gasstation-testnet.polygon.technology/v2",
+    defaultMaxFeePerGasGwei: 50, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+    defaultMaxPriorityFeePerGasGwei: 10,
+    type: NetworkType.London,
+  },
 };
 
 const DEFAULT_NETWORK_ID = 1; // Ethereum Mainnet.
@@ -173,7 +184,7 @@ export class GasEstimator {
     else return this.lastFastPriceGwei * 1e9;
   }
 
-  async _update() {
+  async _update(): Promise<void> {
     // Fetch the latest gas info from the gas price API and fetch the latest block to extract baseFeePerGas, if London.
     const [gasInfo, latestBlock] = await Promise.all([
       this._getPrice(this.networkId),
@@ -205,24 +216,6 @@ export class GasEstimator {
     }
 
     try {
-      // Primary URL expected response structure for London.
-      // {
-      //    safeLow: 1, // slow maxPriorityFeePerGas
-      //    standard: 1.5, // standard maxPriorityFeePerGas
-      //    fast: 4, // fast maxPriorityFeePerGas
-      //    fastest: 6.2, // fastest maxPriorityFeePerGas
-      //    currentBaseFee: 33.1, // previous blocks base fee
-      //    recommendedBaseFee: 67.1 // maxFeePerGas
-      // }
-      // Primary URL expected response structure for legacy.
-      // {
-      //    "safeLow": 3,
-      //    "standard": 15,
-      //    "fast": 40,
-      //    "fastest": 311,
-      //    "blockTime": 2,
-      //    "blockNumber": 18040517
-      // }
       const response = await fetch(url);
       const json = await response.json();
       return this._extractFastGasPrice(json, url);
@@ -257,17 +250,22 @@ export class GasEstimator {
   }
 
   private _extractFastGasPrice(json: { [key: string]: any }, url: string): LondonGasData | LegacyGasData {
-    if (url.includes("etherchain.org")) {
-      const etherchainResponse = json as EtherchainResponse;
-      if (etherchainResponse.recommendedBaseFee === undefined) throw new Error(`Bad etherchain response ${json}`);
+    if (url.includes("etherscan.io") || url.includes("polygonscan.com")) {
+      const etherscanGasResponse = json as EtherscanGasResponse;
+      if (etherscanGasResponse.result.suggestBaseFee === undefined)
+        throw new Error(`Bad ethgasstation response ${json}`);
       return {
-        maxFeePerGas: etherchainResponse.recommendedBaseFee,
-        maxPriorityFeePerGas: etherchainResponse.fastest,
+        maxFeePerGas: Number(etherscanGasResponse.result.FastGasPrice),
+        maxPriorityFeePerGas:
+          Number(etherscanGasResponse.result.FastGasPrice) - Number(etherscanGasResponse.result.suggestBaseFee),
       } as LondonGasData;
-    } else if (url.includes("matic")) {
-      const maticResponse = json as MaticResponse;
-      if (maticResponse.fastest === undefined) throw new Error(`Bad matic response ${json}`);
-      return { gasPrice: maticResponse.fastest } as LegacyGasData;
+    } else if (url.includes("gasstation-testnet.polygon.technology")) {
+      const maticResponse = json as MumbaiResponseGasStation;
+      if (maticResponse?.fast.maxFee === undefined) throw new Error(`Bad matic response ${json}`);
+      return {
+        maxFeePerGas: Number(maticResponse.fast.maxFee), // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+        maxPriorityFeePerGas: Number(maticResponse.fast.maxPriorityFee),
+      } as LondonGasData;
     } else {
       throw new Error("Unknown api");
     }
