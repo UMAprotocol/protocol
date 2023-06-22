@@ -38,7 +38,7 @@ interface MaticGasPriceData {
   maxPriorityFee: number | string;
   maxFee: number | string;
 }
-interface MaticResponse {
+interface MumbaiResponseGasStation {
   safeLow: MaticGasPriceData;
   standard: MaticGasPriceData;
   fast: MaticGasPriceData;
@@ -56,7 +56,7 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   },
   10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   137: {
-    url: "https://gasstation.polygon.technology/v2",
+    url: "https://api.polygonscan.com/api?module=gastracker&action=gasoracle",
     defaultMaxFeePerGasGwei: 300, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
     defaultMaxPriorityFeePerGasGwei: 50,
     type: NetworkType.London,
@@ -250,7 +250,7 @@ export class GasEstimator {
   }
 
   private _extractFastGasPrice(json: { [key: string]: any }, url: string): LondonGasData | LegacyGasData {
-    if (url.includes("etherscan.io")) {
+    if (url.includes("etherscan.io") || url.includes("polygonscan.com")) {
       const etherscanGasResponse = json as EtherscanGasResponse;
       if (etherscanGasResponse.result.suggestBaseFee === undefined)
         throw new Error(`Bad ethgasstation response ${json}`);
@@ -259,8 +259,8 @@ export class GasEstimator {
         maxPriorityFeePerGas:
           Number(etherscanGasResponse.result.FastGasPrice) - Number(etherscanGasResponse.result.suggestBaseFee),
       } as LondonGasData;
-    } else if (url.includes("polygon")) {
-      const maticResponse = json as MaticResponse;
+    } else if (url.includes("gasstation-testnet.polygon.technology")) {
+      const maticResponse = json as MumbaiResponseGasStation;
       if (maticResponse?.fast.maxFee === undefined) throw new Error(`Bad matic response ${json}`);
       return {
         maxFeePerGas: Number(maticResponse.fast.maxFee), // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
