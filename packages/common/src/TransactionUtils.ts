@@ -135,7 +135,7 @@ export const runTransaction = async ({
       if (waitForMine) {
         receipt = ((await transaction.send({
           ...transactionConfig,
-          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 3,
+          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
           type: "0x2",
         } as SendOptions)) as unknown) as TransactionReceipt;
         transactionHash = receipt.transactionHash;
@@ -145,7 +145,7 @@ export const runTransaction = async ({
       else {
         receipt = (transaction.send({
           ...transactionConfig,
-          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 3,
+          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
           type: "0x2",
         } as SendOptions) as unknown) as PromiEvent<TransactionReceipt>;
         transactionHash = await new Promise((resolve, reject) => {
