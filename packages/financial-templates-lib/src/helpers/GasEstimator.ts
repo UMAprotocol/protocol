@@ -36,6 +36,19 @@ interface EthGasStationResponse {
   gasPriceRange: Record<string, number>;
 }
 
+interface EtherscanGasResponse {
+  status: string;
+  message: string;
+  result: {
+    LastBlock: string;
+    SafeGasPrice: string;
+    ProposeGasPrice: string;
+    FastGasPrice: string;
+    suggestBaseFee: string;
+    gasUsedRatio: string;
+  };
+}
+
 interface MaticGasPriceData {
   maxPriorityFee: number | string;
   maxFee: number | string;
@@ -51,23 +64,25 @@ interface MaticResponse {
 
 export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   1: {
-    url: "https://ethgasstation.info/api/ethgasAPI.json",
-    defaultMaxFeePerGasGwei: 450, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
-    defaultMaxPriorityFeePerGasGwei: 150,
+    url: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
+    defaultMaxFeePerGasGwei: 350, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+    defaultMaxPriorityFeePerGasGwei: 50,
     type: NetworkType.London,
   },
   10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   137: {
     url: "https://gasstation.polygon.technology/v2",
-    defaultFastPriceGwei: 250,
-    type: NetworkType.Legacy,
+    defaultMaxFeePerGasGwei: 300, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+    defaultMaxPriorityFeePerGasGwei: 50,
+    type: NetworkType.London,
   },
   288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   42161: { defaultFastPriceGwei: 10, type: NetworkType.Legacy },
   80001: {
     url: "https://gasstation-testnet.polygon.technology/v2",
-    defaultFastPriceGwei: 20,
-    type: NetworkType.Legacy,
+    defaultMaxFeePerGasGwei: 50, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+    defaultMaxPriorityFeePerGasGwei: 10,
+    type: NetworkType.London,
   },
 };
 
@@ -250,17 +265,22 @@ export class GasEstimator {
   }
 
   private _extractFastGasPrice(json: { [key: string]: any }, url: string): LondonGasData | LegacyGasData {
-    if (url.includes("ethgasstation.info")) {
-      const ethgasstationResponse = json as EthGasStationResponse;
-      if (ethgasstationResponse.safeLow === undefined) throw new Error(`Bad ethgasstation response ${json}`);
+    if (url.includes("etherscan.io")) {
+      const etherscanGasResponse = json as EtherscanGasResponse;
+      if (etherscanGasResponse.result.suggestBaseFee === undefined)
+        throw new Error(`Bad ethgasstation response ${json}`);
       return {
-        maxFeePerGas: Number(ethgasstationResponse.safeLow) * 3, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
-        maxPriorityFeePerGas: Number(ethgasstationResponse.safeLow) * 2, // assuming baseFeePerGas <= safeLow
+        maxFeePerGas: Number(etherscanGasResponse.result.FastGasPrice),
+        maxPriorityFeePerGas:
+          Number(etherscanGasResponse.result.FastGasPrice) - Number(etherscanGasResponse.result.suggestBaseFee),
       } as LondonGasData;
     } else if (url.includes("polygon")) {
       const maticResponse = json as MaticResponse;
       if (maticResponse?.fast.maxFee === undefined) throw new Error(`Bad matic response ${json}`);
-      return { gasPrice: Number(maticResponse.fast.maxFee) } as LegacyGasData;
+      return {
+        maxFeePerGas: Number(maticResponse.fast.maxFee), // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+        maxPriorityFeePerGas: Number(maticResponse.fast.maxPriorityFee),
+      } as LondonGasData;
     } else {
       throw new Error("Unknown api");
     }
