@@ -51,21 +51,38 @@ contract OptimisticOracleV3Events is CommonOptimisticOracleV3Test {
         vm.stopPrank();
 
         // Dispute should emit logs on Optimistic Oracle V3 and Oracle.
-        uint64 assertionTime = optimisticOracleV3.getAssertion(assertionId).assertionTime;
+        // First, get the expected DVM request.
+        OptimisticOracleV3Interface.Assertion memory assertion = optimisticOracleV3.getAssertion(assertionId);
         bytes memory ancillaryData = optimisticOracleV3.stampAssertion(assertionId);
+        OracleRequest memory oracleRequest =
+            OracleRequest({
+                identifier: defaultIdentifier,
+                time: assertion.assertionTime,
+                ancillaryData: ancillaryData
+            });
+
+        // Fund Account2.
+        vm.startPrank(TestAddress.account2);
+        defaultCurrency.allocateTo(TestAddress.account2, defaultBond);
+        defaultCurrency.approve(address(optimisticOracleV3), defaultBond);
+
+        // Construct expected event logs.
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(
             address(optimisticOracleV3),
             defaultIdentifier,
-            assertionTime,
+            assertion.assertionTime,
             ancillaryData,
-            keccak256(abi.encode(defaultIdentifier, assertionTime, ancillaryData))
+            keccak256(abi.encode(defaultIdentifier, assertion.assertionTime, ancillaryData))
         );
         vm.expectEmit(true, true, true, true);
         emit AssertionDisputed(assertionId, TestAddress.account2, TestAddress.account2);
 
-        // Perform dispute and mock oracle response where the assertion is resolved as false.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
+        // Dispute the assertion.
+        optimisticOracleV3.disputeAssertion(assertionId, TestAddress.account2);
+        vm.stopPrank();
+
+        // Mock oracle response where the assertion is resolved as false.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
 
         vm.expectEmit(true, true, true, true);
