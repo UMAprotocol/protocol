@@ -121,7 +121,7 @@ export interface StoredNotifiedProposal {
   question: string;
   proposedPrice: string;
   notificationTimestamp: number;
-  requestTimestamp?: string;
+  requestTimestamp: string;
 }
 
 export const formatPriceEvents = async (
@@ -513,8 +513,8 @@ export const storeNotifiedProposals = async (
       question: contract.question,
       proposedPrice: contract.proposedPrice,
       notificationTimestamp: currentTime,
-      requestTimesmap: contract.requestTimestamp,
-    };
+      requestTimestamp: contract.requestTimestamp,
+    } as StoredNotifiedProposal;
     datastore.save({ key: key, data: data });
   });
   await Promise.all(promises);
@@ -532,7 +532,8 @@ export const getNotifiedProposals = async (): Promise<{
         question: contract.question,
         proposedPrice: contract.proposedPrice,
         notificationTimestamp: contract.notificationTimestamp,
-      },
+        requestTimestamp: contract.requestTimestamp,
+      } as StoredNotifiedProposal,
     };
   }, {});
 };
