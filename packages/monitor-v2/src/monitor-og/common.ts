@@ -6,7 +6,7 @@ import { getRetryProvider } from "@uma/common";
 import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { delay } from "@uma/financial-templates-lib";
-import { Contract, Event, EventFilter, utils } from "ethers";
+import { BigNumber, Contract, Event, EventFilter, utils } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 
@@ -29,11 +29,18 @@ export interface BotModes {
   setIdentifierEnabled: boolean;
   setEscalationManagerEnabled: boolean;
   proxyDeployedEnabled: boolean;
+  automaticProposalsEnabled: boolean;
+  automaticDisputesEnabled: boolean;
+  automaticExecutionEnabled: boolean;
 }
 
 export interface BlockRange {
   start: number;
   end: number;
+}
+
+interface SupportedBonds {
+  [key: string]: string; // We enforce that the keys are valid addresses and the values are valid amounts in type guard.
 }
 
 export interface MonitoringParams {
@@ -48,8 +55,27 @@ export interface MonitoringParams {
   graphqlEndpoint: string;
   ipfsEndpoint: string;
   approvalChoices: string[];
+  supportedBonds?: SupportedBonds; // Optional. Only used in automated support mode.
   botModes: BotModes;
 }
+
+// Type guard for SupportedBonds. This can throw if bond value strings cannot be converted to BigNumber.
+const isSupportedBonds = (bonds: any): bonds is SupportedBonds => {
+  if (typeof bonds !== "object") return false;
+  for (const key in bonds) {
+    if (!utils.isAddress(key)) return false;
+    if (typeof bonds[key] !== "string") return false;
+    if (!BigNumber.from(bonds[key]).gte(0)) return false; // BigNumber.from throws if value is not a valid number.
+  }
+  return true;
+};
+
+const parseSupportedBonds = (env: NodeJS.ProcessEnv): SupportedBonds => {
+  if (!env.SUPPORTED_BONDS) throw new Error("SUPPORTED_BONDS must be defined in env");
+  const supportedBonds = JSON.parse(env.SUPPORTED_BONDS);
+  if (!isSupportedBonds(supportedBonds)) throw new Error("SUPPORTED_BONDS must contain valid addresses and amounts");
+  return supportedBonds;
+};
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
@@ -122,7 +148,16 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     setIdentifierEnabled: env.SET_IDENTIFIER_ENABLED === "true",
     setEscalationManagerEnabled: env.SET_ESCALATION_MANAGER_ENABLED === "true",
     proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
+    automaticProposalsEnabled: env.AUTOMATIC_PROPOSALS_ENABLED === "true",
+    automaticDisputesEnabled: env.AUTOMATIC_DISPUTES_ENABLED === "true",
+    automaticExecutionEnabled: env.AUTOMATIC_EXECUTION_ENABLED === "true",
   };
+
+  // Parse supported bonds if any of automatic support modes are enabled.
+  const supportedBonds =
+    botModes.automaticProposalsEnabled || botModes.automaticDisputesEnabled || botModes.automaticExecutionEnabled
+      ? parseSupportedBonds(env)
+      : undefined;
 
   // Mastercopy and module proxy factory addresses are required when monitoring proxy deployments or when not
   // explicitly providing OG_ADDRESS to monitor in other modes.
@@ -147,6 +182,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     graphqlEndpoint,
     ipfsEndpoint,
     approvalChoices,
+    supportedBonds,
     botModes,
   };
 
