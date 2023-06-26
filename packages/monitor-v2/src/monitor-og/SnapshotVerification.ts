@@ -91,7 +91,6 @@ const getGraphqlData = async (
   url: string,
   retryOptions: RetryOptions
 ): Promise<GraphqlData | Error> => {
-  let lastTryError: Error | undefined;
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
@@ -110,24 +109,13 @@ const getGraphqlData = async (
       }
     }
   `);
-  try {
-    return await retry(
-      async () => {
-        return await request<GraphqlData, { ipfsHash: string }>(url, query, { ipfsHash });
-      },
-      {
-        ...retryOptions,
-        onRetry(error) {
-          // We only log the error from the last retry if all attempts failed.
-          lastTryError = error;
-        },
-      }
-    );
-  } catch {
-    // We only try retry above. If that failed, there must be an error assigned to lastTryError.
-    assert(lastTryError instanceof Error);
-    return lastTryError;
-  }
+  return await retry(
+    () => request<GraphqlData, { ipfsHash: string }>(url, query, { ipfsHash }),
+    retryOptions
+  ).catch((error) => {
+    assert(error instanceof Error, "Unexpected Error type!");
+    return error;
+  });
 };
 
 // We don't want to throw an error if the IPFS request fails for any reason, so we return a stringified Error object
