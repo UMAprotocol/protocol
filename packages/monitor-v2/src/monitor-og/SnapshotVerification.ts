@@ -121,26 +121,14 @@ const getGraphqlData = async (
 // We don't want to throw an error if the IPFS request fails for any reason, so we return a stringified Error object
 // instead that will be logged by the bot.
 const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<IpfsData | Error> => {
-  let lastTryError: Error | undefined;
   try {
-    const response = await retry(
-      async () => {
-        const fetchResponse = await fetch(`${url}/${ipfsHash}`);
-
-        if (!fetchResponse.ok) {
-          throw new Error(`Request on ${fetchResponse.url} failed with status ${fetchResponse.status}`);
-        }
-
-        return fetchResponse;
-      },
-      {
-        ...retryOptions,
-        onRetry(error) {
-          // We only log the error from the last retry if all attempts failed.
-          lastTryError = error;
-        },
+    const response = await retry(async () => {
+      const fetchResponse = await fetch(`${url}/${ipfsHash}`);
+      if (!fetchResponse.ok) {
+        throw new Error(`Request on ${fetchResponse.url} failed with status ${fetchResponse.status}`);
       }
-    );
+      return fetchResponse;
+    }, retryOptions);
 
     const data = await response.json();
 
@@ -148,9 +136,7 @@ const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOpt
     data.data.message.plugins = JSON.parse(data.data.message.plugins);
     return data;
   } catch (error) {
-    if (lastTryError instanceof Error) return lastTryError;
-    // Fetch succeeded, but there is an error from parsing the response.
-    assert(error instanceof Error);
+    assert(error instanceof Error, "Unexpected Error type!");
     return error;
   }
 };
