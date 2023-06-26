@@ -109,7 +109,7 @@ const getGraphqlData = async (
       }
     }
   `);
-  return await retry(
+  return retry(
     () => request<GraphqlData, { ipfsHash: string }>(url, query, { ipfsHash }),
     retryOptions
   ).catch((error) => {
