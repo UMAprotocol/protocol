@@ -38,9 +38,10 @@ interface SnapshotProposalIpfs {
   plugins: Partial<SafeSnapPlugin>;
 }
 
-// We only type the properties requested in the GraphQL query. This extends SnapshotProposalIpfs, but we need to
+// We only type the properties requested in the GraphQL queries. This extends SnapshotProposalIpfs, but we need to
 // override the space property.
-interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
+export interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
+  ipfs: string;
   state: string;
   space: { id: string };
   scores: number[];
@@ -48,7 +49,7 @@ interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
   scores_total: number;
 }
 
-interface GraphqlData {
+export interface GraphqlData {
   proposals: SnapshotProposalGraphql[];
 }
 
@@ -60,14 +61,14 @@ interface IpfsData {
 
 export type VerificationResponse = { verified: true } | { verified: false; error: string };
 
-interface RulesParameters {
+export interface RulesParameters {
   space: string;
   quorum: number;
   votingPeriod: number;
 }
 
 // Returns null if the rules string does not match the expected template.
-const parseRules = (rules: string): RulesParameters | null => {
+export const parseRules = (rules: string): RulesParameters | null => {
   // This is based on the template from Zodiac app at
   // https://github.com/gnosis/zodiac-safe-app/blob/79dbb72af506f60fcc16599516ce48f893393b29/packages/app/src/views/AddModule/wizards/OptimisticGovernorModule/OptimisticGovernorModuleModal.tsx#L136
   const regex = /^I assert that this transaction proposal is valid according to the following rules: Proposals approved on Snapshot, as verified at https:\/\/snapshot\.org\/#\/([a-zA-Z0-9-.]+), are valid as long as there is a minimum quorum of (\d+) and a minimum voting period of (\d+) hours and it does not appear that the Snapshot voting system is being exploited or is otherwise unavailable\. The quorum and voting period are minimum requirements for a proposal to be valid\. Quorum and voting period values set for a specific proposal in Snapshot should be used if they are more strict than the rules parameter\. The explanation included with the on-chain proposal must be the unique IPFS identifier for the specific Snapshot proposal that was approved or a unique identifier for a proposal in an alternative voting system approved by DAO social consensus if Snapshot is being exploited or is otherwise unavailable.$/;
@@ -94,6 +95,7 @@ const getGraphqlData = async (
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
+        ipfs
         type
         choices
         start

@@ -40,7 +40,7 @@ export interface BlockRange {
   end: number;
 }
 
-interface SupportedBonds {
+export interface SupportedBonds {
   [key: string]: string; // We enforce that the keys are valid addresses and the values are valid amounts in type guard.
 }
 
@@ -64,8 +64,18 @@ export interface MonitoringParams {
 // Type guard for SupportedBonds. This can throw if bond value strings cannot be converted to BigNumber.
 const isSupportedBonds = (bonds: any): bonds is SupportedBonds => {
   if (typeof bonds !== "object") return false;
+
+  // addressKeys is used to check for duplicate addresses.
+  const addressKeys = new Set<string>();
   for (const key in bonds) {
     if (!utils.isAddress(key)) return false;
+
+    // Check for duplicate addresses.
+    const addressKey = utils.getAddress(key);
+    if (addressKeys.has(addressKey)) return false;
+    addressKeys.add(addressKey);
+
+    // Check for valid amounts.
     if (typeof bonds[key] !== "string") return false;
     if (!BigNumber.from(bonds[key]).gte(0)) return false; // BigNumber.from throws if value is not a valid number.
   }
