@@ -167,13 +167,22 @@ const getSimulationResponse = async (
   return apiResponse;
 };
 
-const isProjectPublic = async (tenderlyEnv: TenderlyEnvironment): Promise<boolean> => {
+const isProjectPublic = async (tenderlyEnv: TenderlyEnvironment, retryOptions: RetryOptions): Promise<boolean> => {
   const url = `https://api.tenderly.co/api/v1/public/account/${tenderlyEnv.user}/project/${tenderlyEnv.project}`;
+  const headers = { "X-Access-Key": tenderlyEnv.apiKey };
 
   // Return true only if the project API responds OK and the project is public. On any error, return false.
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Project API returned HTTP ${response.status}: ${response.statusText}`);
+    const response = await retry(async () => {
+      const fetchResponse = await fetch(url, {
+        method: "GET",
+        headers: headers, // Private projects require authentication.
+      });
+      if (!fetchResponse.ok) {
+        throw new Error(`Project API returned HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
+      }
+      return fetchResponse;
+    }, retryOptions);
     const projectResponse = (await response.json()) as { project: { public: boolean } };
     return projectResponse.project.public;
   } catch {
@@ -184,6 +193,7 @@ const isProjectPublic = async (tenderlyEnv: TenderlyEnvironment): Promise<boolea
 const getResultUrl = async (
   simulationId: string,
   tenderlyEnv: TenderlyEnvironment,
+  retryOptions: RetryOptions,
   fork?: ForkParams
 ): Promise<ResultUrl> => {
   const publicUrl = `https://dashboard.tenderly.co/public/${tenderlyEnv.user}/${tenderlyEnv.project}/${
@@ -193,7 +203,9 @@ const getResultUrl = async (
     fork !== undefined ? "fork/" + fork.id + "/simulation" : "simulator"
   }/${simulationId}`;
 
-  return (await isProjectPublic(tenderlyEnv)) ? { url: publicUrl, public: true } : { url: privateUrl, public: false };
+  return (await isProjectPublic(tenderlyEnv, retryOptions))
+    ? { url: publicUrl, public: true }
+    : { url: privateUrl, public: false };
 };
 
 export const simulateTenderlyTx = async (
@@ -210,7 +222,12 @@ export const simulateTenderlyTx = async (
   const simulationResponse = await getSimulationResponse(simulationParams, tenderlyEnv, retryOptions);
 
   // Get the URL to the simulation result page. If project is not public, the URL will be private (requires login).
-  const resultUrl = await getResultUrl(simulationResponse.simulation.id, tenderlyEnv, simulationParams.fork);
+  const resultUrl = await getResultUrl(
+    simulationResponse.simulation.id,
+    tenderlyEnv,
+    retryOptions,
+    simulationParams.fork
+  );
 
   return { id: simulationResponse.simulation.id, status: simulationResponse.simulation.status, resultUrl };
 };
