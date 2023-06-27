@@ -6,6 +6,7 @@ import { getRetryProvider } from "@uma/common";
 import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { delay } from "@uma/financial-templates-lib";
+import { Options as RetryOptions } from "async-retry";
 import { Contract, Event, EventFilter, utils } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
@@ -49,6 +50,7 @@ export interface MonitoringParams {
   ipfsEndpoint: string;
   approvalChoices: string[];
   botModes: BotModes;
+  retryOptions: RetryOptions;
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
@@ -136,6 +138,12 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     );
   }
 
+  // Retry options used when fetching off-chain information from Snapshot.
+  const retryOptions: RetryOptions = {
+    retries: env.SNAPSHOT_RETRIES ? Number(env.SNAPSHOT_RETRIES) : 3, // Maximum number of retries.
+    minTimeout: env.SNAPSHOT_TIMEOUT ? Number(env.SNAPSHOT_TIMEOUT) : 1000, // Milliseconds before starting the first retry.
+  };
+
   const initialParams: MonitoringParams = {
     ogAddresses: [], // Will be added later after validation.
     moduleProxyFactoryAddresses,
@@ -148,6 +156,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     ipfsEndpoint,
     approvalChoices,
     botModes,
+    retryOptions,
   };
 
   // If OG_ADDRESS is provided, use it in the monitored address list and return monitoring params.
