@@ -55,3 +55,8 @@ All the configuration should be provided with following environment variables:
 - `APPROVAL_CHOICES` is the list of choices representing approval of Snapshot proposals. If no choice in the proposal
   corresponds to any of possible approval choices in this list, the bot will not be able to verify Snapshot proposal and
   log an error. If not provided, this variable defaults to `["Yes", "For", "YAE"]`.
+- `SNAPSHOT_RETRIES` is the number of maximum retries when trying to fetch IPFS and GraphQL data for Snapshot
+  verification. If not provided, this defaults to 3.
+- `SNAPSHOT_TIMEOUT` is the number of milliseconds to wait before starting the first retry when trying to fetch IPFS and
+  GraphQL data for Snapshot verification. If not provided, this defaults to 1000. After the first retry, this does
+  exponential backoff (using a factor of 2).

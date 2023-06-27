@@ -65,7 +65,7 @@ describe("GasEstimator.js", function () {
   describe("Construction with custom config (legacy)", () => {
     // These tests validate the legacy (pre EIP-1559) setup on custom network IDs
     // Choose a network ID specified in MAPPING_BY_NETWORK.
-    const customNetworkId = 137;
+    const customNetworkId = 42161;
 
     beforeEach(() => {
       const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
