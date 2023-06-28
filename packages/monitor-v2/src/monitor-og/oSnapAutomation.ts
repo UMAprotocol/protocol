@@ -1,9 +1,22 @@
+import {
+  ProposalDeletedEvent,
+  TransactionsProposedEvent,
+} from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
+import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
+import { utils as ethersUtils } from "ethers";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { ethersUtils, getOgByAddress, Logger, MonitoringParams, SupportedBonds } from "./common";
-import { GraphqlData, parseRules, RulesParameters, SnapshotProposalGraphql } from "./SnapshotVerification";
+import { getOgByAddress, Logger, MonitoringParams, runQueryFilter, SupportedBonds } from "./common";
+import {
+  GraphqlData,
+  isMatchingSafe,
+  parseRules,
+  RulesParameters,
+  SafeSnapSafe,
+  SnapshotProposalGraphql,
+} from "./SnapshotVerification";
 
 interface SupportedParameters {
   parsedRules: RulesParameters;
@@ -83,16 +96,69 @@ const getSnapshotProposals = async (
   return graphqlData.proposals;
 };
 
-export const proposeTransactions = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
-  const supportedModules = await getSupportedModules(params);
+// Get all proposals on supported oSnap modules that have not been discarded. Discards are most likely due to disputes,
+// but can also occur on OOv3 upgrades.
+const getUndiscardedProposals = async (
+  supportedModules: SupportedModules,
+  params: MonitoringParams
+): Promise<Array<TransactionsProposedEvent>> => {
+  // Get all proposals for all supported modules.
+  const allProposals = (
+    await Promise.all(
+      Object.keys(supportedModules).map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<TransactionsProposedEvent>(og, og.filters.TransactionsProposed(), {
+          start: 0,
+          end: params.blockRange.end,
+        });
+      })
+    )
+  ).flat();
 
+  // Get all deleted proposals for all supported modules.
+  const deletedProposals = (
+    await Promise.all(
+      Object.keys(supportedModules).map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
+          start: 0,
+          end: params.blockRange.end,
+        });
+      })
+    )
+  ).flat();
+
+  // Filter out all proposals that have been deleted by matching assertionId. assertionId should be sufficient property
+  // for filtering as it is derived from module address, transaction content and assertion time among other factors.
+  const deletedAssertionIds = deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId);
+  return allProposals.filter((proposal) => !deletedAssertionIds.includes(proposal.args.assertionId));
+};
+
+// Checks if a safeSnap safe from Snapshot proposal is supported by oSnap automation.
+const isSafeSupported = (safe: SafeSnapSafe, supportedModules: SupportedModules, chainId: number): boolean => {
+  for (const ogAddress in supportedModules) {
+    if (isMatchingSafe(safe, chainId, ogAddress)) return true;
+  }
+  return false;
+};
+
+export const proposeTransactions = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
+  // Get supported modules and spaces.
+  const supportedModules = await getSupportedModules(params);
   const supportedSpaces = Array.from(
     new Set(Object.values(supportedModules).map((supportedModule) => supportedModule.parsedRules.space))
   );
 
+  // Get all finalized basic safeSnap proposals for supported spaces.
   const snapshotProposals = (
     await Promise.all(
       supportedSpaces.map(async (space) => getSnapshotProposals(space, params.graphqlEndpoint, params.retryOptions))
     )
   ).flat();
+  snapshotProposals.map((proposal) => {
+    assert(proposal.plugins.safeSnap !== undefined, "Proposal does not have safeSnap plugin.");
+  });
+
+  // Get all undiscarded on-chain proposals for supported modules.
+  const onChainProposals = await getUndiscardedProposals(supportedModules, params);
 };

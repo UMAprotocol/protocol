@@ -15,7 +15,6 @@ import type { Provider } from "@ethersproject/abstract-provider";
 
 export { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
-export { constants as ethersConstants, utils as ethersUtils } from "ethers";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 export { generateOOv3UILink } from "../utils/logger";
 

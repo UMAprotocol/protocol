@@ -1,23 +1,23 @@
 import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import assert from "assert";
-import retry from "async-retry";
-import { Options as RetryOptions } from "async-retry";
+import retry, { Options as RetryOptions } from "async-retry";
+import { BigNumber, utils as ethersUtils } from "ethers";
 import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { ethersUtils, MonitoringParams, tryHexToUtf8String } from "./common";
+import { MonitoringParams, tryHexToUtf8String } from "./common";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
   to: string;
   data: string;
   value: string;
-  operation: string;
+  operation: "0" | "1";
 }
 
 // We only include properties that will be verified by the bot.
-interface SafeSnapSafe {
+export interface SafeSnapSafe {
   txs: { mainTransaction: MainTransaction }[];
   network: string;
   umaAddress: string;
@@ -35,7 +35,7 @@ interface SnapshotProposalIpfs {
   choices: string[];
   start: number;
   end: number;
-  plugins: Partial<SafeSnapPlugin>;
+  plugins: SafeSnapPlugin;
 }
 
 // We only type the properties requested in the GraphQL queries. This extends SnapshotProposalIpfs, but we need to
@@ -67,6 +67,97 @@ export interface RulesParameters {
   votingPeriod: number;
 }
 
+// Type guard for MainTransaction.
+const isMainTransaction = (transaction: MainTransaction): transaction is MainTransaction => {
+  try {
+    BigNumber.from(transaction.value);
+  } catch {
+    return false;
+  }
+  return (
+    typeof transaction === "object" &&
+    typeof transaction.to === "string" &&
+    ethersUtils.isAddress(transaction.to) &&
+    ethersUtils.isHexString(transaction.data) &&
+    typeof transaction.value === "string" &&
+    BigNumber.from(transaction.value).gte(0) &&
+    (transaction.operation === "0" || transaction.operation === "1")
+  );
+};
+
+// Type guard for SafeSnapSafe.
+const isSafeSnapSafe = (safe: SafeSnapSafe): safe is SafeSnapSafe => {
+  return (
+    typeof safe === "object" &&
+    Array.isArray(safe.txs) &&
+    safe.txs.every((tx) => isMainTransaction(tx.mainTransaction)) &&
+    typeof safe.network === "string" &&
+    parseInt(safe.network, 10) > 0 &&
+    typeof safe.umaAddress === "string" &&
+    ethersUtils.isAddress(safe.umaAddress)
+  );
+};
+
+// Type guard for SafeSnapPlugin.
+const isSafeSnapPlugin = (plugin: SafeSnapPlugin): plugin is SafeSnapPlugin => {
+  return (
+    typeof plugin === "object" &&
+    plugin.safeSnap &&
+    Array.isArray(plugin.safeSnap.safes) &&
+    plugin.safeSnap.safes.every((safe) => isSafeSnapSafe(safe))
+  );
+};
+
+// Type guard for SnapshotProposalIpfs.
+const isSnapshotProposalIpfs = (proposal: SnapshotProposalIpfs): proposal is SnapshotProposalIpfs => {
+  return (
+    typeof proposal === "object" &&
+    typeof proposal.space === "string" &&
+    typeof proposal.type === "string" &&
+    Array.isArray(proposal.choices) &&
+    typeof proposal.start === "number" &&
+    typeof proposal.end === "number" &&
+    proposal.plugins &&
+    isSafeSnapPlugin(proposal.plugins)
+  );
+};
+
+// Type guard for SnapshotProposalGraphql.
+const isSnapshotProposalGraphql = (proposal: SnapshotProposalGraphql): proposal is SnapshotProposalGraphql => {
+  // SnapshotProposalGraphql is derived from SnapshotProposalIpfs, except for the space property that is overridden.
+  if (!proposal.space || typeof proposal.space.id !== "string") return false;
+  const ipfsProposal = { ...proposal, space: proposal.space.id };
+  return (
+    isSnapshotProposalIpfs(ipfsProposal) &&
+    typeof proposal.ipfs === "string" &&
+    typeof proposal.state === "string" &&
+    proposal.space &&
+    typeof proposal.space.id === "string" &&
+    Array.isArray(proposal.scores) &&
+    typeof proposal.quorum === "number" &&
+    typeof proposal.scores_total === "number"
+  );
+};
+
+// Type guard for GraphqlData.
+const isGraphqlData = (data: GraphqlData): data is GraphqlData => {
+  return (
+    typeof data === "object" &&
+    Array.isArray(data.proposals) &&
+    data.proposals.every((proposal) => isSnapshotProposalGraphql(proposal))
+  );
+};
+
+// Type guard for IpfsData.
+const isIpfsData = (data: IpfsData): data is IpfsData => {
+  return (
+    typeof data === "object" &&
+    data.data &&
+    typeof data.data.message === "object" &&
+    isSnapshotProposalIpfs(data.data.message)
+  );
+};
+
 // Returns null if the rules string does not match the expected template.
 export const parseRules = (rules: string): RulesParameters | null => {
   // This is based on the template from Zodiac app at
@@ -94,7 +185,12 @@ const getGraphqlData = async (
 ): Promise<GraphqlData | Error> => {
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
-      proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
+      proposals(
+        first: 2
+        where: { ipfs: $ipfsHash, plugins_contains: "safeSnap" }
+        orderBy: "created"
+        orderDirection: desc
+      ) {
         ipfs
         type
         choices
@@ -158,12 +254,8 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean
     return false;
   }
 
-  // Verify that the safeSnap plugin exists on both data sources and has the same number of safes.
-  if (
-    ipfsProposal.plugins.safeSnap === undefined ||
-    graphqlProposal.plugins.safeSnap === undefined ||
-    ipfsProposal.plugins.safeSnap.safes.length !== graphqlProposal.plugins.safeSnap.safes.length
-  ) {
+  // Verify that both data sources has the same number of safes in the safeSnap plugin.
+  if (ipfsProposal.plugins.safeSnap.safes.length !== graphqlProposal.plugins.safeSnap.safes.length) {
     return false;
   }
 
@@ -200,7 +292,7 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean
   return true;
 };
 
-const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
+export const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
   return (
     safe.network === chainId.toString() && ethersUtils.getAddress(safe.umaAddress) === ethersUtils.getAddress(ogAddress)
   );
@@ -220,6 +312,9 @@ export const verifyProposal = async (
   const graphqlData = await getGraphqlData(ipfsHash, params.graphqlEndpoint, params.retryOptions);
   if (graphqlData instanceof Error) {
     return { verified: false, error: `GraphQL request failed with error ${graphqlData.message}` };
+  }
+  if (!isGraphqlData(graphqlData)) {
+    return { verified: false, error: "GraphQL data does not match expected format" };
   }
 
   // Verify that the proposal exists and is unique.
@@ -293,11 +388,6 @@ export const verifyProposal = async (
     return { verified: false, error: "Proposal did not get more than 50% votes" };
   }
 
-  // Verify that the proposal has a safeSnap plugin.
-  if (proposal.plugins.safeSnap === undefined) {
-    return { verified: false, error: "No safeSnap plugin found" };
-  }
-
   // There must be one and only one matching safe.
   const matchingSafes = proposal.plugins.safeSnap.safes.filter((safe) =>
     isMatchingSafe(safe, params.chainId, transaction.address)
@@ -332,6 +422,9 @@ export const verifyProposal = async (
   const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint, params.retryOptions);
   if (ipfsData instanceof Error) {
     return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
+  }
+  if (!isIpfsData(ipfsData)) {
+    return { verified: false, error: "IPFS data does not match expected format" };
   }
   if (!ipfsMatchGraphql(ipfsData, graphqlData)) {
     return { verified: false, error: "IPFS data properties do not match GraphQL data" };
