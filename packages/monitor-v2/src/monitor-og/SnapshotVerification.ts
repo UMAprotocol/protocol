@@ -344,11 +344,10 @@ export const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent
 
 // Verify IPFS data is available and matches GraphQL data.
 export const verifyIpfs = async (
-  ipfsHash: string,
   graphqlProposal: SnapshotProposalGraphql,
   params: MonitoringParams
 ): Promise<VerificationResponse> => {
-  const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint, params.retryOptions);
+  const ipfsData = await getIpfsData(graphqlProposal.ipfs, params.ipfsEndpoint, params.retryOptions);
   if (ipfsData instanceof Error)
     return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
   if (!isIpfsData(ipfsData)) return { verified: false, error: "IPFS data does not match expected format" };
@@ -462,7 +461,7 @@ export const verifyProposal = async (
     return { verified: false, error: "On-chain transactions do not match Snapshot proposal" };
 
   // Verify IPFS data is available and matches GraphQL data.
-  const ipfsVerification = await verifyIpfs(ipfsHash, proposal, params);
+  const ipfsVerification = await verifyIpfs(proposal, params);
   if (!ipfsVerification.verified) return ipfsVerification;
 
   // Verify rules and its parsed properties.
