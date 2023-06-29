@@ -176,8 +176,8 @@ export const parseRules = (rules: string): RulesParameters | null => {
   return { space, quorum, votingPeriod };
 };
 
-// We don't want to throw an error if the GraphQL request fails for any reason, so we return a stringified Error object
-// instead that will be logged by the bot.
+// We don't want to throw an error if the GraphQL request fails for any reason, so we return an Error object instead
+// that will be logged by the bot.
 const getGraphqlData = async (
   ipfsHash: string,
   url: string,
