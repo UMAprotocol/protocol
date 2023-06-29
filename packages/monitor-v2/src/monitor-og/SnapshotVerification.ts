@@ -185,12 +185,7 @@ const getGraphqlData = async (
 ): Promise<GraphqlData | Error> => {
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
-      proposals(
-        first: 2
-        where: { ipfs: $ipfsHash, plugins_contains: "safeSnap" }
-        orderBy: "created"
-        orderDirection: desc
-      ) {
+      proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
         ipfs
         type
         choices
