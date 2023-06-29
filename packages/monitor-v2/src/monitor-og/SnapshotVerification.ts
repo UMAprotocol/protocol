@@ -123,7 +123,7 @@ const isSnapshotProposalIpfs = (proposal: SnapshotProposalIpfs): proposal is Sna
 };
 
 // Type guard for SnapshotProposalGraphql.
-const isSnapshotProposalGraphql = (proposal: SnapshotProposalGraphql): proposal is SnapshotProposalGraphql => {
+export const isSnapshotProposalGraphql = (proposal: SnapshotProposalGraphql): proposal is SnapshotProposalGraphql => {
   // SnapshotProposalGraphql is derived from SnapshotProposalIpfs, except for the space property that is overridden.
   if (!proposal.space || typeof proposal.space.id !== "string") return false;
   const ipfsProposal = { ...proposal, space: proposal.space.id };
@@ -298,6 +298,25 @@ export const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: s
   );
 };
 
+// Verify that on-chain proposed transactions match the transactions from the safeSnap plugin.
+export const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe: SafeSnapSafe): boolean => {
+  const safeSnapTransactions = safe.txs.map((tx) => tx.mainTransaction);
+  const onChainTransactions = proposalEvent.args.proposal.transactions;
+  if (safeSnapTransactions.length !== onChainTransactions.length) return false;
+  for (let i = 0; i < safeSnapTransactions.length; i++) {
+    const safeSnapTransaction = safeSnapTransactions[i];
+    const onChainTransaction = onChainTransactions[i];
+    if (
+      ethersUtils.getAddress(safeSnapTransaction.to) !== ethersUtils.getAddress(onChainTransaction.to) ||
+      safeSnapTransaction.data.toLowerCase() !== onChainTransaction.data.toLowerCase() ||
+      safeSnapTransaction.value !== onChainTransaction.value.toString() ||
+      safeSnapTransaction.operation !== onChainTransaction.operation.toString()
+    )
+      return false;
+  }
+  return true;
+};
+
 export const verifyProposal = async (
   transaction: TransactionsProposedEvent,
   params: MonitoringParams
@@ -399,24 +418,8 @@ export const verifyProposal = async (
   }
 
   // Verify that on-chain proposed transactions match the transactions from the safeSnap plugin.
-  const safe = matchingSafes[0];
-  const safeSnapTransactions = safe.txs.map((tx) => tx.mainTransaction);
-  const onChainTransactions = transaction.args.proposal.transactions;
-  if (safeSnapTransactions.length !== onChainTransactions.length) {
-    return { verified: false, error: "Number of transactions do not match" };
-  }
-  for (let i = 0; i < safeSnapTransactions.length; i++) {
-    const safeSnapTransaction = safeSnapTransactions[i];
-    const onChainTransaction = onChainTransactions[i];
-    if (
-      ethersUtils.getAddress(safeSnapTransaction.to) !== ethersUtils.getAddress(onChainTransaction.to) ||
-      safeSnapTransaction.data.toLowerCase() !== onChainTransaction.data.toLowerCase() ||
-      safeSnapTransaction.value !== onChainTransaction.value.toString() ||
-      safeSnapTransaction.operation !== onChainTransaction.operation.toString()
-    ) {
-      return { verified: false, error: "Transactions do not match Snapshot proposal" };
-    }
-  }
+  if (!onChainTxsMatchSnapshot(transaction, matchingSafes[0]))
+    return { verified: false, error: "On-chain transactions do not match Snapshot proposal" };
 
   // Verify IPFS data is available and matches GraphQL data.
   const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint, params.retryOptions);
