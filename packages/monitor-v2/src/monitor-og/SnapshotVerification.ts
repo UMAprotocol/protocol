@@ -290,15 +290,14 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean
 // Verify that the proposal was approved properly on Snapshot.
 export const verifyVoteOutcome = (
   proposal: SnapshotProposalGraphql,
-  transaction: TransactionsProposedEvent,
+  proposalTime: number,
   approvalIndex: number
 ): VerificationResponse => {
   // Verify that the proposal is in the closed state.
   if (proposal.state !== "closed") return { verified: false, error: "Proposal not in closed state" };
 
   // Verify that the proposal voting period has ended.
-  if (transaction.args.proposalTime.toNumber() < proposal.end)
-    return { verified: false, error: "Proposal voting period has not ended" };
+  if (proposalTime < proposal.end) return { verified: false, error: "Proposal voting period has not ended" };
 
   // Verify quorum.
   if (proposal.scores_total !== null && proposal.scores_total < proposal.quorum)
@@ -445,7 +444,7 @@ export const verifyProposal = async (
   }
 
   // Verify that the proposal was approved properly on Snapshot.
-  const approvalVerification = verifyVoteOutcome(proposal, transaction, approvalIndex);
+  const approvalVerification = verifyVoteOutcome(proposal, transaction.args.proposalTime.toNumber(), approvalIndex);
   if (!approvalVerification.verified) return approvalVerification;
 
   // There must be one and only one matching safe.
