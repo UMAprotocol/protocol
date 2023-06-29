@@ -348,6 +348,21 @@ export const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent
   return true;
 };
 
+// Verify IPFS data is available and matches GraphQL data.
+export const verifyIpfs = async (
+  ipfsHash: string,
+  graphqlData: GraphqlData,
+  params: MonitoringParams
+): Promise<VerificationResponse> => {
+  const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint, params.retryOptions);
+  if (ipfsData instanceof Error)
+    return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
+  if (!isIpfsData(ipfsData)) return { verified: false, error: "IPFS data does not match expected format" };
+  if (!ipfsMatchGraphql(ipfsData, graphqlData))
+    return { verified: false, error: "IPFS data properties do not match GraphQL data" };
+  return { verified: true };
+};
+
 export const verifyProposal = async (
   transaction: TransactionsProposedEvent,
   params: MonitoringParams
@@ -429,16 +444,8 @@ export const verifyProposal = async (
     return { verified: false, error: "On-chain transactions do not match Snapshot proposal" };
 
   // Verify IPFS data is available and matches GraphQL data.
-  const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint, params.retryOptions);
-  if (ipfsData instanceof Error) {
-    return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
-  }
-  if (!isIpfsData(ipfsData)) {
-    return { verified: false, error: "IPFS data does not match expected format" };
-  }
-  if (!ipfsMatchGraphql(ipfsData, graphqlData)) {
-    return { verified: false, error: "IPFS data properties do not match GraphQL data" };
-  }
+  const ipfsVerification = await verifyIpfs(ipfsHash, graphqlData, params);
+  if (!ipfsVerification.verified) return ipfsVerification;
 
   // Verify rules and its parsed properties.
   const parsedRules = parseRules(transaction.args.rules);
