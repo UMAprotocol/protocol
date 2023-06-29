@@ -7,6 +7,7 @@ import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
 import { MonitoringParams, tryHexToUtf8String } from "./common";
+import { ProposalAddedEvent } from "@gnosis.pm/zodiac/dist/cjs/types/Tellor";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
@@ -234,9 +235,8 @@ const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOpt
   }
 };
 
-const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean => {
+const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlProposal: SnapshotProposalGraphql): boolean => {
   const ipfsProposal = ipfsData.data.message;
-  const graphqlProposal = graphqlData.proposals[0];
 
   // Verify common properties, except for safeSnap plugin.
   if (
@@ -345,14 +345,14 @@ export const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent
 // Verify IPFS data is available and matches GraphQL data.
 export const verifyIpfs = async (
   ipfsHash: string,
-  graphqlData: GraphqlData,
+  graphqlProposal: SnapshotProposalGraphql,
   params: MonitoringParams
 ): Promise<VerificationResponse> => {
   const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint, params.retryOptions);
   if (ipfsData instanceof Error)
     return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
   if (!isIpfsData(ipfsData)) return { verified: false, error: "IPFS data does not match expected format" };
-  if (!ipfsMatchGraphql(ipfsData, graphqlData))
+  if (!ipfsMatchGraphql(ipfsData, graphqlProposal))
     return { verified: false, error: "IPFS data properties do not match GraphQL data" };
   return { verified: true };
 };
@@ -462,7 +462,7 @@ export const verifyProposal = async (
     return { verified: false, error: "On-chain transactions do not match Snapshot proposal" };
 
   // Verify IPFS data is available and matches GraphQL data.
-  const ipfsVerification = await verifyIpfs(ipfsHash, graphqlData, params);
+  const ipfsVerification = await verifyIpfs(ipfsHash, proposal, params);
   if (!ipfsVerification.verified) return ipfsVerification;
 
   // Verify rules and its parsed properties.
