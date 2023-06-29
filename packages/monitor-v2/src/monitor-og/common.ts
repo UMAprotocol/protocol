@@ -360,3 +360,8 @@ export const getOgAddresses = async (params: MonitoringParams): Promise<Array<st
   );
   return [...params.ogAddresses, ...ogAddresses];
 };
+
+export const getBlockTimestamp = async (provider: Provider, blockNumber: number): Promise<number> => {
+  const block = await provider.getBlock(blockNumber);
+  return block.timestamp;
+};
