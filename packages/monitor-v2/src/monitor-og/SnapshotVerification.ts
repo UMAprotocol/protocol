@@ -216,8 +216,8 @@ const getGraphqlData = async (
   });
 };
 
-// We don't want to throw an error if the IPFS request fails for any reason, so we return a stringified Error object
-// instead that will be logged by the bot.
+// We don't want to throw an error if the IPFS request fails for any reason, so we return an Error object instead that
+// will be logged by the bot.
 const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<IpfsData | Error> => {
   try {
     const response = await retry(async () => {
