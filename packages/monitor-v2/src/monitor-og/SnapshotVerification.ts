@@ -7,7 +7,6 @@ import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
 import { MonitoringParams, tryHexToUtf8String } from "./common";
-import { ProposalAddedEvent } from "@gnosis.pm/zodiac/dist/cjs/types/Tellor";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
