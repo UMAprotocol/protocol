@@ -363,6 +363,30 @@ export const verifyIpfs = async (
   return { verified: true };
 };
 
+// Verify proposal against parsed rules.
+export const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGraphql): VerificationResponse => {
+  // Check space id.
+  if (parsedRules.space !== proposal.space.id)
+    return {
+      verified: false,
+      error: `Snapshot proposal space ${proposal.space.id} does not match ${parsedRules.space} in rules`,
+    };
+
+  // Check rules quorum.
+  if (proposal.scores_total < parsedRules.quorum)
+    return { verified: false, error: `Proposal did not meet rules quorum of ${parsedRules.quorum}` };
+
+  // Check rules voting period.
+  if ((proposal.end - proposal.start) * 3600 < parsedRules.votingPeriod)
+    return {
+      verified: false,
+      error: `Proposal voting period was shorter than ${parsedRules.votingPeriod} hours required by rules`,
+    };
+
+  // Rules verification passed.
+  return { verified: true };
+};
+
 export const verifyProposal = async (
   transaction: TransactionsProposedEvent,
   params: MonitoringParams
@@ -452,21 +476,9 @@ export const verifyProposal = async (
   if (parsedRules === null) {
     return { verified: false, error: "Rules do not match standard template" };
   }
-  if (parsedRules.space !== proposal.space.id) {
-    return {
-      verified: false,
-      error: `Snapshot proposal space ${proposal.space.id} does not match ${parsedRules.space} in rules`,
-    };
-  }
-  if (proposal.scores_total < parsedRules.quorum) {
-    return { verified: false, error: `Proposal did not meet rules quorum of ${parsedRules.quorum}` };
-  }
-  if ((proposal.end - proposal.start) * 3600 < parsedRules.votingPeriod) {
-    return {
-      verified: false,
-      error: `Proposal voting period was shorter than ${parsedRules.votingPeriod} hours required by rules`,
-    };
-  }
+  const rulesVerification = verifyRules(parsedRules, proposal);
+  if (!rulesVerification.verified) return rulesVerification;
 
+  // All checks passed.
   return { verified: true };
 };
