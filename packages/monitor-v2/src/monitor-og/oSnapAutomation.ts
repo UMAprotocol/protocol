@@ -2,17 +2,18 @@ import {
   ProposalDeletedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
-import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { utils as ethersUtils } from "ethers";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { getOgByAddress, Logger, MonitoringParams, runQueryFilter, SupportedBonds } from "./common";
+import { getOgByAddress, Logger, MonitoringParams, runQueryFilter, SupportedBonds, tryHexToUtf8String } from "./common";
 import {
   GraphqlData,
   isMatchingSafe,
+  isSnapshotProposalGraphql,
   parseRules,
+  onChainTxsMatchSnapshot,
   RulesParameters,
   SafeSnapSafe,
   SnapshotProposalGraphql,
@@ -26,6 +27,15 @@ interface SupportedParameters {
 
 interface SupportedModules {
   [ogAddress: string]: SupportedParameters;
+}
+
+// Expanded interface for easier processing of Snapshot proposals. Original Snapshot proposal can contain multiple safes
+// that would need to be proposed on-chain separately. SafeSnapSafe array of plugins.safeSnap.safes from the original
+// Snapshot proposal is flattened into multiple SnapshotProposalExpanded objects. Each SnapshotProposalExpanded object
+// contains one safe from the original Snapshot proposal together with all other properties from the original Snapshot
+// proposal.
+interface SnapshotProposalExpanded extends Omit<SnapshotProposalGraphql, "plugins"> {
+  safe: SafeSnapSafe;
 }
 
 // Checks that currency is among supportedBonds and that the bond amount exactly matches.
@@ -93,7 +103,35 @@ const getSnapshotProposals = async (
     () => request<GraphqlData, { spaceId: string }>(url, query, { spaceId }),
     retryOptions
   );
-  return graphqlData.proposals;
+  // Filter only for proposals that have a properly configured safeSnap plugin.
+  return graphqlData.proposals.filter(isSnapshotProposalGraphql);
+};
+
+// Get all finalized basic safeSnap proposals for supported spaces and safes.
+const getSupportedSnapshotProposals = async (
+  supportedModules: SupportedModules,
+  params: MonitoringParams
+): Promise<Array<SnapshotProposalExpanded>> => {
+  // Get supported space names from supported modules.
+  const supportedSpaces = Array.from(
+    new Set(Object.values(supportedModules).map((supportedModule) => supportedModule.parsedRules.space))
+  );
+
+  // Get all finalized basic safeSnap proposals for supported spaces.
+  const snapshotProposals = (
+    await Promise.all(
+      supportedSpaces.map(async (space) => getSnapshotProposals(space, params.graphqlEndpoint, params.retryOptions))
+    )
+  ).flat();
+
+  // Expand Snapshot proposals to include only one safe per proposal.
+  const expandedProposals = snapshotProposals.flatMap((proposal) => {
+    const { plugins, ...clonedObject } = proposal;
+    return proposal.plugins.safeSnap.safes.map((safe) => ({ ...clonedObject, safe }));
+  });
+
+  // Return only proposals from supported safes.
+  return expandedProposals.filter((proposal) => isSafeSupported(proposal.safe, supportedModules, params.chainId));
 };
 
 // Get all proposals on supported oSnap modules that have not been discarded. Discards are most likely due to disputes,
@@ -142,23 +180,40 @@ const isSafeSupported = (safe: SafeSnapSafe, supportedModules: SupportedModules,
   return false;
 };
 
-export const proposeTransactions = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
-  // Get supported modules and spaces.
-  const supportedModules = await getSupportedModules(params);
-  const supportedSpaces = Array.from(
-    new Set(Object.values(supportedModules).map((supportedModule) => supportedModule.parsedRules.space))
-  );
-
-  // Get all finalized basic safeSnap proposals for supported spaces.
-  const snapshotProposals = (
-    await Promise.all(
-      supportedSpaces.map(async (space) => getSnapshotProposals(space, params.graphqlEndpoint, params.retryOptions))
-    )
-  ).flat();
-  snapshotProposals.map((proposal) => {
-    assert(proposal.plugins.safeSnap !== undefined, "Proposal does not have safeSnap plugin.");
+// Filters out all Snapshot proposals that have been proposed on-chain. This is done by matching safe, explanation and
+// proposed transactions.
+const filterPotentialProposals = (
+  supportedProposals: SnapshotProposalExpanded[],
+  onChainProposals: TransactionsProposedEvent[],
+  params: MonitoringParams
+): SnapshotProposalExpanded[] => {
+  return supportedProposals.filter((supportedProposal) => {
+    const matchingOnChainProposals = onChainProposals.filter((onChainProposal) => {
+      // Check if safe and explanation match
+      if (
+        isMatchingSafe(supportedProposal.safe, params.chainId, onChainProposal.address) &&
+        supportedProposal.ipfs === tryHexToUtf8String(onChainProposal.args.explanation)
+      ) {
+        // Check if proposed transactions match
+        return onChainTxsMatchSnapshot(onChainProposal, supportedProposal.safe);
+      }
+      return false;
+    });
+    // Exclude Snapshot proposals with matching on-chain proposals
+    return matchingOnChainProposals.length === 0;
   });
+};
+
+export const proposeTransactions = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
+  // Get supported modules.
+  const supportedModules = await getSupportedModules(params);
+
+  // Get all finalized basic safeSnap proposals for supported spaces and safes.
+  const supportedProposals = await getSupportedSnapshotProposals(supportedModules, params);
 
   // Get all undiscarded on-chain proposals for supported modules.
   const onChainProposals = await getUndiscardedProposals(supportedModules, params);
+
+  // Filter Snapshot proposals that could potentially be proposed on-chain.
+  const potentialProposals = filterPotentialProposals(supportedProposals, onChainProposals, params);
 };
