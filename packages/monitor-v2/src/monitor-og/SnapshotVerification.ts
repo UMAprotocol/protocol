@@ -292,6 +292,37 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean
   return true;
 };
 
+// Verify that the proposal was approved properly on Snapshot.
+export const verifyVoteOutcome = (
+  proposal: SnapshotProposalGraphql,
+  transaction: TransactionsProposedEvent,
+  approvalIndex: number
+): VerificationResponse => {
+  // Verify that the proposal is in the closed state.
+  if (proposal.state !== "closed") return { verified: false, error: "Proposal not in closed state" };
+
+  // Verify that the proposal voting period has ended.
+  if (transaction.args.proposalTime.toNumber() < proposal.end)
+    return { verified: false, error: "Proposal voting period has not ended" };
+
+  // Verify quorum.
+  if (proposal.scores_total !== null && proposal.scores_total < proposal.quorum)
+    return { verified: false, error: `Proposal did not meet Snapshot quorum of ${proposal.quorum}` };
+
+  // Verify proposal scores.
+  if (proposal.scores === null || proposal.scores.length !== proposal.choices.length)
+    return { verified: false, error: "Proposal scores are not valid" };
+
+  // Verify that the proposal was approved by majority and got more than 50% of the votes.
+  if (approvalIndex !== proposal.scores.indexOf(Math.max(...proposal.scores)))
+    return { verified: false, error: "Proposal was not approved by majority" };
+  if (proposal.scores_total !== null && proposal.scores[approvalIndex] <= proposal.scores_total / 2)
+    return { verified: false, error: "Proposal did not get more than 50% votes" };
+
+  // Vote verification passed.
+  return { verified: true };
+};
+
 export const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
   return (
     safe.network === chainId.toString() && ethersUtils.getAddress(safe.umaAddress) === ethersUtils.getAddress(ogAddress)
@@ -379,33 +410,9 @@ export const verifyProposal = async (
     }
   }
 
-  // Verify that the proposal is in the closed state.
-  if (proposal.state !== "closed") {
-    return { verified: false, error: "Proposal not in closed state" };
-  }
-
-  // Verify that the proposal voting period has ended.
-  if (transaction.args.proposalTime.toNumber() < proposal.end) {
-    return { verified: false, error: "Proposal voting period has not ended" };
-  }
-
-  // Verify quorum.
-  if (proposal.scores_total !== null && proposal.scores_total < proposal.quorum) {
-    return { verified: false, error: `Proposal did not meet Snapshot quorum of ${proposal.quorum}` };
-  }
-
-  // Verify proposal scores.
-  if (proposal.scores === null || proposal.scores.length !== proposal.choices.length) {
-    return { verified: false, error: "Proposal scores are not valid" };
-  }
-
-  // Verify that the proposal was approved by majority and got more than 50% of the votes.
-  if (approvalIndex !== proposal.scores.indexOf(Math.max(...proposal.scores))) {
-    return { verified: false, error: "Proposal was not approved by majority" };
-  }
-  if (proposal.scores_total !== null && proposal.scores[approvalIndex] <= proposal.scores_total / 2) {
-    return { verified: false, error: "Proposal did not get more than 50% votes" };
-  }
+  // Verify that the proposal was approved properly on Snapshot.
+  const approvalVerification = verifyVoteOutcome(proposal, transaction, approvalIndex);
+  if (!approvalVerification.verified) return approvalVerification;
 
   // There must be one and only one matching safe.
   const matchingSafes = proposal.plugins.safeSnap.safes.filter((safe) =>
