@@ -2,12 +2,12 @@ import {
   ContractAddresses as zodiacContractAddresses,
   SupportedNetworks as zodiacSupportedNetworks,
 } from "@gnosis.pm/zodiac";
-import { getRetryProvider } from "@uma/common";
+import { getGckmsSigner, getRetryProvider } from "@uma/common";
 import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { delay } from "@uma/financial-templates-lib";
 import { Options as RetryOptions } from "async-retry";
-import { BigNumber, Contract, Event, EventFilter, utils } from "ethers";
+import { BigNumber, Contract, Event, EventFilter, Signer, utils, Wallet } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 
@@ -49,6 +49,7 @@ export interface MonitoringParams {
   moduleProxyFactoryAddresses: string[];
   ogMasterCopyAddresses: string[];
   provider: Provider;
+  signer?: Signer; // Optional. Only used in automatic support mode.
   chainId: number;
   blockRange: BlockRange;
   pollingDelay: number;
@@ -86,6 +87,14 @@ const parseSupportedBonds = (env: NodeJS.ProcessEnv): SupportedBonds => {
   const supportedBonds = JSON.parse(env.SUPPORTED_BONDS);
   if (!isSupportedBonds(supportedBonds)) throw new Error("SUPPORTED_BONDS must contain valid addresses and amounts");
   return supportedBonds;
+};
+
+const getSigner = async (env: NodeJS.ProcessEnv, provider: Provider): Promise<Signer> => {
+  if (env.GCKMS_WALLET) {
+    return (await getGckmsSigner()).connect(provider);
+  } else if (env.MNEMONIC) {
+    return Wallet.fromMnemonic(env.MNEMONIC).connect(provider);
+  } else throw new Error("Must define either GCKMS_WALLET or MNEMONIC in env");
 };
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
@@ -164,11 +173,13 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     automaticExecutionEnabled: env.AUTOMATIC_EXECUTION_ENABLED === "true",
   };
 
-  // Parse supported bonds if any of automatic support modes are enabled.
-  const supportedBonds =
-    botModes.automaticProposalsEnabled || botModes.automaticDisputesEnabled || botModes.automaticExecutionEnabled
-      ? parseSupportedBonds(env)
-      : undefined;
+  // Parse supported bonds and get signer if any of automatic support modes are enabled.
+  let supportedBonds: SupportedBonds | undefined;
+  let signer: Signer | undefined;
+  if (botModes.automaticProposalsEnabled || botModes.automaticDisputesEnabled || botModes.automaticExecutionEnabled) {
+    supportedBonds = parseSupportedBonds(env);
+    signer = await getSigner(env, provider);
+  }
 
   // Mastercopy and module proxy factory addresses are required when monitoring proxy deployments or when not
   // explicitly providing OG_ADDRESS to monitor in other modes.
@@ -193,6 +204,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     moduleProxyFactoryAddresses,
     ogMasterCopyAddresses,
     provider,
+    signer,
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
