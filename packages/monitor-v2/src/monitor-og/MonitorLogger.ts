@@ -261,7 +261,7 @@ export async function logSubmittedProposal(
 ): Promise<void> {
   logger.info({
     at: "oSnapAutomation",
-    message: "Submitted oSnap Proposal 📝",
+    message: "Submitted oSnap Proposal 🚀",
     mrkdwn:
       "Submitted oSnap proposal on supported oSnap module " +
       createEtherscanLinkMarkdown(transaction.og, params.chainId) +
