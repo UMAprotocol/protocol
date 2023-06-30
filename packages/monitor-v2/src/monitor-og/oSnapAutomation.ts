@@ -320,7 +320,7 @@ const submitProposals = async (
 
     // Check that proposal submission would succeed.
     try {
-      await og.callStatic.proposeTransactions(transactions, explanation);
+      await og.callStatic.proposeTransactions(transactions, explanation, { from: await params.signer.getAddress() });
     } catch (error) {
       assert(error instanceof Error, "Unexpected Error type!");
       throw new Error(`Proposal submission would fail: ${error.message}`);
