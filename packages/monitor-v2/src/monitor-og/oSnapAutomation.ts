@@ -1,14 +1,22 @@
+import type { Provider } from "@ethersproject/abstract-provider";
+import type { Signer } from "@ethersproject/abstract-signer";
+import { ERC20Ethers } from "@uma/contracts-node";
 import {
   ProposalDeletedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
+import { AssertionMadeEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticOracleV3";
+import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
-import { utils as ethersUtils } from "ethers";
+import { ContractReceipt, utils as ethersUtils } from "ethers";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
+import { logSubmittedProposal } from "./MonitorLogger";
+
 import {
   getBlockTimestamp,
+  getContractInstanceWithProvider,
   getOgByAddress,
   Logger,
   MonitoringParams,
@@ -30,7 +38,7 @@ import {
   verifyVoteOutcome,
 } from "./SnapshotVerification";
 
-interface SupportedParameters {
+export interface SupportedParameters {
   parsedRules: RulesParameters;
   currency: string;
   bond: string;
@@ -45,7 +53,7 @@ interface SupportedModules {
 // Snapshot proposal is flattened into multiple SnapshotProposalExpanded objects. Each SnapshotProposalExpanded object
 // contains one safe from the original Snapshot proposal together with all other properties from the original Snapshot
 // proposal.
-interface SnapshotProposalExpanded extends Omit<SnapshotProposalGraphql, "plugins"> {
+export interface SnapshotProposalExpanded extends Omit<SnapshotProposalGraphql, "plugins"> {
   safe: SafeSnapSafe;
 }
 
@@ -98,6 +106,7 @@ const getSnapshotProposals = async (
         orderBy: "created"
         orderDirection: desc
       ) {
+        id
         ipfs
         type
         choices
@@ -264,6 +273,87 @@ const filterVerifiedProposals = async (
   });
 };
 
+const approveBond = async (
+  provider: Provider,
+  signer: Signer,
+  currency: string,
+  bond: string,
+  spender: string
+): Promise<void> => {
+  // If bond is 0, no need to approve.
+  if (bond === "0") return;
+
+  try {
+    const currencyContract = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, currency);
+    await (await currencyContract.connect(signer).approve(spender, bond)).wait();
+  } catch (error) {
+    assert(error instanceof Error, "Unexpected Error type!");
+    throw new Error(`Bond approval for ${spender} failed: ${error.message}`);
+  }
+};
+
+const submitProposals = async (
+  logger: typeof Logger,
+  proposals: SnapshotProposalExpanded[],
+  supportedModules: SupportedModules,
+  params: MonitoringParams
+) => {
+  assert(params.signer !== undefined, "Signer must be set to propose transactions.");
+
+  for (const proposal of proposals) {
+    const og = await getOgByAddress(params, proposal.safe.umaAddress);
+
+    // Approve bond based on stored module parameters.
+    const moduleParameters = getModuleParameters(proposal.safe.umaAddress, supportedModules);
+    await approveBond(params.provider, params.signer, moduleParameters.currency, moduleParameters.bond, og.address);
+
+    // Create transaction parameters.
+    const transactions = proposal.safe.txs.map((transaction) => {
+      return {
+        to: transaction.mainTransaction.to,
+        operation: transaction.mainTransaction.operation,
+        value: transaction.mainTransaction.value,
+        data: transaction.mainTransaction.data,
+      };
+    });
+    const explanation = ethersUtils.toUtf8Bytes(proposal.ipfs);
+
+    // Check that proposal submission would succeed.
+    try {
+      await og.callStatic.proposeTransactions(transactions, explanation);
+    } catch (error) {
+      assert(error instanceof Error, "Unexpected Error type!");
+      throw new Error(`Proposal submission would fail: ${error.message}`);
+    }
+
+    // Submit proposal and get receipt.
+    let receipt: ContractReceipt;
+    try {
+      const tx = await og.connect(params.signer).proposeTransactions(transactions, explanation);
+      receipt = await tx.wait();
+    } catch (error) {
+      assert(error instanceof Error, "Unexpected Error type!");
+      throw new Error(`Proposal submission failed: ${error.message}`);
+    }
+
+    // Log submitted proposal.
+    const ogEvent = receipt.events?.find((e): e is TransactionsProposedEvent => e.event === "TransactionsProposed");
+    const ooEvent = receipt.events?.find((e): e is AssertionMadeEvent => e.event === "AssertionMade");
+    assert(ogEvent !== undefined, "TransactionsProposed event not found.");
+    assert(ooEvent !== undefined, "AssertionMade event not found.");
+    await logSubmittedProposal(
+      logger,
+      {
+        og: og.address,
+        tx: receipt.transactionHash,
+        ooEventIndex: ooEvent.logIndex,
+      },
+      proposal,
+      params
+    );
+  }
+};
+
 export const proposeTransactions = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
   // Get supported modules.
   const supportedModules = await getSupportedModules(params);
@@ -277,4 +367,7 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   // Filter Snapshot proposals that could potentially be proposed on-chain.
   const potentialProposals = filterPotentialProposals(supportedProposals, onChainProposals, params);
   const verifiedProposals = await filterVerifiedProposals(potentialProposals, supportedModules, params);
+
+  // Submit proposals.
+  await submitProposals(logger, verifiedProposals, supportedModules, params);
 };

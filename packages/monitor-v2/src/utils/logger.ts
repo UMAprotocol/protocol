@@ -7,3 +7,7 @@ export const generateOOv3UILink = (transactionHash: string, eventIndex: number, 
   const baseUrl = chainId === 5 ? testnetOptimisticOracleV2UIBaseUrl : optimisticOracleV2UIBaseUrl;
   return `<${baseUrl}/?transactionHash=${transactionHash}&eventIndex=${eventIndex}|View in UI>`;
 };
+
+export const createSnapshotProposalLink = (baseUrl: string, space: string, proposalId: string): string => {
+  return `<${baseUrl}/#/${space}/proposal/${proposalId}|Snapshot UI>`;
+};

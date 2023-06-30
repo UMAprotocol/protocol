@@ -48,6 +48,8 @@ All the configuration should be provided with following environment variables:
 - `SET_IDENTIFIER_ENABLED` is boolean enabling/disabling monitoring set identifier (`false` by default).
 - `SET_ESCALATION_MANAGER_ENABLED` is boolean enabling/disabling monitoring set escalation manager (`false` by default).
 - `PROXY_DEPLOYED_ENABLED` is boolean enabling/disabling monitoring new proxy deployments (`false` by default).
+- `SNAPSHOT_ENDPOINT` is the Snapshot endpoint used to verify Snapshot proposals. If not provided, this defaults to
+  `https://snapshot.org`.
 - `GRAPHQL_ENDPOINT` is the GraphQL endpoint used to verify Snapshot proposals. If not provided, this defaults to
   `https://hub.snapshot.org/graphql`.
 - `IPFS_ENDPOINT` is the IPFS endpoint used to verify Snapshot proposals. If not provided, this defaults to

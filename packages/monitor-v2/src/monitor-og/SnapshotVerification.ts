@@ -41,6 +41,7 @@ interface SnapshotProposalIpfs {
 // We only type the properties requested in the GraphQL queries. This extends SnapshotProposalIpfs, but we need to
 // override the space property.
 export interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
+  id: string;
   ipfs: string;
   state: string;
   space: { id: string };
@@ -129,6 +130,7 @@ export const isSnapshotProposalGraphql = (proposal: SnapshotProposalGraphql): pr
   const ipfsProposal = { ...proposal, space: proposal.space.id };
   return (
     isSnapshotProposalIpfs(ipfsProposal) &&
+    typeof proposal.id === "string" &&
     typeof proposal.ipfs === "string" &&
     typeof proposal.state === "string" &&
     proposal.space &&
@@ -186,6 +188,7 @@ const getGraphqlData = async (
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
+        id
         ipfs
         type
         choices
