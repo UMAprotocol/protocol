@@ -271,7 +271,7 @@ export async function logSubmittedProposal(
       createEtherscanLinkMarkdown(transaction.tx, params.chainId) +
       ". More details: " +
       createSnapshotProposalLink(params.snapshotEndpoint, proposal.space.id, proposal.id) +
-      " and Oracle: " +
+      " and assertion: " +
       generateOOv3UILink(transaction.tx, transaction.ooEventIndex, params.chainId) +
       ".",
     notificationPath: "optimistic-governor",

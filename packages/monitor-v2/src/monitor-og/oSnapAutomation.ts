@@ -5,13 +5,13 @@ import {
   ProposalDeletedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
-import { AssertionMadeEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticOracleV3";
 import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { ContractReceipt, utils as ethersUtils } from "ethers";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
+import { getEventTopic } from "../utils/contracts";
 import { logSubmittedProposal } from "./MonitorLogger";
 
 import {
@@ -338,7 +338,7 @@ const submitProposals = async (
 
     // Log submitted proposal.
     const ogEvent = receipt.events?.find((e): e is TransactionsProposedEvent => e.event === "TransactionsProposed");
-    const ooEvent = receipt.events?.find((e): e is AssertionMadeEvent => e.event === "AssertionMade");
+    const ooEvent = receipt.events?.find((e) => e.topics[0] === getEventTopic("OptimisticOracleV3", "AssertionMade"));
     assert(ogEvent !== undefined, "TransactionsProposed event not found.");
     assert(ooEvent !== undefined, "AssertionMade event not found.");
     await logSubmittedProposal(
