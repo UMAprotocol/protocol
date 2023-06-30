@@ -12,6 +12,7 @@ import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
 import { getEventTopic } from "../utils/contracts";
+import { createSnapshotProposalLink } from "../utils/logger";
 import { logSubmittedProposal } from "./MonitorLogger";
 
 import {
@@ -323,7 +324,13 @@ const submitProposals = async (
       await og.callStatic.proposeTransactions(transactions, explanation, { from: await params.signer.getAddress() });
     } catch (error) {
       assert(error instanceof Error, "Unexpected Error type!");
-      throw new Error(`Proposal submission would fail: ${error.message}`);
+      throw new Error(
+        `Proposal submission for ${createSnapshotProposalLink(
+          params.snapshotEndpoint,
+          proposal.space.id,
+          proposal.id
+        )} would fail: ${error.message}`
+      );
     }
 
     // Submit proposal and get receipt.
@@ -333,7 +340,13 @@ const submitProposals = async (
       receipt = await tx.wait();
     } catch (error) {
       assert(error instanceof Error, "Unexpected Error type!");
-      throw new Error(`Proposal submission failed: ${error.message}`);
+      throw new Error(
+        `Proposal submission for ${createSnapshotProposalLink(
+          params.snapshotEndpoint,
+          proposal.space.id,
+          proposal.id
+        )} failed: ${error.message}`
+      );
     }
 
     // Log submitted proposal.
