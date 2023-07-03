@@ -324,6 +324,9 @@ const submitProposals = async (
       await og.callStatic.proposeTransactions(transactions, explanation, { from: await params.signer.getAddress() });
     } catch (error) {
       assert(error instanceof Error, "Unexpected Error type!");
+      // TODO: We should separately handle the duplicate proposals error. This can occur if there are multiple proposals
+      // with the same transactions (e.g. funding in same amount tranches split across multiple proposals). We should
+      // only warn when first encountering the blocking proposal and then ignore it in any future runs.
       throw new Error(
         `Proposal submission for ${createSnapshotProposalLink(
           params.snapshotEndpoint,
