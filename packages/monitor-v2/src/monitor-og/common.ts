@@ -2,12 +2,12 @@ import {
   ContractAddresses as zodiacContractAddresses,
   SupportedNetworks as zodiacSupportedNetworks,
 } from "@gnosis.pm/zodiac";
-import { getGckmsSigner, getRetryProvider } from "@uma/common";
+import { getRetryProvider } from "@uma/common";
 import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { delay } from "@uma/financial-templates-lib";
 import { Options as RetryOptions } from "async-retry";
-import { BigNumber, Contract, Event, EventFilter, Signer, utils, Wallet } from "ethers";
+import { Contract, Event, EventFilter, utils } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 
@@ -29,16 +29,11 @@ export interface BotModes {
   setIdentifierEnabled: boolean;
   setEscalationManagerEnabled: boolean;
   proxyDeployedEnabled: boolean;
-  automaticProposalsEnabled: boolean;
 }
 
 export interface BlockRange {
   start: number;
   end: number;
-}
-
-export interface SupportedBonds {
-  [key: string]: string; // We enforce that the keys are valid addresses and the values are valid amounts in type guard.
 }
 
 export interface MonitoringParams {
@@ -47,54 +42,15 @@ export interface MonitoringParams {
   moduleProxyFactoryAddresses: string[];
   ogMasterCopyAddresses: string[];
   provider: Provider;
-  signer?: Signer; // Optional. Only used in automatic support mode.
   chainId: number;
   blockRange: BlockRange;
   pollingDelay: number;
-  snapshotEndpoint: string;
   graphqlEndpoint: string;
   ipfsEndpoint: string;
   approvalChoices: string[];
-  supportedBonds?: SupportedBonds; // Optional. Only used in automated support mode.
   botModes: BotModes;
   retryOptions: RetryOptions;
 }
-
-// Type guard for SupportedBonds. This can throw if bond value strings cannot be converted to BigNumber.
-const isSupportedBonds = (bonds: any): bonds is SupportedBonds => {
-  if (typeof bonds !== "object") return false;
-
-  // addressKeys is used to check for duplicate addresses.
-  const addressKeys = new Set<string>();
-  for (const key in bonds) {
-    if (!utils.isAddress(key)) return false;
-
-    // Check for duplicate addresses.
-    const addressKey = utils.getAddress(key);
-    if (addressKeys.has(addressKey)) return false;
-    addressKeys.add(addressKey);
-
-    // Check for valid amounts.
-    if (typeof bonds[key] !== "string") return false;
-    if (!BigNumber.from(bonds[key]).gte(0)) return false; // BigNumber.from throws if value is not a valid number.
-  }
-  return true;
-};
-
-const parseSupportedBonds = (env: NodeJS.ProcessEnv): SupportedBonds => {
-  if (!env.SUPPORTED_BONDS) throw new Error("SUPPORTED_BONDS must be defined in env");
-  const supportedBonds = JSON.parse(env.SUPPORTED_BONDS);
-  if (!isSupportedBonds(supportedBonds)) throw new Error("SUPPORTED_BONDS must contain valid addresses and amounts");
-  return supportedBonds;
-};
-
-const getSigner = async (env: NodeJS.ProcessEnv, provider: Provider): Promise<Signer> => {
-  if (env.GCKMS_WALLET) {
-    return (await getGckmsSigner()).connect(provider);
-  } else if (env.MNEMONIC) {
-    return Wallet.fromMnemonic(env.MNEMONIC).connect(provider);
-  } else throw new Error("Must define either GCKMS_WALLET or MNEMONIC in env");
-};
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
@@ -152,7 +108,6 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
   }
 
   // Parameters for Snapshot proposal verification.
-  const snapshotEndpoint = env.SNAPSHOT_ENDPOINT || "https://snapshot.org";
   const graphqlEndpoint = env.GRAPHQL_ENDPOINT || "https://hub.snapshot.org/graphql";
   const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
   const approvalChoices = env.APPROVAL_CHOICES ? JSON.parse(env.APPROVAL_CHOICES) : ["Yes", "For", "YAE"];
@@ -168,16 +123,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     setIdentifierEnabled: env.SET_IDENTIFIER_ENABLED === "true",
     setEscalationManagerEnabled: env.SET_ESCALATION_MANAGER_ENABLED === "true",
     proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
-    automaticProposalsEnabled: env.AUTOMATIC_PROPOSALS_ENABLED === "true",
   };
-
-  // Parse supported bonds and get signer if any of automatic support modes are enabled.
-  let supportedBonds: SupportedBonds | undefined;
-  let signer: Signer | undefined;
-  if (botModes.automaticProposalsEnabled) {
-    supportedBonds = parseSupportedBonds(env);
-    signer = await getSigner(env, provider);
-  }
 
   // Mastercopy and module proxy factory addresses are required when monitoring proxy deployments or when not
   // explicitly providing OG_ADDRESS to monitor in other modes.
@@ -202,15 +148,12 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     moduleProxyFactoryAddresses,
     ogMasterCopyAddresses,
     provider,
-    signer,
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
-    snapshotEndpoint,
     graphqlEndpoint,
     ipfsEndpoint,
     approvalChoices,
-    supportedBonds,
     botModes,
     retryOptions,
   };
@@ -370,9 +313,4 @@ export const getOgAddresses = async (params: MonitoringParams): Promise<Array<st
     (address) => !params.ogBlacklist?.includes(utils.getAddress(address))
   );
   return [...params.ogAddresses, ...ogAddresses];
-};
-
-export const getBlockTimestamp = async (provider: Provider, blockNumber: number): Promise<number> => {
-  const block = await provider.getBlock(blockNumber);
-  return block.timestamp;
 };
