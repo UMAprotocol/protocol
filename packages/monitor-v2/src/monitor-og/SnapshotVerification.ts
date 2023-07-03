@@ -415,7 +415,7 @@ export const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProp
     return { verified: false, error: `Proposal did not meet rules quorum of ${parsedRules.quorum}` };
 
   // Check rules voting period.
-  if ((proposal.end - proposal.start) * 3600 < parsedRules.votingPeriod)
+  if (proposal.end - proposal.start < parsedRules.votingPeriod * 3600)
     return {
       verified: false,
       error: `Proposal voting period was shorter than ${parsedRules.votingPeriod} hours required by rules`,
