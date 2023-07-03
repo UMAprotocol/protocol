@@ -321,7 +321,7 @@ const verifyProposalChoices = (proposal: SnapshotProposalGraphql, params: Monito
   return { verified: true };
 };
 
-// This should be run against verified proposals only, so it should always return a matching choice index.
+// This should be run against verified proposal choices only, so it should always return a matching choice index.
 const getApprovalIndex = (proposal: SnapshotProposalGraphql, params: MonitoringParams): number => {
   if (proposal.type === "basic") return 0;
 
