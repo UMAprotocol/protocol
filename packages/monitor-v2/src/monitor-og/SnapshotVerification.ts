@@ -251,15 +251,17 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlProposal: SnapshotProposalG
     return false;
   }
 
-  // Verify that both data sources has the same number of safes in the safeSnap plugin.
-  if (ipfsProposal.plugins.safeSnap.safes.length !== graphqlProposal.plugins.safeSnap.safes.length) {
+  // Verify that both data sources has the same number of safes in the safeSnap plugin (ignoring safes with no txs).
+  const ipfsSafes = ipfsProposal.plugins.safeSnap.safes.filter((safe) => safe.txs.length > 0);
+  const graphqlSafes = graphqlProposal.plugins.safeSnap.safes.filter((safe) => safe.txs.length > 0);
+  if (ipfsSafes.length !== graphqlSafes.length) {
     return false;
   }
 
   // Verify that the safes match. We inspect only the properties that are required for verification.
-  for (let i = 0; i < ipfsProposal.plugins.safeSnap.safes.length; i++) {
-    const ipfsSafe = ipfsProposal.plugins.safeSnap.safes[i];
-    const graphqlSafe = graphqlProposal.plugins.safeSnap.safes[i];
+  for (let i = 0; i < ipfsSafes.length; i++) {
+    const ipfsSafe = ipfsSafes[i];
+    const graphqlSafe = graphqlSafes[i];
 
     // Verify the network, oSnap address and number of transaction batches.
     if (
