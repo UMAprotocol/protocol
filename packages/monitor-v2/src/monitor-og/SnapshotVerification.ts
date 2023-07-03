@@ -289,6 +289,47 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlProposal: SnapshotProposalG
   return true;
 };
 
+const verifyProposalChoices = (proposal: SnapshotProposalGraphql, params: MonitoringParams): VerificationResponse => {
+  // Verify proposal type.
+  if (proposal.type !== "single-choice" && proposal.type !== "basic") {
+    return { verified: false, error: `Proposal type ${proposal.type} is not supported` };
+  }
+
+  // Verify that the basic proposal has expected choices.
+  if (proposal.type === "basic") {
+    // Assert that the basic proposal has expected choices. We error immediately as this indicates a problem with the
+    // Snapshot backend.
+    assert(proposal.choices.length === 3, "Basic proposal must have three choices");
+    assert(proposal.choices[0] === "For", "Basic proposal must have 'For' as the first choice");
+    assert(proposal.choices[1] === "Against", "Basic proposal must have 'Against' as the second choice");
+    assert(proposal.choices[2] === "Abstain", "Basic proposal must have 'Abstain' as the third choice");
+    return { verified: true };
+  }
+
+  // Verify that the the single-choice proposal has exactly one matching approval choice.
+  const matchingChoices = proposal.choices.filter((choice) =>
+    params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
+  );
+  if (matchingChoices.length === 0) {
+    return { verified: false, error: `No known approval choice found among ${JSON.stringify(proposal.choices)}` };
+  } else if (matchingChoices.length > 1) {
+    return {
+      verified: false,
+      error: `Multiple approval choices found among ${JSON.stringify(proposal.choices)}`,
+    };
+  }
+  return { verified: true };
+};
+
+// This should be run against verified proposals only, so it should always return a matching choice index.
+const getApprovalIndex = (proposal: SnapshotProposalGraphql, params: MonitoringParams): number => {
+  if (proposal.type === "basic") return 0;
+
+  return proposal.choices.findIndex((choice) =>
+    params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
+  );
+};
+
 // Verify that the proposal was approved properly on Snapshot.
 export const verifyVoteOutcome = (
   proposal: SnapshotProposalGraphql,
@@ -408,41 +449,11 @@ export const verifyProposal = async (
     return { verified: false, error: `Duplicate proposals found for IPFS hash ${ipfsHash}` };
   }
 
-  // Verify proposal type.
+  // Verify proposal type and approval choices.
   const proposal = graphqlData.proposals[0];
-  if (proposal.type !== "single-choice" && proposal.type !== "basic") {
-    return { verified: false, error: `Proposal type ${proposal.type} is not supported` };
-  }
-
-  // Verify that the basic proposal has expected choices or the single-choice proposal has exactly one approval choice.
-  let approvalIndex: number;
-  if (proposal.type === "basic") {
-    // Assert that the basic proposal has expected choices. We error immediately as this indicates a problem with the
-    // Snapshot backend.
-    assert(proposal.choices.length === 3, "Basic proposal must have three choices");
-    assert(proposal.choices[0] === "For", "Basic proposal must have 'For' as the first choice");
-    assert(proposal.choices[1] === "Against", "Basic proposal must have 'Against' as the second choice");
-    assert(proposal.choices[2] === "Abstain", "Basic proposal must have 'Abstain' as the third choice");
-    approvalIndex = 0; // For is the first choice.
-  } else {
-    // Try to find the approval choice among the single choice proposal choices. Make sure there is one and only one
-    // matching approval choice.
-    approvalIndex = proposal.choices.findIndex((choice) =>
-      params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
-    );
-    if (approvalIndex === -1) {
-      return { verified: false, error: `No known approval choice found among ${JSON.stringify(proposal.choices)}` };
-    }
-    const matchingChoices = proposal.choices.filter((choice) =>
-      params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
-    );
-    if (matchingChoices.length > 1) {
-      return {
-        verified: false,
-        error: `Multiple approval choices found among ${JSON.stringify(proposal.choices)}`,
-      };
-    }
-  }
+  const proposalTypeVerification = verifyProposalChoices(proposal, params);
+  if (!proposalTypeVerification.verified) return proposalTypeVerification;
+  const approvalIndex = getApprovalIndex(proposal, params);
 
   // Verify that the proposal was approved properly on Snapshot.
   const approvalVerification = verifyVoteOutcome(proposal, transaction.args.proposalTime.toNumber(), approvalIndex);
