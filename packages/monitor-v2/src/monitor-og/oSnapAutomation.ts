@@ -284,8 +284,12 @@ const approveBond = async (
   // If bond is 0, no need to approve.
   if (bond === "0") return;
 
+  // If existing approval matches the bond, no need to proceed.
+  const currencyContract = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, currency);
+  const currentAllowance = await currencyContract.allowance(await signer.getAddress(), spender);
+  if (currentAllowance.toString() === bond) return;
+
   try {
-    const currencyContract = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, currency);
     await (await currencyContract.connect(signer).approve(spender, bond)).wait();
   } catch (error) {
     assert(error instanceof Error, "Unexpected Error type!");
