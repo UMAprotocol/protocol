@@ -424,6 +424,7 @@ const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGra
   return { verified: true };
 };
 
+// Check if the proposal has been executed before.
 const hasBeenExecuted = async (
   currentProposal: TransactionsProposedEvent,
   params: MonitoringParams
