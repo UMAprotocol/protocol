@@ -1,5 +1,4 @@
 import {
-  ProposalDeletedEvent,
   ProposalExecutedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
