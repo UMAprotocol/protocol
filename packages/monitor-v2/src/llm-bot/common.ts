@@ -1,12 +1,12 @@
 import { Provider } from "@ethersproject/abstract-provider";
 
 export enum OptimisticOracleType {
-  PriceRequest = "Assertion",
+  PriceRequest = "PriceRequest",
   Assertion = "Assertion",
 }
 
 export class OptimisticOracleRequest {
-  claim: string; // Human readable claim.
+  body: string; // Human readable request body.
   type: OptimisticOracleType; // Type of the request.
   timestamp: number; // Timestamp in seconds of the request.
   identifier: string; // Identifier of the request.
@@ -21,7 +21,7 @@ export class OptimisticOracleRequest {
   disputeTx?: string; // Transaction hash of the dispute.
 
   constructor(data: {
-    claim: string;
+    body: string;
     type: OptimisticOracleType;
     timestamp: number;
     identifier: string;
@@ -35,7 +35,7 @@ export class OptimisticOracleRequest {
     resolveTx?: string;
     disputeTx?: string;
   }) {
-    this.claim = data.claim;
+    this.body = data.body;
     this.type = data.type;
     this.timestamp = data.timestamp;
     this.identifier = data.identifier;
