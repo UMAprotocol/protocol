@@ -1,18 +1,55 @@
 import { Provider } from "@ethersproject/abstract-provider";
 
-export type OptimisticOracleRequest = {
+export enum OptimisticOracleType {
+  PriceRequest = "Assertion",
+  Assertion = "Assertion",
+}
+
+export class OptimisticOracleRequest {
   claim: string; // Human readable claim.
-  timestamp: number; // Timestamp of the request.
+  type: OptimisticOracleType; // Type of the request.
+  timestamp: number; // Timestamp in seconds of the request.
   identifier: string; // Identifier of the request.
   requester: string; // Address of the requester.
   requestTx: string; // Transaction hash of the request.
   proposer?: string; // Address of the proposer.
   proposedValue?: number | boolean; // Proposed value.
   proposeTx?: string; // Transaction hash of the proposal.
+  disputableUntil?: number; // Timestamp in ms until the request can be disputed.
   resolvedValue?: number | boolean; // Resolved value.
   resolveTx?: string; // Transaction hash of the resolution.
   disputeTx?: string; // Transaction hash of the dispute.
-};
+
+  constructor(data: {
+    claim: string;
+    type: OptimisticOracleType;
+    timestamp: number;
+    identifier: string;
+    requester: string;
+    requestTx: string;
+    proposer?: string;
+    proposedValue?: number | boolean;
+    proposeTx?: string;
+    disputableUntil?: number;
+    resolvedValue?: number | boolean;
+    resolveTx?: string;
+    disputeTx?: string;
+  }) {
+    this.claim = data.claim;
+    this.type = data.type;
+    this.timestamp = data.timestamp;
+    this.identifier = data.identifier;
+    this.requester = data.requester;
+    this.requestTx = data.requestTx;
+    this.proposer = data.proposer;
+    this.proposedValue = data.proposedValue;
+    this.proposeTx = data.proposeTx;
+    this.disputableUntil = data.disputableUntil; // should be in ms
+    this.resolvedValue = data.resolvedValue;
+    this.resolveTx = data.resolveTx;
+    this.disputeTx = data.disputeTx;
+  }
+}
 
 /**
  * Represents a client to interact with an Optimistic Oracle and store the requests.
