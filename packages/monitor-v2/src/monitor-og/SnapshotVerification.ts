@@ -132,6 +132,7 @@ export const isSnapshotProposalGraphql = (proposal: unknown): proposal is Snapsh
   const ipfsProposal = { ...proposal, space: proposal.space.id };
   return (
     isSnapshotProposalIpfs(ipfsProposal) &&
+    typeof proposal.id === "string" &&
     typeof proposal.ipfs === "string" &&
     typeof proposal.state === "string" &&
     Array.isArray(proposal.scores) &&
@@ -184,6 +185,7 @@ const getGraphqlData = async (ipfsHash: string, url: string, retryOptions: Retry
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
+        id
         ipfs
         type
         choices
