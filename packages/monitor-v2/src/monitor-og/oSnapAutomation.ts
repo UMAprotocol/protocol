@@ -14,12 +14,13 @@ import { gql } from "graphql-tag";
 
 import { getEventTopic } from "../utils/contracts";
 import { createSnapshotProposalLink } from "../utils/logger";
-import { logSubmittedProposal } from "./MonitorLogger";
+import { logSubmittedDispute, logSubmittedProposal } from "./MonitorLogger";
 
 import {
   getBlockTimestamp,
   getContractInstanceWithProvider,
   getOgByAddress,
+  getOo,
   Logger,
   MonitoringParams,
   runQueryFilter,
@@ -35,6 +36,7 @@ import {
   RulesParameters,
   SafeSnapSafe,
   SnapshotProposalGraphql,
+  VerificationResponse,
   verifyIpfs,
   verifyProposal,
   verifyRules,
@@ -354,6 +356,13 @@ const submitProposals = async (
     });
     const explanation = ethersUtils.toUtf8Bytes(proposal.ipfs);
 
+    // Prepare potential error message for simulating/proposing.
+    const proposalError = `Proposal submission for ${createSnapshotProposalLink(
+      params.snapshotEndpoint,
+      proposal.space.id,
+      proposal.id
+    )}`;
+
     // Check that proposal submission would succeed.
     try {
       await og.callStatic.proposeTransactions(transactions, explanation, { from: await params.signer.getAddress() });
@@ -362,13 +371,7 @@ const submitProposals = async (
       // TODO: We should separately handle the duplicate proposals error. This can occur if there are multiple proposals
       // with the same transactions (e.g. funding in same amount tranches split across multiple proposals). We should
       // only warn when first encountering the blocking proposal and then ignore it in any future runs.
-      throw new Error(
-        `Proposal submission for ${createSnapshotProposalLink(
-          params.snapshotEndpoint,
-          proposal.space.id,
-          proposal.id
-        )} would fail: ${error.message}`
-      );
+      throw new Error(`${proposalError} would fail: ${error.message}`);
     }
 
     // Submit proposal and get receipt.
@@ -378,13 +381,7 @@ const submitProposals = async (
       receipt = await tx.wait();
     } catch (error) {
       assert(error instanceof Error, "Unexpected Error type!");
-      throw new Error(
-        `Proposal submission for ${createSnapshotProposalLink(
-          params.snapshotEndpoint,
-          proposal.space.id,
-          proposal.id
-        )} failed: ${error.message}`
-      );
+      throw new Error(`${proposalError} failed: ${error.message}`);
     }
 
     // Log submitted proposal.
@@ -402,6 +399,62 @@ const submitProposals = async (
       proposal,
       params
     );
+  }
+};
+
+const submitDisputes = async (
+  logger: typeof Logger,
+  proposals: { proposalEvent: TransactionsProposedEvent; verificationResult: VerificationResponse }[],
+  supportedModules: SupportedModules,
+  params: MonitoringParams
+) => {
+  assert(params.signer !== undefined, "Signer must be set to dispute proposals.");
+  const disputerAddress = await params.signer.getAddress();
+
+  for (const proposal of proposals) {
+    const oo = await getOo(params);
+
+    // Approve bond based on stored module parameters.
+    const moduleParameters = getModuleParameters(proposal.proposalEvent.address, supportedModules);
+    await approveBond(params.provider, params.signer, moduleParameters.currency, moduleParameters.bond, oo.address);
+
+    // Prepare potential error message for simulating/disputing.
+    const disputeError =
+      "Dispute submission on assertionId " +
+      proposal.proposalEvent.args.assertionId +
+      " related to proposalHash " +
+      proposal.proposalEvent.args.proposalHash +
+      " posted on oSnap module " +
+      proposal.proposalEvent.address +
+      " for Snapshot space " +
+      moduleParameters.parsedRules.space;
+
+    // Check that dispute submission would succeed.
+    try {
+      await oo.callStatic.disputeAssertion(proposal.proposalEvent.args.assertionId, disputerAddress, {
+        from: disputerAddress,
+      });
+    } catch (error) {
+      assert(error instanceof Error, "Unexpected Error type!");
+      throw new Error(`${disputeError} would fail: ${error.message}`);
+    }
+
+    // Submit dispute and get receipt.
+    let receipt: ContractReceipt;
+    try {
+      const tx = await oo
+        .connect(params.signer)
+        .disputeAssertion(proposal.proposalEvent.args.assertionId, disputerAddress);
+      receipt = await tx.wait();
+    } catch (error) {
+      assert(error instanceof Error, "Unexpected Error type!");
+      throw new Error(`${disputeError} failed: ${error.message}`);
+    }
+
+    // Log submitted dispute.
+    const disputeEvent = receipt.events?.find((e) => e.event === "AssertionDisputed");
+    assert(disputeEvent !== undefined, "AssertionDisputed event not found.");
+    await logSubmittedDispute(logger, proposal, disputeEvent.transactionHash, params);
   }
 };
 
@@ -437,10 +490,16 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
   const liveProposals = unexecutedProposals.filter((proposal) => !hasChallengePeriodEnded(proposal, lastTimestamp));
 
-  // Filter proposals that did not pass verification.
-  const disputableProposals = await Promise.all(
-    liveProposals.filter(async (proposal) => {
-      return !(await verifyProposal(proposal, params)).verified;
-    })
-  );
+  // Filter proposals that did not pass verification and also retain verification result for logging.
+  const disputableProposals = (
+    await Promise.all(
+      liveProposals.map(async (proposalEvent) => {
+        const verificationResult = await verifyProposal(proposalEvent, params);
+        return { proposalEvent, verificationResult };
+      })
+    )
+  ).filter((proposal) => !proposal.verificationResult.verified);
+
+  // Submit disputes.
+  await submitDisputes(logger, disputableProposals, supportedModules, params);
 };

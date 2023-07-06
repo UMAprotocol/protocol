@@ -1,4 +1,6 @@
+import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import { createEtherscanLinkMarkdown, TenderlySimulationResult } from "@uma/common";
+import assert from "assert";
 import { BigNumber } from "ethers";
 
 import { createSnapshotProposalLink, createTenderlySimulationLink } from "../utils/logger";
@@ -277,6 +279,32 @@ export async function logSubmittedProposal(
       " and assertion: " +
       generateOOv3UILink(transaction.tx, transaction.ooEventIndex, params.chainId) +
       ".",
+    notificationPath: "optimistic-governor",
+  });
+}
+
+export async function logSubmittedDispute(
+  logger: typeof Logger,
+  proposal: { proposalEvent: TransactionsProposedEvent; verificationResult: VerificationResponse },
+  disputeTx: string,
+  params: MonitoringParams
+): Promise<void> {
+  assert(proposal.verificationResult.verified === false, "Dispute should be submitted only for unverified proposals.");
+
+  logger.info({
+    at: "oSnapAutomation",
+    message: "Submitted oSnap Dispute 🚨",
+    mrkdwn:
+      "Submitted dispute for supported oSnap module " +
+      createEtherscanLinkMarkdown(proposal.proposalEvent.address, params.chainId) +
+      " related to proposalHash " +
+      proposal.proposalEvent.args.proposalHash +
+      " and assertionId " +
+      proposal.proposalEvent.args.assertionId +
+      " in transaction " +
+      createEtherscanLinkMarkdown(disputeTx, params.chainId) +
+      ". Reason for dispute: " +
+      proposal.verificationResult.error,
     notificationPath: "optimistic-governor",
   });
 }
