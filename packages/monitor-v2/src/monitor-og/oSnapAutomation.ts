@@ -3,6 +3,7 @@ import type { Signer } from "@ethersproject/abstract-signer";
 import { ERC20Ethers } from "@uma/contracts-node";
 import {
   ProposalDeletedEvent,
+  ProposalExecutedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import assert from "assert";
@@ -274,6 +275,39 @@ const filterVerifiedProposals = async (
   });
 };
 
+// Filters out all proposals that have been executed on-chain. This includes proposals both before and after their
+// challenge period.
+const filterUnexecutedProposals = async (
+  proposals: TransactionsProposedEvent[],
+  params: MonitoringParams
+): Promise<TransactionsProposedEvent[]> => {
+  // Get all assertion Ids from executed proposals covering modules in input proposals.
+  const executedAssertionIds = (
+    await Promise.all(
+      Array.from(new Set(proposals.map((proposal) => proposal.address))).map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        const executedProposals = await runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), {
+          start: 0,
+          end: params.blockRange.end,
+        });
+        return executedProposals.map((executedProposal) => executedProposal.args.assertionId);
+      })
+    )
+  ).flat();
+
+  // Filter out all proposals that have been executed based on matching assertionId.
+  return proposals.filter((proposal) => !executedAssertionIds.includes(proposal.args.assertionId));
+};
+
+// Filter function to check if challenge period has passed for a proposal.
+const hasChallengePeriodEnded = async (
+  proposal: TransactionsProposedEvent,
+  params: MonitoringParams
+): Promise<boolean> => {
+  const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
+  return lastTimestamp >= proposal.args.challengeWindowEnds.toNumber();
+};
+
 const approveBond = async (
   provider: Provider,
   signer: Signer,
@@ -390,4 +424,15 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
 
   // Submit proposals.
   await submitProposals(logger, verifiedProposals, supportedModules, params);
+};
+
+export const disputeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
+  // Get supported modules.
+  const supportedModules = await getSupportedModules(params);
+
+  // Get all undiscarded on-chain proposals for supported modules.
+  const onChainProposals = await getUndiscardedProposals(supportedModules, params);
+
+  // Filter out all proposals that have been executed on-chain.
+  const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
 };
