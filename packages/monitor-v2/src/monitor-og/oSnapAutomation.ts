@@ -36,6 +36,7 @@ import {
   SafeSnapSafe,
   SnapshotProposalGraphql,
   verifyIpfs,
+  verifyProposal,
   verifyRules,
   verifyVoteOutcome,
 } from "./SnapshotVerification";
@@ -435,4 +436,11 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   // Filter out all proposals that have not passed their challenge period.
   const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
   const liveProposals = unexecutedProposals.filter((proposal) => !hasChallengePeriodEnded(proposal, lastTimestamp));
+
+  // Filter proposals that did not pass verification.
+  const disputableProposals = await Promise.all(
+    liveProposals.filter(async (proposal) => {
+      return !(await verifyProposal(proposal, params)).verified;
+    })
+  );
 };
