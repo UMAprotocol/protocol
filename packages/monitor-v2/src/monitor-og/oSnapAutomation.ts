@@ -491,6 +491,8 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const liveProposals = unexecutedProposals.filter((proposal) => !hasChallengePeriodEnded(proposal, lastTimestamp));
 
   // Filter proposals that did not pass verification and also retain verification result for logging.
+  // TODO: We should separately handle IPFS and Graphql server errors. We don't want to submit disputes immediately just
+  // because IPFS gateway or Snapshot backend is down.
   const disputableProposals = (
     await Promise.all(
       liveProposals.map(async (proposalEvent) => {
