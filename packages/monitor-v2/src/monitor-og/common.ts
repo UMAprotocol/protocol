@@ -68,6 +68,11 @@ export interface MonitoringParams {
   retryOptions: RetryOptions;
 }
 
+// Helper type guard for dictionary objects.
+export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
+  return typeof arg === "object" && arg !== null && !Array.isArray(arg);
+};
+
 // Type guard for SupportedBonds. This can throw if bond value strings cannot be converted to BigNumber.
 const isSupportedBonds = (bonds: any): bonds is SupportedBonds => {
   if (typeof bonds !== "object") return false;
