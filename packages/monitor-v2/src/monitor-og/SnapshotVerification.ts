@@ -13,7 +13,7 @@ interface MainTransaction {
   to: string;
   data: string;
   value: string;
-  operation: "0" | "1";
+  operation: "0" | "1"; // Operation type: 0 == call, 1 == delegate call.
 }
 
 // We only include properties that will be verified by the bot.
