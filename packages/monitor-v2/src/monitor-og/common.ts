@@ -73,9 +73,9 @@ export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
   return typeof arg === "object" && arg !== null && !Array.isArray(arg);
 };
 
-// Type guard for SupportedBonds. This can throw if bond value strings cannot be converted to BigNumber.
-const isSupportedBonds = (bonds: any): bonds is SupportedBonds => {
-  if (typeof bonds !== "object") return false;
+// Type guard for SupportedBonds.
+const isSupportedBonds = (bonds: unknown): bonds is SupportedBonds => {
+  if (!isDictionary(bonds)) return false;
 
   // addressKeys is used to check for duplicate addresses.
   const addressKeys = new Set<string>();
@@ -89,7 +89,12 @@ const isSupportedBonds = (bonds: any): bonds is SupportedBonds => {
 
     // Check for valid amounts.
     if (typeof bonds[key] !== "string") return false;
-    if (!BigNumber.from(bonds[key]).gte(0)) return false; // BigNumber.from throws if value is not a valid number.
+    try {
+      BigNumber.from(bonds[key]); // BigNumber.from throws if value is not a valid number.
+    } catch {
+      return false;
+    }
+    if (!BigNumber.from(bonds[key]).gte(0)) return false; // Bond amount cannot be negative.
   }
   return true;
 };
