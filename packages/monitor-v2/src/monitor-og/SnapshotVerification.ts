@@ -6,7 +6,7 @@ import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { MonitoringParams, tryHexToUtf8String } from "./common";
+import { isDictionary, MonitoringParams, tryHexToUtf8String } from "./common";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
@@ -66,11 +66,6 @@ interface RulesParameters {
   quorum: number;
   votingPeriod: number;
 }
-
-// Helper type guard for dictionary objects.
-const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
-  return typeof arg === "object" && arg !== null && !Array.isArray(arg);
-};
 
 // Type guard for MainTransaction.
 const isMainTransaction = (transaction: unknown): transaction is MainTransaction => {

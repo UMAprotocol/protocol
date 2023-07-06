@@ -54,6 +54,11 @@ export interface MonitoringParams {
   retryOptions: RetryOptions;
 }
 
+// Helper type guard for dictionary objects.
+export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
+  return typeof arg === "object" && arg !== null && !Array.isArray(arg);
+};
+
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
