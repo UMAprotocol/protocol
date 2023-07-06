@@ -6,19 +6,19 @@ export enum OptimisticOracleType {
 }
 
 export class OptimisticOracleRequest {
-  body: string; // Human readable request body.
-  type: OptimisticOracleType; // Type of the request.
-  timestamp: number; // Timestamp in seconds of the request.
-  identifier: string; // Identifier of the request.
-  requester: string; // Address of the requester.
-  requestTx: string; // Transaction hash of the request.
-  proposer?: string; // Address of the proposer.
-  proposedValue?: number | boolean; // Proposed value.
-  proposeTx?: string; // Transaction hash of the proposal.
-  disputableUntil?: number; // Timestamp in ms until the request can be disputed.
-  resolvedValue?: number | boolean; // Resolved value.
-  resolveTx?: string; // Transaction hash of the resolution.
-  disputeTx?: string; // Transaction hash of the dispute.
+  readonly body: string; // Human readable request body.
+  readonly type: OptimisticOracleType; // Type of the request.
+  readonly timestamp: number; // Timestamp in seconds of the request.
+  readonly identifier: string; // Identifier of the request.
+  readonly requester: string; // Address of the requester.
+  readonly requestTx: string; // Transaction hash of the request.
+  readonly proposer?: string; // Address of the proposer.
+  readonly proposedValue?: number | boolean; // Proposed value.
+  readonly proposeTx?: string; // Transaction hash of the proposal.
+  readonly disputableUntil?: number; // Timestamp in ms until the request can be disputed.
+  readonly resolvedValue?: number | boolean; // Resolved value.
+  readonly resolveTx?: string; // Transaction hash of the resolution.
+  readonly disputeTx?: string; // Transaction hash of the dispute.
 
   constructor(data: {
     body: string;
@@ -54,7 +54,7 @@ export class OptimisticOracleRequest {
 /**
  * Represents a client to interact with an Optimistic Oracle and store the requests.
  */
-export class OptimisticOracleClient {
+export abstract class OptimisticOracleClient {
   protected provider: Provider;
   protected requests: OptimisticOracleRequest[];
   protected fetchedBlockRange: [number, number];
@@ -63,23 +63,37 @@ export class OptimisticOracleClient {
    * Constructs a new OptimisticOracleClient instance.
    * @param _provider The provider used for interacting with the blockchain.
    * @param _requests (Optional) The list of Optimistic Oracle requests.
+   * @param _fetchedBlockRange (Optional) The block range of the fetched requests.
    */
-  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = []) {
+  protected constructor(
+    _provider: Provider,
+    _requests?: OptimisticOracleRequest[],
+    _fetchedBlockRange?: [number, number]
+  ) {
     this.provider = _provider;
-    this.requests = _requests;
-    this.fetchedBlockRange = [0, 0];
+    this.requests = _requests || [];
+    this.fetchedBlockRange = _fetchedBlockRange || [0, 0];
   }
+
+  /**
+   * Creates a new instance of the OptimisticOracleClient with the specified requests.
+   * Must be implemented by the derived class.
+   * @param provider The provider used for interacting with the blockchain.
+   * @param requests The requests to be set on the new instance.
+   * @param fetchedBlockRange The block range of the fetched requests.
+   * @returns A new instance of OptimisticOracleClient.
+   */
+  protected abstract createClientInstance(
+    requests: OptimisticOracleRequest[],
+    fetchedBlockRange: [number, number]
+  ): OptimisticOracleClient;
 
   /**
    * Retrieves Optimistic Oracle requests within the specified block range.
    * @param blockRange The block range to fetch requests from.
    * @returns A Promise that resolves to an array of OptimisticOracleRequest objects.
    */
-  protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
-    // TODO: Implement this.
-    blockRange;
-    return [];
-  }
+  protected abstract fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]>;
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
@@ -88,11 +102,11 @@ export class OptimisticOracleClient {
    * @returns A Promise that resolves to a new OptimisticOracleClient instance with updated requests.
    */
   async updateWithBlockRange(
-    blockRange: [number, number],
-    existingRequests: OptimisticOracleRequest[] = []
+    existingRequests: OptimisticOracleRequest[] = [],
+    blockRange: [number, number]
   ): Promise<OptimisticOracleClient> {
     const newRequests = await this.fetchOracleRequests(blockRange);
-    return new OptimisticOracleClient(this.provider, [...existingRequests, ...newRequests]);
+    return this.createClientInstance([...existingRequests, ...newRequests], blockRange);
   }
 
   /**
@@ -113,8 +127,8 @@ export class OptimisticOracleClient {
 }
 
 export class OptimisticOracleClientV2 extends OptimisticOracleClient {
-  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = []) {
-    super(_provider, _requests);
+  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
+    super(_provider, _requests, _fetchedBlockRange);
   }
 
   protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
@@ -122,16 +136,30 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient {
     blockRange;
     return [];
   }
+
+  protected createClientInstance(
+    requests: OptimisticOracleRequest[],
+    fetchedBlockRange: [number, number]
+  ): OptimisticOracleClient {
+    return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRange);
+  }
 }
 
 export class OptimisticOracleClientV3 extends OptimisticOracleClient {
-  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = []) {
-    super(_provider, _requests);
+  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
+    super(_provider, _requests, _fetchedBlockRange);
   }
 
   protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
     // TODO: Implement this for the OptimisticOracleV3
     blockRange;
     return [];
+  }
+
+  protected createClientInstance(
+    requests: OptimisticOracleRequest[],
+    fetchedBlockRange: [number, number]
+  ): OptimisticOracleClient {
+    return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRange);
   }
 }
