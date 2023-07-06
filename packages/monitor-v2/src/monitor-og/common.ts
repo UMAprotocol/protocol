@@ -2,9 +2,16 @@ import {
   ContractAddresses as zodiacContractAddresses,
   SupportedNetworks as zodiacSupportedNetworks,
 } from "@gnosis.pm/zodiac";
-import { getGckmsSigner, getRetryProvider } from "@uma/common";
+import {
+  getGckmsSigner,
+  getRetryProvider,
+  simulateTenderlyTx,
+  TenderlySimulationParams,
+  TenderlySimulationResult,
+} from "@uma/common";
 import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
+import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import { delay } from "@uma/financial-templates-lib";
 import { Options as RetryOptions } from "async-retry";
 import { BigNumber, Contract, Event, EventFilter, Signer, utils, Wallet } from "ethers";
@@ -57,13 +64,19 @@ export interface MonitoringParams {
   ipfsEndpoint: string;
   approvalChoices: string[];
   supportedBonds?: SupportedBonds; // Optional. Only used in automated support mode.
+  useTenderly: boolean;
   botModes: BotModes;
   retryOptions: RetryOptions;
 }
 
-// Type guard for SupportedBonds. This can throw if bond value strings cannot be converted to BigNumber.
-const isSupportedBonds = (bonds: any): bonds is SupportedBonds => {
-  if (typeof bonds !== "object") return false;
+// Helper type guard for dictionary objects.
+export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
+  return typeof arg === "object" && arg !== null && !Array.isArray(arg);
+};
+
+// Type guard for SupportedBonds.
+const isSupportedBonds = (bonds: unknown): bonds is SupportedBonds => {
+  if (!isDictionary(bonds)) return false;
 
   // addressKeys is used to check for duplicate addresses.
   const addressKeys = new Set<string>();
@@ -77,7 +90,12 @@ const isSupportedBonds = (bonds: any): bonds is SupportedBonds => {
 
     // Check for valid amounts.
     if (typeof bonds[key] !== "string") return false;
-    if (!BigNumber.from(bonds[key]).gte(0)) return false; // BigNumber.from throws if value is not a valid number.
+    try {
+      BigNumber.from(bonds[key]); // BigNumber.from throws if value is not a valid number.
+    } catch {
+      return false;
+    }
+    if (!BigNumber.from(bonds[key]).gte(0)) return false; // Bond amount cannot be negative.
   }
   return true;
 };
@@ -158,6 +176,10 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
   const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
   const approvalChoices = env.APPROVAL_CHOICES ? JSON.parse(env.APPROVAL_CHOICES) : ["Yes", "For", "YAE"];
 
+  // Use Tenderly simulation link only if all required environment variables are set.
+  const useTenderly =
+    env.TENDERLY_USER !== undefined && env.TENDERLY_PROJECT !== undefined && env.TENDERLY_ACCESS_KEY !== undefined;
+
   const botModes = {
     transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
     transactionsExecutedEnabled: env.TRANSACTIONS_EXECUTED_ENABLED === "true",
@@ -213,6 +235,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     ipfsEndpoint,
     approvalChoices,
     supportedBonds,
+    useTenderly,
     botModes,
     retryOptions,
   };
@@ -377,4 +400,24 @@ export const getOgAddresses = async (params: MonitoringParams): Promise<Array<st
 export const getBlockTimestamp = async (provider: Provider, blockNumber: number): Promise<number> => {
   const block = await provider.getBlock(blockNumber);
   return block.timestamp;
+};
+
+export const generateTenderlySimulation = async (
+  proposedEvent: TransactionsProposedEvent,
+  params: MonitoringParams
+): Promise<TenderlySimulationResult> => {
+  // Get the execution payload.
+  const og = await getOgByAddress(params, proposedEvent.address);
+  const executionPayload = og.interface.encodeFunctionData("executeProposal", [
+    proposedEvent.args.proposal.transactions,
+  ]);
+
+  // Simulate proposal execution from zero address after challenge window ends.
+  const simulationParams: TenderlySimulationParams = {
+    chainId: params.chainId,
+    to: proposedEvent.address,
+    input: executionPayload,
+    timestampOverride: proposedEvent.args.challengeWindowEnds.toNumber(),
+  };
+  return await simulateTenderlyTx(simulationParams, params.retryOptions);
 };
