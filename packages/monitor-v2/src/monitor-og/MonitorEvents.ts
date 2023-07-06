@@ -10,8 +10,8 @@ import {
   TransactionExecutedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
+import { constants as ethersConstants } from "ethers";
 import {
-  ethersConstants,
   generateTenderlySimulation,
   getProxyDeploymentTxs,
   Logger,

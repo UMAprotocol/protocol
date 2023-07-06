@@ -1,19 +1,19 @@
 import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import assert from "assert";
-import retry from "async-retry";
-import { Options as RetryOptions } from "async-retry";
+import retry, { Options as RetryOptions } from "async-retry";
+import { BigNumber, utils as ethersUtils } from "ethers";
 import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { ethersUtils, MonitoringParams, tryHexToUtf8String } from "./common";
+import { isDictionary, MonitoringParams, tryHexToUtf8String } from "./common";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
   to: string;
   data: string;
   value: string;
-  operation: string;
+  operation: "0" | "1"; // Operation type: 0 == call, 1 == delegate call.
 }
 
 // We only include properties that will be verified by the bot.
@@ -35,12 +35,13 @@ interface SnapshotProposalIpfs {
   choices: string[];
   start: number;
   end: number;
-  plugins: Partial<SafeSnapPlugin>;
+  plugins: SafeSnapPlugin;
 }
 
 // We only type the properties requested in the GraphQL query. This extends SnapshotProposalIpfs, but we need to
 // override the space property.
 interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
+  ipfs: string;
   state: string;
   space: { id: string };
   scores: number[];
@@ -66,6 +67,98 @@ interface RulesParameters {
   votingPeriod: number;
 }
 
+// Type guard for MainTransaction.
+const isMainTransaction = (transaction: unknown): transaction is MainTransaction => {
+  if (!isDictionary(transaction)) return false;
+  try {
+    BigNumber.from(transaction.value);
+  } catch {
+    return false;
+  }
+  return (
+    typeof transaction.to === "string" &&
+    ethersUtils.isAddress(transaction.to) &&
+    ethersUtils.isHexString(transaction.data) &&
+    typeof transaction.value === "string" &&
+    BigNumber.from(transaction.value).gte(0) &&
+    (transaction.operation === "0" || transaction.operation === "1")
+  );
+};
+
+// Type guard for SafeSnapSafe.
+const isSafeSnapSafe = (safe: unknown): safe is SafeSnapSafe => {
+  return (
+    isDictionary(safe) &&
+    Array.isArray(safe.txs) &&
+    safe.txs.every((tx) => isMainTransaction(tx.mainTransaction)) &&
+    typeof safe.network === "string" &&
+    Number.isInteger(Number(safe.network)) &&
+    Number(safe.network) >= 0 &&
+    typeof safe.umaAddress === "string" &&
+    ethersUtils.isAddress(safe.umaAddress)
+  );
+};
+
+// Type guard for SafeSnapPlugin.
+const isSafeSnapPlugin = (plugin: unknown): plugin is SafeSnapPlugin => {
+  return (
+    isDictionary(plugin) &&
+    isDictionary(plugin.safeSnap) &&
+    Array.isArray(plugin.safeSnap.safes) &&
+    plugin.safeSnap.safes.every((safe) => isSafeSnapSafe(safe))
+  );
+};
+
+// Type guard for SnapshotProposalIpfs.
+const isSnapshotProposalIpfs = (proposal: unknown): proposal is SnapshotProposalIpfs => {
+  return (
+    isDictionary(proposal) &&
+    typeof proposal.space === "string" &&
+    typeof proposal.type === "string" &&
+    Array.isArray(proposal.choices) &&
+    proposal.choices.every((choice) => typeof choice === "string") &&
+    typeof proposal.start === "number" &&
+    typeof proposal.end === "number" &&
+    isSafeSnapPlugin(proposal.plugins)
+  );
+};
+
+// Type guard for SnapshotProposalGraphql.
+const isSnapshotProposalGraphql = (proposal: unknown): proposal is SnapshotProposalGraphql => {
+  if (!isDictionary(proposal)) return false;
+  // SnapshotProposalGraphql is derived from SnapshotProposalIpfs, except for the space property that is overridden.
+  if (!isDictionary(proposal.space) || typeof proposal.space.id !== "string") return false;
+  const ipfsProposal = { ...proposal, space: proposal.space.id };
+  return (
+    isSnapshotProposalIpfs(ipfsProposal) &&
+    typeof proposal.ipfs === "string" &&
+    typeof proposal.state === "string" &&
+    Array.isArray(proposal.scores) &&
+    proposal.scores.every((score) => typeof score === "number") &&
+    typeof proposal.quorum === "number" &&
+    typeof proposal.scores_total === "number"
+  );
+};
+
+// Type guard for GraphqlData.
+const isGraphqlData = (data: unknown): data is GraphqlData => {
+  return (
+    isDictionary(data) &&
+    Array.isArray(data.proposals) &&
+    data.proposals.every((proposal) => isSnapshotProposalGraphql(proposal))
+  );
+};
+
+// Type guard for IpfsData.
+const isIpfsData = (data: unknown): data is IpfsData => {
+  return (
+    isDictionary(data) &&
+    isDictionary(data.data) &&
+    isDictionary(data.data.message) &&
+    isSnapshotProposalIpfs(data.data.message)
+  );
+};
+
 // Returns null if the rules string does not match the expected template.
 const parseRules = (rules: string): RulesParameters | null => {
   // This is based on the template from Zodiac app at
@@ -84,16 +177,13 @@ const parseRules = (rules: string): RulesParameters | null => {
   return { space, quorum, votingPeriod };
 };
 
-// We don't want to throw an error if the GraphQL request fails for any reason, so we return a stringified Error object
-// instead that will be logged by the bot.
-const getGraphqlData = async (
-  ipfsHash: string,
-  url: string,
-  retryOptions: RetryOptions
-): Promise<GraphqlData | Error> => {
+// We don't want to throw an error if the GraphQL request fails for any reason, so we return an Error object instead
+// that will be logged by the bot.
+const getGraphqlData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<unknown | Error> => {
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
+        ipfs
         type
         choices
         start
@@ -118,9 +208,9 @@ const getGraphqlData = async (
   });
 };
 
-// We don't want to throw an error if the IPFS request fails for any reason, so we return a stringified Error object
-// instead that will be logged by the bot.
-const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<IpfsData | Error> => {
+// We don't want to throw an error if the IPFS request fails for any reason, so we return an Error object instead that
+// will be logged by the bot.
+const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<unknown | Error> => {
   try {
     const response = await retry(async () => {
       const fetchResponse = await fetch(`${url}/${ipfsHash}`);
@@ -141,9 +231,8 @@ const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOpt
   }
 };
 
-const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean => {
+const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlProposal: SnapshotProposalGraphql): boolean => {
   const ipfsProposal = ipfsData.data.message;
-  const graphqlProposal = graphqlData.proposals[0];
 
   // Verify common properties, except for safeSnap plugin.
   if (
@@ -156,12 +245,8 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean
     return false;
   }
 
-  // Verify that the safeSnap plugin exists on both data sources and has the same number of safes.
-  if (
-    ipfsProposal.plugins.safeSnap === undefined ||
-    graphqlProposal.plugins.safeSnap === undefined ||
-    ipfsProposal.plugins.safeSnap.safes.length !== graphqlProposal.plugins.safeSnap.safes.length
-  ) {
+  // Verify that both data sources has the same number of safes in the safeSnap plugin.
+  if (ipfsProposal.plugins.safeSnap.safes.length !== graphqlProposal.plugins.safeSnap.safes.length) {
     return false;
   }
 
@@ -198,10 +283,138 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlData: GraphqlData): boolean
   return true;
 };
 
+const verifyProposalChoices = (proposal: SnapshotProposalGraphql, params: MonitoringParams): VerificationResponse => {
+  // Verify proposal type.
+  if (proposal.type !== "single-choice" && proposal.type !== "basic") {
+    return { verified: false, error: `Proposal type ${proposal.type} is not supported` };
+  }
+
+  // Verify that the basic proposal has expected choices.
+  if (proposal.type === "basic") {
+    // Assert that the basic proposal has expected choices. We error immediately as this indicates a problem with the
+    // Snapshot backend.
+    assert(proposal.choices.length === 3, "Basic proposal must have three choices");
+    assert(proposal.choices[0] === "For", "Basic proposal must have 'For' as the first choice");
+    assert(proposal.choices[1] === "Against", "Basic proposal must have 'Against' as the second choice");
+    assert(proposal.choices[2] === "Abstain", "Basic proposal must have 'Abstain' as the third choice");
+    return { verified: true };
+  }
+
+  // Verify that the the single-choice proposal has exactly one matching approval choice.
+  const matchingChoices = proposal.choices.filter((choice) =>
+    params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
+  );
+  if (matchingChoices.length === 0) {
+    return { verified: false, error: `No known approval choice found among ${JSON.stringify(proposal.choices)}` };
+  } else if (matchingChoices.length > 1) {
+    return {
+      verified: false,
+      error: `Multiple approval choices found among ${JSON.stringify(proposal.choices)}`,
+    };
+  }
+  return { verified: true };
+};
+
+// This should be run against verified proposal choices only, so it should always return a matching choice index.
+const getApprovalIndex = (proposal: SnapshotProposalGraphql, params: MonitoringParams): number => {
+  if (proposal.type === "basic") return 0;
+
+  return proposal.choices.findIndex((choice) =>
+    params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
+  );
+};
+
+// Verify that the proposal was approved properly on Snapshot.
+const verifyVoteOutcome = (
+  proposal: SnapshotProposalGraphql,
+  proposalTime: number,
+  approvalIndex: number
+): VerificationResponse => {
+  // Verify that the proposal is in the closed state.
+  if (proposal.state !== "closed") return { verified: false, error: "Proposal not in closed state" };
+
+  // Verify that the proposal voting period has ended.
+  if (proposalTime < proposal.end) return { verified: false, error: "Proposal voting period has not ended" };
+
+  // Verify quorum.
+  if (proposal.scores_total !== null && proposal.scores_total < proposal.quorum)
+    return { verified: false, error: `Proposal did not meet Snapshot quorum of ${proposal.quorum}` };
+
+  // Verify proposal scores.
+  if (proposal.scores === null || proposal.scores.length !== proposal.choices.length)
+    return { verified: false, error: "Proposal scores are not valid" };
+
+  // Verify that the proposal was approved by majority and got more than 50% of the votes.
+  if (approvalIndex !== proposal.scores.indexOf(Math.max(...proposal.scores)))
+    return { verified: false, error: "Proposal was not approved by majority" };
+  if (proposal.scores_total !== null && proposal.scores[approvalIndex] <= proposal.scores_total / 2)
+    return { verified: false, error: "Proposal did not get more than 50% votes" };
+
+  // Vote verification passed.
+  return { verified: true };
+};
+
 const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
   return (
     safe.network === chainId.toString() && ethersUtils.getAddress(safe.umaAddress) === ethersUtils.getAddress(ogAddress)
   );
+};
+
+// Verify that on-chain proposed transactions match the transactions from the safeSnap plugin.
+const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe: SafeSnapSafe): boolean => {
+  const safeSnapTransactions = safe.txs.map((tx) => tx.mainTransaction);
+  const onChainTransactions = proposalEvent.args.proposal.transactions;
+  if (safeSnapTransactions.length !== onChainTransactions.length) return false;
+  for (let i = 0; i < safeSnapTransactions.length; i++) {
+    const safeSnapTransaction = safeSnapTransactions[i];
+    const onChainTransaction = onChainTransactions[i];
+    if (
+      ethersUtils.getAddress(safeSnapTransaction.to) !== ethersUtils.getAddress(onChainTransaction.to) ||
+      safeSnapTransaction.data.toLowerCase() !== onChainTransaction.data.toLowerCase() ||
+      safeSnapTransaction.value !== onChainTransaction.value.toString() ||
+      safeSnapTransaction.operation !== onChainTransaction.operation.toString()
+    )
+      return false;
+  }
+  return true;
+};
+
+// Verify IPFS data is available and matches GraphQL data.
+const verifyIpfs = async (
+  graphqlProposal: SnapshotProposalGraphql,
+  params: MonitoringParams
+): Promise<VerificationResponse> => {
+  const ipfsData = await getIpfsData(graphqlProposal.ipfs, params.ipfsEndpoint, params.retryOptions);
+  if (ipfsData instanceof Error)
+    return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
+  if (!isIpfsData(ipfsData)) return { verified: false, error: "IPFS data does not match expected format" };
+  if (!ipfsMatchGraphql(ipfsData, graphqlProposal))
+    return { verified: false, error: "IPFS data properties do not match GraphQL data" };
+  return { verified: true };
+};
+
+// Verify proposal against parsed rules.
+const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGraphql): VerificationResponse => {
+  // Check space id.
+  if (parsedRules.space !== proposal.space.id)
+    return {
+      verified: false,
+      error: `Snapshot proposal space ${proposal.space.id} does not match ${parsedRules.space} in rules`,
+    };
+
+  // Check rules quorum.
+  if (proposal.scores_total < parsedRules.quorum)
+    return { verified: false, error: `Proposal did not meet rules quorum of ${parsedRules.quorum}` };
+
+  // Check rules voting period.
+  if ((proposal.end - proposal.start) * 3600 < parsedRules.votingPeriod)
+    return {
+      verified: false,
+      error: `Proposal voting period was shorter than ${parsedRules.votingPeriod} hours required by rules`,
+    };
+
+  // Rules verification passed.
+  return { verified: true };
 };
 
 export const verifyProposal = async (
@@ -219,6 +432,9 @@ export const verifyProposal = async (
   if (graphqlData instanceof Error) {
     return { verified: false, error: `GraphQL request failed with error ${graphqlData.message}` };
   }
+  if (!isGraphqlData(graphqlData)) {
+    return { verified: false, error: "GraphQL data does not match expected format" };
+  }
 
   // Verify that the proposal exists and is unique.
   if (graphqlData.proposals.length === 0) {
@@ -227,74 +443,15 @@ export const verifyProposal = async (
     return { verified: false, error: `Duplicate proposals found for IPFS hash ${ipfsHash}` };
   }
 
-  // Verify proposal type.
+  // Verify proposal type and approval choices.
   const proposal = graphqlData.proposals[0];
-  if (proposal.type !== "single-choice" && proposal.type !== "basic") {
-    return { verified: false, error: `Proposal type ${proposal.type} is not supported` };
-  }
+  const proposalTypeVerification = verifyProposalChoices(proposal, params);
+  if (!proposalTypeVerification.verified) return proposalTypeVerification;
+  const approvalIndex = getApprovalIndex(proposal, params);
 
-  // Verify that the basic proposal has expected choices or the single-choice proposal has exactly one approval choice.
-  let approvalIndex: number;
-  if (proposal.type === "basic") {
-    // Assert that the basic proposal has expected choices. We error immediately as this indicates a problem with the
-    // Snapshot backend.
-    assert(proposal.choices.length === 3, "Basic proposal must have three choices");
-    assert(proposal.choices[0] === "For", "Basic proposal must have 'For' as the first choice");
-    assert(proposal.choices[1] === "Against", "Basic proposal must have 'Against' as the second choice");
-    assert(proposal.choices[2] === "Abstain", "Basic proposal must have 'Abstain' as the third choice");
-    approvalIndex = 0; // For is the first choice.
-  } else {
-    // Try to find the approval choice among the single choice proposal choices. Make sure there is one and only one
-    // matching approval choice.
-    approvalIndex = proposal.choices.findIndex((choice) =>
-      params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
-    );
-    if (approvalIndex === -1) {
-      return { verified: false, error: `No known approval choice found among ${JSON.stringify(proposal.choices)}` };
-    }
-    const matchingChoices = proposal.choices.filter((choice) =>
-      params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
-    );
-    if (matchingChoices.length > 1) {
-      return {
-        verified: false,
-        error: `Multiple approval choices found among ${JSON.stringify(proposal.choices)}`,
-      };
-    }
-  }
-
-  // Verify that the proposal is in the closed state.
-  if (proposal.state !== "closed") {
-    return { verified: false, error: "Proposal not in closed state" };
-  }
-
-  // Verify that the proposal voting period has ended.
-  if (transaction.args.proposalTime.toNumber() < proposal.end) {
-    return { verified: false, error: "Proposal voting period has not ended" };
-  }
-
-  // Verify quorum.
-  if (proposal.scores_total !== null && proposal.scores_total < proposal.quorum) {
-    return { verified: false, error: `Proposal did not meet Snapshot quorum of ${proposal.quorum}` };
-  }
-
-  // Verify proposal scores.
-  if (proposal.scores === null || proposal.scores.length !== proposal.choices.length) {
-    return { verified: false, error: "Proposal scores are not valid" };
-  }
-
-  // Verify that the proposal was approved by majority and got more than 50% of the votes.
-  if (approvalIndex !== proposal.scores.indexOf(Math.max(...proposal.scores))) {
-    return { verified: false, error: "Proposal was not approved by majority" };
-  }
-  if (proposal.scores_total !== null && proposal.scores[approvalIndex] <= proposal.scores_total / 2) {
-    return { verified: false, error: "Proposal did not get more than 50% votes" };
-  }
-
-  // Verify that the proposal has a safeSnap plugin.
-  if (proposal.plugins.safeSnap === undefined) {
-    return { verified: false, error: "No safeSnap plugin found" };
-  }
+  // Verify that the proposal was approved properly on Snapshot.
+  const approvalVerification = verifyVoteOutcome(proposal, transaction.args.proposalTime.toNumber(), approvalIndex);
+  if (!approvalVerification.verified) return approvalVerification;
 
   // There must be one and only one matching safe.
   const matchingSafes = proposal.plugins.safeSnap.safes.filter((safe) =>
@@ -307,54 +464,21 @@ export const verifyProposal = async (
   }
 
   // Verify that on-chain proposed transactions match the transactions from the safeSnap plugin.
-  const safe = matchingSafes[0];
-  const safeSnapTransactions = safe.txs.map((tx) => tx.mainTransaction);
-  const onChainTransactions = transaction.args.proposal.transactions;
-  if (safeSnapTransactions.length !== onChainTransactions.length) {
-    return { verified: false, error: "Number of transactions do not match" };
-  }
-  for (let i = 0; i < safeSnapTransactions.length; i++) {
-    const safeSnapTransaction = safeSnapTransactions[i];
-    const onChainTransaction = onChainTransactions[i];
-    if (
-      ethersUtils.getAddress(safeSnapTransaction.to) !== ethersUtils.getAddress(onChainTransaction.to) ||
-      safeSnapTransaction.data.toLowerCase() !== onChainTransaction.data.toLowerCase() ||
-      safeSnapTransaction.value !== onChainTransaction.value.toString() ||
-      safeSnapTransaction.operation !== onChainTransaction.operation.toString()
-    ) {
-      return { verified: false, error: "Transactions do not match Snapshot proposal" };
-    }
-  }
+  if (!onChainTxsMatchSnapshot(transaction, matchingSafes[0]))
+    return { verified: false, error: "On-chain transactions do not match Snapshot proposal" };
 
   // Verify IPFS data is available and matches GraphQL data.
-  const ipfsData = await getIpfsData(ipfsHash, params.ipfsEndpoint, params.retryOptions);
-  if (ipfsData instanceof Error) {
-    return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
-  }
-  if (!ipfsMatchGraphql(ipfsData, graphqlData)) {
-    return { verified: false, error: "IPFS data properties do not match GraphQL data" };
-  }
+  const ipfsVerification = await verifyIpfs(proposal, params);
+  if (!ipfsVerification.verified) return ipfsVerification;
 
   // Verify rules and its parsed properties.
   const parsedRules = parseRules(transaction.args.rules);
   if (parsedRules === null) {
     return { verified: false, error: "Rules do not match standard template" };
   }
-  if (parsedRules.space !== proposal.space.id) {
-    return {
-      verified: false,
-      error: `Snapshot proposal space ${proposal.space.id} does not match ${parsedRules.space} in rules`,
-    };
-  }
-  if (proposal.scores_total < parsedRules.quorum) {
-    return { verified: false, error: `Proposal did not meet rules quorum of ${parsedRules.quorum}` };
-  }
-  if ((proposal.end - proposal.start) * 3600 < parsedRules.votingPeriod) {
-    return {
-      verified: false,
-      error: `Proposal voting period was shorter than ${parsedRules.votingPeriod} hours required by rules`,
-    };
-  }
+  const rulesVerification = verifyRules(parsedRules, proposal);
+  if (!rulesVerification.verified) return rulesVerification;
 
+  // All checks passed.
   return { verified: true };
 };

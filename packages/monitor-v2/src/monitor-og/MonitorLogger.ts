@@ -1,9 +1,8 @@
 import { createEtherscanLinkMarkdown, TenderlySimulationResult } from "@uma/common";
 import { BigNumber } from "ethers";
-import { generateOOv3UILink, Logger, tryHexToUtf8String } from "./common";
 
 import { createTenderlySimulationLink } from "../utils/logger";
-import type { MonitoringParams } from "./common";
+import { generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
 import { VerificationResponse } from "./SnapshotVerification";
 
 interface ProposalLogContent {
