@@ -12,6 +12,7 @@ import {
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import {
   ethersConstants,
+  generateTenderlySimulation,
   getProxyDeploymentTxs,
   Logger,
   MonitoringParams,
@@ -49,6 +50,14 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
 
   for (const transaction of transactions) {
     const snapshotVerification = await verifyProposal(transaction, params);
+
+    // Try Tenderly simulation if enabled.
+    let simulationResult;
+    try {
+      simulationResult = params.useTenderly ? await generateTenderlySimulation(transaction, params) : undefined;
+    } catch {
+      simulationResult = undefined;
+    }
     await logTransactions(
       logger,
       {
@@ -64,7 +73,8 @@ export async function monitorTransactionsProposed(logger: typeof Logger, params:
         ooEventIndex: await getAssertionEventIndex(transaction.args.assertionId),
       },
       params,
-      snapshotVerification
+      snapshotVerification,
+      simulationResult
     );
   }
 }
