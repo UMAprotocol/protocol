@@ -39,7 +39,7 @@ import {
   verifyVoteOutcome,
 } from "./SnapshotVerification";
 
-export interface SupportedParameters {
+interface SupportedParameters {
   parsedRules: RulesParameters;
   currency: string;
   bond: string;
