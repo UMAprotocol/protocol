@@ -300,12 +300,8 @@ const filterUnexecutedProposals = async (
 };
 
 // Filter function to check if challenge period has passed for a proposal.
-const hasChallengePeriodEnded = async (
-  proposal: TransactionsProposedEvent,
-  params: MonitoringParams
-): Promise<boolean> => {
-  const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
-  return lastTimestamp >= proposal.args.challengeWindowEnds.toNumber();
+const hasChallengePeriodEnded = (proposal: TransactionsProposedEvent, timestamp: number): boolean => {
+  return timestamp >= proposal.args.challengeWindowEnds.toNumber();
 };
 
 const approveBond = async (
@@ -435,4 +431,8 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
 
   // Filter out all proposals that have been executed on-chain.
   const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
+
+  // Filter out all proposals that have not passed their challenge period.
+  const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
+  const liveProposals = unexecutedProposals.filter((proposal) => !hasChallengePeriodEnded(proposal, lastTimestamp));
 };
