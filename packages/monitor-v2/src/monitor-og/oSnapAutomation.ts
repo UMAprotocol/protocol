@@ -278,7 +278,7 @@ const filterVerifiedProposals = async (
   });
 };
 
-// Filters out all proposals that have been executed on-chain. This includes proposals both before and after their
+// Filters out all proposals that have been executed on-chain. This results in proposals both before and after their
 // challenge period.
 const filterUnexecutedProposals = async (
   proposals: TransactionsProposedEvent[],
