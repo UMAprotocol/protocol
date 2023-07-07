@@ -9,14 +9,14 @@ import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { getOgByAddress, MonitoringParams, runQueryFilter, tryHexToUtf8String } from "./common";
+import { isDictionary, getOgByAddress, MonitoringParams, runQueryFilter, tryHexToUtf8String } from "./common";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
   to: string;
   data: string;
   value: string;
-  operation: "0" | "1";
+  operation: "0" | "1"; // Operation type: 0 == call, 1 == delegate call.
 }
 
 // We only include properties that will be verified by the bot.
@@ -71,14 +71,14 @@ interface RulesParameters {
 }
 
 // Type guard for MainTransaction.
-const isMainTransaction = (transaction: MainTransaction): transaction is MainTransaction => {
+const isMainTransaction = (transaction: unknown): transaction is MainTransaction => {
+  if (!isDictionary(transaction)) return false;
   try {
     BigNumber.from(transaction.value);
   } catch {
     return false;
   }
   return (
-    typeof transaction === "object" &&
     typeof transaction.to === "string" &&
     ethersUtils.isAddress(transaction.to) &&
     ethersUtils.isHexString(transaction.data) &&
@@ -89,74 +89,75 @@ const isMainTransaction = (transaction: MainTransaction): transaction is MainTra
 };
 
 // Type guard for SafeSnapSafe.
-const isSafeSnapSafe = (safe: SafeSnapSafe): safe is SafeSnapSafe => {
+const isSafeSnapSafe = (safe: unknown): safe is SafeSnapSafe => {
   return (
-    typeof safe === "object" &&
+    isDictionary(safe) &&
     Array.isArray(safe.txs) &&
     safe.txs.every((tx) => isMainTransaction(tx.mainTransaction)) &&
     typeof safe.network === "string" &&
-    parseInt(safe.network, 10) > 0 &&
+    Number.isInteger(Number(safe.network)) &&
+    Number(safe.network) >= 0 &&
     typeof safe.umaAddress === "string" &&
     ethersUtils.isAddress(safe.umaAddress)
   );
 };
 
 // Type guard for SafeSnapPlugin.
-const isSafeSnapPlugin = (plugin: SafeSnapPlugin): plugin is SafeSnapPlugin => {
+const isSafeSnapPlugin = (plugin: unknown): plugin is SafeSnapPlugin => {
   return (
-    typeof plugin === "object" &&
-    plugin.safeSnap &&
+    isDictionary(plugin) &&
+    isDictionary(plugin.safeSnap) &&
     Array.isArray(plugin.safeSnap.safes) &&
     plugin.safeSnap.safes.every((safe) => isSafeSnapSafe(safe))
   );
 };
 
 // Type guard for SnapshotProposalIpfs.
-const isSnapshotProposalIpfs = (proposal: SnapshotProposalIpfs): proposal is SnapshotProposalIpfs => {
+const isSnapshotProposalIpfs = (proposal: unknown): proposal is SnapshotProposalIpfs => {
   return (
-    typeof proposal === "object" &&
+    isDictionary(proposal) &&
     typeof proposal.space === "string" &&
     typeof proposal.type === "string" &&
     Array.isArray(proposal.choices) &&
+    proposal.choices.every((choice) => typeof choice === "string") &&
     typeof proposal.start === "number" &&
     typeof proposal.end === "number" &&
-    proposal.plugins &&
     isSafeSnapPlugin(proposal.plugins)
   );
 };
 
 // Type guard for SnapshotProposalGraphql.
-const isSnapshotProposalGraphql = (proposal: SnapshotProposalGraphql): proposal is SnapshotProposalGraphql => {
+const isSnapshotProposalGraphql = (proposal: unknown): proposal is SnapshotProposalGraphql => {
+  if (!isDictionary(proposal)) return false;
   // SnapshotProposalGraphql is derived from SnapshotProposalIpfs, except for the space property that is overridden.
-  if (!proposal.space || typeof proposal.space.id !== "string") return false;
+  if (!isDictionary(proposal.space) || typeof proposal.space.id !== "string") return false;
   const ipfsProposal = { ...proposal, space: proposal.space.id };
   return (
     isSnapshotProposalIpfs(ipfsProposal) &&
     typeof proposal.ipfs === "string" &&
     typeof proposal.state === "string" &&
-    proposal.space &&
-    typeof proposal.space.id === "string" &&
     Array.isArray(proposal.scores) &&
+    proposal.scores.every((score) => typeof score === "number") &&
     typeof proposal.quorum === "number" &&
     typeof proposal.scores_total === "number"
   );
 };
 
 // Type guard for GraphqlData.
-const isGraphqlData = (data: GraphqlData): data is GraphqlData => {
+const isGraphqlData = (data: unknown): data is GraphqlData => {
   return (
-    typeof data === "object" &&
+    isDictionary(data) &&
     Array.isArray(data.proposals) &&
     data.proposals.every((proposal) => isSnapshotProposalGraphql(proposal))
   );
 };
 
 // Type guard for IpfsData.
-const isIpfsData = (data: IpfsData): data is IpfsData => {
+const isIpfsData = (data: unknown): data is IpfsData => {
   return (
-    typeof data === "object" &&
-    data.data &&
-    typeof data.data.message === "object" &&
+    isDictionary(data) &&
+    isDictionary(data.data) &&
+    isDictionary(data.data.message) &&
     isSnapshotProposalIpfs(data.data.message)
   );
 };
@@ -181,11 +182,7 @@ const parseRules = (rules: string): RulesParameters | null => {
 
 // We don't want to throw an error if the GraphQL request fails for any reason, so we return an Error object instead
 // that will be logged by the bot.
-const getGraphqlData = async (
-  ipfsHash: string,
-  url: string,
-  retryOptions: RetryOptions
-): Promise<GraphqlData | Error> => {
+const getGraphqlData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<unknown | Error> => {
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
@@ -216,7 +213,7 @@ const getGraphqlData = async (
 
 // We don't want to throw an error if the IPFS request fails for any reason, so we return an Error object instead that
 // will be logged by the bot.
-const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<IpfsData | Error> => {
+const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<unknown | Error> => {
   try {
     const response = await retry(async () => {
       const fetchResponse = await fetch(`${url}/${ipfsHash}`);

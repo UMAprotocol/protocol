@@ -1,6 +1,7 @@
-import { createEtherscanLinkMarkdown } from "@uma/common";
+import { createEtherscanLinkMarkdown, TenderlySimulationResult } from "@uma/common";
 import { BigNumber } from "ethers";
 
+import { createTenderlySimulationLink } from "../utils/logger";
 import { generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
 import { VerificationResponse } from "./SnapshotVerification";
 
@@ -28,7 +29,8 @@ export async function logTransactions(
     ooEventIndex: number;
   },
   params: MonitoringParams,
-  snapshotVerification: VerificationResponse
+  snapshotVerification: VerificationResponse,
+  simulationResult?: TenderlySimulationResult
 ): Promise<void> {
   const logLevel = snapshotVerification.verified ? "info" : "error";
   const logContent: ProposalLogContent = {
@@ -54,6 +56,8 @@ export async function logTransactions(
       new Date(Number(transaction.challengeWindowEnds.toString()) * 1000).toUTCString() +
       ": " +
       generateOOv3UILink(transaction.tx, transaction.ooEventIndex, params.chainId) +
+      ". " +
+      createTenderlySimulationLink(simulationResult) +
       ".",
     rules: tryHexToUtf8String(transaction.rules),
     notificationPath: "optimistic-governor",

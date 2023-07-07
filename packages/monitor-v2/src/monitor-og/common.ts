@@ -2,9 +2,10 @@ import {
   ContractAddresses as zodiacContractAddresses,
   SupportedNetworks as zodiacSupportedNetworks,
 } from "@gnosis.pm/zodiac";
-import { getRetryProvider } from "@uma/common";
+import { getRetryProvider, simulateTenderlyTx, TenderlySimulationParams, TenderlySimulationResult } from "@uma/common";
 import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
+import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import { delay } from "@uma/financial-templates-lib";
 import { Options as RetryOptions } from "async-retry";
 import { Contract, Event, EventFilter, utils } from "ethers";
@@ -48,9 +49,15 @@ export interface MonitoringParams {
   graphqlEndpoint: string;
   ipfsEndpoint: string;
   approvalChoices: string[];
+  useTenderly: boolean;
   botModes: BotModes;
   retryOptions: RetryOptions;
 }
+
+// Helper type guard for dictionary objects.
+export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
+  return typeof arg === "object" && arg !== null && !Array.isArray(arg);
+};
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
@@ -112,6 +119,10 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
   const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
   const approvalChoices = env.APPROVAL_CHOICES ? JSON.parse(env.APPROVAL_CHOICES) : ["Yes", "For", "YAE"];
 
+  // Use Tenderly simulation link only if all required environment variables are set.
+  const useTenderly =
+    env.TENDERLY_USER !== undefined && env.TENDERLY_PROJECT !== undefined && env.TENDERLY_ACCESS_KEY !== undefined;
+
   const botModes = {
     transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
     transactionsExecutedEnabled: env.TRANSACTIONS_EXECUTED_ENABLED === "true",
@@ -154,6 +165,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     graphqlEndpoint,
     ipfsEndpoint,
     approvalChoices,
+    useTenderly,
     botModes,
     retryOptions,
   };
@@ -313,4 +325,24 @@ export const getOgAddresses = async (params: MonitoringParams): Promise<Array<st
     (address) => !params.ogBlacklist?.includes(utils.getAddress(address))
   );
   return [...params.ogAddresses, ...ogAddresses];
+};
+
+export const generateTenderlySimulation = async (
+  proposedEvent: TransactionsProposedEvent,
+  params: MonitoringParams
+): Promise<TenderlySimulationResult> => {
+  // Get the execution payload.
+  const og = await getOgByAddress(params, proposedEvent.address);
+  const executionPayload = og.interface.encodeFunctionData("executeProposal", [
+    proposedEvent.args.proposal.transactions,
+  ]);
+
+  // Simulate proposal execution from zero address after challenge window ends.
+  const simulationParams: TenderlySimulationParams = {
+    chainId: params.chainId,
+    to: proposedEvent.address,
+    input: executionPayload,
+    timestampOverride: proposedEvent.args.challengeWindowEnds.toNumber(),
+  };
+  return await simulateTenderlyTx(simulationParams, params.retryOptions);
 };
