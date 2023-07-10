@@ -17,7 +17,7 @@ interface MainTransaction {
 }
 
 // We only include properties that will be verified by the bot.
-export interface SafeSnapSafe {
+interface SafeSnapSafe {
   txs: { mainTransaction: MainTransaction }[];
   network: string;
   umaAddress: string;
@@ -38,10 +38,9 @@ interface SnapshotProposalIpfs {
   plugins: SafeSnapPlugin;
 }
 
-// We only type the properties requested in the GraphQL queries. This extends SnapshotProposalIpfs, but we need to
+// We only type the properties requested in the GraphQL query. This extends SnapshotProposalIpfs, but we need to
 // override the space property.
-export interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
-  id: string;
+interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
   ipfs: string;
   state: string;
   space: { id: string };
@@ -50,7 +49,7 @@ export interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "spa
   scores_total: number;
 }
 
-export interface GraphqlData {
+interface GraphqlData {
   proposals: SnapshotProposalGraphql[];
 }
 
@@ -125,14 +124,13 @@ const isSnapshotProposalIpfs = (proposal: unknown): proposal is SnapshotProposal
 };
 
 // Type guard for SnapshotProposalGraphql.
-export const isSnapshotProposalGraphql = (proposal: unknown): proposal is SnapshotProposalGraphql => {
+const isSnapshotProposalGraphql = (proposal: unknown): proposal is SnapshotProposalGraphql => {
   if (!isDictionary(proposal)) return false;
   // SnapshotProposalGraphql is derived from SnapshotProposalIpfs, except for the space property that is overridden.
   if (!isDictionary(proposal.space) || typeof proposal.space.id !== "string") return false;
   const ipfsProposal = { ...proposal, space: proposal.space.id };
   return (
     isSnapshotProposalIpfs(ipfsProposal) &&
-    typeof proposal.id === "string" &&
     typeof proposal.ipfs === "string" &&
     typeof proposal.state === "string" &&
     Array.isArray(proposal.scores) &&
@@ -185,7 +183,6 @@ const getGraphqlData = async (ipfsHash: string, url: string, retryOptions: Retry
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
-        id
         ipfs
         type
         choices
@@ -330,7 +327,7 @@ const getApprovalIndex = (proposal: SnapshotProposalGraphql, params: MonitoringP
 };
 
 // Verify that the proposal was approved properly on Snapshot.
-export const verifyVoteOutcome = (
+const verifyVoteOutcome = (
   proposal: SnapshotProposalGraphql,
   proposalTime: number,
   approvalIndex: number
@@ -359,14 +356,14 @@ export const verifyVoteOutcome = (
   return { verified: true };
 };
 
-export const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
+const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
   return (
     safe.network === chainId.toString() && ethersUtils.getAddress(safe.umaAddress) === ethersUtils.getAddress(ogAddress)
   );
 };
 
 // Verify that on-chain proposed transactions match the transactions from the safeSnap plugin.
-export const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe: SafeSnapSafe): boolean => {
+const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe: SafeSnapSafe): boolean => {
   const safeSnapTransactions = safe.txs.map((tx) => tx.mainTransaction);
   const onChainTransactions = proposalEvent.args.proposal.transactions;
   if (safeSnapTransactions.length !== onChainTransactions.length) return false;
@@ -385,7 +382,7 @@ export const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent
 };
 
 // Verify IPFS data is available and matches GraphQL data.
-export const verifyIpfs = async (
+const verifyIpfs = async (
   graphqlProposal: SnapshotProposalGraphql,
   params: MonitoringParams
 ): Promise<VerificationResponse> => {
@@ -399,7 +396,7 @@ export const verifyIpfs = async (
 };
 
 // Verify proposal against parsed rules.
-export const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGraphql): VerificationResponse => {
+const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGraphql): VerificationResponse => {
   // Check space id.
   if (parsedRules.space !== proposal.space.id)
     return {

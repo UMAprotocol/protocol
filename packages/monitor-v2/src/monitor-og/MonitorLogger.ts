@@ -3,9 +3,8 @@ import { createEtherscanLinkMarkdown, TenderlySimulationResult } from "@uma/comm
 import assert from "assert";
 import { BigNumber } from "ethers";
 
-import { createSnapshotProposalLink, createTenderlySimulationLink } from "../utils/logger";
+import { createTenderlySimulationLink } from "../utils/logger";
 import { generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
-import { SnapshotProposalExpanded } from "./oSnapAutomation";
 import { VerificationResponse } from "./SnapshotVerification";
 
 interface ProposalLogContent {
@@ -250,35 +249,6 @@ export async function logProxyDeployed(
       createEtherscanLinkMarkdown(transaction.masterCopy, params.chainId) +
       " in transaction " +
       createEtherscanLinkMarkdown(transaction.tx, params.chainId),
-    notificationPath: "optimistic-governor",
-  });
-}
-
-export async function logSubmittedProposal(
-  logger: typeof Logger,
-  transaction: {
-    og: string;
-    tx: string;
-    ooEventIndex: number;
-  },
-  proposal: SnapshotProposalExpanded,
-  params: MonitoringParams
-): Promise<void> {
-  logger.info({
-    at: "oSnapAutomation",
-    message: "Submitted oSnap Proposal 🚀",
-    mrkdwn:
-      "Submitted oSnap proposal on supported oSnap module " +
-      createEtherscanLinkMarkdown(transaction.og, params.chainId) +
-      " for " +
-      proposal.space.id +
-      " in transaction " +
-      createEtherscanLinkMarkdown(transaction.tx, params.chainId) +
-      ". More details: " +
-      createSnapshotProposalLink(params.snapshotEndpoint, proposal.space.id, proposal.id) +
-      " and assertion: " +
-      generateOOv3UILink(transaction.tx, transaction.ooEventIndex, params.chainId) +
-      ".",
     notificationPath: "optimistic-governor",
   });
 }

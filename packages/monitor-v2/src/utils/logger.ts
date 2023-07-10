@@ -10,10 +10,6 @@ export const generateOOv3UILink = (transactionHash: string, eventIndex: number, 
   return `<${baseUrl}/?transactionHash=${transactionHash}&eventIndex=${eventIndex}|View in UI>`;
 };
 
-export const createSnapshotProposalLink = (baseUrl: string, space: string, proposalId: string): string => {
-  return `<${baseUrl}/#/${space}/proposal/${proposalId}|Snapshot UI>`;
-};
-
 export const createTenderlySimulationLink = (simulationResult?: TenderlySimulationResult): string => {
   if (simulationResult === undefined) {
     return "No Tenderly simulation available";
