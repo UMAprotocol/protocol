@@ -255,9 +255,8 @@ export class GasEstimator {
       if (etherscanGasResponse.result.suggestBaseFee === undefined)
         throw new Error(`Bad ethgasstation response ${json}`);
       return {
-        maxFeePerGas: Number(etherscanGasResponse.result.FastGasPrice),
-        maxPriorityFeePerGas:
-          Number(etherscanGasResponse.result.FastGasPrice) - Number(etherscanGasResponse.result.suggestBaseFee),
+        maxFeePerGas: Number(etherscanGasResponse.result.suggestBaseFee) * 2,
+        maxPriorityFeePerGas: Number(etherscanGasResponse.result.suggestBaseFee),
       } as LondonGasData;
     } else if (url.includes("gasstation-testnet.polygon.technology")) {
       const maticResponse = json as MumbaiResponseGasStation;
