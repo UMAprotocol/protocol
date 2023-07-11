@@ -425,22 +425,19 @@ const hasBeenExecuted = async (
   currentProposal: TransactionsProposedEvent,
   params: MonitoringParams
 ): Promise<boolean> => {
-  // Get all previous proposals with matching transactions and explanation for the same module that were proposed before
-  // the current proposal.
+  // Get all other proposals with matching transactions and explanation for the same module that were proposed till the
+  // the current proposal's block number. Matching proposals will include the current proposal, but we know that it
+  // cannot be executed in the same block as liveness cannot be 0.
   const og = await getOgByAddress(params, currentProposal.address);
-  const previousMatchingProposals = (
+  const matchingProposals = (
     await runQueryFilter<TransactionsProposedEvent>(og, og.filters.TransactionsProposed(), {
       start: 0,
       end: currentProposal.blockNumber,
     })
   ).filter(
-    (previousProposal) =>
-      previousProposal.args.proposalHash === currentProposal.args.proposalHash &&
-      previousProposal.args.explanation === currentProposal.args.explanation &&
-      (previousProposal.blockNumber !== currentProposal.blockNumber ||
-        previousProposal.transactionIndex < currentProposal.transactionIndex ||
-        (previousProposal.transactionHash === currentProposal.transactionHash &&
-          previousProposal.logIndex < currentProposal.logIndex))
+    (otherProposal) =>
+      otherProposal.args.proposalHash === currentProposal.args.proposalHash &&
+      otherProposal.args.explanation === currentProposal.args.explanation
   );
 
   // Return true if any of the matching proposals have been executed.
@@ -450,9 +447,7 @@ const hasBeenExecuted = async (
       end: currentProposal.blockNumber,
     })
   ).map((executedProposal) => executedProposal.args.assertionId);
-  return previousMatchingProposals.some((previousProposal) =>
-    executedAssertionIds.includes(previousProposal.args.assertionId)
-  );
+  return matchingProposals.some((matchingProposal) => executedAssertionIds.includes(matchingProposal.args.assertionId));
 };
 
 export const verifyProposal = async (
