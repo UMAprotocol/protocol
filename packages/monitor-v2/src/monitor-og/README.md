@@ -70,3 +70,5 @@ All the configuration should be provided with following environment variables:
 - `SNAPSHOT_TIMEOUT` is the number of milliseconds to wait before starting the first retry when trying to fetch IPFS and
   GraphQL data for Snapshot verification. If not provided, this defaults to 1000. After the first retry, this does
   exponential backoff (using a factor of 2).
+- `TENDERLY_USER`, `TENDERLY_PROJECT` and `TENDERLY_ACCESS_KEY` are used to simulate proposed transaction execution on
+  Tenderly. If any of these are missing, the bot will skip the simulation.
