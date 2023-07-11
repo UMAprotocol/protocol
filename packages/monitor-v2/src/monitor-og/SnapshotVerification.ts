@@ -1,4 +1,7 @@
-import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
+import {
+  ProposalExecutedEvent,
+  TransactionsProposedEvent,
+} from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { BigNumber, utils as ethersUtils } from "ethers";
@@ -6,7 +9,7 @@ import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { isDictionary, MonitoringParams, tryHexToUtf8String } from "./common";
+import { isDictionary, getOgByAddress, MonitoringParams, runQueryFilter, tryHexToUtf8String } from "./common";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
@@ -422,6 +425,36 @@ export const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProp
   return { verified: true };
 };
 
+// Check if the proposal has been executed before.
+const hasBeenExecuted = async (
+  currentProposal: TransactionsProposedEvent,
+  params: MonitoringParams
+): Promise<boolean> => {
+  // Get all other proposals with matching transactions and explanation for the same module that were proposed till the
+  // the current proposal's block number. Matching proposals will include the current proposal, but we know that it
+  // cannot be executed in the same block as liveness cannot be 0.
+  const og = await getOgByAddress(params, currentProposal.address);
+  const matchingProposals = (
+    await runQueryFilter<TransactionsProposedEvent>(og, og.filters.TransactionsProposed(), {
+      start: 0,
+      end: currentProposal.blockNumber,
+    })
+  ).filter(
+    (otherProposal) =>
+      otherProposal.args.proposalHash === currentProposal.args.proposalHash &&
+      otherProposal.args.explanation === currentProposal.args.explanation
+  );
+
+  // Return true if any of the matching proposals have been executed.
+  const executedAssertionIds = (
+    await runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), {
+      start: 0,
+      end: currentProposal.blockNumber,
+    })
+  ).map((executedProposal) => executedProposal.args.assertionId);
+  return matchingProposals.some((matchingProposal) => executedAssertionIds.includes(matchingProposal.args.assertionId));
+};
+
 export const verifyProposal = async (
   transaction: TransactionsProposedEvent,
   params: MonitoringParams
@@ -483,6 +516,10 @@ export const verifyProposal = async (
   }
   const rulesVerification = verifyRules(parsedRules, proposal);
   if (!rulesVerification.verified) return rulesVerification;
+
+  // Verify that the same proposal has not been executed before.
+  if (await hasBeenExecuted(transaction, params))
+    return { verified: false, error: "Proposal has been executed before" };
 
   // All checks passed.
   return { verified: true };
