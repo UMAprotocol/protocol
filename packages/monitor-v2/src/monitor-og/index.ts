@@ -12,7 +12,7 @@ import {
   monitorTransactionsProposed,
   monitorProxyDeployments,
 } from "./MonitorEvents";
-import { disputeProposals } from "./oSnapAutomation";
+import { disputeProposals, proposeTransactions } from "./oSnapAutomation";
 
 const logger = Logger;
 
@@ -36,6 +36,7 @@ async function main() {
     setIdentifierEnabled: monitorSetIdentifier,
     setEscalationManagerEnabled: monitorSetEscalationManager,
     proxyDeployedEnabled: monitorProxyDeployments,
+    automaticProposalsEnabled: proposeTransactions,
     automaticDisputesEnabled: disputeProposals,
   };
 

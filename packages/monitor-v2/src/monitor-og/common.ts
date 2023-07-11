@@ -36,6 +36,7 @@ export interface BotModes {
   setIdentifierEnabled: boolean;
   setEscalationManagerEnabled: boolean;
   proxyDeployedEnabled: boolean;
+  automaticProposalsEnabled: boolean;
   automaticDisputesEnabled: boolean;
 }
 
@@ -58,6 +59,7 @@ export interface MonitoringParams {
   chainId: number;
   blockRange: BlockRange;
   pollingDelay: number;
+  snapshotEndpoint: string;
   graphqlEndpoint: string;
   ipfsEndpoint: string;
   approvalChoices: string[];
@@ -169,6 +171,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
   }
 
   // Parameters for Snapshot proposal verification.
+  const snapshotEndpoint = env.SNAPSHOT_ENDPOINT || "https://snapshot.org";
   const graphqlEndpoint = env.GRAPHQL_ENDPOINT || "https://hub.snapshot.org/graphql";
   const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
   const approvalChoices = env.APPROVAL_CHOICES ? JSON.parse(env.APPROVAL_CHOICES) : ["Yes", "For", "YAE"];
@@ -188,13 +191,14 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     setIdentifierEnabled: env.SET_IDENTIFIER_ENABLED === "true",
     setEscalationManagerEnabled: env.SET_ESCALATION_MANAGER_ENABLED === "true",
     proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
+    automaticProposalsEnabled: env.AUTOMATIC_PROPOSALS_ENABLED === "true",
     automaticDisputesEnabled: env.AUTOMATIC_DISPUTES_ENABLED === "true",
   };
 
   // Parse supported bonds and get signer if any of automatic support modes are enabled.
   let supportedBonds: SupportedBonds | undefined;
   let signer: Signer | undefined;
-  if (botModes.automaticDisputesEnabled) {
+  if (botModes.automaticProposalsEnabled || botModes.automaticDisputesEnabled) {
     supportedBonds = parseSupportedBonds(env);
     signer = await getSigner(env, provider);
   }
@@ -226,6 +230,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
+    snapshotEndpoint,
     graphqlEndpoint,
     ipfsEndpoint,
     approvalChoices,

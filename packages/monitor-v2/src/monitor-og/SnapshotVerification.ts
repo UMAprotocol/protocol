@@ -1,4 +1,7 @@
-import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
+import {
+  ProposalExecutedEvent,
+  TransactionsProposedEvent,
+} from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { BigNumber, utils as ethersUtils } from "ethers";
@@ -6,7 +9,7 @@ import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { isDictionary, MonitoringParams, tryHexToUtf8String } from "./common";
+import { isDictionary, getOgByAddress, MonitoringParams, runQueryFilter, tryHexToUtf8String } from "./common";
 
 // If there are multiple transactions within a batch, they are aggregated as multiSend in the mainTransaction.
 interface MainTransaction {
@@ -17,7 +20,7 @@ interface MainTransaction {
 }
 
 // We only include properties that will be verified by the bot.
-interface SafeSnapSafe {
+export interface SafeSnapSafe {
   txs: { mainTransaction: MainTransaction }[];
   network: string;
   umaAddress: string;
@@ -38,9 +41,10 @@ interface SnapshotProposalIpfs {
   plugins: SafeSnapPlugin;
 }
 
-// We only type the properties requested in the GraphQL query. This extends SnapshotProposalIpfs, but we need to
+// We only type the properties requested in the GraphQL queries. This extends SnapshotProposalIpfs, but we need to
 // override the space property.
-interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
+export interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
+  id: string;
   ipfs: string;
   state: string;
   space: { id: string };
@@ -49,7 +53,7 @@ interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
   scores_total: number;
 }
 
-interface GraphqlData {
+export interface GraphqlData {
   proposals: SnapshotProposalGraphql[];
 }
 
@@ -124,13 +128,14 @@ const isSnapshotProposalIpfs = (proposal: unknown): proposal is SnapshotProposal
 };
 
 // Type guard for SnapshotProposalGraphql.
-const isSnapshotProposalGraphql = (proposal: unknown): proposal is SnapshotProposalGraphql => {
+export const isSnapshotProposalGraphql = (proposal: unknown): proposal is SnapshotProposalGraphql => {
   if (!isDictionary(proposal)) return false;
   // SnapshotProposalGraphql is derived from SnapshotProposalIpfs, except for the space property that is overridden.
   if (!isDictionary(proposal.space) || typeof proposal.space.id !== "string") return false;
   const ipfsProposal = { ...proposal, space: proposal.space.id };
   return (
     isSnapshotProposalIpfs(ipfsProposal) &&
+    typeof proposal.id === "string" &&
     typeof proposal.ipfs === "string" &&
     typeof proposal.state === "string" &&
     Array.isArray(proposal.scores) &&
@@ -183,6 +188,7 @@ const getGraphqlData = async (ipfsHash: string, url: string, retryOptions: Retry
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
+        id
         ipfs
         type
         choices
@@ -327,7 +333,7 @@ const getApprovalIndex = (proposal: SnapshotProposalGraphql, params: MonitoringP
 };
 
 // Verify that the proposal was approved properly on Snapshot.
-const verifyVoteOutcome = (
+export const verifyVoteOutcome = (
   proposal: SnapshotProposalGraphql,
   proposalTime: number,
   approvalIndex: number
@@ -356,14 +362,14 @@ const verifyVoteOutcome = (
   return { verified: true };
 };
 
-const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
+export const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
   return (
     safe.network === chainId.toString() && ethersUtils.getAddress(safe.umaAddress) === ethersUtils.getAddress(ogAddress)
   );
 };
 
 // Verify that on-chain proposed transactions match the transactions from the safeSnap plugin.
-const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe: SafeSnapSafe): boolean => {
+export const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe: SafeSnapSafe): boolean => {
   const safeSnapTransactions = safe.txs.map((tx) => tx.mainTransaction);
   const onChainTransactions = proposalEvent.args.proposal.transactions;
   if (safeSnapTransactions.length !== onChainTransactions.length) return false;
@@ -382,7 +388,7 @@ const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe:
 };
 
 // Verify IPFS data is available and matches GraphQL data.
-const verifyIpfs = async (
+export const verifyIpfs = async (
   graphqlProposal: SnapshotProposalGraphql,
   params: MonitoringParams
 ): Promise<VerificationResponse> => {
@@ -396,7 +402,7 @@ const verifyIpfs = async (
 };
 
 // Verify proposal against parsed rules.
-const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGraphql): VerificationResponse => {
+export const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGraphql): VerificationResponse => {
   // Check space id.
   if (parsedRules.space !== proposal.space.id)
     return {
@@ -417,6 +423,36 @@ const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGra
 
   // Rules verification passed.
   return { verified: true };
+};
+
+// Check if the proposal has been executed before.
+const hasBeenExecuted = async (
+  currentProposal: TransactionsProposedEvent,
+  params: MonitoringParams
+): Promise<boolean> => {
+  // Get all other proposals with matching transactions and explanation for the same module that were proposed till the
+  // the current proposal's block number. Matching proposals will include the current proposal, but we know that it
+  // cannot be executed in the same block as liveness cannot be 0.
+  const og = await getOgByAddress(params, currentProposal.address);
+  const matchingProposals = (
+    await runQueryFilter<TransactionsProposedEvent>(og, og.filters.TransactionsProposed(), {
+      start: 0,
+      end: currentProposal.blockNumber,
+    })
+  ).filter(
+    (otherProposal) =>
+      otherProposal.args.proposalHash === currentProposal.args.proposalHash &&
+      otherProposal.args.explanation === currentProposal.args.explanation
+  );
+
+  // Return true if any of the matching proposals have been executed.
+  const executedAssertionIds = (
+    await runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), {
+      start: 0,
+      end: currentProposal.blockNumber,
+    })
+  ).map((executedProposal) => executedProposal.args.assertionId);
+  return matchingProposals.some((matchingProposal) => executedAssertionIds.includes(matchingProposal.args.assertionId));
 };
 
 export const verifyProposal = async (
@@ -480,6 +516,10 @@ export const verifyProposal = async (
   }
   const rulesVerification = verifyRules(parsedRules, proposal);
   if (!rulesVerification.verified) return rulesVerification;
+
+  // Verify that the same proposal has not been executed before.
+  if (await hasBeenExecuted(transaction, params))
+    return { verified: false, error: "Proposal has been executed before" };
 
   // All checks passed.
   return { verified: true };

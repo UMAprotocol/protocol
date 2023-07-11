@@ -51,11 +51,16 @@ All the configuration should be provided with following environment variables:
 - `SET_IDENTIFIER_ENABLED` is boolean enabling/disabling monitoring set identifier (`false` by default).
 - `SET_ESCALATION_MANAGER_ENABLED` is boolean enabling/disabling monitoring set escalation manager (`false` by default).
 - `PROXY_DEPLOYED_ENABLED` is boolean enabling/disabling monitoring new proxy deployments (`false` by default).
+- `AUTOMATIC_PROPOSALS_ENABLED` is boolean enabling/disabling automatic proposal submission on supported oSnap modules
+  (`false` by default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET`
+  or `MNEMONIC` for signing proposal transactions.
 - `AUTOMATIC_DISPUTES_ENABLED` is boolean enabling/disabling automatic disputes on supported oSnap modules (`false` by
   default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET` or
   `MNEMONIC` for signing dispute transactions.
 - `SUPPORTED_BONDS` is a mapping of supported bond tokens and bond values. This is required when running in automated
   support mode. Only oSnap modules with exact match of bond token and bond value will be supported.
+- `SNAPSHOT_ENDPOINT` is the Snapshot endpoint used to verify Snapshot proposals. If not provided, this defaults to
+  `https://snapshot.org`.
 - `GRAPHQL_ENDPOINT` is the GraphQL endpoint used to verify Snapshot proposals. If not provided, this defaults to
   `https://hub.snapshot.org/graphql`.
 - `IPFS_ENDPOINT` is the IPFS endpoint used to verify Snapshot proposals. If not provided, this defaults to
@@ -68,3 +73,5 @@ All the configuration should be provided with following environment variables:
 - `SNAPSHOT_TIMEOUT` is the number of milliseconds to wait before starting the first retry when trying to fetch IPFS and
   GraphQL data for Snapshot verification. If not provided, this defaults to 1000. After the first retry, this does
   exponential backoff (using a factor of 2).
+- `TENDERLY_USER`, `TENDERLY_PROJECT` and `TENDERLY_ACCESS_KEY` are used to simulate proposed transaction execution on
+  Tenderly. If any of these are missing, the bot will skip the simulation.
