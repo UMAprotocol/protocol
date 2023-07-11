@@ -31,6 +31,9 @@ All the configuration should be provided with following environment variables:
 - `NODE_URLS_X` is an array of RPC node URLs replacing `X` in variable name with network number from `CHAIN_ID`.
 - `NODE_URL_X` is a single RPC node URL replacing `X` in variable name with network number from `CHAIN_ID`. This is
   considered only if matching `NODE_URLS_X` is not provided.
+- `GCKMS_WALLET` is a GCKMS wallet used to submit transactions in any of automated support modes. If this is provided,
+  `MNEMONIC` is ignored.
+- `MNEMONIC` is a mnemonic for a wallet used to submit transactions in any of automated support modes.
 - `NODE_RETRIES` is the number of retries to make when a node request fails (defaults to `2`).
 - `NODE_RETRY_DELAY` is the delay in seconds between retries (defaults to `1`).
 - `NODE_TIMEOUT` is the timeout in seconds for node requests (defaults to `60`).
@@ -48,6 +51,13 @@ All the configuration should be provided with following environment variables:
 - `SET_IDENTIFIER_ENABLED` is boolean enabling/disabling monitoring set identifier (`false` by default).
 - `SET_ESCALATION_MANAGER_ENABLED` is boolean enabling/disabling monitoring set escalation manager (`false` by default).
 - `PROXY_DEPLOYED_ENABLED` is boolean enabling/disabling monitoring new proxy deployments (`false` by default).
+- `AUTOMATIC_PROPOSALS_ENABLED` is boolean enabling/disabling automatic proposal submission on supported oSnap modules
+  (`false` by default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET`
+  or `MNEMONIC` for signing proposal transactions.
+- `SUPPORTED_BONDS` is a mapping of supported bond tokens and bond values. This is required when running in automated
+  support mode. Only oSnap modules with exact match of bond token and bond value will be supported.
+- `SNAPSHOT_ENDPOINT` is the Snapshot endpoint used to verify Snapshot proposals. If not provided, this defaults to
+  `https://snapshot.org`.
 - `GRAPHQL_ENDPOINT` is the GraphQL endpoint used to verify Snapshot proposals. If not provided, this defaults to
   `https://hub.snapshot.org/graphql`.
 - `IPFS_ENDPOINT` is the IPFS endpoint used to verify Snapshot proposals. If not provided, this defaults to

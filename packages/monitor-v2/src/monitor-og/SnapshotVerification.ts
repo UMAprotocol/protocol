@@ -17,7 +17,7 @@ interface MainTransaction {
 }
 
 // We only include properties that will be verified by the bot.
-interface SafeSnapSafe {
+export interface SafeSnapSafe {
   txs: { mainTransaction: MainTransaction }[];
   network: string;
   umaAddress: string;
@@ -38,9 +38,10 @@ interface SnapshotProposalIpfs {
   plugins: SafeSnapPlugin;
 }
 
-// We only type the properties requested in the GraphQL query. This extends SnapshotProposalIpfs, but we need to
+// We only type the properties requested in the GraphQL queries. This extends SnapshotProposalIpfs, but we need to
 // override the space property.
-interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
+export interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
+  id: string;
   ipfs: string;
   state: string;
   space: { id: string };
@@ -49,7 +50,7 @@ interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "space"> {
   scores_total: number;
 }
 
-interface GraphqlData {
+export interface GraphqlData {
   proposals: SnapshotProposalGraphql[];
 }
 
@@ -61,7 +62,7 @@ interface IpfsData {
 
 export type VerificationResponse = { verified: true } | { verified: false; error: string };
 
-interface RulesParameters {
+export interface RulesParameters {
   space: string;
   quorum: number;
   votingPeriod: number;
@@ -124,13 +125,14 @@ const isSnapshotProposalIpfs = (proposal: unknown): proposal is SnapshotProposal
 };
 
 // Type guard for SnapshotProposalGraphql.
-const isSnapshotProposalGraphql = (proposal: unknown): proposal is SnapshotProposalGraphql => {
+export const isSnapshotProposalGraphql = (proposal: unknown): proposal is SnapshotProposalGraphql => {
   if (!isDictionary(proposal)) return false;
   // SnapshotProposalGraphql is derived from SnapshotProposalIpfs, except for the space property that is overridden.
   if (!isDictionary(proposal.space) || typeof proposal.space.id !== "string") return false;
   const ipfsProposal = { ...proposal, space: proposal.space.id };
   return (
     isSnapshotProposalIpfs(ipfsProposal) &&
+    typeof proposal.id === "string" &&
     typeof proposal.ipfs === "string" &&
     typeof proposal.state === "string" &&
     Array.isArray(proposal.scores) &&
@@ -160,7 +162,7 @@ const isIpfsData = (data: unknown): data is IpfsData => {
 };
 
 // Returns null if the rules string does not match the expected template.
-const parseRules = (rules: string): RulesParameters | null => {
+export const parseRules = (rules: string): RulesParameters | null => {
   // This is based on the template from Zodiac app at
   // https://github.com/gnosis/zodiac-safe-app/blob/79dbb72af506f60fcc16599516ce48f893393b29/packages/app/src/views/AddModule/wizards/OptimisticGovernorModule/OptimisticGovernorModuleModal.tsx#L136
   const regex = /^I assert that this transaction proposal is valid according to the following rules: Proposals approved on Snapshot, as verified at https:\/\/snapshot\.org\/#\/([a-zA-Z0-9-.]+), are valid as long as there is a minimum quorum of (\d+) and a minimum voting period of (\d+) hours and it does not appear that the Snapshot voting system is being exploited or is otherwise unavailable\. The quorum and voting period are minimum requirements for a proposal to be valid\. Quorum and voting period values set for a specific proposal in Snapshot should be used if they are more strict than the rules parameter\. The explanation included with the on-chain proposal must be the unique IPFS identifier for the specific Snapshot proposal that was approved or a unique identifier for a proposal in an alternative voting system approved by DAO social consensus if Snapshot is being exploited or is otherwise unavailable.$/;
@@ -183,6 +185,7 @@ const getGraphqlData = async (ipfsHash: string, url: string, retryOptions: Retry
   const query = gql(/* GraphQL */ `
     query GetProposals($ipfsHash: String) {
       proposals(first: 2, where: { ipfs: $ipfsHash }, orderBy: "created", orderDirection: desc) {
+        id
         ipfs
         type
         choices
@@ -245,15 +248,17 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlProposal: SnapshotProposalG
     return false;
   }
 
-  // Verify that both data sources has the same number of safes in the safeSnap plugin.
-  if (ipfsProposal.plugins.safeSnap.safes.length !== graphqlProposal.plugins.safeSnap.safes.length) {
+  // Verify that both data sources has the same number of safes in the safeSnap plugin (ignoring safes with no txs).
+  const ipfsSafes = ipfsProposal.plugins.safeSnap.safes.filter((safe) => safe.txs.length > 0);
+  const graphqlSafes = graphqlProposal.plugins.safeSnap.safes.filter((safe) => safe.txs.length > 0);
+  if (ipfsSafes.length !== graphqlSafes.length) {
     return false;
   }
 
   // Verify that the safes match. We inspect only the properties that are required for verification.
-  for (let i = 0; i < ipfsProposal.plugins.safeSnap.safes.length; i++) {
-    const ipfsSafe = ipfsProposal.plugins.safeSnap.safes[i];
-    const graphqlSafe = graphqlProposal.plugins.safeSnap.safes[i];
+  for (let i = 0; i < ipfsSafes.length; i++) {
+    const ipfsSafe = ipfsSafes[i];
+    const graphqlSafe = graphqlSafes[i];
 
     // Verify the network, oSnap address and number of transaction batches.
     if (
@@ -325,7 +330,7 @@ const getApprovalIndex = (proposal: SnapshotProposalGraphql, params: MonitoringP
 };
 
 // Verify that the proposal was approved properly on Snapshot.
-const verifyVoteOutcome = (
+export const verifyVoteOutcome = (
   proposal: SnapshotProposalGraphql,
   proposalTime: number,
   approvalIndex: number
@@ -354,14 +359,14 @@ const verifyVoteOutcome = (
   return { verified: true };
 };
 
-const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
+export const isMatchingSafe = (safe: SafeSnapSafe, chainId: number, ogAddress: string): boolean => {
   return (
     safe.network === chainId.toString() && ethersUtils.getAddress(safe.umaAddress) === ethersUtils.getAddress(ogAddress)
   );
 };
 
 // Verify that on-chain proposed transactions match the transactions from the safeSnap plugin.
-const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe: SafeSnapSafe): boolean => {
+export const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe: SafeSnapSafe): boolean => {
   const safeSnapTransactions = safe.txs.map((tx) => tx.mainTransaction);
   const onChainTransactions = proposalEvent.args.proposal.transactions;
   if (safeSnapTransactions.length !== onChainTransactions.length) return false;
@@ -380,7 +385,7 @@ const onChainTxsMatchSnapshot = (proposalEvent: TransactionsProposedEvent, safe:
 };
 
 // Verify IPFS data is available and matches GraphQL data.
-const verifyIpfs = async (
+export const verifyIpfs = async (
   graphqlProposal: SnapshotProposalGraphql,
   params: MonitoringParams
 ): Promise<VerificationResponse> => {
@@ -394,7 +399,7 @@ const verifyIpfs = async (
 };
 
 // Verify proposal against parsed rules.
-const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGraphql): VerificationResponse => {
+export const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGraphql): VerificationResponse => {
   // Check space id.
   if (parsedRules.space !== proposal.space.id)
     return {
@@ -407,7 +412,7 @@ const verifyRules = (parsedRules: RulesParameters, proposal: SnapshotProposalGra
     return { verified: false, error: `Proposal did not meet rules quorum of ${parsedRules.quorum}` };
 
   // Check rules voting period.
-  if ((proposal.end - proposal.start) * 3600 < parsedRules.votingPeriod)
+  if (proposal.end - proposal.start < parsedRules.votingPeriod * 3600)
     return {
       verified: false,
       error: `Proposal voting period was shorter than ${parsedRules.votingPeriod} hours required by rules`,
