@@ -134,6 +134,28 @@ const hasChallengePeriodEnded = (proposal: TransactionsProposedEvent, timestamp:
   return timestamp >= proposal.args.challengeWindowEnds.toNumber();
 };
 
+// Filters out all proposals that don't have a supported bond. Even if the oSnap module now has a supported bond
+// configuration, it might not have had it at the time of proposal.
+const filterSupportedBonds = async (
+  proposals: TransactionsProposedEvent[],
+  params: MonitoringParams
+): Promise<TransactionsProposedEvent[]> => {
+  // Get OOv3 to check if assertion's bond is supported.
+  const oo = await getOo(params);
+
+  // Keep only proposals whose bond is supported based on its assertionId or null if not supported.
+  const supportedProposals = await Promise.all(
+    proposals.map(async (proposal) => {
+      const { currency, bond } = await oo.getAssertion(proposal.args.assertionId);
+      const isSupported = isBondSupported(currency, bond.toString(), params.supportedBonds);
+      return isSupported ? proposal : null;
+    })
+  );
+
+  // Filter out all null values.
+  return supportedProposals.filter((proposal): proposal is TransactionsProposedEvent => proposal !== null);
+};
+
 const approveBond = async (
   provider: Provider,
   signer: Signer,
@@ -141,9 +163,6 @@ const approveBond = async (
   bond: string,
   spender: string
 ): Promise<void> => {
-  // If bond is 0, no need to approve.
-  if (bond === "0") return;
-
   // If existing approval matches the bond, no need to proceed.
   const currencyContract = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, currency);
   const currentAllowance = await currencyContract.allowance(await signer.getAddress(), spender);
@@ -214,7 +233,8 @@ const submitDisputes = async (
 };
 
 export const disputeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
-  // Get supported modules.
+  // Get supported modules based on oSnap module configuration. We will still need to filter out proposals that might
+  // have been submitted before the module parameters were set to supported configuration.
   const supportedModules = await getSupportedModules(params);
 
   // Get all undiscarded on-chain proposals for supported modules.
@@ -227,12 +247,15 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
   const liveProposals = unexecutedProposals.filter((proposal) => !hasChallengePeriodEnded(proposal, lastTimestamp));
 
+  // Filter out all proposals that don't have a supported bond configuration in their assertion.
+  const supportedProposals = await filterSupportedBonds(liveProposals, params);
+
   // Filter proposals that did not pass verification and also retain verification result for logging.
   // TODO: We should separately handle IPFS and Graphql server errors. We don't want to submit disputes immediately just
   // because IPFS gateway or Snapshot backend is down.
   const disputableProposals = (
     await Promise.all(
-      liveProposals.map(async (proposalEvent) => {
+      supportedProposals.map(async (proposalEvent) => {
         const verificationResult = await verifyProposal(proposalEvent, params);
         return { proposalEvent, verificationResult };
       })
