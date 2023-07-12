@@ -5,7 +5,7 @@ import { BigNumber } from "ethers";
 
 import { createSnapshotProposalLink, createTenderlySimulationLink } from "../utils/logger";
 import { generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
-import { SnapshotProposalExpanded } from "./oSnapAutomation";
+import { DisputableProposal, SnapshotProposalExpanded } from "./oSnapAutomation";
 import { VerificationResponse } from "./SnapshotVerification";
 
 interface ProposalLogContent {
@@ -285,22 +285,22 @@ export async function logSubmittedProposal(
 
 export async function logSubmittedDispute(
   logger: typeof Logger,
-  proposal: { proposalEvent: TransactionsProposedEvent; verificationResult: VerificationResponse },
+  proposal: DisputableProposal,
   disputeTx: string,
   params: MonitoringParams
 ): Promise<void> {
-  assert(proposal.verificationResult.verified === false, "Dispute should be submitted only for unverified proposals.");
-
   logger.info({
     at: "oSnapAutomation",
     message: "Submitted oSnap Dispute 🚨",
     mrkdwn:
-      "Submitted dispute for supported oSnap module " +
-      createEtherscanLinkMarkdown(proposal.proposalEvent.address, params.chainId) +
-      " related to proposalHash " +
-      proposal.proposalEvent.args.proposalHash +
+      "Submitted dispute on oSnap proposal with proposalHash " +
+      proposal.event.args.proposalHash +
       " and assertionId " +
-      proposal.proposalEvent.args.assertionId +
+      proposal.event.args.assertionId +
+      " posted on oSnap module " +
+      createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
+      " at Snapshot space " +
+      proposal.parameters.parsedRules.space +
       " in transaction " +
       createEtherscanLinkMarkdown(disputeTx, params.chainId) +
       ". Reason for dispute: " +

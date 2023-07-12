@@ -36,7 +36,6 @@ import {
   RulesParameters,
   SafeSnapSafe,
   SnapshotProposalGraphql,
-  VerificationResponse,
   verifyIpfs,
   verifyProposal,
   verifyRules,
@@ -51,6 +50,15 @@ interface SupportedParameters {
 
 interface SupportedModules {
   [ogAddress: string]: SupportedParameters;
+}
+
+interface SupportedProposal {
+  event: TransactionsProposedEvent;
+  parameters: SupportedParameters;
+}
+
+export interface DisputableProposal extends SupportedProposal {
+  verificationResult: { verified: false; error: string };
 }
 
 // Expanded interface for easier processing of Snapshot proposals. Original Snapshot proposal can contain multiple safes
@@ -311,24 +319,21 @@ const hasChallengePeriodEnded = (proposal: TransactionsProposedEvent, timestamp:
 const getSupportedProposals = async (
   proposals: TransactionsProposedEvent[],
   params: MonitoringParams
-): Promise<{ proposalEvent: TransactionsProposedEvent; proposalParams: SupportedParameters }[]> => {
+): Promise<SupportedProposal[]> => {
   // Get OOv3 for checking if assertion's bond is supported.
   const oo = await getOo(params);
 
   // Keep only proposals whose rules are parsable and bond is supported based on its assertionId.
   const supportedProposals = (
     await Promise.all(
-      proposals.map(async (proposalEvent) => {
-        const parsedRules = parseRules(proposalEvent.args.rules);
-        const { currency, bond } = await oo.getAssertion(proposalEvent.args.assertionId);
+      proposals.map(async (event) => {
+        const parsedRules = parseRules(event.args.rules);
+        const { currency, bond } = await oo.getAssertion(event.args.assertionId);
         const isSupported = parsedRules !== null && isBondSupported(currency, bond.toString(), params.supportedBonds);
-        return isSupported ? { proposalEvent, proposalParams: { parsedRules, currency, bond: bond.toString() } } : null;
+        return isSupported ? { event, parameters: { parsedRules, currency, bond: bond.toString() } } : null;
       })
     )
-  ).filter((proposal) => proposal !== null) as {
-    proposalEvent: TransactionsProposedEvent;
-    proposalParams: SupportedParameters;
-  }[];
+  ).filter((proposal) => proposal !== null) as SupportedProposal[];
 
   return supportedProposals;
 };
@@ -430,15 +435,7 @@ const submitProposals = async (
   }
 };
 
-const submitDisputes = async (
-  logger: typeof Logger,
-  proposals: {
-    proposalEvent: TransactionsProposedEvent;
-    proposalParams: SupportedParameters;
-    verificationResult: VerificationResponse;
-  }[],
-  params: MonitoringParams
-) => {
+const submitDisputes = async (logger: typeof Logger, proposals: DisputableProposal[], params: MonitoringParams) => {
   assert(params.signer !== undefined, "Signer must be set to dispute proposals.");
   const disputerAddress = await params.signer.getAddress();
 
@@ -449,25 +446,25 @@ const submitDisputes = async (
     await approveBond(
       params.provider,
       params.signer,
-      proposal.proposalParams.currency,
-      proposal.proposalParams.bond,
+      proposal.parameters.currency,
+      proposal.parameters.bond,
       oo.address
     );
 
     // Prepare potential error message for simulating/disputing.
     const disputeError =
       "Dispute submission on assertionId " +
-      proposal.proposalEvent.args.assertionId +
+      proposal.event.args.assertionId +
       " related to proposalHash " +
-      proposal.proposalEvent.args.proposalHash +
+      proposal.event.args.proposalHash +
       " posted on oSnap module " +
-      proposal.proposalEvent.address +
+      proposal.event.address +
       " for Snapshot space " +
-      proposal.proposalParams.parsedRules.space;
+      proposal.parameters.parsedRules.space;
 
     // Check that dispute submission would succeed.
     try {
-      await oo.callStatic.disputeAssertion(proposal.proposalEvent.args.assertionId, disputerAddress, {
+      await oo.callStatic.disputeAssertion(proposal.event.args.assertionId, disputerAddress, {
         from: disputerAddress,
       });
     } catch (error) {
@@ -478,9 +475,7 @@ const submitDisputes = async (
     // Submit dispute and get receipt.
     let receipt: ContractReceipt;
     try {
-      const tx = await oo
-        .connect(params.signer)
-        .disputeAssertion(proposal.proposalEvent.args.assertionId, disputerAddress);
+      const tx = await oo.connect(params.signer).disputeAssertion(proposal.event.args.assertionId, disputerAddress);
       receipt = await tx.wait();
     } catch (error) {
       assert(error instanceof Error, "Unexpected Error type!");
@@ -532,11 +527,11 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const disputableProposals = (
     await Promise.all(
       supportedProposals.map(async (proposal) => {
-        const verificationResult = await verifyProposal(proposal.proposalEvent, params);
-        return { ...proposal, verificationResult };
+        const verificationResult = await verifyProposal(proposal.event, params);
+        return !verificationResult.verified ? { ...proposal, verificationResult } : null;
       })
     )
-  ).filter((proposal) => !proposal.verificationResult.verified);
+  ).filter((proposal) => proposal !== null) as DisputableProposal[];
 
   // Submit disputes.
   await submitDisputes(logger, disputableProposals, params);
