@@ -546,4 +546,15 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
 };
 
 export const executeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
+  // Get all undiscarded on-chain proposals for all monitored modules.
+  const onChainProposals = await getUndiscardedProposals(params.ogAddresses, params);
+
+  // Filter out all proposals that have been executed on-chain.
+  const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
+
+  // Filter out all proposals that have passed their challenge period.
+  const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
+  const unchallangedProposals = unexecutedProposals.filter((proposal) =>
+    hasChallengePeriodEnded(proposal, lastTimestamp)
+  );
 };
