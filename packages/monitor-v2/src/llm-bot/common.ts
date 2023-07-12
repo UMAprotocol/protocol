@@ -124,42 +124,16 @@ export abstract class OptimisticOracleClient {
   getFetchedBlockRange(): [number, number] {
     return this.fetchedBlockRange;
   }
-}
 
-export class OptimisticOracleClientV2 extends OptimisticOracleClient {
-  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
-    super(_provider, _requests, _fetchedBlockRange);
-  }
-
-  protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
-    // TODO: Implement this for the OptimisticOracleV2
-    blockRange;
-    return [];
-  }
-
-  protected createClientInstance(
-    requests: OptimisticOracleRequest[],
-    fetchedBlockRange: [number, number]
-  ): OptimisticOracleClient {
-    return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRange);
+  /**
+   * Returns the provider used for interacting with the blockchain.
+   * @returns The provider object.
+   */
+  getProvider(): Provider {
+    return this.provider;
   }
 }
 
-export class OptimisticOracleClientV3 extends OptimisticOracleClient {
-  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
-    super(_provider, _requests, _fetchedBlockRange);
-  }
-
-  protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
-    // TODO: Implement this for the OptimisticOracleV3
-    blockRange;
-    return [];
-  }
-
-  protected createClientInstance(
-    requests: OptimisticOracleRequest[],
-    fetchedBlockRange: [number, number]
-  ): OptimisticOracleClient {
-    return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRange);
-  }
+export interface OracleClientFilter<I extends OptimisticOracleClient, O extends OptimisticOracleClient> {
+  filter(optimisticOracleClient: I): Promise<O>;
 }
