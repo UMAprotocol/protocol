@@ -163,16 +163,16 @@ const getSupportedSnapshotProposals = async (
   return expandedProposals.filter((proposal) => isSafeSupported(proposal.safe, supportedModules, params.chainId));
 };
 
-// Get all proposals on supported oSnap modules that have not been discarded. Discards are most likely due to disputes,
+// Get all proposals on provided oSnap modules that have not been discarded. Discards are most likely due to disputes,
 // but can also occur on OOv3 upgrades.
 const getUndiscardedProposals = async (
-  supportedModules: SupportedModules,
+  ogAddresses: string[],
   params: MonitoringParams
 ): Promise<Array<TransactionsProposedEvent>> => {
   // Get all proposals for all supported modules.
   const allProposals = (
     await Promise.all(
-      Object.keys(supportedModules).map(async (ogAddress) => {
+      ogAddresses.map(async (ogAddress) => {
         const og = await getOgByAddress(params, ogAddress);
         return runQueryFilter<TransactionsProposedEvent>(og, og.filters.TransactionsProposed(), {
           start: 0,
@@ -185,7 +185,7 @@ const getUndiscardedProposals = async (
   // Get all deleted proposals for all supported modules.
   const deletedProposals = (
     await Promise.all(
-      Object.keys(supportedModules).map(async (ogAddress) => {
+      ogAddresses.map(async (ogAddress) => {
         const og = await getOgByAddress(params, ogAddress);
         return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
           start: 0,
@@ -490,7 +490,7 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   const supportedProposals = await getSupportedSnapshotProposals(supportedModules, params);
 
   // Get all undiscarded on-chain proposals for supported modules.
-  const onChainProposals = await getUndiscardedProposals(supportedModules, params);
+  const onChainProposals = await getUndiscardedProposals(Object.keys(supportedModules), params);
 
   // Filter Snapshot proposals that could potentially be proposed on-chain.
   const potentialProposals = filterPotentialProposals(supportedProposals, onChainProposals, params);
@@ -506,7 +506,7 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const supportedModules = await getSupportedModules(params);
 
   // Get all undiscarded on-chain proposals for supported modules.
-  const onChainProposals = await getUndiscardedProposals(supportedModules, params);
+  const onChainProposals = await getUndiscardedProposals(Object.keys(supportedModules), params);
 
   // Filter out all proposals that have been executed on-chain.
   const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
