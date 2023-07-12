@@ -3,7 +3,7 @@ import { BigNumber } from "ethers";
 
 import { createSnapshotProposalLink, createTenderlySimulationLink } from "../utils/logger";
 import { generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
-import { DisputableProposal, SnapshotProposalExpanded } from "./oSnapAutomation";
+import { DisputableProposal, SnapshotProposalExpanded, SupportedProposal } from "./oSnapAutomation";
 import { VerificationResponse } from "./SnapshotVerification";
 
 interface ProposalLogContent {
@@ -303,6 +303,29 @@ export async function logSubmittedDispute(
       createEtherscanLinkMarkdown(disputeTx, params.chainId) +
       ". Reason for dispute: " +
       proposal.verificationResult.error,
+    notificationPath: "optimistic-governor",
+  });
+}
+
+export async function logSubmittedExecution(
+  logger: typeof Logger,
+  proposal: SupportedProposal,
+  executeTx: string,
+  params: MonitoringParams
+): Promise<void> {
+  logger.info({
+    at: "oSnapAutomation",
+    message: "Submitted oSnap Execution 🏁",
+    mrkdwn:
+      "Executed oSnap proposal with proposalHash " +
+      proposal.event.args.proposalHash +
+      " posted on oSnap module " +
+      createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
+      " at Snapshot space " +
+      proposal.parameters.parsedRules.space +
+      " in transaction " +
+      createEtherscanLinkMarkdown(executeTx, params.chainId) +
+      ".",
     notificationPath: "optimistic-governor",
   });
 }

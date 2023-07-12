@@ -14,7 +14,7 @@ import { gql } from "graphql-tag";
 
 import { getEventTopic } from "../utils/contracts";
 import { createSnapshotProposalLink } from "../utils/logger";
-import { logSubmittedDispute, logSubmittedProposal } from "./MonitorLogger";
+import { logSubmittedDispute, logSubmittedExecution, logSubmittedProposal } from "./MonitorLogger";
 
 import {
   getBlockTimestamp,
@@ -52,7 +52,7 @@ interface SupportedModules {
   [ogAddress: string]: SupportedParameters;
 }
 
-interface SupportedProposal {
+export interface SupportedProposal {
   event: TransactionsProposedEvent;
   parameters: SupportedParameters;
 }
@@ -506,6 +506,47 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
   }
 };
 
+const submitExecutions = async (logger: typeof Logger, proposals: SupportedProposal[], params: MonitoringParams) => {
+  assert(params.signer !== undefined, "Signer must be set to execute proposals.");
+  const executorAddress = await params.signer.getAddress();
+
+  for (const proposal of proposals) {
+    const og = await getOgByAddress(params, proposal.event.address);
+
+    // Prepare potential error message for simulating/executing.
+    const executionError =
+      "Execution submission on proposalHash " +
+      proposal.event.args.proposalHash +
+      " posted on oSnap module " +
+      proposal.event.address +
+      " for Snapshot space " +
+      proposal.parameters.parsedRules.space;
+
+    // Check that execution submission would succeed.
+    try {
+      await og.callStatic.executeProposal(proposal.event.args.proposal.transactions, { from: executorAddress });
+    } catch (error) {
+      assert(error instanceof Error, "Unexpected Error type!");
+      throw new Error(`${executionError} would fail: ${error.message}`);
+    }
+
+    // Submit execution and get receipt.
+    let receipt: ContractReceipt;
+    try {
+      const tx = await og.connect(params.signer).executeProposal(proposal.event.args.proposal.transactions);
+      receipt = await tx.wait();
+    } catch (error) {
+      assert(error instanceof Error, "Unexpected Error type!");
+      throw new Error(`${executionError} failed: ${error.message}`);
+    }
+
+    // Log submitted execution.
+    const executionEvent = receipt.events?.find((e) => e.event === "ProposalExecuted");
+    assert(executionEvent !== undefined, "ProposalExecuted event not found.");
+    await logSubmittedExecution(logger, proposal, executionEvent.transactionHash, params);
+  }
+};
+
 export const proposeTransactions = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
   // Get supported modules.
   const supportedModules = await getSupportedModules(params);
@@ -557,4 +598,10 @@ export const executeProposals = async (logger: typeof Logger, params: Monitoring
   const unchallengedProposals = unexecutedProposals.filter((proposal) =>
     hasChallengePeriodEnded(proposal, lastTimestamp)
   );
+
+  // Filter only supported proposals and get their parameters.
+  const supportedProposals = await getSupportedProposals(unchallengedProposals, params);
+
+  // Submit executions.
+  await submitExecutions(logger, supportedProposals, params);
 };
