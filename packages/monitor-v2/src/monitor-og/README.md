@@ -54,7 +54,7 @@ All the configuration should be provided with following environment variables:
 - `AUTOMATIC_PROPOSALS_ENABLED` is boolean enabling/disabling automatic proposal submission on supported oSnap modules
   (`false` by default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET`
   or `MNEMONIC` for signing proposal transactions.
-- `AUTOMATIC_DISPUTES_ENABLED` is boolean enabling/disabling automatic disputes on supported oSnap modules (`false` by
+- `AUTOMATIC_DISPUTES_ENABLED` is boolean enabling/disabling automatic disputes of supported oSnap proposals (`false` by
   default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET` or
   `MNEMONIC` for signing dispute transactions.
 - `AUTOMATIC_EXECUTIONS_ENABLED` is boolean enabling/disabling automatic execution of supported oSnap proposals (`false`
