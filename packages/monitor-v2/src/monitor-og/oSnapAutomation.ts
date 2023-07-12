@@ -307,26 +307,30 @@ const hasChallengePeriodEnded = (proposal: TransactionsProposedEvent, timestamp:
   return timestamp >= proposal.args.challengeWindowEnds.toNumber();
 };
 
-// Filters out all proposals that don't have a supported bond. Even if the oSnap module now has a supported bond
-// configuration, it might not have had it at the time of proposal.
-const filterSupportedBonds = async (
+// Filters supported proposal events and adds their parameters to the result.
+const getSupportedProposals = async (
   proposals: TransactionsProposedEvent[],
   params: MonitoringParams
-): Promise<TransactionsProposedEvent[]> => {
-  // Get OOv3 to check if assertion's bond is supported.
+): Promise<{ proposalEvent: TransactionsProposedEvent; proposalParams: SupportedParameters }[]> => {
+  // Get OOv3 for checking if assertion's bond is supported.
   const oo = await getOo(params);
 
-  // Keep only proposals whose bond is supported based on its assertionId or null if not supported.
-  const supportedProposals = await Promise.all(
-    proposals.map(async (proposal) => {
-      const { currency, bond } = await oo.getAssertion(proposal.args.assertionId);
-      const isSupported = isBondSupported(currency, bond.toString(), params.supportedBonds);
-      return isSupported ? proposal : null;
-    })
-  );
+  // Keep only proposals whose rules are parsable and bond is supported based on its assertionId.
+  const supportedProposals = (
+    await Promise.all(
+      proposals.map(async (proposalEvent) => {
+        const parsedRules = parseRules(proposalEvent.args.rules);
+        const { currency, bond } = await oo.getAssertion(proposalEvent.args.assertionId);
+        const isSupported = parsedRules !== null && isBondSupported(currency, bond.toString(), params.supportedBonds);
+        return isSupported ? { proposalEvent, proposalParams: { parsedRules, currency, bond: bond.toString() } } : null;
+      })
+    )
+  ).filter((proposal) => proposal !== null) as {
+    proposalEvent: TransactionsProposedEvent;
+    proposalParams: SupportedParameters;
+  }[];
 
-  // Filter out all null values.
-  return supportedProposals.filter((proposal): proposal is TransactionsProposedEvent => proposal !== null);
+  return supportedProposals;
 };
 
 const approveBond = async (
@@ -428,8 +432,11 @@ const submitProposals = async (
 
 const submitDisputes = async (
   logger: typeof Logger,
-  proposals: { proposalEvent: TransactionsProposedEvent; verificationResult: VerificationResponse }[],
-  supportedModules: SupportedModules,
+  proposals: {
+    proposalEvent: TransactionsProposedEvent;
+    proposalParams: SupportedParameters;
+    verificationResult: VerificationResponse;
+  }[],
   params: MonitoringParams
 ) => {
   assert(params.signer !== undefined, "Signer must be set to dispute proposals.");
@@ -438,9 +445,14 @@ const submitDisputes = async (
   for (const proposal of proposals) {
     const oo = await getOo(params);
 
-    // Approve bond based on stored module parameters.
-    const moduleParameters = getModuleParameters(proposal.proposalEvent.address, supportedModules);
-    await approveBond(params.provider, params.signer, moduleParameters.currency, moduleParameters.bond, oo.address);
+    // Approve bond based on passed proposal parameters.
+    await approveBond(
+      params.provider,
+      params.signer,
+      proposal.proposalParams.currency,
+      proposal.proposalParams.bond,
+      oo.address
+    );
 
     // Prepare potential error message for simulating/disputing.
     const disputeError =
@@ -451,7 +463,7 @@ const submitDisputes = async (
       " posted on oSnap module " +
       proposal.proposalEvent.address +
       " for Snapshot space " +
-      moduleParameters.parsedRules.space;
+      proposal.proposalParams.parsedRules.space;
 
     // Check that dispute submission would succeed.
     try {
@@ -501,12 +513,8 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
 };
 
 export const disputeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
-  // Get supported modules based on oSnap module configuration. We will still need to filter out proposals that might
-  // have been submitted before the module parameters were set to supported configuration.
-  const supportedModules = await getSupportedModules(params);
-
-  // Get all undiscarded on-chain proposals for supported modules.
-  const onChainProposals = await getUndiscardedProposals(Object.keys(supportedModules), params);
+  // Get all undiscarded on-chain proposals for all monitored modules.
+  const onChainProposals = await getUndiscardedProposals(params.ogAddresses, params);
 
   // Filter out all proposals that have been executed on-chain.
   const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
@@ -515,21 +523,21 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
   const liveProposals = unexecutedProposals.filter((proposal) => !hasChallengePeriodEnded(proposal, lastTimestamp));
 
-  // Filter out all proposals that don't have a supported bond configuration in their assertion.
-  const supportedProposals = await filterSupportedBonds(liveProposals, params);
+  // Filter only supported proposals and get their parameters.
+  const supportedProposals = await getSupportedProposals(liveProposals, params);
 
   // Filter proposals that did not pass verification and also retain verification result for logging.
   // TODO: We should separately handle IPFS and Graphql server errors. We don't want to submit disputes immediately just
   // because IPFS gateway or Snapshot backend is down.
   const disputableProposals = (
     await Promise.all(
-      supportedProposals.map(async (proposalEvent) => {
-        const verificationResult = await verifyProposal(proposalEvent, params);
-        return { proposalEvent, verificationResult };
+      supportedProposals.map(async (proposal) => {
+        const verificationResult = await verifyProposal(proposal.proposalEvent, params);
+        return { ...proposal, verificationResult };
       })
     )
   ).filter((proposal) => !proposal.verificationResult.verified);
 
   // Submit disputes.
-  await submitDisputes(logger, disputableProposals, supportedModules, params);
+  await submitDisputes(logger, disputableProposals, params);
 };
