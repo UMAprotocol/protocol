@@ -1,6 +1,4 @@
-import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import { createEtherscanLinkMarkdown, TenderlySimulationResult } from "@uma/common";
-import assert from "assert";
 import { BigNumber } from "ethers";
 
 import { createSnapshotProposalLink, createTenderlySimulationLink } from "../utils/logger";
