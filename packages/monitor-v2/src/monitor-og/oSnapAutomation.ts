@@ -544,3 +544,6 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   // Submit disputes.
   await submitDisputes(logger, disputableProposals, params);
 };
+
+export const executeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
+};

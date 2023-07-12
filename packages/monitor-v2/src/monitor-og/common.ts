@@ -38,6 +38,7 @@ export interface BotModes {
   proxyDeployedEnabled: boolean;
   automaticProposalsEnabled: boolean;
   automaticDisputesEnabled: boolean;
+  automaticExecutionsEnabled: boolean;
 }
 
 export interface BlockRange {
@@ -193,12 +194,13 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
     automaticProposalsEnabled: env.AUTOMATIC_PROPOSALS_ENABLED === "true",
     automaticDisputesEnabled: env.AUTOMATIC_DISPUTES_ENABLED === "true",
+    automaticExecutionsEnabled: env.AUTOMATIC_EXECUTIONS_ENABLED === "true",
   };
 
   // Parse supported bonds and get signer if any of automatic support modes are enabled.
   let supportedBonds: SupportedBonds | undefined;
   let signer: Signer | undefined;
-  if (botModes.automaticProposalsEnabled || botModes.automaticDisputesEnabled) {
+  if (botModes.automaticProposalsEnabled || botModes.automaticDisputesEnabled || botModes.automaticExecutionsEnabled) {
     supportedBonds = parseSupportedBonds(env);
     signer = await getSigner(env, provider);
   }
