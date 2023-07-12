@@ -338,6 +338,23 @@ const getSupportedProposals = async (
   return supportedProposals;
 };
 
+// Filter proposals that did not pass verification and also retain verification result for logging.
+const getDisputableProposals = async (
+  proposals: SupportedProposal[],
+  params: MonitoringParams
+): Promise<DisputableProposal[]> => {
+  // TODO: We should separately handle IPFS and Graphql server errors. We don't want to submit disputes immediately just
+  // because IPFS gateway or Snapshot backend is down.
+  return (
+    await Promise.all(
+      proposals.map(async (proposal) => {
+        const verificationResult = await verifyProposal(proposal.event, params);
+        return !verificationResult.verified ? { ...proposal, verificationResult } : null;
+      })
+    )
+  ).filter((proposal) => proposal !== null) as DisputableProposal[];
+};
+
 const approveBond = async (
   provider: Provider,
   signer: Signer,
@@ -522,16 +539,7 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const supportedProposals = await getSupportedProposals(liveProposals, params);
 
   // Filter proposals that did not pass verification and also retain verification result for logging.
-  // TODO: We should separately handle IPFS and Graphql server errors. We don't want to submit disputes immediately just
-  // because IPFS gateway or Snapshot backend is down.
-  const disputableProposals = (
-    await Promise.all(
-      supportedProposals.map(async (proposal) => {
-        const verificationResult = await verifyProposal(proposal.event, params);
-        return !verificationResult.verified ? { ...proposal, verificationResult } : null;
-      })
-    )
-  ).filter((proposal) => proposal !== null) as DisputableProposal[];
+  const disputableProposals = await getDisputableProposals(supportedProposals, params);
 
   // Submit disputes.
   await submitDisputes(logger, disputableProposals, params);
