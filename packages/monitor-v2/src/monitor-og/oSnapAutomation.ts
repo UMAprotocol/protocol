@@ -531,7 +531,7 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   // Filter out all proposals that have been executed on-chain.
   const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
 
-  // Filter out all proposals that have not passed their challenge period.
+  // Filter out all proposals that have passed their challenge period.
   const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
   const liveProposals = unexecutedProposals.filter((proposal) => !hasChallengePeriodEnded(proposal, lastTimestamp));
 
