@@ -4,7 +4,7 @@ This app continuously monitors UMA Optimistic Oracle contract proposals and send
 
 The Polymarket notifier looks for ProposePrice events related to the Polymarket contracts and uses the Polymarket API to fetch all active contract market prices. It compares proposed prices against the Polymarket API and notifies the user through a logging mechanism that can forward an alert to Slack or any other configured transport mechanism. Notified proposals are stored on Google Datastore, so on repeated runs the application does not notify the same proposal.
 
-The main entry point to Optimistic Governor monitor bots is running:
+The main entry point to Polymarket notifier bot is running:
 
 ```
 node ./packages/monitor-v2/dist/monitor-polymarket/index.js
