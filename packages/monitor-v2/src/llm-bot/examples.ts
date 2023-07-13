@@ -1,6 +1,7 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { ethers } from "ethers";
 import {
+  LLMStrategy,
   OptimisticOracleClient,
   OptimisticOracleClientFilter,
   OptimisticOracleRequest,
@@ -13,7 +14,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
   }
 
   protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
-    // TODO: Implement this for the OptimisticOracleV2
+    // TODO: Implement this for the OptimisticOracleV3
     blockRange;
     return [];
   }
@@ -32,6 +33,15 @@ class OptimisticOracleRequestPolymarket extends OptimisticOracleRequest {
   constructor(data: OptimisticOracleRequestData & { polymarketQuestionTitle: string }) {
     super(data);
     this.polymarketQuestionTitle = data.polymarketQuestionTitle;
+  }
+}
+
+class OptimisticOracleRequestPolymarketResult extends OptimisticOracleRequestPolymarket {
+  readonly dispute: boolean;
+
+  constructor(data: OptimisticOracleRequestData & { polymarketQuestionTitle: string; dispute: boolean }) {
+    super(data);
+    this.dispute = data.dispute;
   }
 }
 
@@ -92,6 +102,21 @@ export class OptimisticOracleClientFilterV2ToPolymarket
   }
 }
 
+class Strategy extends LLMStrategy<
+  OptimisticOracleRequestPolymarket,
+  OptimisticOracleRequestPolymarket & { dispute: boolean }
+> {
+  async process() {
+    this.results = this.optimisticOracleRequests.map(
+      (request) =>
+        new OptimisticOracleRequestPolymarketResult({
+          ...request,
+          dispute: true,
+        })
+    );
+  }
+}
+
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 
@@ -100,7 +125,10 @@ const main = async () => {
   const oov2_updated = await oov2.updateWithBlockRange();
 
   const oov2_filtered = await new OptimisticOracleClientFilterV2ToPolymarket().filter(oov2_updated.getRequests());
-  oov2_filtered;
+
+  const strategy = new Strategy(oov2_filtered);
+
+  await strategy.process();
 };
 
 main();
