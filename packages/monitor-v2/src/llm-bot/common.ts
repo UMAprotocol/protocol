@@ -301,8 +301,16 @@ export abstract class LLMStrategy<I extends OptimisticOracleRequest, R extends O
     this.optimisticOracleRequests = optimisticOracleRequests;
   }
 
+  /**
+   * Processes Optimistic Oracle requests using the strategy implementation.
+   * @returns A Promise that resolves once the processing is complete.
+   */
   abstract process(): Promise<void>;
 
+  /**
+   * Returns the results of the processing.
+   * @returns An array of Optimistic Oracle requests representing the results.
+   */
   getResults(): R[] {
     return this.results;
   }
