@@ -513,21 +513,14 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
   for (const proposal of proposals) {
     const og = await getOgByAddress(params, proposal.event.address);
 
-    // Prepare potential error message for simulating/executing.
-    const executionError =
-      "Execution submission on proposalHash " +
-      proposal.event.args.proposalHash +
-      " posted on oSnap module " +
-      proposal.event.address +
-      " for Snapshot space " +
-      proposal.parameters.parsedRules.space;
-
     // Check that execution submission would succeed.
     try {
       await og.callStatic.executeProposal(proposal.event.args.proposal.transactions, { from: executorAddress });
-    } catch (error) {
-      assert(error instanceof Error, "Unexpected Error type!");
-      throw new Error(`${executionError} would fail: ${error.message}`);
+    } catch {
+      // The execution might revert for various reasons (e.g. insufficient funds in safe, transaction guard blocking or
+      // the module has been unplugged). In most of these cases there is nothing this bot can do, so proceed to the next
+      // proposal on simulation error.
+      continue;
     }
 
     // Submit execution and get receipt.
@@ -536,7 +529,16 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
       const tx = await og.connect(params.signer).executeProposal(proposal.event.args.proposal.transactions);
       receipt = await tx.wait();
     } catch (error) {
+      // Most likely this has failed due to insufficient funds to cover gas costs (as simulation succeeded). This could
+      // also affect execution of other proposals, so we throw the wrapped error.
       assert(error instanceof Error, "Unexpected Error type!");
+      const executionError =
+        "Execution submission on proposalHash " +
+        proposal.event.args.proposalHash +
+        " posted on oSnap module " +
+        proposal.event.address +
+        " for Snapshot space " +
+        proposal.parameters.parsedRules.space;
       throw new Error(`${executionError} failed: ${error.message}`);
     }
 
