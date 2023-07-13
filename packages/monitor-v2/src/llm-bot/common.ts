@@ -231,6 +231,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
    * @param blockRange (Optional) The block range to fetch new requests from.
+   * @param existingRequests (Optional) The list of existing requests to merge with the new requests.
    * @returns A Promise that resolves to a new OptimisticOracleClient instance with updated requests.
    */
   async updateWithBlockRange(blockRange?: BlockRange): Promise<OptimisticOracleClient<R>> {
