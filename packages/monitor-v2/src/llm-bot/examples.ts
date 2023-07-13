@@ -40,6 +40,15 @@ class OptimisticOracleRequestPolymarket extends OptimisticOracleRequest {
   }
 }
 
+class OptimisticOracleRequestPolymarketResult extends OptimisticOracleRequestPolymarket {
+  readonly dispute: boolean;
+
+  constructor(data: OptimisticOracleRequestData & { polymarketQuestionTitle: string; dispute: boolean }) {
+    super(data);
+    this.dispute = data.dispute;
+  }
+}
+
 export class OptimisticOracleClientV2Polymarket extends OptimisticOracleClient<OptimisticOracleRequestPolymarket> {
   constructor(
     _provider: Provider,
@@ -102,6 +111,21 @@ export class OptimisticOracleClientFilterV2ToPolymarket
     return filteredRequests;
   }
 }
+
+// class Strategy extends LLMStrategy<
+//   OptimisticOracleRequestPolymarket,
+//   OptimisticOracleRequestPolymarket & { dispute: boolean }
+// > {
+//   async process() {
+//     this.results = this.optimisticOracleRequests.map(
+//       (request) =>
+//         new OptimisticOracleRequestPolymarketResult({
+//           ...request,
+//           dispute: true,
+//         })
+//     );
+//   }
+// }
 
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");

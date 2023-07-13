@@ -292,3 +292,18 @@ export interface OptimisticOracleClientFilter<I extends OptimisticOracleRequest,
    */
   filter(optimisticOracleRequests: I[]): Promise<O[]>;
 }
+
+export abstract class LLMStrategy<I extends OptimisticOracleRequest, R extends OptimisticOracleRequest> {
+  protected optimisticOracleRequests: I[];
+  protected results: R[] = [];
+
+  constructor(optimisticOracleRequests: I[]) {
+    this.optimisticOracleRequests = optimisticOracleRequests;
+  }
+
+  abstract process(): Promise<void>;
+
+  getResults(): R[] {
+    return this.results;
+  }
+}
