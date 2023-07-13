@@ -1,26 +1,35 @@
 import { Provider } from "@ethersproject/abstract-provider";
 
+/**
+ * Enum representing the type of an Optimistic Oracle request.
+ */
 export enum OptimisticOracleType {
   PriceRequest = "PriceRequest",
   Assertion = "Assertion",
 }
 
-export type OptimisticOracleRequestData = {
-  body: string;
-  type: OptimisticOracleType;
-  timestamp: number;
-  identifier: string;
-  requester: string;
-  requestTx: string;
-  proposer?: string;
-  proposedValue?: number | boolean;
-  proposeTx?: string;
-  disputableUntil?: number;
-  resolvedValue?: number | boolean;
-  resolveTx?: string;
-  disputeTx?: string;
-};
+/**
+ * Interface representing the data of an Optimistic Oracle request.
+ */
+export interface OptimisticOracleRequestData {
+  body: string; // Human readable request body.
+  type: OptimisticOracleType; // Type of the request.
+  timestamp: number; // Timestamp in seconds of the request.
+  identifier: string; // Identifier of the request.
+  requester: string; // Address of the requester.
+  requestTx: string; // Transaction hash of the request.
+  proposer?: string; // Address of the proposer.
+  proposedValue?: number | boolean; // Proposed value.
+  proposeTx?: string; // Transaction hash of the proposal.
+  disputableUntil?: number; // Timestamp in ms until the request can be disputed.
+  resolvedValue?: number | boolean; // Resolved value.
+  resolveTx?: string; // Transaction hash of the resolution.
+  disputeTx?: string; // Transaction hash of the dispute.
+}
 
+/**
+ * Represents an Optimistic Oracle request.
+ */
 export class OptimisticOracleRequest {
   readonly body: string; // Human readable request body.
   readonly type: OptimisticOracleType; // Type of the request.
@@ -36,6 +45,10 @@ export class OptimisticOracleRequest {
   readonly resolveTx?: string; // Transaction hash of the resolution.
   readonly disputeTx?: string; // Transaction hash of the dispute.
 
+  /**
+   * Creates a new instance of OptimisticOracleRequest.
+   * @param data The data of the request.
+   */
   constructor(data: OptimisticOracleRequestData) {
     this.body = data.body;
     this.type = data.type;
@@ -54,7 +67,7 @@ export class OptimisticOracleRequest {
 }
 
 /**
- * Represents a client to interact with an Optimistic Oracle and store the requests.
+ * Abstract class representing a client to interact with an Optimistic Oracle and store the requests.
  */
 export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> {
   protected provider: Provider;
@@ -62,7 +75,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   protected fetchedBlockRange: [number, number];
 
   /**
-   * Constructs a new OptimisticOracleClient instance.
+   * Constructs a new instance of OptimisticOracleClient.
    * @param _provider The provider used for interacting with the blockchain.
    * @param _requests (Optional) The list of Optimistic Oracle requests.
    * @param _fetchedBlockRange (Optional) The block range of the fetched requests.
@@ -76,7 +89,6 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   /**
    * Creates a new instance of the OptimisticOracleClient with the specified requests.
    * Must be implemented by the derived class.
-   * @param provider The provider used for interacting with the blockchain.
    * @param requests The requests to be set on the new instance.
    * @param fetchedBlockRange The block range of the fetched requests.
    * @returns A new instance of OptimisticOracleClient.
@@ -95,8 +107,8 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
-   * @param existingRequests (Optional) The list of existing requests to merge with the new requests.
    * @param blockRange (Optional) The block range to fetch new requests from.
+   * @param existingRequests (Optional) The list of existing requests to merge with the new requests.
    * @returns A Promise that resolves to a new OptimisticOracleClient instance with updated requests.
    */
   async updateWithBlockRange(blockRange?: [number, number], existingRequests: R[] = []): Promise<this> {
