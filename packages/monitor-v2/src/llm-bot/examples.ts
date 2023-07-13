@@ -1,13 +1,19 @@
 import { Provider } from "@ethersproject/abstract-provider";
-import { OptimisticOracleClient, OptimisticOracleRequest, OptimisticOracleType, OracleClientFilter } from "./common";
+import { ethers } from "ethers";
+import {
+  OptimisticOracleClient,
+  OptimisticOracleClientFilter,
+  OptimisticOracleRequest,
+  OptimisticOracleRequestData,
+} from "./common";
 
-export class OptimisticOracleClientV2 extends OptimisticOracleClient {
+export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticOracleRequest> {
   constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
     super(_provider, _requests, _fetchedBlockRange);
   }
 
   protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
-    // TODO: Implement this for the OptimisticOracleV2
+    // TODO: Implement this for the OptimisticOracleV3
     blockRange;
     return [];
   }
@@ -15,12 +21,44 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient {
   protected createClientInstance(
     requests: OptimisticOracleRequest[],
     fetchedBlockRange: [number, number]
-  ): OptimisticOracleClient {
+  ): OptimisticOracleClientV2 {
     return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRange);
   }
 }
 
-export class OptimisticOracleClientV3 extends OptimisticOracleClient {
+class OptimisticOracleRequestPolymarket extends OptimisticOracleRequest {
+  readonly polymarketQuestionTitle: string;
+
+  constructor(data: OptimisticOracleRequestData & { polymarketQuestionTitle: string }) {
+    super(data);
+    this.polymarketQuestionTitle = data.polymarketQuestionTitle;
+  }
+}
+
+export class OptimisticOracleClientV2Polymarket extends OptimisticOracleClient<OptimisticOracleRequestPolymarket> {
+  constructor(
+    _provider: Provider,
+    _requests: OptimisticOracleRequestPolymarket[] = [],
+    _fetchedBlockRange?: [number, number]
+  ) {
+    super(_provider, _requests, _fetchedBlockRange);
+  }
+
+  protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequestPolymarket[]> {
+    // TODO: Implement this for the OptimisticOracleV2
+    blockRange;
+    return [];
+  }
+
+  protected createClientInstance(
+    requests: OptimisticOracleRequestPolymarket[],
+    fetchedBlockRange: [number, number]
+  ): OptimisticOracleClientV2Polymarket {
+    return new OptimisticOracleClientV2Polymarket(this.provider, requests, fetchedBlockRange);
+  }
+}
+
+export class OptimisticOracleClientV3 extends OptimisticOracleClient<OptimisticOracleRequest> {
   constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
     super(_provider, _requests, _fetchedBlockRange);
   }
@@ -39,16 +77,19 @@ export class OptimisticOracleClientV3 extends OptimisticOracleClient {
   }
 }
 
-export class PriceRequestFilterExampleV2toV3
-  implements OracleClientFilter<OptimisticOracleClientV2, OptimisticOracleClientV3> {
-  async filter(optimisticOracleClient: OptimisticOracleClientV2): Promise<OptimisticOracleClientV3> {
+export class OptimisticOracleClientFilterV2ToPolymarket
+  implements OptimisticOracleClientFilter<OptimisticOracleClientV2, OptimisticOracleClientV2Polymarket> {
+  async filter(optimisticOracleClient: OptimisticOracleClientV2): Promise<OptimisticOracleClientV2Polymarket> {
     // Filtering logic for price requests
-    const filteredRequests = optimisticOracleClient.getRequests().filter((request) => {
-      return request.type === OptimisticOracleType.PriceRequest;
+    const filteredRequests = optimisticOracleClient.getRequests().map((request) => {
+      return new OptimisticOracleRequestPolymarket({
+        ...request,
+        polymarketQuestionTitle: "What is the price of ETH?",
+      });
     });
 
     // Create a new instance of OptimisticOracleClient with the filtered requests
-    const filteredClient = new OptimisticOracleClientV3(
+    const filteredClient = new OptimisticOracleClientV2Polymarket(
       optimisticOracleClient.getProvider(),
       filteredRequests,
       optimisticOracleClient.getFetchedBlockRange()
@@ -57,3 +98,17 @@ export class PriceRequestFilterExampleV2toV3
     return filteredClient;
   }
 }
+
+const main = async () => {
+  const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
+
+  const oov2 = new OptimisticOracleClientV2(provider);
+
+  const oov2_updated = await oov2.updateWithBlockRange();
+
+  const oov2_filtered = await new OptimisticOracleClientFilterV2ToPolymarket().filter(oov2_updated);
+
+  oov2_filtered;
+};
+
+main();
