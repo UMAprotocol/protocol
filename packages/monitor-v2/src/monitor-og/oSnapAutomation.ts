@@ -530,10 +530,9 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
     try {
       await og.callStatic.executeProposal(proposal.event.args.proposal.transactions, { from: executorAddress });
     } catch (error) {
-      // Log warning and proceed with the next dispute.
-      // The execution might revert for various reasons (e.g.
-      // insufficient funds in safe, transaction guard blocking or the module has been unplugged). In most of these
-      // cases there is nothing the on-call can do, thus log this at warn level.
+      // The execution might revert for various reasons (e.g. insufficient funds in safe, transaction guard blocking or
+      // the module has been unplugged). In most of these cases there is nothing the on-call can do, thus log this at
+      // warn level and proceed with the next execution.
       logger.warn({ ...executionErrorLog, message: "Proposal execution would fail!", error });
       continue;
     }
