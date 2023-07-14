@@ -253,15 +253,16 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     start: 0,
     end: initialParams.blockRange.end,
   });
+  const deployedProxyAddressesSet = new Set(deployedProxyAddresses);
   const ogWhitelist: string[] = env.OG_WHITELIST ? JSON.parse(env.OG_WHITELIST) : [];
   const ogBlacklist: string[] = env.OG_BLACKLIST ? JSON.parse(env.OG_BLACKLIST) : [];
   ogWhitelist.forEach((address) => {
-    if (!deployedProxyAddresses.includes(utils.getAddress(address))) {
+    if (!deployedProxyAddressesSet.has(utils.getAddress(address))) {
       throw new Error(`OG_WHITELIST contains address ${address} that is not a deployed proxy`);
     }
   });
   ogBlacklist.forEach((address) => {
-    if (!deployedProxyAddresses.includes(utils.getAddress(address))) {
+    if (!deployedProxyAddressesSet.has(utils.getAddress(address))) {
       throw new Error(`OG_BLACKLIST contains address ${address} that is not a deployed proxy`);
     }
   });
