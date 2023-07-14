@@ -524,6 +524,7 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
         createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
         " at Snapshot space " +
         proposal.parameters.parsedRules.space,
+      notificationPath: "optimistic-governor",
     };
 
     // Check that execution submission would succeed.
