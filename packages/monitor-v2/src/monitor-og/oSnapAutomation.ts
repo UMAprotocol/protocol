@@ -6,6 +6,7 @@ import {
   ProposalExecutedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
+import { createEtherscanLinkMarkdown } from "@uma/common";
 import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { ContractReceipt, utils as ethersUtils } from "ethers";
@@ -513,13 +514,27 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
   for (const proposal of proposals) {
     const og = await getOgByAddress(params, proposal.event.address);
 
+    // Create potential error log for simulating/executing.
+    const executionErrorLog = {
+      at: "oSnapAutomation",
+      mrkdwn:
+        "Trying to execute proposal with proposalHash " +
+        proposal.event.args.proposalHash +
+        " posted on oSnap module " +
+        createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
+        " at Snapshot space " +
+        proposal.parameters.parsedRules.space,
+    };
+
     // Check that execution submission would succeed.
     try {
       await og.callStatic.executeProposal(proposal.event.args.proposal.transactions, { from: executorAddress });
-    } catch {
-      // The execution might revert for various reasons (e.g. insufficient funds in safe, transaction guard blocking or
-      // the module has been unplugged). In most of these cases there is nothing this bot can do, so proceed to the next
-      // proposal on simulation error.
+    } catch (error) {
+      // Log warning and proceed with the next dispute.
+      // The execution might revert for various reasons (e.g.
+      // insufficient funds in safe, transaction guard blocking or the module has been unplugged). In most of these
+      // cases there is nothing the on-call can do, thus log this at warn level.
+      logger.warn({ ...executionErrorLog, message: "Proposal execution would fail!", error });
       continue;
     }
 
@@ -529,17 +544,9 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
       const tx = await og.connect(params.signer).executeProposal(proposal.event.args.proposal.transactions);
       receipt = await tx.wait();
     } catch (error) {
-      // Most likely this has failed due to insufficient funds to cover gas costs (as simulation succeeded). This could
-      // also affect execution of other proposals, so we throw the wrapped error.
-      assert(error instanceof Error, "Unexpected Error type!");
-      const executionError =
-        "Execution submission on proposalHash " +
-        proposal.event.args.proposalHash +
-        " posted on oSnap module " +
-        proposal.event.address +
-        " for Snapshot space " +
-        proposal.parameters.parsedRules.space;
-      throw new Error(`${executionError} failed: ${error.message}`);
+      // Log error and proceed with the next execution.
+      logger.error({ ...executionErrorLog, message: "Proposal execution failed!", error });
+      continue;
     }
 
     // Log submitted execution.
