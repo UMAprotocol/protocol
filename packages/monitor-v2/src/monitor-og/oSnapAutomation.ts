@@ -6,6 +6,7 @@ import {
   ProposalExecutedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
+import { createEtherscanLinkMarkdown } from "@uma/common";
 import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { ContractReceipt, utils as ethersUtils } from "ethers";
@@ -370,6 +371,7 @@ const approveBond = async (
   try {
     await (await currencyContract.connect(signer).approve(spender, bond)).wait();
   } catch (error) {
+    // There is no point in proceeding with proposal/dispute if bond approval failed, so we throw an error.
     assert(error instanceof Error, "Unexpected Error type!");
     throw new Error(`Bond approval for ${spender} failed: ${error.message}`);
   }
@@ -401,21 +403,28 @@ const submitProposals = async (
     });
     const explanation = ethersUtils.toUtf8Bytes(proposal.ipfs);
 
+    // Create potential error log for simulating/proposing.
+    const proposalErrorLog = {
+      at: "oSnapAutomation",
+      mrkdwn:
+        "Trying to submit proposal for " +
+        createSnapshotProposalLink(params.snapshotEndpoint, proposal.space.id, proposal.id) +
+        " on oSnap module " +
+        createEtherscanLinkMarkdown(proposal.safe.umaAddress, params.chainId) +
+        " at Snapshot space " +
+        proposal.space.id,
+    };
+
     // Check that proposal submission would succeed.
     try {
       await og.callStatic.proposeTransactions(transactions, explanation, { from: await params.signer.getAddress() });
     } catch (error) {
-      assert(error instanceof Error, "Unexpected Error type!");
+      // Log error and proceed with the next proposal.
       // TODO: We should separately handle the duplicate proposals error. This can occur if there are multiple proposals
       // with the same transactions (e.g. funding in same amount tranches split across multiple proposals). We should
       // only warn when first encountering the blocking proposal and then ignore it in any future runs.
-      throw new Error(
-        `Proposal submission for ${createSnapshotProposalLink(
-          params.snapshotEndpoint,
-          proposal.space.id,
-          proposal.id
-        )} would fail: ${error.message}`
-      );
+      logger.error({ ...proposalErrorLog, message: "Proposal submission would fail!", error });
+      continue;
     }
 
     // Submit proposal and get receipt.
@@ -424,14 +433,9 @@ const submitProposals = async (
       const tx = await og.connect(params.signer).proposeTransactions(transactions, explanation);
       receipt = await tx.wait();
     } catch (error) {
-      assert(error instanceof Error, "Unexpected Error type!");
-      throw new Error(
-        `Proposal submission for ${createSnapshotProposalLink(
-          params.snapshotEndpoint,
-          proposal.space.id,
-          proposal.id
-        )} failed: ${error.message}`
-      );
+      // Log error and proceed with the next proposal.
+      logger.error({ ...proposalErrorLog, message: "Proposal submission failed!", error });
+      continue;
     }
 
     // Log submitted proposal.
@@ -468,16 +472,19 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
       oo.address
     );
 
-    // Prepare potential error message for simulating/disputing.
-    const disputeError =
-      "Dispute submission on assertionId " +
-      proposal.event.args.assertionId +
-      " related to proposalHash " +
-      proposal.event.args.proposalHash +
-      " posted on oSnap module " +
-      proposal.event.address +
-      " for Snapshot space " +
-      proposal.parameters.parsedRules.space;
+    // Create potential error log for simulating/disputing.
+    const disputeErrorLog = {
+      at: "oSnapAutomation",
+      mrkdwn:
+        "Trying to submit dispute on assertionId " +
+        proposal.event.args.assertionId +
+        " related to proposalHash " +
+        proposal.event.args.proposalHash +
+        " posted on oSnap module " +
+        createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
+        " at Snapshot space " +
+        proposal.parameters.parsedRules.space,
+    };
 
     // Check that dispute submission would succeed.
     try {
@@ -485,8 +492,9 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
         from: disputerAddress,
       });
     } catch (error) {
-      assert(error instanceof Error, "Unexpected Error type!");
-      throw new Error(`${disputeError} would fail: ${error.message}`);
+      // Log error and proceed with the next dispute.
+      logger.error({ ...disputeErrorLog, message: "Dispute submission would fail!", error });
+      continue;
     }
 
     // Submit dispute and get receipt.
@@ -495,8 +503,9 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
       const tx = await oo.connect(params.signer).disputeAssertion(proposal.event.args.assertionId, disputerAddress);
       receipt = await tx.wait();
     } catch (error) {
-      assert(error instanceof Error, "Unexpected Error type!");
-      throw new Error(`${disputeError} failed: ${error.message}`);
+      // Log error and proceed with the next dispute.
+      logger.error({ ...disputeErrorLog, message: "Dispute submission failed!", error });
+      continue;
     }
 
     // Log submitted dispute.
