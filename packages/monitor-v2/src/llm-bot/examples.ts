@@ -78,24 +78,17 @@ export class OptimisticOracleClientV3 extends OptimisticOracleClient<OptimisticO
 }
 
 export class OptimisticOracleClientFilterV2ToPolymarket
-  implements OptimisticOracleClientFilter<OptimisticOracleClientV2, OptimisticOracleClientV2Polymarket> {
-  async filter(optimisticOracleClient: OptimisticOracleClientV2): Promise<OptimisticOracleClientV2Polymarket> {
+  implements OptimisticOracleClientFilter<OptimisticOracleRequest, OptimisticOracleRequestPolymarket> {
+  async filter(optimisticOracleRequests: OptimisticOracleRequest[]): Promise<OptimisticOracleRequestPolymarket[]> {
     // Filtering logic for price requests
-    const filteredRequests = optimisticOracleClient.getRequests().map((request) => {
+    const filteredRequests = optimisticOracleRequests.map((request) => {
       return new OptimisticOracleRequestPolymarket({
         ...request,
         polymarketQuestionTitle: "What is the price of ETH?",
       });
     });
 
-    // Create a new instance of OptimisticOracleClient with the filtered requests
-    const filteredClient = new OptimisticOracleClientV2Polymarket(
-      optimisticOracleClient.getProvider(),
-      filteredRequests,
-      optimisticOracleClient.getFetchedBlockRange()
-    );
-
-    return filteredClient;
+    return filteredRequests;
   }
 }
 
@@ -106,8 +99,7 @@ const main = async () => {
 
   const oov2_updated = await oov2.updateWithBlockRange();
 
-  const oov2_filtered = await new OptimisticOracleClientFilterV2ToPolymarket().filter(oov2_updated);
-
+  const oov2_filtered = await new OptimisticOracleClientFilterV2ToPolymarket().filter(oov2_updated.getRequests());
   oov2_filtered;
 };
 

@@ -12,7 +12,7 @@ export enum OptimisticOracleType {
  * Interface representing the data of an Optimistic Oracle request.
  */
 export interface OptimisticOracleRequestData {
-  body: string; // Human readable request body.
+  body: string; // Human-readable request body.
   type: OptimisticOracleType; // Type of the request.
   timestamp: number; // Timestamp in seconds of the request.
   identifier: string; // Identifier of the request.
@@ -31,7 +31,7 @@ export interface OptimisticOracleRequestData {
  * Represents an Optimistic Oracle request.
  */
 export class OptimisticOracleRequest {
-  readonly body: string; // Human readable request body.
+  readonly body: string; // Human-readable request body.
   readonly type: OptimisticOracleType; // Type of the request.
   readonly timestamp: number; // Timestamp in seconds of the request.
   readonly identifier: string; // Identifier of the request.
@@ -149,18 +149,15 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
 }
 
 /**
- * Represents a filtering strategy for an Optimistic Oracle client.
- * @template I The type of the input Optimistic Oracle client.
- * @template O The type of the output Optimistic Oracle client.
+ * Represents a filtering strategy for an Optimistic Oracle client price requests.
+ * @template I The type of the input OptimisticOracleRequest.
+ * @template O The type of the output OptimisticOracleRequest.
  */
-export interface OptimisticOracleClientFilter<
-  I extends OptimisticOracleClient<OptimisticOracleRequest>,
-  O extends OptimisticOracleClient<OptimisticOracleRequest>
-> {
+export interface OptimisticOracleClientFilter<I extends OptimisticOracleRequest, O extends OptimisticOracleRequest> {
   /**
-   * Filters the input Optimistic Oracle client and returns the filtered output Optimistic Oracle client.
-   * @param optimisticOracleClient The input Optimistic Oracle client to be filtered.
-   * @returns A Promise that resolves to the filtered output Optimistic Oracle client.
+   * Filters and/or augments Optimistic Oracle requests.
+   * @param optimisticOracleRequests The Optimistic Oracle requests to be filtered.
+   * @returns A Promise that resolves to the filtered Optimistic Oracle requests.
    */
-  filter(optimisticOracleClient: I): Promise<O>;
+  filter(optimisticOracleRequests: I[]): Promise<O[]>;
 }
