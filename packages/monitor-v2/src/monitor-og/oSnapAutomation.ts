@@ -3,6 +3,7 @@ import type { Signer } from "@ethersproject/abstract-signer";
 import { ERC20Ethers } from "@uma/contracts-node";
 import {
   ProposalDeletedEvent,
+  ProposalExecutedEvent,
   TransactionsProposedEvent,
 } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import assert from "assert";
@@ -13,12 +14,13 @@ import { gql } from "graphql-tag";
 
 import { getEventTopic } from "../utils/contracts";
 import { createSnapshotProposalLink } from "../utils/logger";
-import { logSubmittedProposal } from "./MonitorLogger";
+import { logSubmittedDispute, logSubmittedProposal } from "./MonitorLogger";
 
 import {
   getBlockTimestamp,
   getContractInstanceWithProvider,
   getOgByAddress,
+  getOo,
   Logger,
   MonitoringParams,
   runQueryFilter,
@@ -35,6 +37,7 @@ import {
   SafeSnapSafe,
   SnapshotProposalGraphql,
   verifyIpfs,
+  verifyProposal,
   verifyRules,
   verifyVoteOutcome,
 } from "./SnapshotVerification";
@@ -47,6 +50,15 @@ interface SupportedParameters {
 
 interface SupportedModules {
   [ogAddress: string]: SupportedParameters;
+}
+
+interface SupportedProposal {
+  event: TransactionsProposedEvent;
+  parameters: SupportedParameters;
+}
+
+export interface DisputableProposal extends SupportedProposal {
+  verificationResult: { verified: false; error: string };
 }
 
 // Expanded interface for easier processing of Snapshot proposals. Original Snapshot proposal can contain multiple safes
@@ -159,16 +171,16 @@ const getSupportedSnapshotProposals = async (
   return expandedProposals.filter((proposal) => isSafeSupported(proposal.safe, supportedModules, params.chainId));
 };
 
-// Get all proposals on supported oSnap modules that have not been discarded. Discards are most likely due to disputes,
+// Get all proposals on provided oSnap modules that have not been discarded. Discards are most likely due to disputes,
 // but can also occur on OOv3 upgrades.
 const getUndiscardedProposals = async (
-  supportedModules: SupportedModules,
+  ogAddresses: string[],
   params: MonitoringParams
 ): Promise<Array<TransactionsProposedEvent>> => {
   // Get all proposals for all supported modules.
   const allProposals = (
     await Promise.all(
-      Object.keys(supportedModules).map(async (ogAddress) => {
+      ogAddresses.map(async (ogAddress) => {
         const og = await getOgByAddress(params, ogAddress);
         return runQueryFilter<TransactionsProposedEvent>(og, og.filters.TransactionsProposed(), {
           start: 0,
@@ -181,7 +193,7 @@ const getUndiscardedProposals = async (
   // Get all deleted proposals for all supported modules.
   const deletedProposals = (
     await Promise.all(
-      Object.keys(supportedModules).map(async (ogAddress) => {
+      ogAddresses.map(async (ogAddress) => {
         const og = await getOgByAddress(params, ogAddress);
         return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
           start: 0,
@@ -274,6 +286,75 @@ const filterVerifiedProposals = async (
   });
 };
 
+// Filters out all proposals that have been executed on-chain. This results in proposals both before and after their
+// challenge period.
+const filterUnexecutedProposals = async (
+  proposals: TransactionsProposedEvent[],
+  params: MonitoringParams
+): Promise<TransactionsProposedEvent[]> => {
+  // Get all assertion Ids from executed proposals covering modules in input proposals.
+  const executedAssertionIds = (
+    await Promise.all(
+      Array.from(new Set(proposals.map((proposal) => proposal.address))).map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        const executedProposals = await runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), {
+          start: 0,
+          end: params.blockRange.end,
+        });
+        return executedProposals.map((executedProposal) => executedProposal.args.assertionId);
+      })
+    )
+  ).flat();
+
+  // Filter out all proposals that have been executed based on matching assertionId.
+  return proposals.filter((proposal) => !executedAssertionIds.includes(proposal.args.assertionId));
+};
+
+// Filter function to check if challenge period has passed for a proposal.
+const hasChallengePeriodEnded = (proposal: TransactionsProposedEvent, timestamp: number): boolean => {
+  return timestamp >= proposal.args.challengeWindowEnds.toNumber();
+};
+
+// Filters supported proposal events and adds their parameters to the result.
+const getSupportedProposals = async (
+  proposals: TransactionsProposedEvent[],
+  params: MonitoringParams
+): Promise<SupportedProposal[]> => {
+  // Get OOv3 for checking if assertion's bond is supported.
+  const oo = await getOo(params);
+
+  // Keep only proposals whose rules are parsable and bond is supported based on its assertionId.
+  const supportedProposals = (
+    await Promise.all(
+      proposals.map(async (event) => {
+        const parsedRules = parseRules(event.args.rules);
+        const { currency, bond } = await oo.getAssertion(event.args.assertionId);
+        const isSupported = parsedRules !== null && isBondSupported(currency, bond.toString(), params.supportedBonds);
+        return isSupported ? { event, parameters: { parsedRules, currency, bond: bond.toString() } } : null;
+      })
+    )
+  ).filter((proposal) => proposal !== null) as SupportedProposal[];
+
+  return supportedProposals;
+};
+
+// Filter proposals that did not pass verification and also retain verification result for logging.
+const getDisputableProposals = async (
+  proposals: SupportedProposal[],
+  params: MonitoringParams
+): Promise<DisputableProposal[]> => {
+  // TODO: We should separately handle IPFS and Graphql server errors. We don't want to submit disputes immediately just
+  // because IPFS gateway or Snapshot backend is down.
+  return (
+    await Promise.all(
+      proposals.map(async (proposal) => {
+        const verificationResult = await verifyProposal(proposal.event, params);
+        return !verificationResult.verified ? { ...proposal, verificationResult } : null;
+      })
+    )
+  ).filter((proposal) => proposal !== null) as DisputableProposal[];
+};
+
 const approveBond = async (
   provider: Provider,
   signer: Signer,
@@ -281,9 +362,6 @@ const approveBond = async (
   bond: string,
   spender: string
 ): Promise<void> => {
-  // If bond is 0, no need to approve.
-  if (bond === "0") return;
-
   // If existing approval matches the bond, no need to proceed.
   const currencyContract = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, currency);
   const currentAllowance = await currencyContract.allowance(await signer.getAddress(), spender);
@@ -374,6 +452,60 @@ const submitProposals = async (
   }
 };
 
+const submitDisputes = async (logger: typeof Logger, proposals: DisputableProposal[], params: MonitoringParams) => {
+  assert(params.signer !== undefined, "Signer must be set to dispute proposals.");
+  const disputerAddress = await params.signer.getAddress();
+
+  for (const proposal of proposals) {
+    const oo = await getOo(params);
+
+    // Approve bond based on passed proposal parameters.
+    await approveBond(
+      params.provider,
+      params.signer,
+      proposal.parameters.currency,
+      proposal.parameters.bond,
+      oo.address
+    );
+
+    // Prepare potential error message for simulating/disputing.
+    const disputeError =
+      "Dispute submission on assertionId " +
+      proposal.event.args.assertionId +
+      " related to proposalHash " +
+      proposal.event.args.proposalHash +
+      " posted on oSnap module " +
+      proposal.event.address +
+      " for Snapshot space " +
+      proposal.parameters.parsedRules.space;
+
+    // Check that dispute submission would succeed.
+    try {
+      await oo.callStatic.disputeAssertion(proposal.event.args.assertionId, disputerAddress, {
+        from: disputerAddress,
+      });
+    } catch (error) {
+      assert(error instanceof Error, "Unexpected Error type!");
+      throw new Error(`${disputeError} would fail: ${error.message}`);
+    }
+
+    // Submit dispute and get receipt.
+    let receipt: ContractReceipt;
+    try {
+      const tx = await oo.connect(params.signer).disputeAssertion(proposal.event.args.assertionId, disputerAddress);
+      receipt = await tx.wait();
+    } catch (error) {
+      assert(error instanceof Error, "Unexpected Error type!");
+      throw new Error(`${disputeError} failed: ${error.message}`);
+    }
+
+    // Log submitted dispute.
+    const disputeEvent = receipt.events?.find((e) => e.event === "AssertionDisputed");
+    assert(disputeEvent !== undefined, "AssertionDisputed event not found.");
+    await logSubmittedDispute(logger, proposal, disputeEvent.transactionHash, params);
+  }
+};
+
 export const proposeTransactions = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
   // Get supported modules.
   const supportedModules = await getSupportedModules(params);
@@ -382,7 +514,7 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   const supportedProposals = await getSupportedSnapshotProposals(supportedModules, params);
 
   // Get all undiscarded on-chain proposals for supported modules.
-  const onChainProposals = await getUndiscardedProposals(supportedModules, params);
+  const onChainProposals = await getUndiscardedProposals(Object.keys(supportedModules), params);
 
   // Filter Snapshot proposals that could potentially be proposed on-chain.
   const potentialProposals = filterPotentialProposals(supportedProposals, onChainProposals, params);
@@ -390,4 +522,25 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
 
   // Submit proposals.
   await submitProposals(logger, verifiedProposals, supportedModules, params);
+};
+
+export const disputeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
+  // Get all undiscarded on-chain proposals for all monitored modules.
+  const onChainProposals = await getUndiscardedProposals(params.ogAddresses, params);
+
+  // Filter out all proposals that have been executed on-chain.
+  const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
+
+  // Filter out all proposals that have passed their challenge period.
+  const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
+  const liveProposals = unexecutedProposals.filter((proposal) => !hasChallengePeriodEnded(proposal, lastTimestamp));
+
+  // Filter only supported proposals and get their parameters.
+  const supportedProposals = await getSupportedProposals(liveProposals, params);
+
+  // Filter proposals that did not pass verification and also retain verification result for logging.
+  const disputableProposals = await getDisputableProposals(supportedProposals, params);
+
+  // Submit disputes.
+  await submitDisputes(logger, disputableProposals, params);
 };
