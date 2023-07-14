@@ -413,6 +413,7 @@ const submitProposals = async (
         createEtherscanLinkMarkdown(proposal.safe.umaAddress, params.chainId) +
         " at Snapshot space " +
         proposal.space.id,
+      notificationPath: "optimistic-governor",
     };
 
     // Check that proposal submission would succeed.
@@ -484,6 +485,7 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
         createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
         " at Snapshot space " +
         proposal.parameters.parsedRules.space,
+      notificationPath: "optimistic-governor",
     };
 
     // Check that dispute submission would succeed.
