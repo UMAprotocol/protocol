@@ -205,8 +205,8 @@ const getUndiscardedProposals = async (
 
   // Filter out all proposals that have been deleted by matching assertionId. assertionId should be sufficient property
   // for filtering as it is derived from module address, transaction content and assertion time among other factors.
-  const deletedAssertionIds = deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId);
-  return allProposals.filter((proposal) => !deletedAssertionIds.includes(proposal.args.assertionId));
+  const deletedAssertionIds = new Set(deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId));
+  return allProposals.filter((proposal) => !deletedAssertionIds.has(proposal.args.assertionId));
 };
 
 // Checks if a safeSnap safe from Snapshot proposal is supported by oSnap automation.
@@ -293,21 +293,23 @@ const filterUnexecutedProposals = async (
   params: MonitoringParams
 ): Promise<TransactionsProposedEvent[]> => {
   // Get all assertion Ids from executed proposals covering modules in input proposals.
-  const executedAssertionIds = (
-    await Promise.all(
-      Array.from(new Set(proposals.map((proposal) => proposal.address))).map(async (ogAddress) => {
-        const og = await getOgByAddress(params, ogAddress);
-        const executedProposals = await runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), {
-          start: 0,
-          end: params.blockRange.end,
-        });
-        return executedProposals.map((executedProposal) => executedProposal.args.assertionId);
-      })
-    )
-  ).flat();
+  const executedAssertionIds = new Set(
+    (
+      await Promise.all(
+        Array.from(new Set(proposals.map((proposal) => proposal.address))).map(async (ogAddress) => {
+          const og = await getOgByAddress(params, ogAddress);
+          const executedProposals = await runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), {
+            start: 0,
+            end: params.blockRange.end,
+          });
+          return executedProposals.map((executedProposal) => executedProposal.args.assertionId);
+        })
+      )
+    ).flat()
+  );
 
   // Filter out all proposals that have been executed based on matching assertionId.
-  return proposals.filter((proposal) => !executedAssertionIds.includes(proposal.args.assertionId));
+  return proposals.filter((proposal) => !executedAssertionIds.has(proposal.args.assertionId));
 };
 
 // Filter function to check if challenge period has passed for a proposal.
