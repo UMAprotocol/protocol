@@ -1,6 +1,6 @@
 {
   "name": "@uma/common",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -37,7 +37,6 @@
     "@google-cloud/kms": "^3.0.1",
     "@google-cloud/storage": "^6.4.2",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
-    "@nomiclabs/hardhat-etherscan": "^3.1.5",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@truffle/contract": "4.6.17",
     "@truffle/hdwallet-provider": "eip1559-beta",
