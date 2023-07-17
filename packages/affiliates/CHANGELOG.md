@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.18.0...@uma/affiliates@1.19.0) (2023-07-17)
+
+### Features
+
+- April Gas rebate ([#4551](https://github.com/UMAprotocol/protocol/issues/4551)) ([ec25d24](https://github.com/UMAprotocol/protocol/commit/ec25d24dffe701738dd2dccb3d05986436ee1aca))
+- gas rebates ([#4568](https://github.com/UMAprotocol/protocol/issues/4568)) ([847b4ec](https://github.com/UMAprotocol/protocol/commit/847b4eca11bfe7d06670cb9098fdffff8abc2584))
+- update gas rebates script to pay in eth and run it for june ([#4590](https://github.com/UMAprotocol/protocol/issues/4590)) ([e02eca1](https://github.com/UMAprotocol/protocol/commit/e02eca1b0da5ad9a7099701e81144210c5942c07))
+
 # [1.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.17.0...@uma/affiliates@1.18.0) (2023-04-18)
 
 ### Bug Fixes
