@@ -36,6 +36,7 @@
     "@ethersproject/constants": "^5.7.0",
     "@google-cloud/kms": "^3.0.1",
     "@google-cloud/storage": "^6.4.2",
+    "@nomicfoundation/hardhat-verify": "^1.0.4",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@truffle/contract": "4.6.17",
