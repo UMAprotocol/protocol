@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.33.0...@uma/common@2.34.0) (2023-07-17)
+
+### Features
+
+- **common:** add tenderly simulator ([#4580](https://github.com/UMAprotocol/protocol/issues/4580)) ([ac81c24](https://github.com/UMAprotocol/protocol/commit/ac81c2434f7e9ca4868af0832545a87afd6f2146))
+- Deploy to Base Goerli ([#4554](https://github.com/UMAprotocol/protocol/issues/4554)) ([6c7dc62](https://github.com/UMAprotocol/protocol/commit/6c7dc62a22773da0bdb758356fdad4ca87f16725))
+- improve dvm2.0 monitor scripts duration ([#4540](https://github.com/UMAprotocol/protocol/issues/4540)) ([eefb03b](https://github.com/UMAprotocol/protocol/commit/eefb03b772c94f2ead49a0ab701b761684abd229))
+
 # [2.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.32.0...@uma/common@2.33.0) (2023-04-18)
 
 ### Features

@@ -1,6 +1,6 @@
 {
   "name": "@uma/contracts-frontend",
-  "version": "0.4.16",
+  "version": "0.4.17",
   "description": "UMA smart contracts and unit tests",
   "devDependencies": {
     "@across-protocol/contracts": "^0.1.4",
@@ -8,8 +8,8 @@
     "@ethersproject/abstract-provider": "^5.4.0",
     "@ethersproject/contracts": "^5.4.0",
     "@ethersproject/providers": "^5.4.2",
-    "@uma/common": "^2.33.0",
-    "@uma/core": "^2.55.0",
+    "@uma/common": "^2.34.0",
+    "@uma/core": "^2.56.0",
     "ethers": "^5.4.2"
   },
   "homepage": "https://umaproject.org",

@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.56.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.55.0...@uma/core@2.56.0) (2023-07-17)
+
+### Bug Fixes
+
+- **core:** forge event tests ([#4581](https://github.com/UMAprotocol/protocol/issues/4581)) ([6ceda11](https://github.com/UMAprotocol/protocol/commit/6ceda1188ed16756d36d30aedd85117aa3909e01))
+
+### Features
+
+- add excluded tokens in osnap llama adapter config ([#4553](https://github.com/UMAprotocol/protocol/issues/4553)) ([9a51c0c](https://github.com/UMAprotocol/protocol/commit/9a51c0c9d879961542739d9cf900de85c07f1a44))
+- add OOV3 on Mumbai ([#4583](https://github.com/UMAprotocol/protocol/issues/4583)) ([533267a](https://github.com/UMAprotocol/protocol/commit/533267a4a4bde4d4fc305bedf5bdb53e85dd7e0f))
+- add origin validator address mainnet ([#4549](https://github.com/UMAprotocol/protocol/issues/4549)) ([b6dbb45](https://github.com/UMAprotocol/protocol/commit/b6dbb45ea54c8ad41591161023a5526b44477821))
+- add osnap defi llama adapter config ([#4538](https://github.com/UMAprotocol/protocol/issues/4538)) ([b0558f3](https://github.com/UMAprotocol/protocol/commit/b0558f37a5ce240a08d694ebd40f9ed327c897ed))
+- add sherlock identifier update proposal script ([#4547](https://github.com/UMAprotocol/protocol/issues/4547)) ([3369652](https://github.com/UMAprotocol/protocol/commit/33696527048b600d3f322e566d207124228e5fb9))
+- Deploy to Base Goerli ([#4554](https://github.com/UMAprotocol/protocol/issues/4554)) ([6c7dc62](https://github.com/UMAprotocol/protocol/commit/6c7dc62a22773da0bdb758356fdad4ca87f16725))
+
 # [2.55.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.54.0...@uma/core@2.55.0) (2023-04-18)
 
 ### Bug Fixes
