@@ -119,6 +119,8 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
       const latestBlock = await this.provider.getBlockNumber();
       range = [this.fetchedBlockRange[1] + 1, latestBlock];
     }
+    if (range[0] > range[1]) throw new Error("Invalid block range");
+    if (range[0] == range[1]) return this.createClientInstance(existingRequests, range) as this;
     const newRequests = await this.fetchOracleRequests(range);
     return this.createClientInstance([...existingRequests, ...newRequests], range) as this;
   }
