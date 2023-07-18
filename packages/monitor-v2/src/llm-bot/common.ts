@@ -114,14 +114,15 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   async updateWithBlockRange(blockRange?: [number, number], existingRequests: R[] = []): Promise<this> {
     let range: [number, number];
     if (blockRange) {
+      if (blockRange[0] > blockRange[1]) throw new Error("Invalid block range");
       range = blockRange;
     } else {
       const latestBlock = await this.provider.getBlockNumber();
-      range = [this.fetchedBlockRange[1] + 1, latestBlock];
+      const nextStartBlock = this.fetchedBlockRange[1] + 1;
+      range = [nextStartBlock, latestBlock >= nextStartBlock ? latestBlock : nextStartBlock];
     }
-    if (range[0] > range[1]) throw new Error("Invalid block range");
-    if (range[0] == range[1]) return this.createClientInstance(existingRequests, range) as this;
     const newRequests = await this.fetchOracleRequests(range);
+    // TODO handle duplicates
     return this.createClientInstance([...existingRequests, ...newRequests], range) as this;
   }
 
