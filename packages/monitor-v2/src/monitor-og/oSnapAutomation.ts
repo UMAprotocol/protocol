@@ -534,7 +534,7 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
       // The execution might revert for various reasons (e.g. insufficient funds in safe, transaction guard blocking or
       // the module has been unplugged). In most of these cases there is nothing the on-call can do, thus log this at
       // warn level and proceed with the next execution.
-      logger.warn({ ...executionErrorLog, message: "Proposal execution would fail!", error });
+      logger.info({ ...executionErrorLog, message: "Proposal execution would fail!", error });
       continue;
     }
 

@@ -847,7 +847,7 @@ describe("OptimisticGovernorMonitor", function () {
     // When calling the bot module directly there should be only one log (index 0) with the execution warn caught by spy.
     assert.equal(spy.getCall(0).lastArg.at, "oSnapAutomation");
     assert.equal(spy.getCall(0).lastArg.message, "Proposal execution would fail!");
-    assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.equal(spyLogLevel(spy, 0), "info");
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
     assert.isTrue(spyLogIncludes(spy, 0, space));
