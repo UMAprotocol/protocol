@@ -50,15 +50,15 @@ interface MumbaiResponseGasStation {
 export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   1: {
     url: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
-    defaultMaxFeePerGasGwei: 450, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
-    defaultMaxPriorityFeePerGasGwei: 100,
+    defaultMaxFeePerGasGwei: 500,
+    defaultMaxPriorityFeePerGasGwei: 5,
     type: NetworkType.London,
   },
   10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   137: {
     url: "https://api.polygonscan.com/api?module=gastracker&action=gasoracle",
-    defaultMaxFeePerGasGwei: 300, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
-    defaultMaxPriorityFeePerGasGwei: 50,
+    defaultMaxFeePerGasGwei: 500,
+    defaultMaxPriorityFeePerGasGwei: 100,
     type: NetworkType.London,
   },
   288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
@@ -66,7 +66,7 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   80001: {
     url: "https://gasstation-testnet.polygon.technology/v2",
     defaultMaxFeePerGasGwei: 50, // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
-    defaultMaxPriorityFeePerGasGwei: 10,
+    defaultMaxPriorityFeePerGasGwei: 1,
     type: NetworkType.London,
   },
 };
@@ -251,18 +251,19 @@ export class GasEstimator {
 
   private _extractFastGasPrice(json: { [key: string]: any }, url: string): LondonGasData | LegacyGasData {
     if (url.includes("etherscan.io") || url.includes("polygonscan.com")) {
+      const isMainnet = url.includes("etherscan.io");
       const etherscanGasResponse = json as EtherscanGasResponse;
       if (etherscanGasResponse.result.suggestBaseFee === undefined)
         throw new Error(`Bad ethgasstation response ${json}`);
       return {
-        maxFeePerGas: Number(etherscanGasResponse.result.suggestBaseFee) * 2,
-        maxPriorityFeePerGas: Number(etherscanGasResponse.result.suggestBaseFee),
+        maxFeePerGas: Number(etherscanGasResponse.result.suggestBaseFee) * 3,
+        maxPriorityFeePerGas: isMainnet ? 5 : 50,
       } as LondonGasData;
     } else if (url.includes("gasstation-testnet.polygon.technology")) {
       const maticResponse = json as MumbaiResponseGasStation;
       if (maticResponse?.fast.maxFee === undefined) throw new Error(`Bad matic response ${json}`);
       return {
-        maxFeePerGas: Number(maticResponse.fast.maxFee), // maxFeePerGas = baseFeePerGas + maxPriorityFeePerGas
+        maxFeePerGas: Number(maticResponse.estimatedBaseFee) * 3,
         maxPriorityFeePerGas: Number(maticResponse.fast.maxPriorityFee),
       } as LondonGasData;
     } else {
