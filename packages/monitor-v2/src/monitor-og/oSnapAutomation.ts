@@ -15,7 +15,7 @@ import { gql } from "graphql-tag";
 
 import { getEventTopic } from "../utils/contracts";
 import { createSnapshotProposalLink } from "../utils/logger";
-import { logSubmittedDispute, logSubmittedProposal } from "./MonitorLogger";
+import { logSubmittedDispute, logSubmittedExecution, logSubmittedProposal } from "./MonitorLogger";
 
 import {
   getBlockTimestamp,
@@ -53,7 +53,7 @@ interface SupportedModules {
   [ogAddress: string]: SupportedParameters;
 }
 
-interface SupportedProposal {
+export interface SupportedProposal {
   event: TransactionsProposedEvent;
   parameters: SupportedParameters;
 }
@@ -519,6 +519,55 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
   }
 };
 
+const submitExecutions = async (logger: typeof Logger, proposals: SupportedProposal[], params: MonitoringParams) => {
+  assert(params.signer !== undefined, "Signer must be set to execute proposals.");
+  const executorAddress = await params.signer.getAddress();
+
+  for (const proposal of proposals) {
+    const og = await getOgByAddress(params, proposal.event.address);
+
+    // Create potential error log for simulating/executing.
+    const executionErrorLog = {
+      at: "oSnapAutomation",
+      mrkdwn:
+        "Trying to execute proposal with proposalHash " +
+        proposal.event.args.proposalHash +
+        " posted on oSnap module " +
+        createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
+        " at Snapshot space " +
+        proposal.parameters.parsedRules.space,
+      notificationPath: "optimistic-governor",
+    };
+
+    // Check that execution submission would succeed.
+    try {
+      await og.callStatic.executeProposal(proposal.event.args.proposal.transactions, { from: executorAddress });
+    } catch (error) {
+      // The execution might revert for various reasons (e.g. insufficient funds in safe, transaction guard blocking or
+      // the module has been unplugged). In most of these cases there is nothing the on-call can do, thus log this at
+      // warn level and proceed with the next execution.
+      logger.info({ ...executionErrorLog, message: "Proposal execution would fail!", error });
+      continue;
+    }
+
+    // Submit execution and get receipt.
+    let receipt: ContractReceipt;
+    try {
+      const tx = await og.connect(params.signer).executeProposal(proposal.event.args.proposal.transactions);
+      receipt = await tx.wait();
+    } catch (error) {
+      // Log error and proceed with the next execution.
+      logger.error({ ...executionErrorLog, message: "Proposal execution failed!", error });
+      continue;
+    }
+
+    // Log submitted execution.
+    const executionEvent = receipt.events?.find((e) => e.event === "ProposalExecuted");
+    assert(executionEvent !== undefined, "ProposalExecuted event not found.");
+    await logSubmittedExecution(logger, proposal, executionEvent.transactionHash, params);
+  }
+};
+
 export const proposeTransactions = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
   // Get supported modules.
   const supportedModules = await getSupportedModules(params);
@@ -556,4 +605,24 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
 
   // Submit disputes.
   await submitDisputes(logger, disputableProposals, params);
+};
+
+export const executeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
+  // Get all undiscarded on-chain proposals for all monitored modules.
+  const onChainProposals = await getUndiscardedProposals(params.ogAddresses, params);
+
+  // Filter out all proposals that have been executed on-chain.
+  const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
+
+  // Filter out all proposals that have not passed their challenge period.
+  const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
+  const unchallengedProposals = unexecutedProposals.filter((proposal) =>
+    hasChallengePeriodEnded(proposal, lastTimestamp)
+  );
+
+  // Filter only supported proposals and get their parameters.
+  const supportedProposals = await getSupportedProposals(unchallengedProposals, params);
+
+  // Submit executions.
+  await submitExecutions(logger, supportedProposals, params);
 };
