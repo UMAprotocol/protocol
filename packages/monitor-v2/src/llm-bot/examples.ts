@@ -13,7 +13,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
   }
 
   protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
-    // TODO: Implement this for the OptimisticOracleV3
+    // TODO: Implement this for the OptimisticOracleV2
     blockRange;
     return [];
   }
