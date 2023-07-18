@@ -1,12 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { ethers } from "ethers";
-import {
-  LLMStrategy,
-  OptimisticOracleClient,
-  OptimisticOracleClientFilter,
-  OptimisticOracleRequest,
-  OptimisticOracleRequestData,
-} from "./common";
+import { LLMStrategy, OptimisticOracleClient, OptimisticOracleClientFilter, OptimisticOracleRequest } from "./common";
 
 export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticOracleRequest> {
   constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
@@ -30,7 +24,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 class OptimisticOracleRequestPolymarket extends OptimisticOracleRequest {
   readonly polymarketQuestionTitle: string;
 
-  constructor(data: OptimisticOracleRequestData & { polymarketQuestionTitle: string }) {
+  constructor(data: OptimisticOracleRequestPolymarket) {
     super(data);
     this.polymarketQuestionTitle = data.polymarketQuestionTitle;
   }
@@ -39,7 +33,7 @@ class OptimisticOracleRequestPolymarket extends OptimisticOracleRequest {
 class OptimisticOracleRequestPolymarketResult extends OptimisticOracleRequestPolymarket {
   readonly dispute: boolean;
 
-  constructor(data: OptimisticOracleRequestData & { polymarketQuestionTitle: string; dispute: boolean }) {
+  constructor(data: OptimisticOracleRequestPolymarketResult) {
     super(data);
     this.dispute = data.dispute;
   }
@@ -102,10 +96,7 @@ export class OptimisticOracleClientFilterV2ToPolymarket
   }
 }
 
-class Strategy extends LLMStrategy<
-  OptimisticOracleRequestPolymarket,
-  OptimisticOracleRequestPolymarket & { dispute: boolean }
-> {
+class Strategy extends LLMStrategy<OptimisticOracleRequestPolymarket, OptimisticOracleRequestPolymarketResult> {
   async process() {
     this.results = this.optimisticOracleRequests.map(
       (request) =>
@@ -129,6 +120,8 @@ const main = async () => {
   const strategy = new Strategy(oov2_filtered);
 
   await strategy.process();
+
+  strategy.getResults();
 };
 
 main();
