@@ -34,7 +34,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 class OptimisticOracleRequestPolymarket extends OptimisticOracleRequest {
   readonly polymarketQuestionTitle: string;
 
-  constructor(data: OptimisticOracleRequestData & { polymarketQuestionTitle: string }) {
+  constructor(data: OptimisticOracleRequestPolymarket) {
     super(data);
     this.polymarketQuestionTitle = data.polymarketQuestionTitle;
   }
@@ -43,7 +43,7 @@ class OptimisticOracleRequestPolymarket extends OptimisticOracleRequest {
 class OptimisticOracleRequestPolymarketResult extends OptimisticOracleRequestPolymarket {
   readonly dispute: boolean;
 
-  constructor(data: OptimisticOracleRequestData & { polymarketQuestionTitle: string; dispute: boolean }) {
+  constructor(data: OptimisticOracleRequestPolymarketResult) {
     super(data);
     this.dispute = data.dispute;
   }
