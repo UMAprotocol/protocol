@@ -293,25 +293,10 @@ export interface OptimisticOracleClientFilter<I extends OptimisticOracleRequest,
   filter(optimisticOracleRequests: I[]): Promise<O[]>;
 }
 
-<<<<<<< HEAD
-=======
-/**
- * Abstract class representing a strategy for processing Optimistic Oracle requests using an Optimistic Oracle client.
- * @template I The type of the input OptimisticOracleRequest.
- * @template R The type of the output OptimisticOracleRequest.
- */
->>>>>>> c80eec568 (feat update filter)
 export abstract class LLMStrategy<I extends OptimisticOracleRequest, R extends OptimisticOracleRequest> {
   protected optimisticOracleRequests: I[];
   protected results: R[] = [];
 
-<<<<<<< HEAD
-=======
-  /**
-   * Creates an instance of LLMStrategy.
-   * @param optimisticOracleRequests The Optimistic Oracle requests to be used for processing.
-   */
->>>>>>> c80eec568 (feat update filter)
   constructor(optimisticOracleRequests: I[]) {
     this.optimisticOracleRequests = optimisticOracleRequests;
   }
@@ -329,15 +314,4 @@ export abstract class LLMStrategy<I extends OptimisticOracleRequest, R extends O
   getResults(): R[] {
     return this.results;
   }
-<<<<<<< HEAD
-=======
-
-  /**
-   * Returns the input Optimistic Oracle requests.
-   * @returns An array of input Optimistic Oracle requests.
-   */
-  getRequests(): I[] {
-    return this.optimisticOracleRequests;
-  }
->>>>>>> c80eec568 (feat update filter)
 }
