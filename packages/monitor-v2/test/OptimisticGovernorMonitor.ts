@@ -583,8 +583,10 @@ describe("OptimisticGovernorMonitor", function () {
     });
     await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
 
-    // Empty supported bond settings.
+    // Populate supported bond settings with correct token, but wrong amount and wrong token with correct amount.
     const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).add(1).toString();
+    supportedBonds[ethers.constants.AddressZero] = (await ogModuleProxy.getProposalBond()).toString();
 
     // Fund the avatar
     await bondToken.mint(customAvatar.address, parseEther("500"));
