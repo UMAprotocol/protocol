@@ -165,16 +165,27 @@ export interface OptimisticOracleClientFilter<I extends OptimisticOracleRequest,
   filter(optimisticOracleRequests: I[]): Promise<O[]>;
 }
 
+/**
+ * Abstract class representing a strategy for processing Optimistic Oracle requests.
+ * Implementations should take an array of input OptimisticOracleRequests and generate results based on the defined strategy.
+ * @template I The type of the input OptimisticOracleRequest.
+ * @template R The type of the result, which could be a different kind of OptimisticOracleRequest or some other type.
+ */
 export abstract class LLMStrategy<I extends OptimisticOracleRequest, R extends OptimisticOracleRequest> {
   protected optimisticOracleRequests: I[];
   protected results: R[] = [];
 
+  /**
+   * Creates a new LLMStrategy.
+   * @param optimisticOracleRequests The Optimistic Oracle requests to be processed.
+   */
   constructor(optimisticOracleRequests: I[]) {
     this.optimisticOracleRequests = optimisticOracleRequests;
   }
 
   /**
    * Processes Optimistic Oracle requests using the strategy implementation.
+   * This method should be overridden by implementations of LLMStrategy.
    * @returns A Promise that resolves once the processing is complete.
    */
   abstract process(): Promise<void>;
@@ -185,5 +196,65 @@ export abstract class LLMStrategy<I extends OptimisticOracleRequest, R extends O
    */
   getResults(): R[] {
     return this.results;
+  }
+}
+
+/**
+ * Class for handling the results of an LLMStrategy.
+ * This can be used to execute further actions based on the strategy results, such as disputing or proposing new requests, logging, or backtesting.
+ * @template R The type of the results from the LLMStrategy.
+ */
+export abstract class OptimisticOracleStrategyHandler<R extends OptimisticOracleRequest> {
+  protected strategyResults: R[];
+
+  /**
+   * Creates a new OptimisticOracleStrategyHandler.
+   * @param strategyResults The results from an LLMStrategy to be handled.
+   */
+  constructor(strategyResults: R[]) {
+    this.strategyResults = strategyResults;
+  }
+
+  /**
+   * Processes the results of the strategy.
+   * This is an abstract method that should be overridden by subclasses, defining the specific processing logic.
+   * @returns A Promise that resolves once the processing is complete.
+   */
+  abstract process(): Promise<void>;
+
+  /**
+   * Initiates a dispute for a strategy results.
+   * This method should be overridden by implementations that need to dispute requests.
+   * @returns A Promise that resolves once all disputes have been initiated.
+   */
+  protected async disputeRequest(result: R): Promise<void> {
+    // Implement dispute logic here.
+  }
+
+  /**
+   * Proposes new requests for a strategy result.
+   * This method should be overridden by implementations that need to propose requests.
+   * @returns A Promise that resolves once all proposals have been made.
+   */
+  protected async proposeRequest(result: R): Promise<void> {
+    // Implement propose logic here.
+  }
+
+  /**
+   * Logs a result.
+   * This method should be overridden by implementations that need to log requests.
+   * @returns A Promise that resolves once all logs have been created.
+   */
+  protected async logRequest(result: R): Promise<void> {
+    // Implement log logic here.
+  }
+
+  /**
+   * Performs backtesting on a result.
+   * This method should be overridden by implementations that need to backtest requests.
+   * @returns A Promise that resolves once backtesting is complete.
+   */
+  protected async backtestRequest(result: R): Promise<void> {
+    // Implement backtest logic here.
   }
 }

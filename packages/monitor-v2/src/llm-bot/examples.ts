@@ -1,6 +1,12 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { ethers } from "ethers";
-import { LLMStrategy, OptimisticOracleClient, OptimisticOracleClientFilter, OptimisticOracleRequest } from "./common";
+import {
+  LLMStrategy,
+  OptimisticOracleClient,
+  OptimisticOracleClientFilter,
+  OptimisticOracleRequest,
+  OptimisticOracleStrategyHandler,
+} from "./common";
 
 export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticOracleRequest> {
   constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
@@ -108,6 +114,18 @@ class Strategy extends LLMStrategy<OptimisticOracleRequestPolymarket, Optimistic
   }
 }
 
+class StrategyHandler extends OptimisticOracleStrategyHandler<OptimisticOracleRequestPolymarketResult> {
+  process = async () => {
+    Promise.all(
+      this.strategyResults.map((result) => {
+        if (result.dispute) {
+          return this.disputeRequest(result);
+        }
+      })
+    );
+  };
+}
+
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 
@@ -121,7 +139,7 @@ const main = async () => {
 
   await strategy.process();
 
-  strategy.getResults();
+  await new StrategyHandler(strategy.getResults()).process();
 };
 
 main();
