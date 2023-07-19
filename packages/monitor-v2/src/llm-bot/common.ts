@@ -200,6 +200,16 @@ export abstract class LLMStrategy<I extends OptimisticOracleRequest, R extends O
 }
 
 /**
+ * Enum for options available for handling strategy results.
+ */
+export enum StrategyHandlerOptions {
+  Dispute = "Dispute",
+  Propose = "Propose",
+  Log = "Log",
+  Backtest = "Backtest",
+}
+
+/**
  * Class for handling the results of an LLMStrategy.
  * This can be used to execute further actions based on the strategy results, such as disputing or proposing new requests, logging, or backtesting.
  * @template R The type of the results from the LLMStrategy.
@@ -216,42 +226,47 @@ export abstract class OptimisticOracleStrategyHandler<R extends OptimisticOracle
   }
 
   /**
-   * Processes the results of the strategy.
+   * Processes the results of the strategy based on the provided option.
    * This is an abstract method that should be overridden by subclasses, defining the specific processing logic.
+   * @param option One of the options in the StrategyHandlerOptions enum, which defines the action to take on the results.
    * @returns A Promise that resolves once the processing is complete.
    */
-  abstract process(): Promise<void>;
+  abstract process(option: StrategyHandlerOptions): Promise<void>;
 
   /**
-   * Initiates a dispute for a strategy results.
+   * Initiates a dispute for a specific strategy result.
    * This method should be overridden by implementations that need to dispute requests.
-   * @returns A Promise that resolves once all disputes have been initiated.
+   * @param result The specific result to dispute.
+   * @returns A Promise that resolves once the dispute has been initiated.
    */
   protected async disputeRequest(result: R): Promise<void> {
     // Implement dispute logic here.
   }
 
   /**
-   * Proposes new requests for a strategy result.
+   * Proposes a new request for a specific strategy result.
    * This method should be overridden by implementations that need to propose requests.
-   * @returns A Promise that resolves once all proposals have been made.
+   * @param result The specific result to propose a new request for.
+   * @returns A Promise that resolves once the proposal has been made.
    */
   protected async proposeRequest(result: R): Promise<void> {
     // Implement propose logic here.
   }
 
   /**
-   * Logs a result.
+   * Logs a specific strategy result.
    * This method should be overridden by implementations that need to log requests.
-   * @returns A Promise that resolves once all logs have been created.
+   * @param result The specific result to log.
+   * @returns A Promise that resolves once the log has been created.
    */
   protected async logRequest(result: R): Promise<void> {
     // Implement log logic here.
   }
 
   /**
-   * Performs backtesting on a result.
+   * Performs backtesting on a specific strategy result.
    * This method should be overridden by implementations that need to backtest requests.
+   * @param result The specific result to backtest.
    * @returns A Promise that resolves once backtesting is complete.
    */
   protected async backtestRequest(result: R): Promise<void> {
