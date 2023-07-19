@@ -51,7 +51,7 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   1: {
     url: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
     defaultMaxFeePerGasGwei: 500,
-    defaultMaxPriorityFeePerGasGwei: 5,
+    defaultMaxPriorityFeePerGasGwei: 1,
     type: NetworkType.London,
   },
   10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
@@ -257,7 +257,7 @@ export class GasEstimator {
         throw new Error(`Bad ethgasstation response ${json}`);
       return {
         maxFeePerGas: Number(etherscanGasResponse.result.suggestBaseFee) * 3,
-        maxPriorityFeePerGas: isMainnet ? 5 : 50,
+        maxPriorityFeePerGas: isMainnet ? 1 : 50,
       } as LondonGasData;
     } else if (url.includes("gasstation-testnet.polygon.technology")) {
       const maticResponse = json as MumbaiResponseGasStation;
