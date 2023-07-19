@@ -240,6 +240,7 @@ export abstract class OptimisticOracleStrategyHandler<R extends OptimisticOracle
    * @returns A Promise that resolves once the dispute has been initiated.
    */
   protected async disputeRequest(result: R): Promise<void> {
+    result;
     // Implement dispute logic here.
   }
 
@@ -250,6 +251,7 @@ export abstract class OptimisticOracleStrategyHandler<R extends OptimisticOracle
    * @returns A Promise that resolves once the proposal has been made.
    */
   protected async proposeRequest(result: R): Promise<void> {
+    result;
     // Implement propose logic here.
   }
 
@@ -260,6 +262,7 @@ export abstract class OptimisticOracleStrategyHandler<R extends OptimisticOracle
    * @returns A Promise that resolves once the log has been created.
    */
   protected async logRequest(result: R): Promise<void> {
+    result;
     // Implement log logic here.
   }
 
@@ -270,6 +273,7 @@ export abstract class OptimisticOracleStrategyHandler<R extends OptimisticOracle
    * @returns A Promise that resolves once backtesting is complete.
    */
   protected async backtestRequest(result: R): Promise<void> {
+    result;
     // Implement backtest logic here.
   }
 }
