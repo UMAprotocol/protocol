@@ -108,23 +108,22 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
    * @param blockRange (Optional) The block range to fetch new requests from.
-   * @param existingRequests (Optional) The list of existing requests to merge with the new requests.
    * @returns A Promise that resolves to a new OptimisticOracleClient instance with updated requests.
    */
-  async updateWithBlockRange(blockRange?: [number, number], existingRequests: R[] = []): Promise<this> {
+  async updateWithBlockRange(blockRange?: [number, number]): Promise<this> {
     let range: [number, number];
     if (blockRange) {
       if (blockRange[0] > blockRange[1]) throw new Error("Invalid block range");
       range = blockRange;
     } else {
+      // Calculate the next block range to fetch
       const latestBlock = await this.provider.getBlockNumber();
       const lastFetchedRange = this.fetchedBlockRanges[this.fetchedBlockRanges.length - 1];
       const nextStartBlock = lastFetchedRange[1] + 1;
-      if (nextStartBlock > latestBlock) return this; // no new blocks to fetch, do not error
+      if (nextStartBlock > latestBlock) return this; // no new blocks to fetch
       range = [nextStartBlock, latestBlock];
     }
     const [startBlock, endBlock] = range;
-    if (startBlock > endBlock) throw new Error("Invalid block range");
     if (
       this.fetchedBlockRanges.some(([s, e]) => (s <= startBlock && startBlock <= e) || (s <= endBlock && endBlock <= e))
     )
@@ -135,7 +134,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
 
     const newRequests = await this.fetchOracleRequests(range);
 
-    return this.createClientInstance([...existingRequests, ...newRequests], newRanges) as this;
+    return this.createClientInstance([...this.requests, ...newRequests], newRanges) as this;
   }
 
   /**
