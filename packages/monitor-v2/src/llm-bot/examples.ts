@@ -8,8 +8,12 @@ import {
 } from "./common";
 
 export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticOracleRequest> {
-  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
-    super(_provider, _requests, _fetchedBlockRange);
+  constructor(
+    _provider: Provider,
+    _requests: OptimisticOracleRequest[] = [],
+    _fetchedBlockRanges?: [number, number][]
+  ) {
+    super(_provider, _requests, _fetchedBlockRanges);
   }
 
   protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
@@ -20,9 +24,9 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
   protected createClientInstance(
     requests: OptimisticOracleRequest[],
-    fetchedBlockRange: [number, number]
+    fetchedBlockRanges: [number, number][]
   ): OptimisticOracleClientV2 {
-    return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRange);
+    return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRanges);
   }
 }
 
@@ -39,9 +43,9 @@ export class OptimisticOracleClientV2Polymarket extends OptimisticOracleClient<O
   constructor(
     _provider: Provider,
     _requests: OptimisticOracleRequestPolymarket[] = [],
-    _fetchedBlockRange?: [number, number]
+    _fetchedBlockRanges?: [number, number][]
   ) {
-    super(_provider, _requests, _fetchedBlockRange);
+    super(_provider, _requests, _fetchedBlockRanges);
   }
 
   protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequestPolymarket[]> {
@@ -52,15 +56,19 @@ export class OptimisticOracleClientV2Polymarket extends OptimisticOracleClient<O
 
   protected createClientInstance(
     requests: OptimisticOracleRequestPolymarket[],
-    fetchedBlockRange: [number, number]
+    fetchedBlockRanges: [number, number][]
   ): OptimisticOracleClientV2Polymarket {
-    return new OptimisticOracleClientV2Polymarket(this.provider, requests, fetchedBlockRange);
+    return new OptimisticOracleClientV2Polymarket(this.provider, requests, fetchedBlockRanges);
   }
 }
 
 export class OptimisticOracleClientV3 extends OptimisticOracleClient<OptimisticOracleRequest> {
-  constructor(_provider: Provider, _requests: OptimisticOracleRequest[] = [], _fetchedBlockRange?: [number, number]) {
-    super(_provider, _requests, _fetchedBlockRange);
+  constructor(
+    _provider: Provider,
+    _requests: OptimisticOracleRequest[] = [],
+    _fetchedBlockRanges?: [number, number][]
+  ) {
+    super(_provider, _requests, _fetchedBlockRanges);
   }
 
   protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
@@ -71,9 +79,9 @@ export class OptimisticOracleClientV3 extends OptimisticOracleClient<OptimisticO
 
   protected createClientInstance(
     requests: OptimisticOracleRequest[],
-    fetchedBlockRange: [number, number]
+    fetchedBlockRanges: [number, number][]
   ): OptimisticOracleClientV3 {
-    return new OptimisticOracleClientV3(this.provider, requests, fetchedBlockRange);
+    return new OptimisticOracleClientV3(this.provider, requests, fetchedBlockRanges);
   }
 }
 

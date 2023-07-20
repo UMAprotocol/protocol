@@ -72,18 +72,18 @@ export class OptimisticOracleRequest {
 export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> {
   protected provider: Provider;
   protected requests: R[];
-  protected fetchedBlockRange: [number, number];
+  protected fetchedBlockRanges: [number, number][];
 
   /**
    * Constructs a new instance of OptimisticOracleClient.
    * @param _provider The provider used for interacting with the blockchain.
    * @param _requests (Optional) The list of Optimistic Oracle requests.
-   * @param _fetchedBlockRange (Optional) The block range of the fetched requests.
+   * @param _fetchedBlockRanges (Optional) The block ranges of the fetched requests.
    */
-  protected constructor(_provider: Provider, _requests?: R[], _fetchedBlockRange?: [number, number]) {
+  protected constructor(_provider: Provider, _requests?: R[], _fetchedBlockRanges?: [number, number][]) {
     this.provider = _provider;
     this.requests = _requests || [];
-    this.fetchedBlockRange = _fetchedBlockRange || [0, 0];
+    this.fetchedBlockRanges = _fetchedBlockRanges ? _fetchedBlockRanges : [];
   }
 
   /**
@@ -95,7 +95,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    */
   protected abstract createClientInstance(
     requests: R[],
-    fetchedBlockRange: [number, number]
+    fetchedBlockRanges: [number, number][]
   ): OptimisticOracleClient<R>;
 
   /**
@@ -118,13 +118,24 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
       range = blockRange;
     } else {
       const latestBlock = await this.provider.getBlockNumber();
-      const nextStartBlock = this.fetchedBlockRange[1] + 1;
-      if (nextStartBlock > latestBlock) return this; // no new blocks to fetch
+      const lastFetchedRange = this.fetchedBlockRanges[this.fetchedBlockRanges.length - 1];
+      const nextStartBlock = lastFetchedRange[1] + 1;
+      if (nextStartBlock > latestBlock) return this; // no new blocks to fetch, do not error
       range = [nextStartBlock, latestBlock];
     }
+    const [startBlock, endBlock] = range;
+    if (startBlock > endBlock) throw new Error("Invalid block range");
+    if (
+      this.fetchedBlockRanges.some(([s, e]) => (s <= startBlock && startBlock <= e) || (s <= endBlock && endBlock <= e))
+    )
+      throw new Error("Block range already fetched");
+
+    // Add new range to the list of fetched ranges and sort them by start block number
+    const newRanges = [...this.fetchedBlockRanges, range].sort(([s1], [s2]) => s1 - s2);
+
     const newRequests = await this.fetchOracleRequests(range);
-    // TODO handle duplicates
-    return this.createClientInstance([...existingRequests, ...newRequests], range) as this;
+
+    return this.createClientInstance([...existingRequests, ...newRequests], newRanges) as this;
   }
 
   /**
@@ -136,11 +147,11 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   }
 
   /**
-   * Returns the block range of the fetched requests.
-   * @returns An array of two numbers representing the block range.
+   * Returns the block ranges of the fetched requests.
+   * @returns An array of pairs of numbers representing the block ranges.
    */
-  getFetchedBlockRange(): [number, number] {
-    return this.fetchedBlockRange;
+  getFetchedBlockRange(): [number, number][] {
+    return this.fetchedBlockRanges;
   }
 
   /**
