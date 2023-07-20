@@ -430,6 +430,12 @@ const submitProposals = async (
       continue;
     }
 
+    // If submitting transactions is disabled, log the proposal attempt and proceed with the next proposal.
+    if (!params.submitAutomation) {
+      logger.info({ ...proposalAttemptLog, message: "Proposal transaction would succeed" });
+      continue;
+    }
+
     // Submit proposal and get receipt.
     let receipt: ContractReceipt;
     try {
@@ -501,6 +507,12 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
       continue;
     }
 
+    // If submitting transactions is disabled, log the dispute attempt and proceed with the next dispute.
+    if (!params.submitAutomation) {
+      logger.info({ ...disputeAttemptLog, message: "Dispute transaction would succeed" });
+      continue;
+    }
+
     // Submit dispute and get receipt.
     let receipt: ContractReceipt;
     try {
@@ -547,6 +559,12 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
       // the module has been unplugged). In most of these cases there is nothing the on-call can do, thus log this at
       // warn level and proceed with the next execution.
       logger.info({ ...executionAttemptLog, message: "Proposal execution would fail!", error });
+      continue;
+    }
+
+    // If submitting transactions is disabled, log the execution attempt and proceed with the next execution.
+    if (!params.submitAutomation) {
+      logger.info({ ...executionAttemptLog, message: "Execution transaction would succeed" });
       continue;
     }
 
