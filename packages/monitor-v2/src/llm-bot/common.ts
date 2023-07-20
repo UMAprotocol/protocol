@@ -119,7 +119,8 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
     } else {
       const latestBlock = await this.provider.getBlockNumber();
       const nextStartBlock = this.fetchedBlockRange[1] + 1;
-      range = [nextStartBlock, latestBlock >= nextStartBlock ? latestBlock : nextStartBlock];
+      if (nextStartBlock > latestBlock) return this; // no new blocks to fetch
+      range = [nextStartBlock, latestBlock];
     }
     const newRequests = await this.fetchOracleRequests(range);
     // TODO handle duplicates
