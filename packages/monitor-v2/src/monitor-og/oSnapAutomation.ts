@@ -178,7 +178,7 @@ const getUndiscardedProposals = async (
   ogAddresses: string[],
   params: MonitoringParams
 ): Promise<Array<TransactionsProposedEvent>> => {
-  // Get all proposals for all supported modules.
+  // Get all proposals for all provided modules.
   const allProposals = (
     await Promise.all(
       ogAddresses.map(async (ogAddress) => {
@@ -191,7 +191,7 @@ const getUndiscardedProposals = async (
     )
   ).flat();
 
-  // Get all deleted proposals for all supported modules.
+  // Get all deleted proposals for all provided modules.
   const deletedProposals = (
     await Promise.all(
       ogAddresses.map(async (ogAddress) => {
