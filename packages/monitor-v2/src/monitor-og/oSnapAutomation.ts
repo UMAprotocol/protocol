@@ -428,8 +428,8 @@ const submitProposals = async (
     });
     const explanation = ethersUtils.toUtf8Bytes(proposal.ipfs);
 
-    // Create potential error log for simulating/proposing.
-    const proposalErrorLog = {
+    // Create potential log for simulating/proposing.
+    const proposalAttemptLog = {
       at: "oSnapAutomation",
       mrkdwn:
         "Trying to submit proposal for " +
@@ -446,7 +446,13 @@ const submitProposals = async (
       await og.callStatic.proposeTransactions(transactions, explanation, { from: await params.signer.getAddress() });
     } catch (error) {
       // Log error and proceed with the next proposal.
-      logger.error({ ...proposalErrorLog, message: "Proposal submission would fail!", error });
+      logger.error({ ...proposalAttemptLog, message: "Proposal submission would fail!", error });
+      continue;
+    }
+
+    // If submitting transactions is disabled, log the proposal attempt and proceed with the next proposal.
+    if (!params.submitAutomation) {
+      logger.info({ ...proposalAttemptLog, message: "Proposal transaction would succeed" });
       continue;
     }
 
@@ -457,7 +463,7 @@ const submitProposals = async (
       receipt = await tx.wait();
     } catch (error) {
       // Log error and proceed with the next proposal.
-      logger.error({ ...proposalErrorLog, message: "Proposal submission failed!", error });
+      logger.error({ ...proposalAttemptLog, message: "Proposal submission failed!", error });
       continue;
     }
 
@@ -495,8 +501,8 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
       oo.address
     );
 
-    // Create potential error log for simulating/disputing.
-    const disputeErrorLog = {
+    // Create potential log for simulating/disputing.
+    const disputeAttemptLog = {
       at: "oSnapAutomation",
       mrkdwn:
         "Trying to submit dispute on assertionId " +
@@ -517,7 +523,13 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
       });
     } catch (error) {
       // Log error and proceed with the next dispute.
-      logger.error({ ...disputeErrorLog, message: "Dispute submission would fail!", error });
+      logger.error({ ...disputeAttemptLog, message: "Dispute submission would fail!", error });
+      continue;
+    }
+
+    // If submitting transactions is disabled, log the dispute attempt and proceed with the next dispute.
+    if (!params.submitAutomation) {
+      logger.info({ ...disputeAttemptLog, message: "Dispute transaction would succeed" });
       continue;
     }
 
@@ -528,7 +540,7 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
       receipt = await tx.wait();
     } catch (error) {
       // Log error and proceed with the next dispute.
-      logger.error({ ...disputeErrorLog, message: "Dispute submission failed!", error });
+      logger.error({ ...disputeAttemptLog, message: "Dispute submission failed!", error });
       continue;
     }
 
@@ -546,8 +558,8 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
   for (const proposal of proposals) {
     const og = await getOgByAddress(params, proposal.event.address);
 
-    // Create potential error log for simulating/executing.
-    const executionErrorLog = {
+    // Create potential log for simulating/executing.
+    const executionAttemptLog = {
       at: "oSnapAutomation",
       mrkdwn:
         "Trying to execute proposal with proposalHash " +
@@ -566,7 +578,13 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
       // The execution might revert for various reasons (e.g. insufficient funds in safe, transaction guard blocking or
       // the module has been unplugged). In most of these cases there is nothing the on-call can do, thus log this at
       // warn level and proceed with the next execution.
-      logger.info({ ...executionErrorLog, message: "Proposal execution would fail!", error });
+      logger.info({ ...executionAttemptLog, message: "Proposal execution would fail!", error });
+      continue;
+    }
+
+    // If submitting transactions is disabled, log the execution attempt and proceed with the next execution.
+    if (!params.submitAutomation) {
+      logger.info({ ...executionAttemptLog, message: "Execution transaction would succeed" });
       continue;
     }
 
@@ -577,7 +595,7 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
       receipt = await tx.wait();
     } catch (error) {
       // Log error and proceed with the next execution.
-      logger.error({ ...executionErrorLog, message: "Proposal execution failed!", error });
+      logger.error({ ...executionAttemptLog, message: "Proposal execution failed!", error });
       continue;
     }
 
