@@ -5,10 +5,11 @@
 // This transport should be used with Ticket Tool (https://tickettool.xyz/) configured to trigger ticket commands on
 // the resolved channel ID and whitelisting of bot ID. Also the Discord server should be configured to allow the bot
 // to post messages on the ticket opening channel.
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, TextBasedChannel } from "discord.js";
 import * as ss from "superstruct";
 import Transport from "winston-transport";
 
+import { delay } from "../helpers/delay";
 import { removeAnchorTextFromLinks } from "./Formatters";
 import { isDictionary } from "./Logger";
 
@@ -37,6 +38,12 @@ interface DiscordTicketInfo {
   discordTicketChannel: string;
 }
 
+// Interface for log que element.
+interface QueueElement {
+  channel: TextBasedChannel;
+  message: string;
+}
+
 // Type guard for log info object.
 export const isDiscordTicketInfo = (info: unknown): info is DiscordTicketInfo => {
   if (!isDictionary(info)) return false;
@@ -51,12 +58,17 @@ export class DiscordTicketTransport extends Transport {
 
   private client: Client;
 
+  private logQueue: QueueElement[];
+  private isQueueBeingExecuted = false;
+
   constructor(winstonOpts: TransportOptions, { botToken, channelIds = {} }: Config) {
     super(winstonOpts);
     this.botToken = botToken;
     this.channelIds = channelIds;
 
     this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+    this.logQueue = [];
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -77,8 +89,9 @@ export class DiscordTicketTransport extends Transport {
         // Prepend the $ticket command and concatenate message title and content separated by newline.
         const message = `$ticket ${info.message}\n${removeAnchorTextFromLinks(info.mrkdwn)}`;
 
-        // Send the message.
-        await channel.send(message);
+        // Add the message to the queue and process it.
+        this.logQueue.push({ channel, message });
+        await this.executeLogQueue();
       } catch (error) {
         console.error("Discord Ticket error", error);
       }
@@ -90,5 +103,32 @@ export class DiscordTicketTransport extends Transport {
   // Use bot token for establishing a connection to Discord API.
   async login(): Promise<void> {
     await this.client.login(this.botToken);
+  }
+
+  async executeLogQueue(): Promise<void> {
+    if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
+    this.isQueueBeingExecuted = true; // Lock the queue to being executed.
+    // Set the parent isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
+    // is separate variable from the isQueueBeingExecuted flag as this isFlushed is global for the logger instance.
+    (this as any).parent.isFlushed = false;
+
+    while (this.logQueue.length) {
+      try {
+        // Try sending the oldest message from the queue.
+        await this.logQueue[0].channel.send(this.logQueue[0].message);
+        this.logQueue.shift(); // If the sending does not fail, remove it from the log queue as having been executed.
+        await delay(15); // Delay between opening tickets to prevent Ticket Tool rate limiting.
+      } catch (error) {
+        // If the sending fails, unlock the queue execution and throw the error so that the caller can handle it.
+        // TODO: Add retry logic and flush the transport if all retries fail.
+        this.isQueueBeingExecuted = false;
+        (this as any).parent.isFlushed = true;
+        throw error;
+      }
+    }
+
+    // Unlock the queue execution enabling the bot to close out.
+    this.isQueueBeingExecuted = false;
+    (this as any).parent.isFlushed = true;
   }
 }
