@@ -83,7 +83,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   protected constructor(_provider: Provider, _requests?: R[], _fetchedBlockRanges?: [number, number][]) {
     this.provider = _provider;
     this.requests = _requests || [];
-    this.fetchedBlockRanges = _fetchedBlockRanges ? _fetchedBlockRanges : [];
+    this.fetchedBlockRanges = _fetchedBlockRanges ? _fetchedBlockRanges : [[0, 0]];
   }
 
   /**
