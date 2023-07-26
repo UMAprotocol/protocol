@@ -117,7 +117,10 @@ export class DiscordTicketTransport extends Transport {
         // Try sending the oldest message from the queue.
         await this.logQueue[0].channel.send(this.logQueue[0].message);
         this.logQueue.shift(); // If the sending does not fail, remove it from the log queue as having been executed.
-        await delay(15); // Delay between opening tickets to prevent Ticket Tool rate limiting.
+
+        // Ticket tool does not allow more than 1 ticket to be opened per 10 seconds. We are conservative and wait 15
+        // seconds before opening the next ticket.
+        await delay(15);
       } catch (error) {
         // If the sending fails, unlock the queue execution and throw the error so that the caller can handle it.
         // TODO: Add retry logic and flush the transport if all retries fail.
