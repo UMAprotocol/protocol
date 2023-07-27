@@ -13,6 +13,7 @@ export class PagerDutyTransport extends Transport {
   private readonly fromEmail: string;
   private readonly defaultServiceId: string;
   private readonly customServices: { [key: string]: string };
+  public readonly transportLogErrors: boolean;
   constructor(
     winstonOpts: TransportOptions,
     {
@@ -20,7 +21,14 @@ export class PagerDutyTransport extends Transport {
       fromEmail,
       defaultServiceId,
       customServices = {},
-    }: { pdApiToken: string; fromEmail: string; defaultServiceId: string; customServices?: { [key: string]: string } }
+      transportLogErrors = false,
+    }: {
+      pdApiToken: string;
+      fromEmail: string;
+      defaultServiceId: string;
+      customServices?: { [key: string]: string };
+      transportLogErrors?: boolean;
+    }
   ) {
     super(winstonOpts);
 
@@ -29,10 +37,11 @@ export class PagerDutyTransport extends Transport {
     this.fromEmail = fromEmail;
     this.defaultServiceId = defaultServiceId;
     this.customServices = customServices;
+    this.transportLogErrors = transportLogErrors;
   }
 
   // Note: info must be any because that's what the base class uses.
-  async log(info: any, callback: () => void): Promise<void> {
+  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
     try {
       // If the message has markdown then add it and the bot-identifier field. Else put the whole info object as a string
       const logMessage = info.mrkdwn ? info.mrkdwn + `\n${info["bot-identifier"]}` : JSON.stringify(info);
@@ -51,6 +60,8 @@ export class PagerDutyTransport extends Transport {
         },
       });
     } catch (error) {
+      // We don't want to emit error if this same transport is used to log transport errors to avoid recursion.
+      if (!this.transportLogErrors) return callback(error);
       console.error("PagerDuty error", error);
     }
 

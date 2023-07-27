@@ -28,6 +28,8 @@
 // });
 
 import winston from "winston";
+import { PagerDutyTransport } from "./PagerDutyTransport";
+import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
 import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { delay } from "../helpers/delay";
@@ -45,6 +47,7 @@ export async function waitForLogger(logger: AugmentedLogger) {
 
 export interface AugmentedLogger extends _Logger {
   isFlushed: boolean;
+  transportErrorLogger: _Logger; // Dedicated logger for logging transport execution errors.
 }
 
 // Helper type guard for dictionary objects. Useful when dealing with any info type passed to log method.
@@ -52,13 +55,9 @@ export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
   return typeof arg === "object" && arg !== null && !Array.isArray(arg);
 };
 
-export function createNewLogger(
-  injectedTransports: Transport[] = [],
-  transportsConfig = {},
-  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
-): AugmentedLogger {
-  const logger = winston.createLogger({
-    level: "debug",
+function createBaseLogger(level: string, transports: Transport[], botIdentifier: string): _Logger {
+  return winston.createLogger({
+    level,
     format: winston.format.combine(
       winston.format(botIdentifyFormatter(botIdentifier))(),
       winston.format((logEntry) => logEntry)(),
@@ -66,10 +65,37 @@ export function createNewLogger(
       winston.format(bigNumberFormatter)(),
       winston.format.json()
     ),
-    transports: [...createTransports(transportsConfig), ...injectedTransports],
+    transports,
     exitOnError: !!process.env.EXIT_ON_ERROR,
-  }) as AugmentedLogger;
+  });
+}
+
+// Filter to select reliable transports that can be used to log transport execution errors from other transports.
+// Currently only PagerDuty transports are supported and only if they are explicitly configured to log transport errors.
+function filterLogErrorTransports(transports: Transport[]): Transport[] {
+  return transports.filter(
+    (transport) =>
+      (transport instanceof PagerDutyTransport || transport instanceof PagerDutyV2Transport) &&
+      transport.transportLogErrors
+  );
+}
+
+export function createNewLogger(
+  injectedTransports: Transport[] = [],
+  transportsConfig = {},
+  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
+): AugmentedLogger {
+  const transports = [...createTransports(transportsConfig), ...injectedTransports];
+  const logger = createBaseLogger("debug", transports, botIdentifier) as AugmentedLogger;
+
   logger.isFlushed = true; // The logger should start off in a flushed state of "true". i.e it is ready to be close.
+
+  // Attach dedicated logger for handling and logging transport execution errors.
+  logger.transportErrorLogger = createBaseLogger("error", filterLogErrorTransports(logger.transports), botIdentifier);
+  logger.on("error", (error) => {
+    logger.transportErrorLogger.error("Error occurred during log execution:", error);
+  });
+
   return logger;
 }
 
