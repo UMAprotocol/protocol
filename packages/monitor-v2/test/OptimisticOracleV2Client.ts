@@ -121,8 +121,7 @@ describe("OptimisticOracleV2Client", function () {
         );
       });
 
-      // Use assert.ok to check if the request was found
-      assert.ok(foundRequest, "Request not found in fetchedRequests");
+      assert(foundRequest, "Request not found in fetchedRequests");
     }
   });
 });
