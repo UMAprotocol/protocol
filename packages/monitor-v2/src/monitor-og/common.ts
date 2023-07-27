@@ -65,6 +65,7 @@ export interface MonitoringParams {
   ipfsEndpoint: string;
   approvalChoices: string[];
   supportedBonds?: SupportedBonds; // Optional. Only used in automated support mode.
+  submitAutomation: boolean; // Defaults to true, but only used in automated support mode.
   useTenderly: boolean;
   botModes: BotModes;
   retryOptions: RetryOptions;
@@ -205,6 +206,10 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     signer = await getSigner(env, provider);
   }
 
+  // By default, submit automation mode transactions (propose/dispute/execute) unless explicitly disabled. This does not
+  // apply to bond approvals as these are always submitted on chain.
+  const submitAutomation = env.SUBMIT_AUTOMATION === "false" ? false : true;
+
   // Mastercopy and module proxy factory addresses are required when monitoring proxy deployments or when not
   // explicitly providing OG_ADDRESS to monitor in other modes.
   if (
@@ -237,6 +242,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     ipfsEndpoint,
     approvalChoices,
     supportedBonds,
+    submitAutomation,
     useTenderly,
     botModes,
     retryOptions,
