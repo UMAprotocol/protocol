@@ -1,31 +1,41 @@
-export const blockDefaults = {
+interface BlockConfig {
+  oneHour: number;
+  maxBlockLookBack: number;
+}
+
+/**
+ * Default configuration for different blockchain networks.
+ * Each network is identified by its chain ID.
+ */
+export const blockDefaults: Record<string, BlockConfig> = {
   "1": {
-    // Mainnet
-    oneHour: 300, // 12 seconds per block
-    maxBlockLookBack: 20000,
+    // Mainnet configuration
+    oneHour: 300, // Approximate number of blocks mined in one hour (12 seconds per block)
+    maxBlockLookBack: 20000, // Maximum number of blocks to look back for events
   },
   "137": {
-    // Polygon
-    oneHour: 1800, // 2 seconds per block
-    maxBlockLookBack: 3499,
+    // Polygon (Matic) configuration
+    oneHour: 1800, // Approximate number of blocks mined in one hour (2 seconds per block)
+    maxBlockLookBack: 3499, // Maximum number of blocks to look back for events
   },
   "10": {
-    // Optimism
-    oneHour: 1800, // 2 seconds per block
-    maxBlockLookBack: 10000,
+    // Optimism configuration
+    oneHour: 1800, // Approximate number of blocks mined in one hour (2 seconds per block)
+    maxBlockLookBack: 10000, // Maximum number of blocks to look back for events
   },
   "42161": {
-    // Arbitrum
-    oneHour: 240, // 15 seconds per block
-    maxBlockLookBack: 10000,
+    // Arbitrum configuration
+    oneHour: 240, // Approximate number of blocks mined in one hour (15 seconds per block)
+    maxBlockLookBack: 10000, // Maximum number of blocks to look back for events
   },
   "43114": {
-    // Avalanche
-    oneHour: 1800, // 2 seconds per block
-    maxBlockLookBack: 2000,
+    // Avalanche configuration
+    oneHour: 1800, // Approximate number of blocks mined in one hour (2 seconds per block)
+    maxBlockLookBack: 2000, // Maximum number of blocks to look back for events
   },
   other: {
-    oneHour: 240, // 15 seconds per block
-    maxBlockLookBack: 1000,
+    // Default configuration for other networks
+    oneHour: 240, // Approximate number of blocks mined in one hour (15 seconds per block)
+    maxBlockLookBack: 1000, // Maximum number of blocks to look back for events
   },
 };
