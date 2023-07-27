@@ -5,6 +5,7 @@ import { getContractInstanceWithProvider, tryHexToUtf8String } from "../utils/co
 import { RequestPriceEvent } from "@uma/contracts-frontend/dist/typechain/core/ethers/OptimisticOracleV2";
 import { paginatedEventQuery } from "@uma/common";
 import { ethers } from "ethers";
+import { blockDefaults } from "../utils/constants";
 
 export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticOracleRequest> {
   constructor(
@@ -21,7 +22,12 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
       this.provider
     );
 
-    const maxBlockLookBack = 10000;
+    const chainId = await this.provider.getNetwork().then((network) => network.chainId);
+
+    const maxBlockLookBack =
+      Number(process.env.MAX_BLOCK_LOOKBACK) ||
+      blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.maxBlockLookBack ||
+      blockDefaults.other.maxBlockLookBack;
 
     const searchConfig = {
       fromBlock: blockRange[0],
