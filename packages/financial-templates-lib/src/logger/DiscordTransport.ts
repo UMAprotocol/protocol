@@ -1,4 +1,5 @@
 import { delay } from "../helpers/delay";
+import { TransportError } from "./TransportError";
 
 import Transport from "winston-transport";
 
@@ -41,9 +42,9 @@ export class DiscordTransport extends Transport {
   }
 
   // Note: info must be any because that's what the base class uses.
-  async log(info: any, callback: () => void): Promise<void> {
+  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
     try {
-      if (!info.mrkdwn) return; // We only ever want to send messages to Discord that have Markdown in them.
+      if (!info.mrkdwn) return callback(); // We only ever want to send messages to Discord that have Markdown in them.
       const body = {
         username: "UMA Infrastructure",
         avatar_url: "https://i.imgur.com/RCcxxEZ.png",
@@ -54,7 +55,7 @@ export class DiscordTransport extends Transport {
       let webHooks: string[] = [];
       if (info.discordPaths) {
         // If it is null then this is a noop message for Discord and the log should be skipped.
-        if (info.discordPaths === null) return;
+        if (info.discordPaths === null) return callback();
 
         // Else, Assign a webhook for each escalationPathWebHook defined for the provided discordPaths. This lets
         // the logger define exactly which logs should go to which discord channel.
@@ -79,7 +80,7 @@ export class DiscordTransport extends Transport {
 
       await this.executeLogQueue(); // Start processing the log que.
     } catch (error) {
-      console.error("Discord error", error);
+      return callback(new TransportError("Discord", error, info));
     }
 
     callback();

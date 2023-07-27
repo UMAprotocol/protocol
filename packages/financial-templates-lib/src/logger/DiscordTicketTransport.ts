@@ -11,6 +11,7 @@ import Transport from "winston-transport";
 
 import { removeAnchorTextFromLinks } from "./Formatters";
 import { isDictionary } from "./Logger";
+import { TransportError } from "./TransportError";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
@@ -60,7 +61,7 @@ export class DiscordTicketTransport extends Transport {
   }
 
   // Note: info must be any because that's what the base class uses.
-  async log(info: any, callback: () => void): Promise<void> {
+  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
     // We only try sending if we have all expected parameters and a matching channel ID.
     const canSend = isDiscordTicketInfo(info) && info.discordTicketChannel in this.channelIds;
 
@@ -80,7 +81,7 @@ export class DiscordTicketTransport extends Transport {
         // Send the message.
         await channel.send(message);
       } catch (error) {
-        console.error("Discord Ticket error", error);
+        return callback(new TransportError("Discord Ticket", error, info));
       }
     }
 
