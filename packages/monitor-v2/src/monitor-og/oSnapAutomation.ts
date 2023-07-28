@@ -178,7 +178,7 @@ const getUndiscardedProposals = async (
   ogAddresses: string[],
   params: MonitoringParams
 ): Promise<Array<TransactionsProposedEvent>> => {
-  // Get all proposals for all supported modules.
+  // Get all proposals for all provided modules.
   const allProposals = (
     await Promise.all(
       ogAddresses.map(async (ogAddress) => {
@@ -191,7 +191,7 @@ const getUndiscardedProposals = async (
     )
   ).flat();
 
-  // Get all deleted proposals for all supported modules.
+  // Get all deleted proposals for all provided modules.
   const deletedProposals = (
     await Promise.all(
       ogAddresses.map(async (ogAddress) => {
@@ -239,6 +239,29 @@ const filterPotentialProposals = (
     });
     // Exclude Snapshot proposals with matching on-chain proposals
     return matchingOnChainProposals.length === 0;
+  });
+};
+
+// Filters out all Snapshot proposals that cannot be proposed due to blocking on-chain proposals. This is done by
+// matching safe and proposed transactions.
+const filterUnblockedProposals = async (
+  potentialProposals: SnapshotProposalExpanded[],
+  onChainProposals: TransactionsProposedEvent[],
+  params: MonitoringParams
+): Promise<SnapshotProposalExpanded[]> => {
+  // Filter out all on-chain proposals that have been executed since they cannot block new proposals.
+  const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
+
+  return potentialProposals.filter((potentialProposal) => {
+    // Unexecuted proposals with the same safe and matching transactions would block the new proposal.
+    const blockingOnChainProposals = unexecutedProposals.filter((unexecutedProposal) => {
+      return (
+        isMatchingSafe(potentialProposal.safe, params.chainId, unexecutedProposal.address) &&
+        onChainTxsMatchSnapshot(unexecutedProposal, potentialProposal.safe)
+      );
+    });
+    // Exclude Snapshot proposals with blocking on-chain proposals
+    return blockingOnChainProposals.length === 0;
   });
 };
 
@@ -423,9 +446,6 @@ const submitProposals = async (
       await og.callStatic.proposeTransactions(transactions, explanation, { from: await params.signer.getAddress() });
     } catch (error) {
       // Log error and proceed with the next proposal.
-      // TODO: We should separately handle the duplicate proposals error. This can occur if there are multiple proposals
-      // with the same transactions (e.g. funding in same amount tranches split across multiple proposals). We should
-      // only warn when first encountering the blocking proposal and then ignore it in any future runs.
       logger.error({ ...proposalAttemptLog, message: "Proposal submission would fail!", error });
       continue;
     }
@@ -598,7 +618,8 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
 
   // Filter Snapshot proposals that could potentially be proposed on-chain.
   const potentialProposals = filterPotentialProposals(supportedProposals, onChainProposals, params);
-  const verifiedProposals = await filterVerifiedProposals(potentialProposals, supportedModules, params);
+  const unblockedProposals = await filterUnblockedProposals(potentialProposals, onChainProposals, params);
+  const verifiedProposals = await filterVerifiedProposals(unblockedProposals, supportedModules, params);
 
   // Submit proposals.
   await submitProposals(logger, verifiedProposals, supportedModules, params);
