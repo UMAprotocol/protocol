@@ -93,7 +93,11 @@ export function createNewLogger(
   // Attach dedicated logger for handling and logging transport execution errors.
   logger.transportErrorLogger = createBaseLogger("error", filterLogErrorTransports(logger.transports), botIdentifier);
   logger.on("error", (error) => {
-    logger.transportErrorLogger.error("Error occurred during log execution:", error);
+    logger.transportErrorLogger.error({
+      at: "TransportErrorHandler",
+      message: "Error occurred during log execution",
+      error,
+    });
   });
 
   return logger;
