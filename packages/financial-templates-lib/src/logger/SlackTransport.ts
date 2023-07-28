@@ -173,36 +173,31 @@ class SlackHook extends Transport {
     this.defaultWebHookUrl = opts.transportConfig.defaultWebHookUrl;
     this.formatter = opts.formatter;
     this.mrkdwn = opts.mrkdwn || false;
-    this.axiosInstance = axios.create({
-      proxy: opts.proxy,
-      validateStatus: (status) => {
-        return status == 200;
-      },
-    });
+    this.axiosInstance = axios.create({ proxy: opts.proxy });
   }
 
   async log(info: any, callback: (error?: unknown) => void): Promise<void> {
-    try {
-      // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
-      // different slack channels depending on the context of the log.
-      const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
+    // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
+    // different slack channels depending on the context of the log.
+    const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
-      const payload: { blocks?: Block[]; text?: string; mrkdwn?: boolean } = { mrkdwn: this.mrkdwn };
-      const layout = this.formatter(info);
-      payload.blocks = layout.blocks || undefined;
-      // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
-      if (JSON.stringify(payload).length < SLACK_MAX_CHAR_LIMIT) {
-        await this.axiosInstance.post(webhookUrl, payload);
-      } else {
-        // Iterate over each message to send and generate a axios call for each message.
-        for (const processedBlock of processMessageBlocks(payload.blocks)) {
-          payload.blocks = processedBlock;
-          await this.axiosInstance.post(webhookUrl, payload);
-        }
+    const payload: { blocks?: Block[]; text?: string; mrkdwn?: boolean } = { mrkdwn: this.mrkdwn };
+    const layout = this.formatter(info);
+    payload.blocks = layout.blocks || undefined;
+    let errorThrown = false;
+    // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
+    if (JSON.stringify(payload).length < SLACK_MAX_CHAR_LIMIT) {
+      const response = await this.axiosInstance.post(webhookUrl, payload);
+      if (response.status != 200) errorThrown = true;
+    } else {
+      // Iterate over each message to send and generate a axios call for each message.
+      for (const processedBlock of processMessageBlocks(payload.blocks)) {
+        payload.blocks = processedBlock;
+        const response = await this.axiosInstance.post(webhookUrl, payload);
+        if (response.status != 200) errorThrown = true;
       }
-    } catch (error) {
-      return callback(new TransportError("Slack", error, info));
     }
+    if (errorThrown) return callback(new TransportError("Slack", new Error("Axios response error"), info));
     callback();
   }
 }
