@@ -10,13 +10,13 @@ export type Action = "trigger" | "acknowledge" | "resolve";
 const Config = ss.object({
   integrationKey: ss.string(),
   customServices: ss.optional(ss.record(ss.string(), ss.string())),
-  transportLogErrors: ss.optional(ss.boolean()),
+  logTransportErrors: ss.optional(ss.boolean()),
 });
 // Config object becomes a type
 // {
 //   integrationKey: string;
 //   customServices?: Record<string,string>;
-//   transportLogErrors?: boolean;
+//   logTransportErrors?: boolean;
 // }
 export type Config = ss.Infer<typeof Config>;
 
@@ -28,15 +28,15 @@ export function createConfig(config: unknown): Config {
 export class PagerDutyV2Transport extends Transport {
   private readonly integrationKey: string;
   private readonly customServices: { [key: string]: string };
-  public readonly transportLogErrors: boolean;
+  public readonly logTransportErrors: boolean;
   constructor(
     winstonOpts: TransportOptions,
-    { integrationKey, customServices = {}, transportLogErrors = false }: Config
+    { integrationKey, customServices = {}, logTransportErrors = false }: Config
   ) {
     super(winstonOpts);
     this.integrationKey = integrationKey;
     this.customServices = customServices;
-    this.transportLogErrors = transportLogErrors;
+    this.logTransportErrors = logTransportErrors;
   }
   // pd v2 severity only supports critical, error, warning or info.
   public static convertLevelToSeverity(level?: string): Severity {
@@ -65,7 +65,7 @@ export class PagerDutyV2Transport extends Transport {
       });
     } catch (error) {
       // We don't want to emit error if this same transport is used to log transport errors to avoid recursion.
-      if (!this.transportLogErrors) return callback(error);
+      if (!this.logTransportErrors) return callback(error);
       console.error("PagerDuty v2 error", error);
     }
 

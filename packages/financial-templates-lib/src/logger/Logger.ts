@@ -76,7 +76,7 @@ function filterLogErrorTransports(transports: Transport[]): Transport[] {
   return transports.filter(
     (transport) =>
       (transport instanceof PagerDutyTransport || transport instanceof PagerDutyV2Transport) &&
-      transport.transportLogErrors
+      transport.logTransportErrors
   );
 }
 

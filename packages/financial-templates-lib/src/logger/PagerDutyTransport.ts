@@ -13,7 +13,7 @@ export class PagerDutyTransport extends Transport {
   private readonly fromEmail: string;
   private readonly defaultServiceId: string;
   private readonly customServices: { [key: string]: string };
-  public readonly transportLogErrors: boolean;
+  public readonly logTransportErrors: boolean;
   constructor(
     winstonOpts: TransportOptions,
     {
@@ -21,13 +21,13 @@ export class PagerDutyTransport extends Transport {
       fromEmail,
       defaultServiceId,
       customServices = {},
-      transportLogErrors = false,
+      logTransportErrors = false,
     }: {
       pdApiToken: string;
       fromEmail: string;
       defaultServiceId: string;
       customServices?: { [key: string]: string };
-      transportLogErrors?: boolean;
+      logTransportErrors?: boolean;
     }
   ) {
     super(winstonOpts);
@@ -37,7 +37,7 @@ export class PagerDutyTransport extends Transport {
     this.fromEmail = fromEmail;
     this.defaultServiceId = defaultServiceId;
     this.customServices = customServices;
-    this.transportLogErrors = transportLogErrors;
+    this.logTransportErrors = logTransportErrors;
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -61,7 +61,7 @@ export class PagerDutyTransport extends Transport {
       });
     } catch (error) {
       // We don't want to emit error if this same transport is used to log transport errors to avoid recursion.
-      if (!this.transportLogErrors) return callback(error);
+      if (!this.logTransportErrors) return callback(error);
       console.error("PagerDuty error", error);
     }
 
