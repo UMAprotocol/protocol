@@ -26,10 +26,15 @@ export function Contracts(config: Config, dependencies: Dependencies) {
     if (startBlock === endBlock) return;
     assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     // update everyting
-    await services.emps.update(startBlock, endBlock);
-    await services.lsps.update(startBlock, endBlock);
-    await services.erc20s.update();
-    await tables.appStats.setLastBlockUpdate(endBlock);
+    const results = await Promise.allSettled([
+      services.emps.update(startBlock, endBlock),
+      services.lsps.update(startBlock, endBlock),
+      services.erc20s.update(),
+      tables.appStats.setLastBlockUpdate(endBlock),
+    ])
+    results.forEach(result=>{
+      if (result.status === "rejected") console.error("Error Updating Contract State: " + result.reason.message);
+    })
   }
 
   async function updateContractsStateProfiled() {

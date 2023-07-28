@@ -34,12 +34,17 @@ export function Prices(config: Config, dependencies: Dependencies) {
   }
 
   async function updatePrices() {
-    await services.collateralPrices.update();
-    await services.syntheticPrices.update();
-    await services.marketPrices.update();
-    await services.empStats.update();
-    await services.lspStats.update();
-    await services.globalStats.update();
+    const results = await Promise.allSettled([
+      services.collateralPrices.update(),
+      services.syntheticPrices.update(),
+      services.marketPrices.update(),
+      services.empStats.update(),
+      services.lspStats.update(),
+      services.globalStats.update(),
+    ])
+    results.forEach(result=>{
+      if (result.status === "rejected") console.error("Error Updating Prices: " + result.reason.message);
+    })
   }
 
   async function updatePricesProfiled() {
