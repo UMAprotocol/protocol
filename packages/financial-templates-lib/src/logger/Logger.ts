@@ -32,7 +32,7 @@ import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { delay } from "../helpers/delay";
 
-import type { Logger as _Logger } from "winston";
+import { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
 
 // Custom interface for transports that includes the isFlushed flag
@@ -59,9 +59,7 @@ export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
   while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
 }
 
-export interface AugmentedLogger extends _Logger {
-  isFlushed: boolean;
-}
+export type AugmentedLogger = _Logger;
 
 // Helper type guard for dictionary objects. Useful when dealing with any info type passed to log method.
 export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
@@ -85,7 +83,6 @@ export function createNewLogger(
     transports: [...createTransports(transportsConfig), ...injectedTransports],
     exitOnError: !!process.env.EXIT_ON_ERROR,
   }) as AugmentedLogger;
-  logger.isFlushed = true; // The logger should start off in a flushed state of "true". i.e it is ready to be close.
   return logger;
 }
 
