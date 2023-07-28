@@ -22,7 +22,9 @@ export class DiscordTransport extends Transport {
   private readonly postOnNonEscalationPaths: boolean;
 
   private logQueue: QueueElement[];
-  private isQueueBeingExecuted = false;
+  private isQueueBeingExecuted: boolean;
+
+  public isFlushed: boolean;
 
   constructor(
     winstonOpts: TransportOptions,
@@ -38,6 +40,8 @@ export class DiscordTransport extends Transport {
     this.postOnNonEscalationPaths = ops.postOnNonEscalationPaths ?? true;
 
     this.logQueue = [];
+    this.isQueueBeingExecuted = false;
+    this.isFlushed = true;
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -91,9 +95,10 @@ export class DiscordTransport extends Transport {
   async executeLogQueue(backOffDuration = 0): Promise<void> {
     if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
     this.isQueueBeingExecuted = true; // Set the queue to being executed.
-    // Set the parent isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
-    // is separate variable from the isQueueBeingExecuted flag as this isFlushed is global for the logger instance.
-    (this as any).parent.isFlushed = false;
+    // Set the isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
+    // is separate variable from the isQueueBeingExecuted flag as the isFlushed would not be released during any
+    // retries.
+    this.isFlushed = false;
 
     // If the previous iteration set a backOffDuration then wait for this duration.
     if (backOffDuration != 0) await delay(backOffDuration);
@@ -117,10 +122,9 @@ export class DiscordTransport extends Transport {
       }
     }
 
-    // Only if we get to the end of the function (no errors) then we can set isQueueBeingExecuted to false and can
-    // set the parent isFlushed to true, enabling the bot to close out.
+    // Unlock the queue execution enabling the bot to close out (if all other flushable transports are flushed).
     this.isQueueBeingExecuted = false;
-    (this as any).parent.isFlushed = true;
+    this.isFlushed = true;
   }
 
   // Discord URLS are formatted differently to markdown links produced upstream in the bots. For example, slack links

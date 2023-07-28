@@ -59,7 +59,9 @@ export class DiscordTicketTransport extends Transport {
   private client: Client;
 
   private logQueue: QueueElement[];
-  private isQueueBeingExecuted = false;
+  private isQueueBeingExecuted: boolean;
+
+  public isFlushed: boolean;
 
   constructor(winstonOpts: TransportOptions, { botToken, channelIds = {} }: Config) {
     super(winstonOpts);
@@ -69,6 +71,8 @@ export class DiscordTicketTransport extends Transport {
     this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
     this.logQueue = [];
+    this.isQueueBeingExecuted = false;
+    this.isFlushed = true;
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -108,9 +112,10 @@ export class DiscordTicketTransport extends Transport {
   async executeLogQueue(): Promise<void> {
     if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
     this.isQueueBeingExecuted = true; // Lock the queue to being executed.
-    // Set the parent isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
-    // is separate variable from the isQueueBeingExecuted flag as this isFlushed is global for the logger instance.
-    (this as any).parent.isFlushed = false;
+    // Set the isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
+    // is separate variable from the isQueueBeingExecuted flag as the isFlushed would not be released during any
+    // retries.
+    this.isFlushed = false;
 
     while (this.logQueue.length) {
       try {
@@ -125,13 +130,13 @@ export class DiscordTicketTransport extends Transport {
         // If the sending fails, unlock the queue execution and throw the error so that the caller can handle it.
         // TODO: Add retry logic and flush the transport if all retries fail.
         this.isQueueBeingExecuted = false;
-        (this as any).parent.isFlushed = true;
+        this.isFlushed = true;
         throw error;
       }
     }
 
-    // Unlock the queue execution enabling the bot to close out.
+    // Unlock the queue execution enabling the bot to close out (if all other flushable transports are flushed).
     this.isQueueBeingExecuted = false;
-    (this as any).parent.isFlushed = true;
+    this.isFlushed = true;
   }
 }
