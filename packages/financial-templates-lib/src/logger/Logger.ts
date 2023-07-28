@@ -30,6 +30,7 @@
 import winston from "winston";
 import { PagerDutyTransport } from "./PagerDutyTransport";
 import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
+import { TransportError } from "./TransportError";
 import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { delay } from "../helpers/delay";
@@ -93,11 +94,22 @@ export function createNewLogger(
   // Attach dedicated logger for handling and logging transport execution errors.
   logger.transportErrorLogger = createBaseLogger("error", filterLogErrorTransports(logger.transports), botIdentifier);
   logger.on("error", (error) => {
-    logger.transportErrorLogger.error({
-      at: "TransportErrorHandler",
-      message: "Error occurred during log execution",
-      error,
-    });
+    if (error instanceof TransportError) {
+      // We can detect transport source and failed log info from the error object if it is a TransportError.
+      logger.transportErrorLogger.error({
+        at: "TransportErrorHandler",
+        message: error.message,
+        originalError: error.originalError,
+        originalInfo: error.originalInfo,
+      });
+    } else {
+      // If the error is not a TransportError, we can only log the error itself.
+      logger.transportErrorLogger.error({
+        at: "TransportErrorHandler",
+        message: "Error occurred during log execution",
+        error,
+      });
+    }
   });
 
   return logger;

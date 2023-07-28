@@ -3,6 +3,8 @@ import Transport from "winston-transport";
 import { event } from "@pagerduty/pdjs";
 import * as ss from "superstruct";
 
+import { TransportError } from "./TransportError";
+
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 export type Severity = "critical" | "error" | "warning" | "info";
 export type Action = "trigger" | "acknowledge" | "resolve";
@@ -65,7 +67,7 @@ export class PagerDutyV2Transport extends Transport {
       });
     } catch (error) {
       // We don't want to emit error if this same transport is used to log transport errors to avoid recursion.
-      if (!this.logTransportErrors) return callback(error);
+      if (!this.logTransportErrors) return callback(new TransportError("PagerDuty V2", error, info));
       console.error("PagerDuty v2 error", error);
     }
 

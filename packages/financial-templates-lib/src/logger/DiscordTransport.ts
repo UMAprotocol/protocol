@@ -1,4 +1,5 @@
 import { delay } from "../helpers/delay";
+import { TransportError } from "./TransportError";
 
 import Transport from "winston-transport";
 
@@ -79,7 +80,7 @@ export class DiscordTransport extends Transport {
 
       await this.executeLogQueue(); // Start processing the log que.
     } catch (error) {
-      return callback(error);
+      return callback(new TransportError("Discord", error, info));
     }
 
     callback();

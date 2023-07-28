@@ -11,6 +11,7 @@ import Transport from "winston-transport";
 
 import { removeAnchorTextFromLinks } from "./Formatters";
 import { isDictionary } from "./Logger";
+import { TransportError } from "./TransportError";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
@@ -80,7 +81,7 @@ export class DiscordTicketTransport extends Transport {
         // Send the message.
         await channel.send(message);
       } catch (error) {
-        return callback(error);
+        return callback(new TransportError("Discord Ticket", error, info));
       }
     }
 

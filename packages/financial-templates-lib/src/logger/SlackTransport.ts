@@ -25,6 +25,8 @@ import Transport from "winston-transport";
 import axios from "axios";
 import type { AxiosInstance, AxiosRequestConfig } from "axios";
 
+import { TransportError } from "./TransportError";
+
 interface MarkdownText {
   type: "mrkdwn";
   text: string;
@@ -199,7 +201,7 @@ class SlackHook extends Transport {
         }
       }
     } catch (error) {
-      return callback(error);
+      return callback(new TransportError("Slack", error, info));
     }
     callback();
   }

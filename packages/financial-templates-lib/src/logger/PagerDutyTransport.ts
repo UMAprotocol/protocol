@@ -6,6 +6,8 @@
 import Transport from "winston-transport";
 import PagerDutyClient from "node-pagerduty";
 
+import { TransportError } from "./TransportError";
+
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
 export class PagerDutyTransport extends Transport {
@@ -61,7 +63,7 @@ export class PagerDutyTransport extends Transport {
       });
     } catch (error) {
       // We don't want to emit error if this same transport is used to log transport errors to avoid recursion.
-      if (!this.logTransportErrors) return callback(error);
+      if (!this.logTransportErrors) return callback(new TransportError("PagerDuty", error, info));
       console.error("PagerDuty error", error);
     }
 
