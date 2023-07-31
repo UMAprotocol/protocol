@@ -106,7 +106,9 @@ export class DiscordTicketTransport extends Transport {
 
   // Use bot token for establishing a connection to Discord API.
   async login(): Promise<void> {
+    this.isFlushed = false; // Set the isFlushed to false to prevent the logger from closing while logging in.
     await this.client.login(this.botToken);
+    this.isFlushed = true;
   }
 
   async executeLogQueue(): Promise<void> {
