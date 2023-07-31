@@ -43,7 +43,7 @@ export async function logAssertion(
       generateOOv3UILink(assertion.tx, assertion.eventIndex, params.chainId) +
       ".",
     notificationPath: "optimistic-oracle",
-    discordPaths: ["oo-events"],
+    discordPaths: ["oo-fact-checking", "oo-events"],
     discordTicketChannel: "verifications-start-here",
   });
 }
