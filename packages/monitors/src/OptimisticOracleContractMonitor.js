@@ -182,6 +182,7 @@ class OptimisticOracleContractMonitor {
         message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
         mrkdwn,
         discordPaths: ["oo-fact-checking", "oo-events"],
+        discordTicketChannel: "verifications-start-here",
         notificationPath: "optimistic-oracle",
       });
     }
