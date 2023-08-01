@@ -35,7 +35,7 @@ import { delay } from "../helpers/delay";
 import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
 
-// Custom interface for transports that includes the isFlushed flag
+// Custom interface for transports that have the isFlushed getter.
 interface FlushableTransport extends Transport {
   isFlushed: boolean;
 }
