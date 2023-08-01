@@ -92,7 +92,7 @@ export class DiscordTransport extends Transport {
   // Processes a queue of logs produced by the transport. Executes sequentially and listens to the response from the
   // Discord API to back off and sleep if we are exceeding their rate limiting. Sets the parent transports isFlushed
   // variable to block the bot from closing until the whole queue has been flushed.
-  async executeLogQueue(backOffDuration = 0): Promise<void> {
+  private async executeLogQueue(backOffDuration = 0): Promise<void> {
     if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
     this.isQueueBeingExecuted = true; // Set the queue to being executed.
     // Set the isFlushed to false to prevent the logger from closing while the queue is being executed. Note this

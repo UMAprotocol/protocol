@@ -111,7 +111,7 @@ export class DiscordTicketTransport extends Transport {
     this.isFlushed = true;
   }
 
-  async executeLogQueue(): Promise<void> {
+  private async executeLogQueue(): Promise<void> {
     if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
     this.isQueueBeingExecuted = true; // Lock the queue to being executed.
     // Set the isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
