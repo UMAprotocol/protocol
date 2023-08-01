@@ -1,4 +1,4 @@
-import { delay } from "@uma/financial-templates-lib";
+import { delay, waitForLogger } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
 import { settleAssertions } from "./SettleAssertions";
 
@@ -33,6 +33,7 @@ async function main() {
       await delay(params.pollingDelay);
     } else {
       await delay(5); // Set a delay to let the transports flush fully.
+      await waitForLogger(logger);
       break;
     }
   }
@@ -50,6 +51,7 @@ main().then(
     });
     // Wait 5 seconds to allow logger to flush.
     await delay(5);
+    await waitForLogger(logger);
     process.exit(1);
   }
 );
