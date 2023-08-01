@@ -109,9 +109,9 @@ export class DiscordTransport extends Transport {
               : [this.defaultWebHookUrl];
         }
 
-        // Send webhook request to each of the configured webhooks upstream. This posts the messages on Discord. Execute
-        // these sequentially with a soft delay of 2 seconds between calls to avoid hitting the discord rate limit.
-        if (webHooks.length) for (const webHook of webHooks) this.logQueue.push({ webHook, body });
+        // Send webhook request to each of the configured webhooks upstream. This posts the messages on Discord. Add
+        // them to log queue to avoid hitting the discord rate limit.
+        if (webHooks.length > 0) for (const webHook of webHooks) this.logQueue.push({ webHook, body });
 
         await this.executeLogQueue(); // Start processing the log que.
         this.enqueuedLogCounter--; // Decrement counter for the isFlushed getter when done.
