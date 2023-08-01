@@ -61,7 +61,7 @@ export class DiscordTicketTransport extends Transport {
   private logQueue: QueueElement[];
   private isQueueBeingExecuted: boolean;
 
-  public isFlushed: boolean;
+  private enqueuedLogCounter: number;
 
   constructor(winstonOpts: TransportOptions, { botToken, channelIds = {} }: Config) {
     super(winstonOpts);
@@ -72,7 +72,12 @@ export class DiscordTicketTransport extends Transport {
 
     this.logQueue = [];
     this.isQueueBeingExecuted = false;
-    this.isFlushed = true;
+    this.enqueuedLogCounter = 0;
+  }
+
+  // Getter for checking if the transport is flushed.
+  get isFlushed(): boolean {
+    return this.enqueuedLogCounter === 0;
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -82,6 +87,8 @@ export class DiscordTicketTransport extends Transport {
 
     if (canSend) {
       try {
+        this.enqueuedLogCounter++; // Used by isFlushed getter. Make sure to decrement when done or catching an error.
+
         if (!this.client.isReady()) await this.login(); // Log in if not yet established the connection.
 
         // Get and verify requested Discord channel to post.
@@ -96,7 +103,10 @@ export class DiscordTicketTransport extends Transport {
         // Add the message to the queue and process it.
         this.logQueue.push({ channel, message });
         await this.executeLogQueue();
+
+        this.enqueuedLogCounter--; // Decrement counter for the isFlushed getter when done.
       } catch (error) {
+        this.enqueuedLogCounter--; // Decrement the counter for the isFlushed getter when catching an error.
         console.error("Discord Ticket error", error);
       }
     }
@@ -105,19 +115,13 @@ export class DiscordTicketTransport extends Transport {
   }
 
   // Use bot token for establishing a connection to Discord API.
-  async login(): Promise<void> {
-    this.isFlushed = false; // Set the isFlushed to false to prevent the logger from closing while logging in.
+  private async login(): Promise<void> {
     await this.client.login(this.botToken);
-    this.isFlushed = true;
   }
 
   private async executeLogQueue(): Promise<void> {
     if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
     this.isQueueBeingExecuted = true; // Lock the queue to being executed.
-    // Set the isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
-    // is separate variable from the isQueueBeingExecuted flag as the isFlushed would not be released during any
-    // retries.
-    this.isFlushed = false;
 
     while (this.logQueue.length > 0) {
       try {
@@ -130,15 +134,13 @@ export class DiscordTicketTransport extends Transport {
         await delay(15);
       } catch (error) {
         // If the sending fails, unlock the queue execution and throw the error so that the caller can handle it.
-        // TODO: Add retry logic and flush the transport if all retries fail.
+        // TODO: Add retry logic.
         this.isQueueBeingExecuted = false;
-        this.isFlushed = true;
         throw error;
       }
     }
 
-    // Unlock the queue execution enabling the bot to close out (if all other flushable transports are flushed).
+    // Unlock the queue execution.
     this.isQueueBeingExecuted = false;
-    this.isFlushed = true;
   }
 }
