@@ -51,9 +51,9 @@ function isLoggerFlushed(logger: AugmentedLogger): boolean {
 }
 
 // This async function can be called by a bot if the log message is generated right before the process terminates.
-// This method will check if all transports attached to AugmentedLogger having isFlushed getter have it is set to
-// true. If not, it will block until such time that all these transports have been flushed. This still can exit before
-// all transports are flushed if the logger flush timeout is reached.
+// This method will check if all transports attached to AugmentedLogger having isFlushed getter return it as true. If
+// not, it will block until such time that all these transports have been flushed. This still can exit before all
+// transports are flushed if the logger flush timeout is reached.
 export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
   const waitForFlushed = async (): Promise<void> => {
     while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
