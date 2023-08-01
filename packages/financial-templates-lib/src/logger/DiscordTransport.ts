@@ -103,7 +103,7 @@ export class DiscordTransport extends Transport {
     // If the previous iteration set a backOffDuration then wait for this duration.
     if (backOffDuration != 0) await delay(backOffDuration);
 
-    while (this.logQueue.length) {
+    while (this.logQueue.length > 0) {
       try {
         // Pop off the first element (oldest) and try send it to discord. If this errors then we are being rate limited.
         await axios.post(this.logQueue[0].webHook, this.logQueue[0].body);

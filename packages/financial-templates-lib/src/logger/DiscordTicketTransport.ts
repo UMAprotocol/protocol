@@ -119,7 +119,7 @@ export class DiscordTicketTransport extends Transport {
     // retries.
     this.isFlushed = false;
 
-    while (this.logQueue.length) {
+    while (this.logQueue.length > 0) {
       try {
         // Try sending the oldest message from the queue.
         await this.logQueue[0].channel.send(this.logQueue[0].message);
