@@ -32,7 +32,7 @@ import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { delay } from "../helpers/delay";
 
-import { Logger as _Logger } from "winston";
+import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
 
 // Custom interface for transports that includes the isFlushed flag
