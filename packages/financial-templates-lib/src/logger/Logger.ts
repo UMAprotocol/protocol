@@ -88,7 +88,7 @@ export function createNewLogger(
     transports: [...createTransports(transportsConfig), ...injectedTransports],
     exitOnError: !!process.env.EXIT_ON_ERROR,
   }) as AugmentedLogger;
-  logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 300;
+  logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 30;
   return logger;
 }
 
