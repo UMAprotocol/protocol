@@ -52,14 +52,19 @@ function isLoggerFlushed(logger: AugmentedLogger): boolean {
 
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // This method will check if all transports attached to AugmentedLogger having isFlushed property have it is set to
-// true. If not, it will block until such time that all these transports have been flushed. Note that each blocking
-// transport should correctly modify its isFlushed state to prevent the logger from closing before all logs have been
-// propagated.
+// true. If not, it will block until such time that all these transports have been flushed. This still can exit before
+// all transports are flushed if the logger flush timeout is reached.
 export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
-  while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
+  const waitForFlushed = async (): Promise<void> => {
+    while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
+  };
+  // Wait for the logger to be flushed or for the logger flush timeout to be reached.
+  await Promise.race([waitForFlushed(), delay(logger.flushTimeout)]);
 }
 
-export type AugmentedLogger = _Logger;
+export interface AugmentedLogger extends _Logger {
+  flushTimeout: number; // Timeout in seconds to wait for logger to flush before closing.
+}
 
 // Helper type guard for dictionary objects. Useful when dealing with any info type passed to log method.
 export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
@@ -83,6 +88,7 @@ export function createNewLogger(
     transports: [...createTransports(transportsConfig), ...injectedTransports],
     exitOnError: !!process.env.EXIT_ON_ERROR,
   }) as AugmentedLogger;
+  logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 300;
   return logger;
 }
 
