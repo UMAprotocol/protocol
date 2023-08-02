@@ -1,4 +1,4 @@
-import { delay } from "@uma/financial-templates-lib";
+import { delay, waitForLogger } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel, waitNextBlockRange } from "./common";
 import { monitorAssertions } from "./MonitorAssertions";
 import { monitorDisputes } from "./MonitorDisputes";
@@ -29,6 +29,7 @@ async function main() {
       // In serverless it is possible for start block to be larger than end block if no new blocks were mined since last run.
       if (params.pollingDelay === 0) {
         await delay(5); // Set a delay to let the transports flush fully.
+        await waitForLogger(logger);
         break;
       }
       params.blockRange = await waitNextBlockRange(params);
@@ -44,6 +45,7 @@ async function main() {
     // If polling delay is 0 then we are running in serverless mode and should exit after one iteration.
     if (params.pollingDelay === 0) {
       await delay(5); // Set a delay to let the transports flush fully.
+      await waitForLogger(logger);
       break;
     }
     params.blockRange = await waitNextBlockRange(params);
@@ -62,6 +64,7 @@ main().then(
     });
     // Wait 5 seconds to allow logger to flush.
     await delay(5);
+    await waitForLogger(logger);
     process.exit(1);
   }
 );

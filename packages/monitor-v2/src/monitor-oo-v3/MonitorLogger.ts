@@ -44,6 +44,7 @@ export async function logAssertion(
       ".",
     notificationPath: "optimistic-oracle",
     discordPaths: ["oo-fact-checking", "oo-events"],
+    discordTicketChannel: "verifications-start-here",
   });
 }
 
