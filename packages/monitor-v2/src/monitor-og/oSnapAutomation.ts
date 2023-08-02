@@ -37,6 +37,7 @@ import {
   RulesParameters,
   SafeSnapSafe,
   SnapshotProposalGraphql,
+  VerificationResponse,
   verifyIpfs,
   verifyProposal,
   verifyRules,
@@ -364,6 +365,13 @@ const getSupportedProposals = async (
   return supportedProposals;
 };
 
+// Helper function to check if proposal can be disputed based on its verification result. If the verification failed due
+// to server error, we don't want to dispute it.
+const canDispute = (verificationResult: VerificationResponse): boolean => {
+  if (verificationResult.verified) return false;
+  return verificationResult.serverError !== true;
+};
+
 // Filter proposals that did not pass verification and also retain verification result for logging.
 const getDisputableProposals = async (
   proposals: SupportedProposal[],
@@ -375,7 +383,7 @@ const getDisputableProposals = async (
     await Promise.all(
       proposals.map(async (proposal) => {
         const verificationResult = await verifyProposal(proposal.event, params);
-        return !verificationResult.verified ? { ...proposal, verificationResult } : null;
+        return canDispute(verificationResult) ? { ...proposal, verificationResult } : null;
       })
     )
   ).filter((proposal) => proposal !== null) as DisputableProposal[];

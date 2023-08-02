@@ -63,7 +63,7 @@ interface IpfsData {
   };
 }
 
-export type VerificationResponse = { verified: true } | { verified: false; error: string };
+export type VerificationResponse = { verified: true } | { verified: false; error: string; serverError?: boolean };
 
 export interface RulesParameters {
   space: string;
@@ -470,7 +470,7 @@ export const verifyProposal = async (
   // Get proposal data from GraphQL.
   const graphqlData = await getGraphqlData(ipfsHash, params.graphqlEndpoint, params.retryOptions);
   if (graphqlData instanceof Error) {
-    return { verified: false, error: `GraphQL request failed with error ${graphqlData.message}` };
+    return { verified: false, error: `GraphQL request failed with error ${graphqlData.message}`, serverError: true };
   }
   if (!isGraphqlData(graphqlData)) {
     return { verified: false, error: "GraphQL data does not match expected format" };
