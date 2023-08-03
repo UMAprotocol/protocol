@@ -5,10 +5,11 @@
 // This transport should be used with Ticket Tool (https://tickettool.xyz/) configured to trigger ticket commands on
 // the resolved channel ID and whitelisting of bot ID. Also the Discord server should be configured to allow the bot
 // to post messages on the ticket opening channel.
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, TextBasedChannel } from "discord.js";
 import * as ss from "superstruct";
 import Transport from "winston-transport";
 
+import { delay } from "../helpers/delay";
 import { removeAnchorTextFromLinks } from "./Formatters";
 import { isDictionary } from "./Logger";
 import { TransportError } from "./TransportError";
@@ -38,6 +39,12 @@ interface DiscordTicketInfo {
   discordTicketChannel: string;
 }
 
+// Interface for log que element.
+interface QueueElement {
+  channel: TextBasedChannel;
+  message: string;
+}
+
 // Type guard for log info object.
 export const isDiscordTicketInfo = (info: unknown): info is DiscordTicketInfo => {
   if (!isDictionary(info)) return false;
@@ -52,12 +59,26 @@ export class DiscordTicketTransport extends Transport {
 
   private client: Client;
 
+  private logQueue: QueueElement[];
+  private isQueueBeingExecuted: boolean;
+
+  private enqueuedLogCounter: number;
+
   constructor(winstonOpts: TransportOptions, { botToken, channelIds = {} }: Config) {
     super(winstonOpts);
     this.botToken = botToken;
     this.channelIds = channelIds;
 
     this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+    this.logQueue = [];
+    this.isQueueBeingExecuted = false;
+    this.enqueuedLogCounter = 0;
+  }
+
+  // Getter for checking if the transport is flushed.
+  get isFlushed(): boolean {
+    return this.enqueuedLogCounter === 0;
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -67,6 +88,8 @@ export class DiscordTicketTransport extends Transport {
 
     if (canSend) {
       try {
+        this.enqueuedLogCounter++; // Used by isFlushed getter. Make sure to decrement when done or catching an error.
+
         if (!this.client.isReady()) await this.login(); // Log in if not yet established the connection.
 
         // Get and verify requested Discord channel to post.
@@ -78,9 +101,13 @@ export class DiscordTicketTransport extends Transport {
         // Prepend the $ticket command and concatenate message title and content separated by newline.
         const message = `$ticket ${info.message}\n${removeAnchorTextFromLinks(info.mrkdwn)}`;
 
-        // Send the message.
-        await channel.send(message);
+        // Add the message to the queue and process it.
+        this.logQueue.push({ channel, message });
+        await this.executeLogQueue();
+
+        this.enqueuedLogCounter--; // Decrement counter for the isFlushed getter when done.
       } catch (error) {
+        this.enqueuedLogCounter--; // Decrement the counter for the isFlushed getter when catching an error.
         return callback(new TransportError("Discord Ticket", error, info));
       }
     }
@@ -89,7 +116,32 @@ export class DiscordTicketTransport extends Transport {
   }
 
   // Use bot token for establishing a connection to Discord API.
-  async login(): Promise<void> {
+  private async login(): Promise<void> {
     await this.client.login(this.botToken);
+  }
+
+  private async executeLogQueue(): Promise<void> {
+    if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
+    this.isQueueBeingExecuted = true; // Lock the queue to being executed.
+
+    while (this.logQueue.length > 0) {
+      try {
+        // Try sending the oldest message from the queue.
+        await this.logQueue[0].channel.send(this.logQueue[0].message);
+        this.logQueue.shift(); // If the sending does not fail, remove it from the log queue as having been executed.
+
+        // Ticket tool does not allow more than 1 ticket to be opened per 10 seconds. We are conservative and wait 15
+        // seconds before opening the next ticket.
+        await delay(15);
+      } catch (error) {
+        // If the sending fails, unlock the queue execution and throw the error so that the caller can handle it.
+        // TODO: Add retry logic.
+        this.isQueueBeingExecuted = false;
+        throw error;
+      }
+    }
+
+    // Unlock the queue execution.
+    this.isQueueBeingExecuted = false;
   }
 }
