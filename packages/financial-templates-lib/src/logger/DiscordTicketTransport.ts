@@ -83,12 +83,14 @@ export class DiscordTicketTransport extends Transport {
 
   // Note: info must be any because that's what the base class uses.
   async log(info: any, callback: (error?: unknown) => void): Promise<void> {
-    // We only try sending if we have all expected parameters and a matching channel ID.
-    const canSend = isDiscordTicketInfo(info) && info.discordTicketChannel in this.channelIds;
-
-    if (canSend) {
+    // We only try sending if the logging application has passed required parameters.
+    if (isDiscordTicketInfo(info)) {
       try {
         this.enqueuedLogCounter++; // Used by isFlushed getter. Make sure to decrement when done or catching an error.
+
+        // Check if the channel ID is configured.
+        if (!(info.discordTicketChannel in this.channelIds))
+          throw new Error(`Missing channel ID for ${info.discordTicketChannel}!`);
 
         if (!this.client.isReady()) await this.login(); // Log in if not yet established the connection.
 
