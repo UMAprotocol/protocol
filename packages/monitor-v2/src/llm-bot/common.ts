@@ -137,6 +137,8 @@ export class OptimisticOracleRequest {
   }
 }
 
+const EMPTY_BLOCK_RANGE: BlockRange = [0, 0];
+
 /**
  * Abstract class representing a client to interact with an Optimistic Oracle and store the requests.
  */
@@ -155,7 +157,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   protected constructor(
     _provider: Provider,
     _requests: Map<string, R> = new Map(),
-    _fetchedBlockRanges: BlockRange[] = [[0, 0]]
+    _fetchedBlockRanges: BlockRange[] = [EMPTY_BLOCK_RANGE]
   ) {
     this.provider = _provider;
     this.requests = _requests;
