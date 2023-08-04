@@ -12,6 +12,7 @@ import Transport from "winston-transport";
 import { delay } from "../helpers/delay";
 import { removeAnchorTextFromLinks } from "./Formatters";
 import { isDictionary } from "./Logger";
+import { TransportError } from "./TransportError";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
@@ -81,7 +82,7 @@ export class DiscordTicketTransport extends Transport {
   }
 
   // Note: info must be any because that's what the base class uses.
-  async log(info: any, callback: () => void): Promise<void> {
+  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
     // We only try sending if the logging application has passed required parameters.
     if (isDiscordTicketInfo(info)) {
       try {
@@ -109,7 +110,7 @@ export class DiscordTicketTransport extends Transport {
         this.enqueuedLogCounter--; // Decrement counter for the isFlushed getter when done.
       } catch (error) {
         this.enqueuedLogCounter--; // Decrement the counter for the isFlushed getter when catching an error.
-        console.error("Discord Ticket error", error);
+        return callback(new TransportError("Discord Ticket", error, info));
       }
     }
 

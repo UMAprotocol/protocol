@@ -25,6 +25,8 @@ import Transport from "winston-transport";
 import axios from "axios";
 import type { AxiosInstance, AxiosRequestConfig } from "axios";
 
+import { TransportError } from "./TransportError";
+
 interface MarkdownText {
   type: "mrkdwn";
   text: string;
@@ -174,7 +176,7 @@ class SlackHook extends Transport {
     this.axiosInstance = axios.create({ proxy: opts.proxy });
   }
 
-  async log(info: any, callback: () => void) {
+  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
     // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
     // different slack channels depending on the context of the log.
     const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
@@ -195,8 +197,8 @@ class SlackHook extends Transport {
         if (response.status != 200) errorThrown = true;
       }
     }
+    if (errorThrown) return callback(new TransportError("Slack", new Error("Axios response error"), info));
     callback();
-    if (errorThrown) console.error("slack transport error!");
   }
 }
 
