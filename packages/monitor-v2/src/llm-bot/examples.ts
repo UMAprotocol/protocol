@@ -10,20 +10,19 @@ import {
 export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticOracleRequest> {
   constructor(
     _provider: Provider,
-    _requests: OptimisticOracleRequest[] = [],
+    _requests: Map<string, OptimisticOracleRequest> = new Map(),
     _fetchedBlockRanges?: [number, number][]
   ) {
     super(_provider, _requests, _fetchedBlockRanges);
   }
 
-  protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
+  protected async updateOracleRequests(blockRanges: [number, number][]): Promise<void> {
     // TODO: Implement this for the OptimisticOracleV2
-    blockRange;
-    return [];
+    blockRanges;
   }
 
   protected createClientInstance(
-    requests: OptimisticOracleRequest[],
+    requests: Map<string, OptimisticOracleRequest>,
     fetchedBlockRanges: [number, number][]
   ): OptimisticOracleClientV2 {
     return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRanges);
@@ -42,20 +41,19 @@ class OptimisticOracleRequestPolymarket extends OptimisticOracleRequest {
 export class OptimisticOracleClientV2Polymarket extends OptimisticOracleClient<OptimisticOracleRequestPolymarket> {
   constructor(
     _provider: Provider,
-    _requests: OptimisticOracleRequestPolymarket[] = [],
+    _requests: Map<string, OptimisticOracleRequestPolymarket> = new Map(),
     _fetchedBlockRanges?: [number, number][]
   ) {
     super(_provider, _requests, _fetchedBlockRanges);
   }
 
-  protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequestPolymarket[]> {
+  protected async updateOracleRequests(blockRanges: [number, number][]): Promise<void> {
     // TODO: Implement this for the OptimisticOracleV2
-    blockRange;
-    return [];
+    blockRanges;
   }
 
   protected createClientInstance(
-    requests: OptimisticOracleRequestPolymarket[],
+    requests: Map<string, OptimisticOracleRequestPolymarket>,
     fetchedBlockRanges: [number, number][]
   ): OptimisticOracleClientV2Polymarket {
     return new OptimisticOracleClientV2Polymarket(this.provider, requests, fetchedBlockRanges);
@@ -65,20 +63,19 @@ export class OptimisticOracleClientV2Polymarket extends OptimisticOracleClient<O
 export class OptimisticOracleClientV3 extends OptimisticOracleClient<OptimisticOracleRequest> {
   constructor(
     _provider: Provider,
-    _requests: OptimisticOracleRequest[] = [],
+    _requests: Map<string, OptimisticOracleRequest> = new Map(),
     _fetchedBlockRanges?: [number, number][]
   ) {
     super(_provider, _requests, _fetchedBlockRanges);
   }
 
-  protected async fetchOracleRequests(blockRange: [number, number]): Promise<OptimisticOracleRequest[]> {
+  protected async updateOracleRequests(blockRanges: [number, number][]): Promise<void> {
     // TODO: Implement this for the OptimisticOracleV3
-    blockRange;
-    return [];
+    blockRanges;
   }
 
   protected createClientInstance(
-    requests: OptimisticOracleRequest[],
+    requests: Map<string, OptimisticOracleRequest>,
     fetchedBlockRanges: [number, number][]
   ): OptimisticOracleClientV3 {
     return new OptimisticOracleClientV3(this.provider, requests, fetchedBlockRanges);
@@ -107,7 +104,9 @@ const main = async () => {
 
   const oov2_updated = await oov2.updateWithBlockRange();
 
-  const oov2_filtered = await new OptimisticOracleClientFilterV2ToPolymarket().filter(oov2_updated.getRequests());
+  const oov2_filtered = await new OptimisticOracleClientFilterV2ToPolymarket().filter(
+    Array.from(oov2_updated.requests.values())
+  );
   oov2_filtered;
 };
 

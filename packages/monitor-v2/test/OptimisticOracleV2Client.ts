@@ -49,7 +49,7 @@ describe("OptimisticOracleV2Client", function () {
     );
 
     const oov2ClientUpdated = await oov2Client.updateWithBlockRange();
-    const requests = oov2ClientUpdated.getRequests();
+    const requests = Array.from(oov2ClientUpdated.requests.values());
     const request = requests[0];
     assert.equal(requests.length, 1);
     assert.equal(request.requester, await requester.getAddress());
@@ -75,7 +75,7 @@ describe("OptimisticOracleV2Client", function () {
     const latestBlockNumber = await optimisticOracleV2.provider.getBlockNumber();
     const emptyBlockRange: [number, number] = [latestBlockNumber + 1, latestBlockNumber + 10];
     const oov2ClientUpdated = await oov2Client.updateWithBlockRange(emptyBlockRange);
-    const requests = oov2ClientUpdated.getRequests();
+    const requests = Array.from(oov2ClientUpdated.requests.values());
     assert.isArray(requests);
     assert.isEmpty(requests);
   });
@@ -93,21 +93,27 @@ describe("OptimisticOracleV2Client", function () {
         bondToken.address,
         0
       );
+      const receipt = await tx.wait();
       txHashes.push(tx.hash);
-      requests.push({
-        requester: await requester.getAddress(),
-        identifier: ethers.utils.parseBytes32String(defaultOptimisticOracleV2Identifier),
-        timestamp: i,
-        requestTx: tx.hash,
-        type: OptimisticOracleType.PriceRequest,
-        body: question,
-      });
+      requests.push(
+        new OptimisticOracleRequest({
+          requester: await requester.getAddress(),
+          identifier: ethers.utils.parseBytes32String(defaultOptimisticOracleV2Identifier),
+          timestamp: i,
+          requestTx: tx.hash,
+          type: OptimisticOracleType.PriceRequest,
+          body: question,
+          isEventBased: false,
+          blockNumber: receipt.blockNumber,
+          transactionIndex: receipt.transactionIndex,
+        })
+      );
     }
 
     const latestBlockNumber = await optimisticOracleV2.provider.getBlockNumber();
     const blockRange: [number, number] = [latestBlockNumber - requestsCount, latestBlockNumber];
     const oov2ClientUpdated = await oov2Client.updateWithBlockRange(blockRange);
-    const fetchedRequests = oov2ClientUpdated.getRequests();
+    const fetchedRequests = Array.from(oov2ClientUpdated.requests.values());
 
     for (const request of requests) {
       const foundRequest = fetchedRequests.find((r) => {
