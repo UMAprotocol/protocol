@@ -38,16 +38,35 @@ import { delay } from "../helpers/delay";
 import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
 
+// Custom interface for transports that have the isFlushed getter.
+interface FlushableTransport extends Transport {
+  isFlushed: boolean;
+}
+
+// Custom type guard function to check if a transport is of type FlushableTransport
+function isFlushableTransport(transport: Transport): transport is FlushableTransport {
+  return "isFlushed" in transport && typeof transport.isFlushed === "boolean";
+}
+
+// Function to check that all flushable transports attached to logger are in a flushed state.
+function isLoggerFlushed(logger: AugmentedLogger): boolean {
+  return logger.transports.filter(isFlushableTransport).every((transport) => transport.isFlushed);
+}
+
 // This async function can be called by a bot if the log message is generated right before the process terminates.
-// This method will check if the AugmentedLogger's isFlushed is set to true. If not, it will block until such time
-// that it has been set to true. Note that each blocking transport should implement this isFlushed bool to prevent
-// the logger from closing before all logs have been propagated.
-export async function waitForLogger(logger: AugmentedLogger) {
-  while (!logger.isFlushed) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
+// This method will check if all transports attached to AugmentedLogger having isFlushed getter return it as true. If
+// not, it will block until such time that all these transports have been flushed. This still can exit before all
+// transports are flushed if the logger flush timeout is reached.
+export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
+  const waitForFlushed = async (): Promise<void> => {
+    while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
+  };
+  // Wait for the logger to be flushed or for the logger flush timeout to be reached.
+  await Promise.race([waitForFlushed(), delay(logger.flushTimeout)]);
 }
 
 export interface AugmentedLogger extends _Logger {
-  isFlushed: boolean;
+  flushTimeout: number; // Timeout in seconds to wait for logger to flush before closing.
   transportErrorLogger: _Logger; // Dedicated logger for logging transport execution errors.
 }
 
@@ -89,7 +108,7 @@ export function createNewLogger(
   const transports = [...createTransports(transportsConfig), ...injectedTransports];
   const logger = createBaseLogger("debug", transports, botIdentifier) as AugmentedLogger;
 
-  logger.isFlushed = true; // The logger should start off in a flushed state of "true". i.e it is ready to be close.
+  logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 30;
 
   // Attach dedicated logger for handling and logging transport execution errors.
   logger.transportErrorLogger = createBaseLogger("error", filterLogErrorTransports(logger.transports), botIdentifier);
