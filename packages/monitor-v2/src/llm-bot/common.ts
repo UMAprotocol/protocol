@@ -18,6 +18,11 @@ export function calculateRequestId(body: string, identifier: string, timestamp: 
 }
 
 /**
+ * Type representing a block range.
+ */
+export type BlockRange = [number, number];
+
+/**
  * Enum representing the type of an Optimistic Oracle request.
  */
 export enum OptimisticOracleType {
@@ -138,7 +143,7 @@ export class OptimisticOracleRequest {
 export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> {
   protected provider: Provider;
   readonly requests: Map<string, R>;
-  protected fetchedBlockRanges: [number, number][];
+  protected fetchedBlockRanges: BlockRange[];
 
   /**
    * Constructs a new instance of OptimisticOracleClient.
@@ -150,7 +155,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   protected constructor(
     _provider: Provider,
     _requests: Map<string, R> = new Map(),
-    _fetchedBlockRanges: [number, number][] = [[0, 0]]
+    _fetchedBlockRanges: BlockRange[] = [[0, 0]]
   ) {
     this.provider = _provider;
     this.requests = _requests;
@@ -184,24 +189,25 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    */
   protected abstract createClientInstance(
     requests: Map<string, R>,
-    fetchedBlockRanges: [number, number][]
+    fetchedBlockRanges: BlockRange[]
   ): OptimisticOracleClient<R>;
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests updates and storing them in the requests map.
    * @param blockRanges The new blockRanges to fetch requests from.
    */
-  protected abstract updateOracleRequests(blockRanges: [number, number][]): Promise<void>;
+  protected abstract updateOracleRequests(blockRanges: BlockRange[]): Promise<void>;
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
    * @param blockRange (Optional) The block range to fetch new requests from.
    * @returns A Promise that resolves to a new OptimisticOracleClient instance with updated requests.
    */
-  async updateWithBlockRange(blockRange?: [number, number]): Promise<this> {
-    let range: [number, number];
+  async updateWithBlockRange(blockRange?: BlockRange): Promise<this> {
+    let range: BlockRange;
     if (blockRange) {
-      if (blockRange[0] > blockRange[1]) throw new Error("Invalid block range");
+      if (blockRange[0] > blockRange[1])
+        throw new Error("Start block number should be less than or equal to end block number");
       range = blockRange;
     } else {
       // Calculate the next block range to fetch
@@ -237,7 +243,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    * Returns the block ranges of the fetched requests.
    * @returns An array of pairs of numbers representing the block ranges.
    */
-  getFetchedBlockRange(): [number, number][] {
+  getFetchedBlockRange(): BlockRange[] {
     return this.fetchedBlockRanges;
   }
 

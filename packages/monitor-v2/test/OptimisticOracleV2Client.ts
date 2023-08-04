@@ -60,14 +60,14 @@ describe("OptimisticOracleV2Client", function () {
   });
 
   it("Handles wrong block range", async function () {
-    const emptyBlockRange: [number, number] = [100, 99];
+    const wrongBlockRange: [number, number] = [100, 99];
     // should fail when calling updateWithBlockRange
     try {
-      await oov2Client.updateWithBlockRange(emptyBlockRange);
+      await oov2Client.updateWithBlockRange(wrongBlockRange);
       assert.fail("Expected function to throw an error, but it did not.");
     } catch (error) {
       assert.ok(error instanceof Error);
-      assert.strictEqual(error.message, "Invalid block range");
+      assert.strictEqual(error.message, "Start block number should be less than or equal to end block number");
     }
   });
 

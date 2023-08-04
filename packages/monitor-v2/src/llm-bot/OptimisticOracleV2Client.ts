@@ -5,13 +5,19 @@ import { OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { Event, EventFilter, ethers } from "ethers";
 import { blockDefaults } from "../utils/constants";
 import { getContractInstanceWithProvider, tryHexToUtf8String } from "../utils/contracts";
-import { OptimisticOracleClient, OptimisticOracleRequest, OptimisticOracleType, calculateRequestId } from "./common";
+import {
+  BlockRange,
+  OptimisticOracleClient,
+  OptimisticOracleRequest,
+  OptimisticOracleType,
+  calculateRequestId,
+} from "./common";
 
 export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticOracleRequest> {
   constructor(
     _provider: Provider,
     _requests: Map<string, OptimisticOracleRequest> = new Map<string, OptimisticOracleRequest>(),
-    _fetchedBlockRanges?: [number, number][]
+    _fetchedBlockRanges?: BlockRange[]
   ) {
     super(_provider, _requests, _fetchedBlockRanges);
   }
@@ -77,7 +83,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     this.requests.set(requestId, newRequest);
   }
 
-  protected async updateOracleRequests(newRanges: [number, number][]): Promise<void> {
+  protected async updateOracleRequests(newRanges: BlockRange[]): Promise<void> {
     const newRange = newRanges[newRanges.length - 1];
 
     const ooV2Contract = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
@@ -100,7 +106,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
   protected createClientInstance(
     requests: Map<string, OptimisticOracleRequest>,
-    fetchedBlockRanges: [number, number][]
+    fetchedBlockRanges: BlockRange[]
   ): OptimisticOracleClientV2 {
     return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRanges);
   }
