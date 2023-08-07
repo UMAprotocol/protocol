@@ -32,6 +32,8 @@ export function createConfig(config: unknown): Config {
   return ss.create(config, Config);
 }
 
+const DISCORD_MAX_CHAR_LIMIT = 2000;
+
 // Interface for log info object.
 interface DiscordTicketInfo {
   message: string;
@@ -101,7 +103,8 @@ export class DiscordTicketTransport extends Transport {
         if (!channel.isTextBased()) throw new Error(`Invalid type for Discord channel ${channelId}!`);
 
         // Prepend the $ticket command and concatenate message title and content separated by newline.
-        const message = `$ticket ${info.message}\n${removeAnchorTextFromLinks(info.mrkdwn)}`;
+        // Also remove anchor text from links and truncate the message to Discord's max character limit.
+        const message = this.truncateMessage(`$ticket ${info.message}\n${removeAnchorTextFromLinks(info.mrkdwn)}`);
 
         // Add the message to the queue and process it.
         this.logQueue.push({ channel, message });
@@ -145,5 +148,11 @@ export class DiscordTicketTransport extends Transport {
 
     // Unlock the queue execution.
     this.isQueueBeingExecuted = false;
+  }
+
+  // Truncate the message if it exceeds the Discord character limit.
+  private truncateMessage(message: string): string {
+    if (message.length <= DISCORD_MAX_CHAR_LIMIT) return message;
+    return message.slice(0, DISCORD_MAX_CHAR_LIMIT - 12) + " [TRUNCATED]";
   }
 }
