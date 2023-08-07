@@ -66,7 +66,9 @@ export const PublicNetworks: PublicNetworksType = {
     etherscan: "https://polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
+  280: { name: "zksync-goerli", etherscan: "https://goerli.explorer.zksync.io/" },
   288: { name: "boba", etherscan: "https://blockexplorer.boba.network/" },
+  324: { name: "zksync", etherscan: "https://explorer.zksync.io/" },
   416: { name: "sx", etherscan: "https://explorer.sx.technology/" },
   9001: { name: "evmos", etherscan: "https://evm.evmos.org" },
   80001: {
@@ -76,9 +78,11 @@ export const PublicNetworks: PublicNetworksType = {
   },
   42161: { name: "arbitrum", etherscan: "https://arbiscan.io/" },
   43114: { name: "avalanche", etherscan: "https://snowtrace.io/" },
-  84531: { name: "base-goerli", etherscan: "https://goerli.basescan.org" },
+  8453: { name: "base", etherscan: "https://goerli.basescan.org/" },
+  84531: { name: "base-goerli", etherscan: "https://goerli.basescan.org/" },
   421611: { name: "arbitrum-rinkeby", etherscan: "https://testnet.arbiscan.io/" },
   421613: { name: "arbitrum-goerli", etherscan: "https://goerli.arbiscan.io/" },
+  11155111: { name: "sepolia", etherscan: "https://sepolia.etherscan.io/" },
 };
 
 export function isPublicNetwork(name: string): boolean {
