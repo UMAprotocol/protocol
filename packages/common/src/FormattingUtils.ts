@@ -95,7 +95,7 @@ export function createEtherscanLinkFromtx(networkId: NetworkId): string {
     url = `${networkUtils[networkId].etherscan}`;
   } else {
     // Default to mainnet, even though it won't work for ganache runs.
-    url = "https://etherscan.io/";
+    url = "https://etherscan.io";
   }
 
   return url;
@@ -113,9 +113,9 @@ export function createEtherscanLinkMarkdown(hex: string, networkId: NetworkId = 
   if (hex.substring(0, 2) != "0x") return null;
   const shortURLString = createShortHexString(hex);
   // Transaction hash
-  if (hex.length == 66) return `<${createEtherscanLinkFromtx(networkId)}tx/${hex}|${shortURLString}>`;
+  if (hex.length == 66) return `<${createEtherscanLinkFromtx(networkId)}/tx/${hex}|${shortURLString}>`;
   // Account
-  else if (hex.length == 42) return `<${createEtherscanLinkFromtx(networkId)}address/${hex}|${shortURLString}>`;
+  else if (hex.length == 42) return `<${createEtherscanLinkFromtx(networkId)}/address/${hex}|${shortURLString}>`;
   return null;
 }
 
