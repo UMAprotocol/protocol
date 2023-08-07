@@ -83,13 +83,15 @@ describe("OptimisticOracleV2Client", function () {
     // Create multiple price requests and fetch them.
     const requestsCount = 5;
     for (let i = 0; i < requestsCount; i++) {
-      await optimisticOracleV2.requestPrice(
-        defaultOptimisticOracleV2Identifier,
-        i,
-        ancillaryData,
-        bondToken.address,
-        0
-      );
+      await (
+        await optimisticOracleV2.requestPrice(
+          defaultOptimisticOracleV2Identifier,
+          i,
+          ancillaryData,
+          bondToken.address,
+          0
+        )
+      ).wait();
     }
 
     const latestBlockNumber = await optimisticOracleV2.provider.getBlockNumber();
