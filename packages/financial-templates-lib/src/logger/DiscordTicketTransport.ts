@@ -174,8 +174,8 @@ export class DiscordTicketTransport extends Transport {
     const messageChunks = message.split(urlRegex);
 
     // Truncate chunks until the message is short enough to fit the character limit. Cycle through the chunks backwards
-    // in two rounds. The first round truncates the chunks that are not URLs. The second round also truncates the URL
-    // chunks. This is done to preserve URLs as much as possible.
+    // in one or two rounds. The first round truncates the chunks that are not URLs. The second round also truncates the
+    // URL chunks if the first round did not shorten the message enough. This is done to preserve URLs as much as possible.
     let truncatedMessageLength = message.length;
     let isUrlRound = false;
     for (let i = messageChunks.length - 1; i >= 0; i--) {
