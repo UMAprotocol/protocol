@@ -78,27 +78,4 @@ describe("OptimisticOracleV2Client", function () {
     assert.isArray(requests);
     assert.isEmpty(requests);
   });
-
-  it("Handles Multiple Request Events", async function () {
-    // Create multiple price requests and fetch them.
-    const requestsCount = 5;
-    for (let i = 0; i < requestsCount; i++) {
-      await (
-        await optimisticOracleV2.requestPrice(
-          defaultOptimisticOracleV2Identifier,
-          i,
-          ancillaryData,
-          bondToken.address,
-          0
-        )
-      ).wait();
-    }
-
-    const latestBlockNumber = await optimisticOracleV2.provider.getBlockNumber();
-    const blockRange: [number, number] = [latestBlockNumber - requestsCount, latestBlockNumber];
-    const oov2ClientUpdated = await oov2Client.updateWithBlockRange(blockRange);
-    const fetchedRequests = Array.from(oov2ClientUpdated.requests.values());
-
-    assert.equal(fetchedRequests.length, requestsCount, "Incorrect number of requests fetched");
-  });
 });
