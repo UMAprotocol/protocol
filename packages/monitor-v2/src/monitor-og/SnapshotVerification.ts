@@ -5,6 +5,7 @@ import {
 import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { BigNumber, utils as ethersUtils } from "ethers";
+import { CID } from "multiformats/cid";
 import fetch from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
@@ -180,6 +181,16 @@ export const parseRules = (rules: string): RulesParameters | null => {
   const votingPeriod = parseInt(match[3]);
 
   return { space, quorum, votingPeriod };
+};
+
+// Try parsing IPFS hash to validate it. This should also protect against replay attacks with different CIDv1 casing.
+const isIpfsHashValid = (ipfsHash: string): boolean => {
+  try {
+    CID.parse(ipfsHash);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 // We don't want to throw an error if the GraphQL request fails for any reason, so we return an Error object instead
@@ -466,6 +477,9 @@ export const verifyProposal = async (
   if (ipfsHash === transaction.args.explanation) {
     return { verified: false, error: `Could not decode explanation ${transaction.args.explanation}` };
   }
+
+  // Validate IPFS hash.
+  if (!isIpfsHashValid(ipfsHash)) return { verified: false, error: `IPFS hash ${ipfsHash} is not valid` };
 
   // Get proposal data from GraphQL.
   const graphqlData = await getGraphqlData(ipfsHash, params.graphqlEndpoint, params.retryOptions);
