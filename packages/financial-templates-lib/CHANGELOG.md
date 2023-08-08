@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.11...@uma/financial-templates-lib@2.33.0) (2023-07-17)
+
+### Bug Fixes
+
+- gas estimator ([#4579](https://github.com/UMAprotocol/protocol/issues/4579)) ([64e3819](https://github.com/UMAprotocol/protocol/commit/64e3819923ffc91726741417a5f2de06cb4de1e8))
+
+### Features
+
+- update optimistic oracle client to work with oov2 ([#4567](https://github.com/UMAprotocol/protocol/issues/4567)) ([82d9615](https://github.com/UMAprotocol/protocol/commit/82d96155dc16e8fc949653d431e62997fefbb14d))
+
 ## [2.32.11](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.10...@uma/financial-templates-lib@2.32.11) (2023-04-18)
 
 **Note:** Version bump only for package @uma/financial-templates-lib

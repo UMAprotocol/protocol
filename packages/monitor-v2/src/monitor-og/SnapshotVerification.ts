@@ -446,13 +446,15 @@ const hasBeenExecuted = async (
   );
 
   // Return true if any of the matching proposals have been executed.
-  const executedAssertionIds = (
-    await runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), {
-      start: 0,
-      end: currentProposal.blockNumber,
-    })
-  ).map((executedProposal) => executedProposal.args.assertionId);
-  return matchingProposals.some((matchingProposal) => executedAssertionIds.includes(matchingProposal.args.assertionId));
+  const executedAssertionIds = new Set(
+    (
+      await runQueryFilter<ProposalExecutedEvent>(og, og.filters.ProposalExecuted(), {
+        start: 0,
+        end: currentProposal.blockNumber,
+      })
+    ).map((executedProposal) => executedProposal.args.assertionId)
+  );
+  return matchingProposals.some((matchingProposal) => executedAssertionIds.has(matchingProposal.args.assertionId));
 };
 
 export const verifyProposal = async (

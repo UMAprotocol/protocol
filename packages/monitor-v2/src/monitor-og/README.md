@@ -54,8 +54,18 @@ All the configuration should be provided with following environment variables:
 - `AUTOMATIC_PROPOSALS_ENABLED` is boolean enabling/disabling automatic proposal submission on supported oSnap modules
   (`false` by default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET`
   or `MNEMONIC` for signing proposal transactions.
+- `AUTOMATIC_DISPUTES_ENABLED` is boolean enabling/disabling automatic disputes of supported oSnap proposals (`false` by
+  default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET` or
+  `MNEMONIC` for signing dispute transactions.
+- `AUTOMATIC_EXECUTIONS_ENABLED` is boolean enabling/disabling automatic execution of supported oSnap proposals (`false`
+  by default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET` or
+  `MNEMONIC` for signing execution transactions.
 - `SUPPORTED_BONDS` is a mapping of supported bond tokens and bond values. This is required when running in automated
   support mode. Only oSnap modules with exact match of bond token and bond value will be supported.
+- `SUBMIT_AUTOMATION` is boolean enabling/disabling transaction submission in any of automated support modes (`true` by
+  default). If this is set to `false`, the bot will only simulate transaction submission and log the results. Note that
+  bond approval transactions would be still submitted as they are required for the subsequent proposal/dispute
+  simulation.
 - `SNAPSHOT_ENDPOINT` is the Snapshot endpoint used to verify Snapshot proposals. If not provided, this defaults to
   `https://snapshot.org`.
 - `GRAPHQL_ENDPOINT` is the GraphQL endpoint used to verify Snapshot proposals. If not provided, this defaults to

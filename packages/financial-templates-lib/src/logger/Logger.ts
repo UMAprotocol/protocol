@@ -28,6 +28,9 @@
 // });
 
 import winston from "winston";
+import { PagerDutyTransport } from "./PagerDutyTransport";
+import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
+import { TransportError } from "./TransportError";
 import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { delay } from "../helpers/delay";
@@ -35,25 +38,46 @@ import { delay } from "../helpers/delay";
 import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
 
-// This async function can be called by a bot if the log message is generated right before the process terminates.
-// This method will check if the AugmentedLogger's isFlushed is set to true. If not, it will block until such time
-// that it has been set to true. Note that each blocking transport should implement this isFlushed bool to prevent
-// the logger from closing before all logs have been propagated.
-export async function waitForLogger(logger: AugmentedLogger) {
-  while (!logger.isFlushed) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
-}
-
-export interface AugmentedLogger extends _Logger {
+// Custom interface for transports that have the isFlushed getter.
+interface FlushableTransport extends Transport {
   isFlushed: boolean;
 }
 
-export function createNewLogger(
-  injectedTransports: Transport[] = [],
-  transportsConfig = {},
-  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
-): AugmentedLogger {
-  const logger = winston.createLogger({
-    level: "debug",
+// Custom type guard function to check if a transport is of type FlushableTransport
+function isFlushableTransport(transport: Transport): transport is FlushableTransport {
+  return "isFlushed" in transport && typeof transport.isFlushed === "boolean";
+}
+
+// Function to check that all flushable transports attached to logger are in a flushed state.
+function isLoggerFlushed(logger: AugmentedLogger): boolean {
+  return logger.transports.filter(isFlushableTransport).every((transport) => transport.isFlushed);
+}
+
+// This async function can be called by a bot if the log message is generated right before the process terminates.
+// This method will check if all transports attached to AugmentedLogger having isFlushed getter return it as true. If
+// not, it will block until such time that all these transports have been flushed. This still can exit before all
+// transports are flushed if the logger flush timeout is reached.
+export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
+  const waitForFlushed = async (): Promise<void> => {
+    while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
+  };
+  // Wait for the logger to be flushed or for the logger flush timeout to be reached.
+  await Promise.race([waitForFlushed(), delay(logger.flushTimeout)]);
+}
+
+export interface AugmentedLogger extends _Logger {
+  flushTimeout: number; // Timeout in seconds to wait for logger to flush before closing.
+  transportErrorLogger: _Logger; // Dedicated logger for logging transport execution errors.
+}
+
+// Helper type guard for dictionary objects. Useful when dealing with any info type passed to log method.
+export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
+  return typeof arg === "object" && arg !== null && !Array.isArray(arg);
+};
+
+function createBaseLogger(level: string, transports: Transport[], botIdentifier: string): _Logger {
+  return winston.createLogger({
+    level,
     format: winston.format.combine(
       winston.format(botIdentifyFormatter(botIdentifier))(),
       winston.format((logEntry) => logEntry)(),
@@ -61,10 +85,52 @@ export function createNewLogger(
       winston.format(bigNumberFormatter)(),
       winston.format.json()
     ),
-    transports: [...createTransports(transportsConfig), ...injectedTransports],
+    transports,
     exitOnError: !!process.env.EXIT_ON_ERROR,
-  }) as AugmentedLogger;
-  logger.isFlushed = true; // The logger should start off in a flushed state of "true". i.e it is ready to be close.
+  });
+}
+
+// Filter to select reliable transports that can be used to log transport execution errors from other transports.
+// Currently only PagerDuty transports are supported and only if they are explicitly configured to log transport errors.
+function filterLogErrorTransports(transports: Transport[]): Transport[] {
+  return transports.filter(
+    (transport) =>
+      (transport instanceof PagerDutyTransport || transport instanceof PagerDutyV2Transport) &&
+      transport.logTransportErrors
+  );
+}
+
+export function createNewLogger(
+  injectedTransports: Transport[] = [],
+  transportsConfig = {},
+  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
+): AugmentedLogger {
+  const transports = [...createTransports(transportsConfig), ...injectedTransports];
+  const logger = createBaseLogger("debug", transports, botIdentifier) as AugmentedLogger;
+
+  logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 30;
+
+  // Attach dedicated logger for handling and logging transport execution errors.
+  logger.transportErrorLogger = createBaseLogger("error", filterLogErrorTransports(logger.transports), botIdentifier);
+  logger.on("error", (error) => {
+    if (error instanceof TransportError) {
+      // We can detect transport source and failed log info from the error object if it is a TransportError.
+      logger.transportErrorLogger.error({
+        at: "TransportErrorHandler",
+        message: error.message,
+        originalError: error.originalError,
+        originalInfo: error.originalInfo,
+      });
+    } else {
+      // If the error is not a TransportError, we can only log the error itself.
+      logger.transportErrorLogger.error({
+        at: "TransportErrorHandler",
+        message: "Error occurred during log execution",
+        error,
+      });
+    }
+  });
+
   return logger;
 }
 

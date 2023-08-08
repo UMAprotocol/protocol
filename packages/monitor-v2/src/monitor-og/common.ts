@@ -37,6 +37,8 @@ export interface BotModes {
   setEscalationManagerEnabled: boolean;
   proxyDeployedEnabled: boolean;
   automaticProposalsEnabled: boolean;
+  automaticDisputesEnabled: boolean;
+  automaticExecutionsEnabled: boolean;
 }
 
 export interface BlockRange {
@@ -63,6 +65,7 @@ export interface MonitoringParams {
   ipfsEndpoint: string;
   approvalChoices: string[];
   supportedBonds?: SupportedBonds; // Optional. Only used in automated support mode.
+  submitAutomation: boolean; // Defaults to true, but only used in automated support mode.
   useTenderly: boolean;
   botModes: BotModes;
   retryOptions: RetryOptions;
@@ -191,15 +194,21 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     setEscalationManagerEnabled: env.SET_ESCALATION_MANAGER_ENABLED === "true",
     proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
     automaticProposalsEnabled: env.AUTOMATIC_PROPOSALS_ENABLED === "true",
+    automaticDisputesEnabled: env.AUTOMATIC_DISPUTES_ENABLED === "true",
+    automaticExecutionsEnabled: env.AUTOMATIC_EXECUTIONS_ENABLED === "true",
   };
 
   // Parse supported bonds and get signer if any of automatic support modes are enabled.
   let supportedBonds: SupportedBonds | undefined;
   let signer: Signer | undefined;
-  if (botModes.automaticProposalsEnabled) {
+  if (botModes.automaticProposalsEnabled || botModes.automaticDisputesEnabled || botModes.automaticExecutionsEnabled) {
     supportedBonds = parseSupportedBonds(env);
     signer = await getSigner(env, provider);
   }
+
+  // By default, submit automation mode transactions (propose/dispute/execute) unless explicitly disabled. This does not
+  // apply to bond approvals as these are always submitted on chain.
+  const submitAutomation = env.SUBMIT_AUTOMATION === "false" ? false : true;
 
   // Mastercopy and module proxy factory addresses are required when monitoring proxy deployments or when not
   // explicitly providing OG_ADDRESS to monitor in other modes.
@@ -233,6 +242,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     ipfsEndpoint,
     approvalChoices,
     supportedBonds,
+    submitAutomation,
     useTenderly,
     botModes,
     retryOptions,
@@ -251,15 +261,16 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     start: 0,
     end: initialParams.blockRange.end,
   });
+  const deployedProxyAddressesSet = new Set(deployedProxyAddresses);
   const ogWhitelist: string[] = env.OG_WHITELIST ? JSON.parse(env.OG_WHITELIST) : [];
   const ogBlacklist: string[] = env.OG_BLACKLIST ? JSON.parse(env.OG_BLACKLIST) : [];
   ogWhitelist.forEach((address) => {
-    if (!deployedProxyAddresses.includes(utils.getAddress(address))) {
+    if (!deployedProxyAddressesSet.has(utils.getAddress(address))) {
       throw new Error(`OG_WHITELIST contains address ${address} that is not a deployed proxy`);
     }
   });
   ogBlacklist.forEach((address) => {
-    if (!deployedProxyAddresses.includes(utils.getAddress(address))) {
+    if (!deployedProxyAddressesSet.has(utils.getAddress(address))) {
       throw new Error(`OG_BLACKLIST contains address ${address} that is not a deployed proxy`);
     }
   });

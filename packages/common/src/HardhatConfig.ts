@@ -39,7 +39,6 @@ export function getHardhatConfig(
 ): Partial<HardhatConfig> {
   const mnemonic = getMnemonic();
   require("@nomiclabs/hardhat-web3");
-  require("@nomiclabs/hardhat-etherscan");
   require("@nomiclabs/hardhat-ethers");
   require("hardhat-deploy");
   require("hardhat-gas-reporter");
