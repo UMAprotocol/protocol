@@ -1,6 +1,5 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { ethers } from "ethers";
-import { cloneDeep } from "lodash";
 
 /**
  * Calculate the unique ID for a request.
@@ -30,32 +29,7 @@ export enum OptimisticOracleType {
   Assertion = "Assertion",
 }
 
-/**
- * Interface representing the data of an Optimistic Oracle request.
- */
-export interface OptimisticOracleRequestData {
-  body: string; // Human-readable request body.
-  type: OptimisticOracleType; // Type of the request.
-  timestamp: number; // Timestamp in seconds of the request.
-  isEventBased: boolean; // Whether the request is event based.
-  identifier: string; // Identifier of the request.
-  requester: string; // Address of the requester.
-  requestTx: string; // Transaction hash of the request.
-  blockNumber: number; // Block number of the request update.
-  transactionIndex: number; // Transaction index in the block.
-  proposer?: string; // Address of the proposer.
-  proposedValue?: number | boolean; // Proposed value.
-  proposeTx?: string; // Transaction hash of the proposal.
-  disputableUntil?: number; // Timestamp in ms until the request can be disputed.
-  resolvedValue?: number | boolean; // Resolved value.
-  resolveTx?: string; // Transaction hash of the resolution.
-  disputeTx?: string; // Transaction hash of the dispute.
-}
-
-/**
- * Represents an Optimistic Oracle request.
- */
-export class OptimisticOracleRequest {
+interface RequestData {
   readonly body: string; // Human-readable request body.
   readonly type: OptimisticOracleType; // Type of the request.
   readonly timestamp: number; // Timestamp in seconds of the request.
@@ -63,77 +37,115 @@ export class OptimisticOracleRequest {
   readonly identifier: string; // Identifier of the request.
   readonly requester: string; // Address of the requester.
   readonly requestTx: string; // Transaction hash of the request.
-  blockNumber: number; // Block number of the request update.
-  transactionIndex: number; // Transaction index in the block.
-  proposer?: string; // Address of the proposer.
-  proposedValue?: number | boolean; // Proposed value.
-  proposeTx?: string; // Transaction hash of the proposal.
-  disputableUntil?: number; // Timestamp in ms until the request can be disputed.
-  resolvedValue?: number | boolean; // Resolved value.
-  resolveTx?: string; // Transaction hash of the resolution.
-  disputeTx?: string; // Transaction hash of the dispute.
+  readonly blockNumber: number; // Block number of the request update.
+  readonly transactionIndex: number; // Transaction index in the block.
+}
 
+interface ProposalData {
+  readonly proposer: string; // Address of the proposer.
+  readonly proposedValue: number | boolean; // Proposed value.
+  readonly proposeTx: string; // Transaction hash of the proposal.
+  readonly disputableUntil: number; // Timestamp in ms until the request can be disputed.
+}
+
+interface ResolutionData {
+  readonly resolvedValue?: number | boolean; // Resolved value.
+  readonly resolveTx: string; // Transaction hash of the resolution.
+  readonly disputeTx: string; // Transaction hash of the dispute.
+}
+
+/**
+ * Interface representing the data of an Optimistic Oracle request.
+ * Note: this is structured to reduce replication and copying of data by storing the request data, proposal data, and resolution data in separate
+ * references.
+ */
+export interface OptimisticOracleRequestData {
+  readonly requestData: RequestData;
+  readonly proposalData?: ProposalData;
+  readonly resolutionData?: ResolutionData;
+}
+
+/**
+ * Represents an Optimistic Oracle request.
+ */
+export class OptimisticOracleRequest {
   /**
    * Creates a new instance of OptimisticOracleRequest.
    * @param data The data of the request.
    */
-  constructor(data: OptimisticOracleRequestData) {
-    this.body = data.body;
-    this.type = data.type;
-    this.timestamp = data.timestamp;
-    this.isEventBased = data.isEventBased;
-    this.identifier = data.identifier;
-    this.requester = data.requester;
-    this.requestTx = data.requestTx;
-    this.proposer = data.proposer;
-    this.proposedValue = data.proposedValue;
-    this.proposeTx = data.proposeTx;
-    this.disputableUntil = data.disputableUntil; // should be in ms
-    this.resolvedValue = data.resolvedValue;
-    this.resolveTx = data.resolveTx;
-    this.disputeTx = data.disputeTx;
-    this.blockNumber = data.blockNumber;
-    this.transactionIndex = data.transactionIndex;
+  constructor(readonly data: OptimisticOracleRequestData) {}
+
+  get body(): string {
+    return this.data.requestData.body;
   }
 
-  getId(): string {
+  get type(): OptimisticOracleType {
+    return this.data.requestData.type;
+  }
+
+  get timestamp(): number {
+    return this.data.requestData.timestamp;
+  }
+
+  get isEventBased(): boolean {
+    return this.data.requestData.isEventBased;
+  }
+
+  get identifier(): string {
+    return this.data.requestData.identifier;
+  }
+
+  get requester(): string {
+    return this.data.requestData.requester;
+  }
+
+  get requestTx(): string {
+    return this.data.requestData.requestTx;
+  }
+
+  get proposer(): string | undefined {
+    return this.data.proposalData?.proposer;
+  }
+
+  get proposedValue(): number | boolean | undefined {
+    return this.data.proposalData?.proposedValue;
+  }
+
+  get proposeTx(): string | undefined {
+    return this.data.proposalData?.proposeTx;
+  }
+
+  get disputableUntil(): number | undefined {
+    return this.data.proposalData?.disputableUntil;
+  }
+
+  get resolvedValue(): number | boolean | undefined {
+    return this.data.resolutionData?.resolvedValue;
+  }
+
+  get resolveTx(): string | undefined {
+    return this.data.resolutionData?.resolveTx;
+  }
+
+  get disputeTx(): string | undefined {
+    return this.data.resolutionData?.disputeTx;
+  }
+
+  get blockNumber(): number | undefined {
+    return this.data.requestData.blockNumber;
+  }
+
+  get transactionIndex(): number | undefined {
+    return this.data.requestData.transactionIndex;
+  }
+
+  get id(): string {
     return calculateRequestId(this.body, this.identifier, this.timestamp, this.requester);
   }
 
-  setProposer(proposer: string): void {
-    this.proposer = proposer;
-  }
-
-  setProposedValue(proposedValue: number | boolean): void {
-    this.proposedValue = proposedValue;
-  }
-
-  setProposeTx(proposeTx: string): void {
-    this.proposeTx = proposeTx;
-  }
-
-  setDisputableUntil(disputableUntil: number): void {
-    this.disputableUntil = disputableUntil;
-  }
-
-  setResolvedValue(resolvedValue: number | boolean): void {
-    this.resolvedValue = resolvedValue;
-  }
-
-  setResolveTx(resolveTx: string): void {
-    this.resolveTx = resolveTx;
-  }
-
-  setDisputeTx(disputeTx: string): void {
-    this.disputeTx = disputeTx;
-  }
-
-  setBlockNumber(blockNumber: number): void {
-    this.blockNumber = blockNumber;
-  }
-
-  setTransactionIndex(transactionIndex: number): void {
-    this.transactionIndex = transactionIndex;
+  update(data: Partial<OptimisticOracleRequestData>): OptimisticOracleRequest {
+    // Override old data with new data. Note: this will only copy or override top-level properties.
+    return new OptimisticOracleRequest({ ...this.data, ...data });
   }
 }
 
@@ -165,21 +177,12 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   }
 
   /**
-   * Returns a copy of the requests.
-   * @returns A copy of the requests.
-   * @dev This is a deep copy.
-   */
-  getRequestsCopy(): Map<string, R> {
-    return cloneDeep(this.requests);
-  }
-
-  /**
    * Returns a copy of the OptimisticOracleClient
    * @returns A copy of the OptimisticOracleClient
    * @dev This is a deep copy.
    */
   copy(): OptimisticOracleClient<R> {
-    return this.createClientInstance(this.getRequestsCopy(), this.fetchedBlockRanges);
+    return this.createClientInstance(new Map(this.requests), this.fetchedBlockRanges);
   }
 
   /**
