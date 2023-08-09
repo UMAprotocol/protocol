@@ -3,6 +3,7 @@ import Transport from "winston-transport";
 import { event } from "@pagerduty/pdjs";
 import * as ss from "superstruct";
 
+import { removeAnchorTextFromLinks } from "./Formatters";
 import { TransportError } from "./TransportError";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
@@ -52,6 +53,8 @@ export class PagerDutyV2Transport extends Transport {
     try {
       // we route to different pd services using the integration key (routing_key), or multiple services with the custom services object
       const routing_key = this.customServices[info.notificationPath] ?? this.integrationKey;
+      // PagerDuty does not support anchor text in links, so we remove it from markdown if it exists.
+      if (typeof info.mrkdwn === "string") info.mrkdwn = removeAnchorTextFromLinks(info.mrkdwn);
       await event({
         data: {
           routing_key,

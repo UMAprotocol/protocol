@@ -6,6 +6,7 @@
 import Transport from "winston-transport";
 import PagerDutyClient from "node-pagerduty";
 
+import { removeAnchorTextFromLinks } from "./Formatters";
 import { TransportError } from "./TransportError";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
@@ -45,8 +46,12 @@ export class PagerDutyTransport extends Transport {
   // Note: info must be any because that's what the base class uses.
   async log(info: any, callback: (error?: unknown) => void): Promise<void> {
     try {
-      // If the message has markdown then add it and the bot-identifier field. Else put the whole info object as a string
-      const logMessage = info.mrkdwn ? info.mrkdwn + `\n${info["bot-identifier"]}` : JSON.stringify(info);
+      // If the message has markdown then add it (with removed anchor text from links that is not supported by PD) and
+      // the bot-identifier field. Else put the whole info object as a string.
+      const logMessage =
+        typeof info.mrkdwn === "string"
+          ? removeAnchorTextFromLinks(info.mrkdwn) + `\n${info["bot-identifier"]}`
+          : JSON.stringify(info);
 
       // If the log contains a notification path then use a custom PagerDuty service. This lets the transport route to
       // different pagerduty escalation paths depending on the context of the log.
