@@ -1,5 +1,5 @@
 import { Provider } from "@ethersproject/abstract-provider";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 /**
  * Calculate the unique ID for a request.
@@ -43,7 +43,7 @@ interface RequestData {
 
 interface ProposalData {
   readonly proposer: string; // Address of the proposer.
-  readonly proposedValue: number | boolean; // Proposed value.
+  readonly proposedValue: BigNumber | boolean; // Proposed value.
   readonly proposeTx: string; // Transaction hash of the proposal.
   readonly disputableUntil: number; // Timestamp in ms until the request can be disputed.
 }
@@ -163,7 +163,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    * Constructs a new instance of OptimisticOracleClient.
    * @param _provider The provider used for interacting with the blockchain.
    * @param _requests (Optional) The map of Optimistic Oracle requests.
-   * @param _fetchedBlockRange (Optional) The block ranges of the fetched requests.
+   * @param _fetchedBlockRanges (Optional) The block ranges of the fetched requests.
    * @dev requests are stored in a map for faster access and to avoid duplicates.
    */
   protected constructor(
@@ -194,7 +194,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    */
   protected abstract createClientInstance(
     requests: Map<string, R>,
-    fetchedBlockRange: BlockRange
+    fetchedBlockRanges: BlockRange
   ): OptimisticOracleClient<R>;
 
   /**

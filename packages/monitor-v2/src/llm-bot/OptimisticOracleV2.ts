@@ -1,6 +1,9 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { paginatedEventQuery } from "@uma/common";
-import { RequestPriceEvent } from "@uma/contracts-frontend/dist/typechain/core/ethers/OptimisticOracleV2";
+import {
+  ProposePriceEvent,
+  RequestPriceEvent,
+} from "@uma/contracts-frontend/dist/typechain/core/ethers/OptimisticOracleV2";
 import { OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { Event, EventFilter, ethers } from "ethers";
 import { blockDefaults } from "../utils/constants";
@@ -8,6 +11,7 @@ import { getContractInstanceWithProvider, tryHexToUtf8String } from "../utils/co
 import {
   BlockRange,
   OptimisticOracleClient,
+  OptimisticOracleClientFilter,
   OptimisticOracleRequest,
   OptimisticOracleType,
   calculateRequestId,
@@ -85,6 +89,31 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     this.requests.set(requestId, newRequest);
   }
 
+  async applyProposePriceEvent(proposePriceEvent: ProposePriceEvent): Promise<void> {
+    const body = tryHexToUtf8String(proposePriceEvent.args.ancillaryData);
+    const identifier = ethers.utils.parseBytes32String(proposePriceEvent.args.identifier);
+    const timestamp = proposePriceEvent.args.timestamp.toNumber();
+    const requester = proposePriceEvent.args.requester;
+    const requestId = calculateRequestId(body, identifier, timestamp, requester);
+
+    if (!this.requests.has(requestId)) {
+      // A request should always be created before a proposal
+      throw new Error(`Request ${requestId} not found`);
+    }
+    this.requests.set(
+      requestId,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      this.requests.get(requestId)!.update({
+        proposalData: {
+          proposer: proposePriceEvent.args.proposer,
+          proposedValue: proposePriceEvent.args.proposedPrice,
+          proposeTx: proposePriceEvent.transactionHash,
+          disputableUntil: proposePriceEvent.args.expirationTimestamp.toNumber(),
+        },
+      })
+    );
+  }
+
   protected async updateOracleRequests(newRange: BlockRange): Promise<void> {
     const ooV2Contract = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
       "OptimisticOracleV2",
@@ -97,11 +126,23 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
       newRange[1]
     );
 
-    await Promise.all(
-      requestPriceEvents.map(async (requestPriceEvent) => {
-        return this.applyRequestPriceEvent(requestPriceEvent);
-      })
+    const proposePriceEvents = await this.getEventsWithPagination<ProposePriceEvent>(
+      ooV2Contract.filters.ProposePrice(),
+      newRange[0],
+      newRange[1]
     );
+
+    await Promise.all([
+      ...requestPriceEvents.map(async (requestPriceEvent) => {
+        return this.applyRequestPriceEvent(requestPriceEvent);
+      }),
+    ]);
+
+    await Promise.all([
+      ...proposePriceEvents.map(async (proposePriceEvent) => {
+        return this.applyProposePriceEvent(proposePriceEvent);
+      }),
+    ]);
   }
 
   protected createClientInstance(
@@ -109,5 +150,14 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     fetchedBlockRange: BlockRange
   ): OptimisticOracleClientV2 {
     return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRange);
+  }
+}
+
+export class OptimisticOracleClientV2FilterDisputeable
+  implements OptimisticOracleClientFilter<OptimisticOracleRequest, OptimisticOracleRequest> {
+  async filter(optimisticOracleRequests: OptimisticOracleRequest[]): Promise<OptimisticOracleRequest[]> {
+    return optimisticOracleRequests.filter((request) => {
+      return request.disputableUntil || 0 > Date.now() / 1000;
+    });
   }
 }
