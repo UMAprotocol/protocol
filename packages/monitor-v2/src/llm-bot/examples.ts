@@ -89,7 +89,7 @@ export class OptimisticOracleClientFilterV2ToPolymarket
     // Filtering logic for price requests
     const filteredRequests = optimisticOracleRequests.map((request) => {
       return new OptimisticOracleRequestPolymarket({
-        ...request,
+        ...request.data,
         polymarketQuestionTitle: "What is the price of ETH?",
       });
     });
