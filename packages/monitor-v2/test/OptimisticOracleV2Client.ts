@@ -51,15 +51,6 @@ describe("OptimisticOracleV2Client", function () {
     const requests = Array.from(oov2ClientUpdated.requests.values());
     const request = requests[0];
 
-    console.log("request.blockNumber", request.blockNumber);
-
-    const oov2ClientUpdated2 = await oov2Client.updateWithBlockRange();
-
-    request.setBlockNumber(1234);
-    console.log("request.blockNumber", request.blockNumber);
-
-    console.log("request.blockNumber2", Array.from(oov2ClientUpdated2.requests.values())[0].blockNumber);
-
     assert.equal(requests.length, 1);
     assert.equal(request.requester, await requester.getAddress());
     assert.equal(request.identifier, ethers.utils.parseBytes32String(defaultOptimisticOracleV2Identifier));

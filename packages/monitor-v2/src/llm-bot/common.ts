@@ -157,23 +157,23 @@ const EMPTY_BLOCK_RANGE: BlockRange = [0, 0];
 export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> {
   protected provider: Provider;
   readonly requests: Map<string, R>;
-  protected fetchedBlockRanges: BlockRange[];
+  protected fetchedBlockRange: BlockRange;
 
   /**
    * Constructs a new instance of OptimisticOracleClient.
    * @param _provider The provider used for interacting with the blockchain.
    * @param _requests (Optional) The map of Optimistic Oracle requests.
-   * @param _fetchedBlockRanges (Optional) The block ranges of the fetched requests.
+   * @param _fetchedBlockRange (Optional) The block ranges of the fetched requests.
    * @dev requests are stored in a map for faster access and to avoid duplicates.
    */
   protected constructor(
     _provider: Provider,
     _requests: Map<string, R> = new Map(),
-    _fetchedBlockRanges: BlockRange[] = [EMPTY_BLOCK_RANGE]
+    _fetchedBlockRange: BlockRange = EMPTY_BLOCK_RANGE
   ) {
     this.provider = _provider;
     this.requests = _requests;
-    this.fetchedBlockRanges = _fetchedBlockRanges;
+    this.fetchedBlockRange = _fetchedBlockRange;
   }
 
   /**
@@ -182,7 +182,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    * @dev This is a deep copy.
    */
   copy(): OptimisticOracleClient<R> {
-    return this.createClientInstance(new Map(this.requests), this.fetchedBlockRanges);
+    return this.createClientInstance(new Map(this.requests), this.fetchedBlockRange);
   }
 
   /**
@@ -194,14 +194,14 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    */
   protected abstract createClientInstance(
     requests: Map<string, R>,
-    fetchedBlockRanges: BlockRange[]
+    fetchedBlockRange: BlockRange
   ): OptimisticOracleClient<R>;
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests updates and storing them in the requests map.
-   * @param blockRanges The new blockRanges to fetch requests from.
+   * @param blockRange The new blockRange to fetch requests from.
    */
-  protected abstract updateOracleRequests(blockRanges: BlockRange[]): Promise<void>;
+  protected abstract updateOracleRequests(blockRange: BlockRange): Promise<void>;
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
@@ -217,29 +217,23 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
     } else {
       // Calculate the next block range to fetch
       const latestBlock = await this.provider.getBlockNumber();
-      const lastFetchedRange = this.fetchedBlockRanges[this.fetchedBlockRanges.length - 1];
-      const nextStartBlock = lastFetchedRange[1] + 1;
+      const nextStartBlock = this.fetchedBlockRange[1] + 1;
       if (nextStartBlock > latestBlock) return this; // no new blocks to fetch
       range = [nextStartBlock, latestBlock];
     }
     const [startBlock, endBlock] = range;
 
     // Throw an error if the new range doesn't directly follow the last fetched range
-    const lastFetchedEndBlock = this.fetchedBlockRanges[this.fetchedBlockRanges.length - 1][1];
+    const lastFetchedEndBlock = this.fetchedBlockRange[this.fetchedBlockRange.length - 1];
     if (lastFetchedEndBlock != 0 && startBlock !== lastFetchedEndBlock + 1)
       throw new Error(
         "New block range does not follow the last fetched block range, there is a gap between the ranges"
       );
 
-    if (
-      this.fetchedBlockRanges.some(([s, e]) => (s <= startBlock && startBlock <= e) || (s <= endBlock && endBlock <= e))
-    )
-      throw new Error("Block range already fetched");
-
     // We enforce the creation of a new instance of the client to avoid mutating the current instance
     const newClient = this.copy();
-    const newRanges = [...this.fetchedBlockRanges, range];
-    await newClient.updateOracleRequests(newRanges);
+    newClient.fetchedBlockRange = [newClient.fetchedBlockRange[0], endBlock];
+    await newClient.updateOracleRequests([startBlock, endBlock]);
 
     return newClient as this;
   }
@@ -248,8 +242,8 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    * Returns the block ranges of the fetched requests.
    * @returns An array of pairs of numbers representing the block ranges.
    */
-  getFetchedBlockRange(): BlockRange[] {
-    return this.fetchedBlockRanges;
+  getFetchedBlockRange(): BlockRange {
+    return this.fetchedBlockRange;
   }
 
   /**

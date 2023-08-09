@@ -17,9 +17,9 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
   constructor(
     _provider: Provider,
     _requests: Map<string, OptimisticOracleRequest> = new Map<string, OptimisticOracleRequest>(),
-    _fetchedBlockRanges?: BlockRange[]
+    _fetchedBlockRange?: BlockRange
   ) {
-    super(_provider, _requests, _fetchedBlockRanges);
+    super(_provider, _requests, _fetchedBlockRange);
   }
 
   async getEventsWithPagination<E extends Event>(
@@ -63,29 +63,29 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
       this.provider
     );
     const newRequest = new OptimisticOracleRequest({
-      requester: requestPriceEvent.args.requester,
-      identifier: ethers.utils.parseBytes32String(requestPriceEvent.args.identifier),
-      timestamp: requestPriceEvent.args.timestamp.toNumber(),
-      requestTx: requestPriceEvent.transactionHash,
-      type: OptimisticOracleType.PriceRequest,
-      body: tryHexToUtf8String(requestPriceEvent.args.ancillaryData),
-      blockNumber: requestPriceEvent.blockNumber,
-      transactionIndex: requestPriceEvent.transactionIndex,
-      isEventBased: await ooV2Contract
-        .getRequest(
-          requestPriceEvent.args.requester,
-          requestPriceEvent.args.identifier,
-          requestPriceEvent.args.timestamp,
-          requestPriceEvent.args.ancillaryData
-        )
-        .then((r) => r[4][0]),
+      requestData: {
+        requester: requestPriceEvent.args.requester,
+        identifier: ethers.utils.parseBytes32String(requestPriceEvent.args.identifier),
+        timestamp: requestPriceEvent.args.timestamp.toNumber(),
+        requestTx: requestPriceEvent.transactionHash,
+        type: OptimisticOracleType.PriceRequest,
+        body: tryHexToUtf8String(requestPriceEvent.args.ancillaryData),
+        blockNumber: requestPriceEvent.blockNumber,
+        transactionIndex: requestPriceEvent.transactionIndex,
+        isEventBased: await ooV2Contract
+          .getRequest(
+            requestPriceEvent.args.requester,
+            requestPriceEvent.args.identifier,
+            requestPriceEvent.args.timestamp,
+            requestPriceEvent.args.ancillaryData
+          )
+          .then((r) => r[4][0]),
+      },
     });
     this.requests.set(requestId, newRequest);
   }
 
-  protected async updateOracleRequests(newRanges: BlockRange[]): Promise<void> {
-    const newRange = newRanges[newRanges.length - 1];
-
+  protected async updateOracleRequests(newRange: BlockRange): Promise<void> {
     const ooV2Contract = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
       "OptimisticOracleV2",
       this.provider
@@ -106,8 +106,8 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
   protected createClientInstance(
     requests: Map<string, OptimisticOracleRequest>,
-    fetchedBlockRanges: BlockRange[]
+    fetchedBlockRange: BlockRange
   ): OptimisticOracleClientV2 {
-    return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRanges);
+    return new OptimisticOracleClientV2(this.provider, requests, fetchedBlockRange);
   }
 }
