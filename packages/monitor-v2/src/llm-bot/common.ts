@@ -1,4 +1,5 @@
 import { Provider } from "@ethersproject/abstract-provider";
+import { OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { ethers } from "ethers";
 
 /**
@@ -31,9 +32,9 @@ export enum OptimisticOracleType {
 
 interface RequestData {
   readonly body: string; // Human-readable request body.
+  readonly rawBody: string; // Raw request body.
   readonly type: OptimisticOracleType; // Type of the request.
   readonly timestamp: number; // Timestamp in seconds of the request.
-  readonly isEventBased: boolean; // Whether the request is event based.
   readonly identifier: string; // Identifier of the request.
   readonly requester: string; // Address of the requester.
   readonly requestTx: string; // Transaction hash of the request.
@@ -69,11 +70,30 @@ export interface OptimisticOracleRequestData {
  * Represents an Optimistic Oracle request.
  */
 export class OptimisticOracleRequest {
+  private isEventBasedFetched = false;
+  protected isEventBased = false;
   /**
    * Creates a new instance of OptimisticOracleRequest.
    * @param data The data of the request.
    */
   constructor(readonly data: OptimisticOracleRequestData) {}
+
+  async fetchIsEventBased(ooV2Contract: OptimisticOracleV2Ethers): Promise<boolean> {
+    if (this.type !== OptimisticOracleType.PriceRequest) return Promise.resolve(false);
+
+    if (this.isEventBasedFetched) return Promise.resolve(this.isEventBased);
+
+    this.isEventBased = await ooV2Contract
+      .getRequest(
+        this.data.requestData.requester,
+        this.data.requestData.identifier,
+        this.data.requestData.timestamp,
+        this.data.requestData.rawBody
+      )
+      .then((r) => r[4][0]);
+    this.isEventBasedFetched = true;
+    return this.isEventBased;
+  }
 
   get body(): string {
     return this.data.requestData.body;
@@ -85,10 +105,6 @@ export class OptimisticOracleRequest {
 
   get timestamp(): number {
     return this.data.requestData.timestamp;
-  }
-
-  get isEventBased(): boolean {
-    return this.data.requestData.isEventBased;
   }
 
   get identifier(): string {
@@ -202,7 +218,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    * @param blockRange The new blockRange to fetch requests from.
    * @returns A Promise that resolves to a copy of the updated Requests map.
    */
-  abstract updateOracleRequests(blockRange: BlockRange): Promise<Map<string, R>>;
+  protected abstract updateOracleRequests(blockRange: BlockRange): Promise<Map<string, R>>;
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.

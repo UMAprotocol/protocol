@@ -67,16 +67,9 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
         requestTx: requestPriceEvent.transactionHash,
         type: OptimisticOracleType.PriceRequest,
         body: tryHexToUtf8String(requestPriceEvent.args.ancillaryData),
+        rawBody: requestPriceEvent.args.ancillaryData,
         blockNumber: requestPriceEvent.blockNumber,
         transactionIndex: requestPriceEvent.transactionIndex,
-        isEventBased: await ooV2Contract
-          .getRequest(
-            requestPriceEvent.args.requester,
-            requestPriceEvent.args.identifier,
-            requestPriceEvent.args.timestamp,
-            requestPriceEvent.args.ancillaryData
-          )
-          .then((r) => r[4][0]),
       },
     });
     requestsToUpdate.set(requestId, newRequest);
