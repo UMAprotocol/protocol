@@ -98,7 +98,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     );
 
     await Promise.all(
-      requestPriceEvents.map(async (requestPriceEvent) => {
+      requestPriceEvents.map((requestPriceEvent) => {
         return this.applyRequestPriceEvent(requestPriceEvent);
       })
     );
