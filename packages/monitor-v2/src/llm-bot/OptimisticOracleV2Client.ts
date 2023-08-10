@@ -48,20 +48,16 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     return paginatedEventQuery<E>(ooV2Contract, filter, searchConfig);
   }
 
-  async applyRequestPriceEvent(requestPriceEvent: RequestPriceEvent): Promise<void> {
+  protected async applyRequestPriceEvent(
+    requestPriceEvent: RequestPriceEvent,
+    ooV2Contract: OptimisticOracleV2Ethers
+  ): Promise<void> {
     const body = tryHexToUtf8String(requestPriceEvent.args.ancillaryData);
     const identifier = ethers.utils.parseBytes32String(requestPriceEvent.args.identifier);
     const timestamp = requestPriceEvent.args.timestamp.toNumber();
     const requester = requestPriceEvent.args.requester;
     const requestId = calculateRequestId(body, identifier, timestamp, requester);
 
-    if (this.requests.has(requestId)) {
-      return;
-    }
-    const ooV2Contract = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
-      "OptimisticOracleV2",
-      this.provider
-    );
     const newRequest = new OptimisticOracleRequest({
       requestData: {
         requester: requestPriceEvent.args.requester,
@@ -99,7 +95,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
     await Promise.all(
       requestPriceEvents.map((requestPriceEvent) => {
-        return this.applyRequestPriceEvent(requestPriceEvent);
+        return this.applyRequestPriceEvent(requestPriceEvent, ooV2Contract);
       })
     );
   }

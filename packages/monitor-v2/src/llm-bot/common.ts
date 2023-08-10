@@ -49,7 +49,7 @@ interface ProposalData {
 }
 
 interface ResolutionData {
-  readonly resolvedValue?: number | boolean; // Resolved value.
+  readonly resolvedValue: number | boolean; // Resolved value.
   readonly resolveTx: string; // Transaction hash of the resolution.
   readonly disputeTx: string; // Transaction hash of the dispute.
 }
