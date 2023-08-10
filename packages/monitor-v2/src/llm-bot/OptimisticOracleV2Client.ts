@@ -50,7 +50,8 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
   protected async applyRequestPriceEvent(
     requestPriceEvent: RequestPriceEvent,
-    ooV2Contract: OptimisticOracleV2Ethers
+    ooV2Contract: OptimisticOracleV2Ethers,
+    requestsToUpdate: Map<string, OptimisticOracleRequest>
   ): Promise<void> {
     const body = tryHexToUtf8String(requestPriceEvent.args.ancillaryData);
     const identifier = ethers.utils.parseBytes32String(requestPriceEvent.args.identifier);
@@ -78,10 +79,11 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
           .then((r) => r[4][0]),
       },
     });
-    this.requests.set(requestId, newRequest);
+    requestsToUpdate.set(requestId, newRequest);
   }
 
-  protected async updateOracleRequests(newRange: BlockRange): Promise<void> {
+  protected async updateOracleRequests(newRange: BlockRange): Promise<Map<string, OptimisticOracleRequest>> {
+    const requestsCopy = new Map<string, OptimisticOracleRequest>(this.requests);
     const ooV2Contract = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
       "OptimisticOracleV2",
       this.provider
@@ -95,9 +97,11 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
     await Promise.all(
       requestPriceEvents.map((requestPriceEvent) => {
-        return this.applyRequestPriceEvent(requestPriceEvent, ooV2Contract);
+        return this.applyRequestPriceEvent(requestPriceEvent, ooV2Contract, requestsCopy);
       })
     );
+
+    return requestsCopy;
   }
 
   protected createClientInstance(

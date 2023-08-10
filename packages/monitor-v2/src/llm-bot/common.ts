@@ -157,7 +157,7 @@ const EMPTY_BLOCK_RANGE: BlockRange = [0, 0];
 export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> {
   protected provider: Provider;
   readonly requests: Map<string, R>;
-  protected fetchedBlockRange: BlockRange;
+  readonly fetchedBlockRange: BlockRange;
 
   /**
    * Constructs a new instance of OptimisticOracleClient.
@@ -198,17 +198,18 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   ): OptimisticOracleClient<R>;
 
   /**
-   * Updates the OptimisticOracleClient instance by fetching new Oracle requests updates and storing them in the requests map.
+   * Returns a copy of the updated Requests by fetching new Oracle requests updates.
    * @param blockRange The new blockRange to fetch requests from.
+   * @returns A Promise that resolves to a copy of the updated Requests map.
    */
-  protected abstract updateOracleRequests(blockRange: BlockRange): Promise<void>;
+  abstract updateOracleRequests(blockRange: BlockRange): Promise<Map<string, R>>;
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
    * @param blockRange (Optional) The block range to fetch new requests from.
    * @returns A Promise that resolves to a new OptimisticOracleClient instance with updated requests.
    */
-  async updateWithBlockRange(blockRange?: BlockRange): Promise<this> {
+  async updateWithBlockRange(blockRange?: BlockRange): Promise<OptimisticOracleClient<R>> {
     let range: BlockRange;
     if (blockRange) {
       if (blockRange[0] > blockRange[1])
@@ -231,11 +232,9 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
       );
 
     // We enforce the creation of a new instance of the client to avoid mutating the current instance
-    const newClient = this.copy();
-    newClient.fetchedBlockRange = [newClient.fetchedBlockRange[0], endBlock];
-    await newClient.updateOracleRequests([startBlock, endBlock]);
+    const newRequests = await this.updateOracleRequests([startBlock, endBlock]);
 
-    return newClient as this;
+    return this.createClientInstance(newRequests, [startBlock, endBlock]);
   }
 
   /**
