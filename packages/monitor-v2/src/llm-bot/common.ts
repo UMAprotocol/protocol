@@ -90,7 +90,7 @@ export class OptimisticOracleRequest {
         this.data.requestData.timestamp,
         this.data.requestData.rawBody
       )
-      .then((r) => r[4][0]);
+      .then((r) => r.requestSettings.eventBased);
     this.isEventBasedFetched = true;
     return this.isEventBased;
   }
