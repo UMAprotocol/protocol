@@ -46,13 +46,17 @@ interface ProposalData {
   readonly proposer: string; // Address of the proposer.
   readonly proposedValue: number | boolean; // Proposed value.
   readonly proposeTx: string; // Transaction hash of the proposal.
-  readonly disputableUntil: number; // Timestamp in ms until the request can be disputed.
+  readonly disputableUntil: number; // Timestamp in seconds until the request can be disputed.
+}
+
+interface DisputeData {
+  readonly disputer: string; // Address of the disputer.
+  readonly disputeTx: string; // Transaction hash of the dispute.
 }
 
 interface ResolutionData {
   readonly resolvedValue: number | boolean; // Resolved value.
   readonly resolveTx: string; // Transaction hash of the resolution.
-  readonly disputeTx: string; // Transaction hash of the dispute.
 }
 
 /**
@@ -63,6 +67,7 @@ interface ResolutionData {
 export interface OptimisticOracleRequestData {
   readonly requestData: RequestData;
   readonly proposalData?: ProposalData;
+  readonly disputeData?: DisputeData;
   readonly resolutionData?: ResolutionData;
 }
 
@@ -70,8 +75,8 @@ export interface OptimisticOracleRequestData {
  * Represents an Optimistic Oracle request.
  */
 export class OptimisticOracleRequest {
-  private isEventBasedFetched = false;
-  protected isEventBased = false;
+  protected isEventBased = false; // Whether the request is event-based. False by default and eventually only true if
+  // the request is a OptimisticOracleV2 priceRequest.
   /**
    * Creates a new instance of OptimisticOracleRequest.
    * @param data The data of the request.
@@ -81,7 +86,7 @@ export class OptimisticOracleRequest {
   async fetchIsEventBased(ooV2Contract: OptimisticOracleV2Ethers): Promise<boolean> {
     if (this.type !== OptimisticOracleType.PriceRequest) return Promise.resolve(false);
 
-    if (this.isEventBasedFetched) return Promise.resolve(this.isEventBased);
+    if (this.isEventBased) return Promise.resolve(this.isEventBased);
 
     this.isEventBased = await ooV2Contract
       .getRequest(
@@ -91,7 +96,6 @@ export class OptimisticOracleRequest {
         this.data.requestData.rawBody
       )
       .then((r) => r.requestSettings.eventBased);
-    this.isEventBasedFetched = true;
     return this.isEventBased;
   }
 
@@ -144,7 +148,11 @@ export class OptimisticOracleRequest {
   }
 
   get disputeTx(): string | undefined {
-    return this.data.resolutionData?.disputeTx;
+    return this.data.disputeData?.disputeTx;
+  }
+
+  get disputer(): string | undefined {
+    return this.data.disputeData?.disputer;
   }
 
   get blockNumber(): number | undefined {

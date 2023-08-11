@@ -50,7 +50,6 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
   protected async applyRequestPriceEvent(
     requestPriceEvent: RequestPriceEvent,
-    ooV2Contract: OptimisticOracleV2Ethers,
     requestsToUpdate: Map<string, OptimisticOracleRequest>
   ): Promise<void> {
     const body = tryHexToUtf8String(requestPriceEvent.args.ancillaryData);
@@ -90,7 +89,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
     await Promise.all(
       requestPriceEvents.map((requestPriceEvent) => {
-        return this.applyRequestPriceEvent(requestPriceEvent, ooV2Contract, requestsCopy);
+        return this.applyRequestPriceEvent(requestPriceEvent, requestsCopy);
       })
     );
 
