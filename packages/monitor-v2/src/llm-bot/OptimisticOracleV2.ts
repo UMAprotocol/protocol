@@ -1,9 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { paginatedEventQuery } from "@uma/common";
-import {
-  ProposePriceEvent,
-  RequestPriceEvent,
-} from "@uma/contracts-frontend/dist/typechain/core/ethers/OptimisticOracleV2";
+import { RequestPriceEvent, ProposePriceEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { Event, EventFilter, ethers } from "ethers";
 import { blockDefaults } from "../utils/constants";
@@ -52,58 +49,49 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     return paginatedEventQuery<E>(ooV2Contract, filter, searchConfig);
   }
 
-  async applyRequestPriceEvent(requestPriceEvent: RequestPriceEvent): Promise<void> {
+  protected async applyRequestPriceEvent(
+    requestPriceEvent: RequestPriceEvent,
+    requestsToUpdate: Map<string, OptimisticOracleRequest>
+  ): Promise<void> {
     const body = tryHexToUtf8String(requestPriceEvent.args.ancillaryData);
     const identifier = ethers.utils.parseBytes32String(requestPriceEvent.args.identifier);
     const timestamp = requestPriceEvent.args.timestamp.toNumber();
     const requester = requestPriceEvent.args.requester;
     const requestId = calculateRequestId(body, identifier, timestamp, requester);
 
-    if (this.requests.has(requestId)) {
-      return;
-    }
-    const ooV2Contract = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
-      "OptimisticOracleV2",
-      this.provider
-    );
     const newRequest = new OptimisticOracleRequest({
       requestData: {
-        requester: requestPriceEvent.args.requester,
-        identifier: ethers.utils.parseBytes32String(requestPriceEvent.args.identifier),
-        timestamp: requestPriceEvent.args.timestamp.toNumber(),
+        requester,
+        identifier,
+        timestamp,
         requestTx: requestPriceEvent.transactionHash,
         type: OptimisticOracleType.PriceRequest,
-        body: tryHexToUtf8String(requestPriceEvent.args.ancillaryData),
+        body,
+        rawBody: requestPriceEvent.args.ancillaryData,
         blockNumber: requestPriceEvent.blockNumber,
         transactionIndex: requestPriceEvent.transactionIndex,
-        isEventBased: await ooV2Contract
-          .getRequest(
-            requestPriceEvent.args.requester,
-            requestPriceEvent.args.identifier,
-            requestPriceEvent.args.timestamp,
-            requestPriceEvent.args.ancillaryData
-          )
-          .then((r) => r[4][0]),
       },
     });
-    this.requests.set(requestId, newRequest);
+    requestsToUpdate.set(requestId, newRequest);
   }
 
-  async applyProposePriceEvent(proposePriceEvent: ProposePriceEvent): Promise<void> {
+  async applyProposePriceEvent(
+    proposePriceEvent: ProposePriceEvent,
+    requestsToUpdate: Map<string, OptimisticOracleRequest>
+  ): Promise<void> {
     const body = tryHexToUtf8String(proposePriceEvent.args.ancillaryData);
     const identifier = ethers.utils.parseBytes32String(proposePriceEvent.args.identifier);
     const timestamp = proposePriceEvent.args.timestamp.toNumber();
     const requester = proposePriceEvent.args.requester;
     const requestId = calculateRequestId(body, identifier, timestamp, requester);
 
-    if (!this.requests.has(requestId)) {
-      // A request should always be created before a proposal
+    if (!requestsToUpdate.has(requestId)) {
       throw new Error(`Request ${requestId} not found`);
     }
-    this.requests.set(
+    requestsToUpdate.set(
       requestId,
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      this.requests.get(requestId)!.update({
+      requestsToUpdate.get(requestId)!.update({
         proposalData: {
           proposer: proposePriceEvent.args.proposer,
           proposedValue: proposePriceEvent.args.proposedPrice,
@@ -114,7 +102,8 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     );
   }
 
-  protected async updateOracleRequests(newRange: BlockRange): Promise<void> {
+  protected async updateOracleRequests(newRange: BlockRange): Promise<Map<string, OptimisticOracleRequest>> {
+    const requestsCopy = new Map<string, OptimisticOracleRequest>(this.requests);
     const ooV2Contract = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
       "OptimisticOracleV2",
       this.provider
@@ -132,17 +121,19 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
       newRange[1]
     );
 
-    await Promise.all([
-      ...requestPriceEvents.map(async (requestPriceEvent) => {
-        return this.applyRequestPriceEvent(requestPriceEvent);
-      }),
-    ]);
+    await Promise.all(
+      requestPriceEvents.map((requestPriceEvent) => {
+        return this.applyRequestPriceEvent(requestPriceEvent, requestsCopy);
+      })
+    );
 
     await Promise.all([
       ...proposePriceEvents.map(async (proposePriceEvent) => {
-        return this.applyProposePriceEvent(proposePriceEvent);
+        return this.applyProposePriceEvent(proposePriceEvent, requestsCopy);
       }),
     ]);
+
+    return requestsCopy;
   }
 
   protected createClientInstance(

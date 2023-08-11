@@ -17,9 +17,10 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     super(_provider, _requests, _fetchedBlockRange);
   }
 
-  protected async updateOracleRequests(blockRange: BlockRange): Promise<void> {
+  protected async updateOracleRequests(blockRange: BlockRange): Promise<Map<string, OptimisticOracleRequest>> {
     // TODO: Implement this for the OptimisticOracleV2
     blockRange;
+    return new Map();
   }
 
   protected createClientInstance(
@@ -48,9 +49,12 @@ export class OptimisticOracleClientV2Polymarket extends OptimisticOracleClient<O
     super(_provider, _requests, _fetchedBlockRange);
   }
 
-  protected async updateOracleRequests(blockRange: BlockRange): Promise<void> {
+  protected async updateOracleRequests(
+    blockRange: BlockRange
+  ): Promise<Map<string, OptimisticOracleRequestPolymarket>> {
     // TODO: Implement this for the OptimisticOracleV2
     blockRange;
+    return new Map();
   }
 
   protected createClientInstance(
@@ -70,9 +74,10 @@ export class OptimisticOracleClientV3 extends OptimisticOracleClient<OptimisticO
     super(_provider, _requests, _fetchedBlockRange);
   }
 
-  protected async updateOracleRequests(blockRange: BlockRange): Promise<void> {
+  protected async updateOracleRequests(blockRange: BlockRange): Promise<Map<string, OptimisticOracleRequest>> {
     // TODO: Implement this for the OptimisticOracleV3
     blockRange;
+    return new Map();
   }
 
   protected createClientInstance(

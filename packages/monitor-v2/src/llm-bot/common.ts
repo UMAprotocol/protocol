@@ -1,5 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { BigNumber, ethers } from "ethers";
+import { OptimisticOracleV2Ethers } from "@uma/contracts-node";
 
 /**
  * Calculate the unique ID for a request.
@@ -31,9 +32,9 @@ export enum OptimisticOracleType {
 
 interface RequestData {
   readonly body: string; // Human-readable request body.
+  readonly rawBody: string; // Raw request body.
   readonly type: OptimisticOracleType; // Type of the request.
   readonly timestamp: number; // Timestamp in seconds of the request.
-  readonly isEventBased: boolean; // Whether the request is event based.
   readonly identifier: string; // Identifier of the request.
   readonly requester: string; // Address of the requester.
   readonly requestTx: string; // Transaction hash of the request.
@@ -45,13 +46,17 @@ interface ProposalData {
   readonly proposer: string; // Address of the proposer.
   readonly proposedValue: BigNumber | boolean; // Proposed value.
   readonly proposeTx: string; // Transaction hash of the proposal.
-  readonly disputableUntil: number; // Timestamp in ms until the request can be disputed.
+  readonly disputableUntil: number; // Timestamp in seconds until the request can be disputed.
+}
+
+interface DisputeData {
+  readonly disputer: string; // Address of the disputer.
+  readonly disputeTx: string; // Transaction hash of the dispute.
 }
 
 interface ResolutionData {
-  readonly resolvedValue?: number | boolean; // Resolved value.
+  readonly resolvedValue: BigNumber | boolean; // Resolved value.
   readonly resolveTx: string; // Transaction hash of the resolution.
-  readonly disputeTx: string; // Transaction hash of the dispute.
 }
 
 /**
@@ -62,6 +67,7 @@ interface ResolutionData {
 export interface OptimisticOracleRequestData {
   readonly requestData: RequestData;
   readonly proposalData?: ProposalData;
+  readonly disputeData?: DisputeData;
   readonly resolutionData?: ResolutionData;
 }
 
@@ -69,11 +75,29 @@ export interface OptimisticOracleRequestData {
  * Represents an Optimistic Oracle request.
  */
 export class OptimisticOracleRequest {
+  protected isEventBased = false; // Whether the request is event-based. False by default and eventually only true if
+  // the request is a OptimisticOracleV2 priceRequest.
   /**
    * Creates a new instance of OptimisticOracleRequest.
    * @param data The data of the request.
    */
   constructor(readonly data: OptimisticOracleRequestData) {}
+
+  async fetchIsEventBased(ooV2Contract: OptimisticOracleV2Ethers): Promise<boolean> {
+    if (this.type !== OptimisticOracleType.PriceRequest) return Promise.resolve(false);
+
+    if (this.isEventBased) return Promise.resolve(this.isEventBased);
+
+    this.isEventBased = await ooV2Contract
+      .getRequest(
+        this.data.requestData.requester,
+        this.data.requestData.identifier,
+        this.data.requestData.timestamp,
+        this.data.requestData.rawBody
+      )
+      .then((r) => r.requestSettings.eventBased);
+    return this.isEventBased;
+  }
 
   get body(): string {
     return this.data.requestData.body;
@@ -85,10 +109,6 @@ export class OptimisticOracleRequest {
 
   get timestamp(): number {
     return this.data.requestData.timestamp;
-  }
-
-  get isEventBased(): boolean {
-    return this.data.requestData.isEventBased;
   }
 
   get identifier(): string {
@@ -107,7 +127,7 @@ export class OptimisticOracleRequest {
     return this.data.proposalData?.proposer;
   }
 
-  get proposedValue(): number | boolean | undefined {
+  get proposedValue(): BigNumber | boolean | undefined {
     return this.data.proposalData?.proposedValue;
   }
 
@@ -119,7 +139,7 @@ export class OptimisticOracleRequest {
     return this.data.proposalData?.disputableUntil;
   }
 
-  get resolvedValue(): number | boolean | undefined {
+  get resolvedValue(): BigNumber | boolean | undefined {
     return this.data.resolutionData?.resolvedValue;
   }
 
@@ -128,7 +148,11 @@ export class OptimisticOracleRequest {
   }
 
   get disputeTx(): string | undefined {
-    return this.data.resolutionData?.disputeTx;
+    return this.data.disputeData?.disputeTx;
+  }
+
+  get disputer(): string | undefined {
+    return this.data.disputeData?.disputer;
   }
 
   get blockNumber(): number | undefined {
@@ -157,7 +181,7 @@ const EMPTY_BLOCK_RANGE: BlockRange = [0, 0];
 export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> {
   protected provider: Provider;
   readonly requests: Map<string, R>;
-  protected fetchedBlockRange: BlockRange;
+  readonly fetchedBlockRange: BlockRange;
 
   /**
    * Constructs a new instance of OptimisticOracleClient.
@@ -198,17 +222,18 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   ): OptimisticOracleClient<R>;
 
   /**
-   * Updates the OptimisticOracleClient instance by fetching new Oracle requests updates and storing them in the requests map.
+   * Returns a copy of the updated Requests by fetching new Oracle requests updates.
    * @param blockRange The new blockRange to fetch requests from.
+   * @returns A Promise that resolves to a copy of the updated Requests map.
    */
-  protected abstract updateOracleRequests(blockRange: BlockRange): Promise<void>;
+  protected abstract updateOracleRequests(blockRange: BlockRange): Promise<Map<string, R>>;
 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
    * @param blockRange (Optional) The block range to fetch new requests from.
    * @returns A Promise that resolves to a new OptimisticOracleClient instance with updated requests.
    */
-  async updateWithBlockRange(blockRange?: BlockRange): Promise<this> {
+  async updateWithBlockRange(blockRange?: BlockRange): Promise<OptimisticOracleClient<R>> {
     let range: BlockRange;
     if (blockRange) {
       if (blockRange[0] > blockRange[1])
@@ -224,18 +249,16 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
     const [startBlock, endBlock] = range;
 
     // Throw an error if the new range doesn't directly follow the last fetched range
-    const lastFetchedEndBlock = this.fetchedBlockRange[this.fetchedBlockRange.length - 1];
+    const lastFetchedEndBlock = this.fetchedBlockRange[1];
     if (lastFetchedEndBlock != 0 && startBlock !== lastFetchedEndBlock + 1)
       throw new Error(
         "New block range does not follow the last fetched block range, there is a gap between the ranges"
       );
 
     // We enforce the creation of a new instance of the client to avoid mutating the current instance
-    const newClient = this.copy();
-    newClient.fetchedBlockRange = [newClient.fetchedBlockRange[0], endBlock];
-    await newClient.updateOracleRequests([startBlock, endBlock]);
+    const newRequests = await this.updateOracleRequests([startBlock, endBlock]);
 
-    return newClient as this;
+    return this.createClientInstance(newRequests, [startBlock, endBlock]);
   }
 
   /**
