@@ -157,7 +157,7 @@ export class DiscordTicketTransport extends Transport {
   }
 
   // Truncate the message if it exceeds the provided character limit. Try to preserve URLs.
-  private truncateMessage(message: string, limit: number): string {
+  truncateMessage(message: string, limit: number): string {
     if (limit < TRUNCATED.length) throw new Error("Invalid truncated message limit!");
 
     // If the message is short enough, return it as is.
