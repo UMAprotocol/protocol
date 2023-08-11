@@ -148,7 +148,7 @@ export class OptimisticOracleClientV2FilterDisputeable
   implements OptimisticOracleClientFilter<OptimisticOracleRequest, OptimisticOracleRequest> {
   async filter(optimisticOracleRequests: OptimisticOracleRequest[]): Promise<OptimisticOracleRequest[]> {
     return optimisticOracleRequests.filter((request) => {
-      return request.disputableUntil || 0 > Date.now() / 1000;
+      return typeof request.disputableUntil == "number" && request.disputableUntil > Date.now() / 1000;
     });
   }
 }
