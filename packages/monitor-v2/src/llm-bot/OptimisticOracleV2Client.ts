@@ -61,12 +61,12 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
     const newRequest = new OptimisticOracleRequest({
       requestData: {
-        requester: requestPriceEvent.args.requester,
-        identifier: ethers.utils.parseBytes32String(requestPriceEvent.args.identifier),
-        timestamp: requestPriceEvent.args.timestamp.toNumber(),
+        requester,
+        identifier,
+        timestamp,
         requestTx: requestPriceEvent.transactionHash,
         type: OptimisticOracleType.PriceRequest,
-        body: tryHexToUtf8String(requestPriceEvent.args.ancillaryData),
+        body,
         rawBody: requestPriceEvent.args.ancillaryData,
         blockNumber: requestPriceEvent.blockNumber,
         transactionIndex: requestPriceEvent.transactionIndex,
