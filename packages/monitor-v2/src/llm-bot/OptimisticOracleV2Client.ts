@@ -1,6 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { paginatedEventQuery } from "@uma/common";
-import { RequestPriceEvent } from "@uma/contracts-frontend/dist/typechain/core/ethers/OptimisticOracleV2";
+import { RequestPriceEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { Event, EventFilter, ethers } from "ethers";
 import { blockDefaults } from "../utils/constants";
