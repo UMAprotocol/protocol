@@ -1,4 +1,4 @@
-import { delay } from "@uma/financial-templates-lib";
+import { delay, waitForLogger } from "@uma/financial-templates-lib";
 import { initMonitoringParams, Logger } from "./common";
 import { monitorTransactionsProposedOrderBook } from "./MonitorProposalsOrderBook";
 
@@ -18,6 +18,7 @@ async function main() {
     // If polling delay is 0 then we are running in serverless mode and should exit after one iteration.
     if (params.pollingDelay === 0) {
       await delay(5); // Set a delay to let the transports flush fully.
+      await waitForLogger(logger);
       break;
     }
 
@@ -37,6 +38,7 @@ main().then(
       notificationPath: "infrastructure-error",
     });
     await delay(5); // Wait 5 seconds to allow logger to flush.
+    await waitForLogger(logger);
     process.exit(1);
   }
 );

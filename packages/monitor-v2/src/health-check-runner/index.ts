@@ -1,5 +1,5 @@
 import { exec, ExecException } from "child_process";
-import { AugmentedLogger, Logger, delay } from "@uma/financial-templates-lib";
+import { AugmentedLogger, Logger, delay, waitForLogger } from "@uma/financial-templates-lib";
 
 let logger: AugmentedLogger;
 
@@ -32,6 +32,7 @@ export async function run(): Promise<void> {
   });
 
   await delay(5); // Wait for logs to flush.
+  await waitForLogger(logger);
 }
 
 if (require.main === module) {
@@ -39,6 +40,8 @@ if (require.main === module) {
     .then(() => process.exit(0))
     .catch(async (error) => {
       logger.error({ at: "HealthCheckRunner", message: "There was an error in the main entry point!", error });
+      await delay(5); // Wait for logs to flush.
+      await waitForLogger(logger);
       process.exit(1);
     });
 }

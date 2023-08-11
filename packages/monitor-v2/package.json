@@ -18,7 +18,8 @@
     "async-retry": "^1.3.3",
     "ethers": "^5.4.2",
     "graphql-request": "^5.2.0",
-    "graphql-tag": "^2.12.6"
+    "graphql-tag": "^2.12.6",
+    "multiformats": "^9.9.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
