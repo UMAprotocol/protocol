@@ -241,7 +241,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
     const [startBlock, endBlock] = range;
 
     // Throw an error if the new range doesn't directly follow the last fetched range
-    const lastFetchedEndBlock = this.fetchedBlockRange[this.fetchedBlockRange.length - 1];
+    const lastFetchedEndBlock = this.fetchedBlockRange[1];
     if (lastFetchedEndBlock != 0 && startBlock !== lastFetchedEndBlock + 1)
       throw new Error(
         "New block range does not follow the last fetched block range, there is a gap between the ranges"
