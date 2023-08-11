@@ -85,9 +85,6 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     const requester = proposePriceEvent.args.requester;
     const requestId = calculateRequestId(body, identifier, timestamp, requester);
 
-    if (!requestsToUpdate.has(requestId)) {
-      throw new Error(`Request ${requestId} not found`);
-    }
     requestsToUpdate.set(
       requestId,
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
