@@ -37,7 +37,6 @@ import {
   RulesParameters,
   SafeSnapSafe,
   SnapshotProposalGraphql,
-  VerificationResponse,
   verifyIpfs,
   verifyProposal,
   verifyRules,
