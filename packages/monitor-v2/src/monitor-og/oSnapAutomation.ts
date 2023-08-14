@@ -365,25 +365,40 @@ const getSupportedProposals = async (
   return supportedProposals;
 };
 
-// Helper function to check if proposal can be disputed based on its verification result. If the verification failed due
-// to server error, we don't want to dispute it.
-const canDispute = (verificationResult: VerificationResponse): boolean => {
-  if (verificationResult.verified) return false;
-  return verificationResult.serverError !== true;
-};
-
 // Filter proposals that did not pass verification and also retain verification result for logging.
 const getDisputableProposals = async (
+  logger: typeof Logger,
   proposals: SupportedProposal[],
   params: MonitoringParams
 ): Promise<DisputableProposal[]> => {
-  // TODO: We should separately handle IPFS and Graphql server errors. We don't want to submit disputes immediately just
-  // because IPFS gateway or Snapshot backend is down.
   return (
     await Promise.all(
       proposals.map(async (proposal) => {
         const verificationResult = await verifyProposal(proposal.event, params);
-        return canDispute(verificationResult) ? { ...proposal, verificationResult } : null;
+
+        // Verification passed: no dispute.
+        if (verificationResult.verified) return null;
+
+        // Verification failed: dispute, except for server error.
+        if (!verificationResult.serverError) return { ...proposal, verificationResult };
+
+        // Verification failed due to server error: no dispute, but log all the details.
+        logger.error({
+          at: "oSnapAutomation",
+          message: "Server error when verifying proposal",
+          mrkdwn:
+            "Failed to verify proposal with hash " +
+            proposal.event.args.proposalHash +
+            " and assertio ID " +
+            proposal.event.args.assertionId +
+            " posted on oSnap module " +
+            createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
+            " at Snapshot space " +
+            proposal.parameters.parsedRules.space,
+          error: verificationResult.error,
+          notificationPath: "optimistic-governor",
+        });
+        return null;
       })
     )
   ).filter((proposal) => proposal !== null) as DisputableProposal[];
@@ -648,7 +663,7 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const supportedProposals = await getSupportedProposals(liveProposals, params);
 
   // Filter proposals that did not pass verification and also retain verification result for logging.
-  const disputableProposals = await getDisputableProposals(supportedProposals, params);
+  const disputableProposals = await getDisputableProposals(logger, supportedProposals, params);
 
   // Submit disputes.
   await submitDisputes(logger, disputableProposals, params);
