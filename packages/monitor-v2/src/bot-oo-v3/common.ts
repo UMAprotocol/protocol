@@ -2,6 +2,7 @@ import { getGckmsSigner, getMnemonicSigner, getRetryProvider } from "@uma/common
 import { Signer, Wallet } from "ethers";
 
 import type { Provider } from "@ethersproject/abstract-provider";
+import { blockDefaults } from "../utils/constants";
 
 export { OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
@@ -25,38 +26,6 @@ export interface MonitoringParams {
   maxBlockLookBack: number;
   pollingDelay: number;
 }
-
-const blockDefaults = {
-  "1": {
-    // Mainnet
-    oneHour: 300, // 12 seconds per block
-    maxBlockLookBack: 20000,
-  },
-  "137": {
-    // Polygon
-    oneHour: 1800, // 2 seconds per block
-    maxBlockLookBack: 3499,
-  },
-  "10": {
-    // Optimism
-    oneHour: 1800, // 2 seconds per block
-    maxBlockLookBack: 10000,
-  },
-  "42161": {
-    // Arbitrum
-    oneHour: 240, // 15 seconds per block
-    maxBlockLookBack: 10000,
-  },
-  "43114": {
-    // Avalanche
-    oneHour: 1800, // 2 seconds per block
-    maxBlockLookBack: 2000,
-  },
-  other: {
-    oneHour: 240, // 15 seconds per block
-    maxBlockLookBack: 1000,
-  },
-};
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");

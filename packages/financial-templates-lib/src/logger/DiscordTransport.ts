@@ -1,5 +1,6 @@
 import { delay } from "../helpers/delay";
 import { isDictionary } from "./Logger";
+import { TransportError } from "./TransportError";
 
 import Transport from "winston-transport";
 
@@ -72,7 +73,7 @@ export class DiscordTransport extends Transport {
   }
 
   // Note: info must be any because that's what the base class uses.
-  async log(info: any, callback: () => void): Promise<void> {
+  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
     // We only try sending if we have message and mrkdwn.
     // Also if discordPaths is null when provided then this is a noop message for Discord and the log should be skipped
     const canSend = isDiscordInfo(info) && info.discordPaths !== null;
@@ -117,7 +118,7 @@ export class DiscordTransport extends Transport {
         this.enqueuedLogCounter--; // Decrement counter for the isFlushed getter when done.
       } catch (error) {
         this.enqueuedLogCounter--; // Decrement the counter for the isFlushed getter when catching an error.
-        console.error("Discord error", error);
+        return callback(new TransportError("Discord", error, info));
       }
     }
 
