@@ -12,6 +12,7 @@ import { OptimisticOracleContract, OptimisticOracleType } from "./OptimisticOrac
 interface TransactionMetadata {
   transactionHash: string;
   blockNumber: number;
+  logIndex: number;
 }
 
 type EventExport<T extends { returnValues: any }> = T["returnValues"] & TransactionMetadata;
@@ -187,6 +188,7 @@ export class OptimisticOracleEventClient {
           ...(event as SkinnyOptimisticOracleWeb3Events.RequestPrice).returnValues,
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         });
@@ -195,6 +197,7 @@ export class OptimisticOracleEventClient {
           ...(event as OptimisticOracleWeb3Events.RequestPrice).returnValues,
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         });
@@ -208,6 +211,7 @@ export class OptimisticOracleEventClient {
           ...(event as SkinnyOptimisticOracleWeb3Events.ProposePrice).returnValues,
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         });
@@ -216,6 +220,7 @@ export class OptimisticOracleEventClient {
           ...(event as OptimisticOracleWeb3Events.ProposePrice).returnValues,
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         });
@@ -229,6 +234,7 @@ export class OptimisticOracleEventClient {
           ...(event as SkinnyOptimisticOracleWeb3Events.DisputePrice).returnValues,
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         });
@@ -245,6 +251,7 @@ export class OptimisticOracleEventClient {
           ...(event as OptimisticOracleWeb3Events.DisputePrice).returnValues,
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
           currency: requestData.currency,
@@ -259,6 +266,7 @@ export class OptimisticOracleEventClient {
           ...(event as SkinnyOptimisticOracleWeb3Events.Settle).returnValues,
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
           // Note: The only param not included in the Skinny version of this event that is included in the normal
@@ -278,6 +286,7 @@ export class OptimisticOracleEventClient {
           ...(event as OptimisticOracleWeb3Events.Settle).returnValues,
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
           currency: requestData.currency,

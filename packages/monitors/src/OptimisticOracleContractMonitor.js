@@ -54,7 +54,7 @@ class OptimisticOracleContractMonitor {
       },
       optimisticOracleUIBaseUrl: {
         // Base URL for the Optimistic Oracle UI.
-        value: "https://oracle.umaproject.org",
+        value: "https://oracle.uma.xyz",
         isValid: (x) => typeof x === "string",
       },
     };
@@ -120,7 +120,7 @@ class OptimisticOracleContractMonitor {
         )}. tx: ${createEtherscanLinkMarkdown(
           event.transactionHash,
           this.contractProps.networkId
-        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
+        )}. ${this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
@@ -173,6 +173,7 @@ class OptimisticOracleContractMonitor {
         )}. ` +
         `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}. ${this._generateUILink(
           event.transactionHash,
+          event.logIndex,
           this.contractProps.networkId
         )}.`;
 
@@ -222,7 +223,7 @@ class OptimisticOracleContractMonitor {
         `. tx: ${createEtherscanLinkMarkdown(
           event.transactionHash,
           this.contractProps.networkId
-        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
+        )}. ${this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
 
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
@@ -286,7 +287,7 @@ class OptimisticOracleContractMonitor {
         `. tx: ${createEtherscanLinkMarkdown(
           event.transactionHash,
           this.contractProps.networkId
-        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
+        )}. ${this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
@@ -336,20 +337,20 @@ class OptimisticOracleContractMonitor {
     }
   }
 
-  _generateUILink(transactionHash, chainId) {
+  _generateUILink(transactionHash, eventIndex, chainId) {
     let oracleType;
     switch (this.oracleType) {
       case OptimisticOracleType.OptimisticOracle:
-        oracleType = "Optimistic";
+        oracleType = "Optimistic+Oracle+V1";
         break;
       case OptimisticOracleType.OptimisticOracleV2:
-        oracleType = "OptimisticV2";
+        oracleType = "Optimistic+Oracle+V2";
         break;
       case OptimisticOracleType.SkinnyOptimisticOracle:
-        oracleType = "Skinny";
+        oracleType = "Skinny+Optimistic+Oracle";
         break;
     }
-    return `<${this.optimisticOracleUIBaseUrl}/request?transactionHash=${transactionHash}&chainId=${chainId}&oracleType=${oracleType}|View in UI>`;
+    return `<${this.optimisticOracleUIBaseUrl}/?transactionHash=${transactionHash}&eventIndex=${eventIndex}&chainId=${chainId}&oracleType=${oracleType}|View in UI>`;
   }
 }
 

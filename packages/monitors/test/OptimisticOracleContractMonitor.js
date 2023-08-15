@@ -76,13 +76,20 @@ describe("OptimisticOracleContractMonitor.js", function () {
   const defaultAncillaryData = "0x";
   const alternativeAncillaryRaw = "someRandomKey:alaValue42069";
   const alternativeAncillaryData = utf8ToHex(alternativeAncillaryRaw);
-  const sampleBaseUIUrl = "https://oracle.umaproject.org";
+  const sampleBaseUIUrl = "https://oracle.uma.xyz";
 
   const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
     await mockOracle.methods
       .pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price)
       .send({ from: owner });
+  };
+
+  // Helper function to get the log index of a given event name in a transaction.
+  const getLogIndex = (txn, eventName, abi) => {
+    const signature = abi.find((i) => i.type === "event" && i.name === eventName).signature;
+    const eventKey = Object.keys(txn.events).find((key) => txn.events[key].raw.topics[0] === signature);
+    return txn.events[eventKey].logIndex;
   };
 
   before(async function () {
@@ -110,8 +117,11 @@ describe("OptimisticOracleContractMonitor.js", function () {
   });
 
   let requestTxn, proposalTxn, disputeTxn, settlementTxn;
+  let requestLogIndex, proposalLogIndex, disputeLogIndex, settlementLogIndex;
   let requestV2Txn, proposalV2Txn, disputeV2Txn, settlementV2Txn;
+  let requestV2LogIndex, proposalV2LogIndex, disputeV2LogIndex, settlementV2LogIndex;
   let skinnyRequestTxn, skinnyProposalTxn, skinnyDisputeTxn, skinnySettlementTxn;
+  let skinnyRequestLogIndex, skinnyProposalLogIndex, skinnyDisputeLogIndex, skinnySettlementLogIndex;
   beforeEach(async function () {
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: owner });
     await finder.methods
@@ -211,15 +221,18 @@ describe("OptimisticOracleContractMonitor.js", function () {
     requestTxn = await optimisticRequester.methods
       .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, reward)
       .send({ from: owner });
+    requestLogIndex = getLogIndex(requestTxn, "RequestPrice", OptimisticOracle.abi);
 
     requestV2Txn = await optimisticRequesterV2.methods
       .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, reward)
       .send({ from: owner });
+    requestV2LogIndex = getLogIndex(requestV2Txn, "RequestPrice", OptimisticOracleV2.abi);
 
     await collateral.methods.approve(skinnyOptimisticOracle.options.address, MAX_UINT_VAL).send({ from: requester });
     skinnyRequestTxn = await skinnyOptimisticOracle.methods
       .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, reward, finalFee, 0)
       .send({ from: requester });
+    skinnyRequestLogIndex = getLogIndex(skinnyRequestTxn, "RequestPrice", SkinnyOptimisticOracle.abi);
 
     // Make proposals
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: proposer });
@@ -231,10 +244,12 @@ describe("OptimisticOracleContractMonitor.js", function () {
     proposalTxn = await optimisticOracle.methods
       .proposePrice(optimisticRequester.options.address, identifier, requestTime, defaultAncillaryData, correctPrice)
       .send({ from: proposer });
+    proposalLogIndex = getLogIndex(proposalTxn, "ProposePrice", OptimisticOracle.abi);
 
     proposalV2Txn = await optimisticOracleV2.methods
       .proposePrice(optimisticRequesterV2.options.address, identifier, requestTime, defaultAncillaryData, correctPrice)
       .send({ from: proposer });
+    proposalV2LogIndex = getLogIndex(proposalV2Txn, "ProposePrice", OptimisticOracleV2.abi);
 
     const requestEvents = await skinnyOptimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 });
     skinnyProposalTxn = await skinnyOptimisticOracle.methods
@@ -247,6 +262,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
         correctPrice
       )
       .send({ from: skinnyProposer });
+    skinnyProposalLogIndex = getLogIndex(skinnyProposalTxn, "ProposePrice", SkinnyOptimisticOracle.abi);
 
     // Make disputes and resolve them
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });
@@ -255,32 +271,38 @@ describe("OptimisticOracleContractMonitor.js", function () {
     disputeTxn = await optimisticOracle.methods
       .disputePrice(optimisticRequester.options.address, identifier, requestTime, defaultAncillaryData)
       .send({ from: disputer });
+    disputeLogIndex = getLogIndex(disputeTxn, "DisputePrice", OptimisticOracle.abi);
     await pushPrice(correctPrice);
 
     disputeV2Txn = await optimisticOracleV2.methods
       .disputePrice(optimisticRequesterV2.options.address, identifier, requestTime, defaultAncillaryData)
       .send({ from: disputer });
+    disputeV2LogIndex = getLogIndex(disputeV2Txn, "DisputePrice", OptimisticOracleV2.abi);
     await pushPrice(correctPrice);
 
     const proposeEvents = await skinnyOptimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 });
     skinnyDisputeTxn = await skinnyOptimisticOracle.methods
       .disputePrice(requester, identifier, requestTime, defaultAncillaryData, proposeEvents[0].returnValues.request)
       .send({ from: disputer });
+    skinnyDisputeLogIndex = getLogIndex(skinnyDisputeTxn, "DisputePrice", SkinnyOptimisticOracle.abi);
     await pushPrice(correctPrice);
 
     // Settle expired proposals and resolved disputes
     settlementTxn = await optimisticOracle.methods
       .settle(optimisticRequester.options.address, identifier, requestTime, defaultAncillaryData)
       .send({ from: owner });
+    settlementLogIndex = getLogIndex(settlementTxn, "Settle", OptimisticOracle.abi);
 
     settlementV2Txn = await optimisticOracleV2.methods
       .settle(optimisticRequesterV2.options.address, identifier, requestTime, defaultAncillaryData)
       .send({ from: owner });
+    settlementV2LogIndex = getLogIndex(settlementV2Txn, "Settle", OptimisticOracleV2.abi);
 
     const disputeEvents = await skinnyOptimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 });
     skinnySettlementTxn = await skinnyOptimisticOracle.methods
       .settle(requester, identifier, requestTime, defaultAncillaryData, disputeEvents[0].returnValues.request)
       .send({ from: owner });
+    skinnySettlementLogIndex = getLogIndex(skinnySettlementTxn, "Settle", SkinnyOptimisticOracle.abi);
   });
   describe("OptimisticOracle", function () {
     it("Winston correctly emits price request message", async function () {
@@ -296,7 +318,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${requestTxn.transactionHash}&chainId=${contractProps.chainId}&oracleType=Optimistic`
+          `${sampleBaseUIUrl}/?transactionHash=${requestTxn.transactionHash}&eventIndex=${requestLogIndex}&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V1`
         )
       );
 
@@ -333,7 +355,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${proposalTxn.transactionHash}&chainId=${contractProps.chainId}&oracleType=Optimistic`
+          `${sampleBaseUIUrl}/?transactionHash=${proposalTxn.transactionHash}&eventIndex=${proposalLogIndex}&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V1`
         )
       );
 
@@ -381,7 +403,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${disputeTxn.transactionHash}&chainId=${contractProps.chainId}&oracleType=Optimistic`
+          `${sampleBaseUIUrl}/?transactionHash=${disputeTxn.transactionHash}&eventIndex=${disputeLogIndex}&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V1`
         )
       );
 
@@ -430,7 +452,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${settlementTxn.transactionHash}&chainId=${contractProps.chainId}&oracleType=Optimistic`
+          `${sampleBaseUIUrl}/?transactionHash=${settlementTxn.transactionHash}&eventIndex=${settlementLogIndex}&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V1`
         )
       );
 
@@ -513,7 +535,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${skinnyRequestTxn.transactionHash}&chainId=${contractProps.chainId}&oracleType=Skinny`
+          `${sampleBaseUIUrl}/?transactionHash=${skinnyRequestTxn.transactionHash}&eventIndex=${skinnyRequestLogIndex}&chainId=${contractProps.chainId}&oracleType=Skinny+Optimistic+Oracle`
         )
       );
 
@@ -559,7 +581,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${skinnyProposalTxn.transactionHash}&chainId=${contractProps.chainId}&oracleType=Skinny`
+          `${sampleBaseUIUrl}/?transactionHash=${skinnyProposalTxn.transactionHash}&eventIndex=${skinnyProposalLogIndex}&chainId=${contractProps.chainId}&oracleType=Skinny+Optimistic+Oracle`
         )
       );
 
@@ -619,7 +641,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${skinnyDisputeTxn.transactionHash}&chainId=${contractProps.chainId}&oracleType=Skinny`
+          `${sampleBaseUIUrl}/?transactionHash=${skinnyDisputeTxn.transactionHash}&eventIndex=${skinnyDisputeLogIndex}&chainId=${contractProps.chainId}&oracleType=Skinny+Optimistic+Oracle`
         )
       );
 
@@ -760,7 +782,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${requestV2Txn.transactionHash}&chainId=${contractProps.chainId}&oracleType=OptimisticV2`
+          `${sampleBaseUIUrl}/?transactionHash=${requestV2Txn.transactionHash}&eventIndex=${requestV2LogIndex}&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V2`
         )
       );
 
@@ -798,7 +820,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${proposalV2Txn.transactionHash}&chainId=${contractProps.chainId}&oracleType=OptimisticV2`
+          `${sampleBaseUIUrl}/?transactionHash=${proposalV2Txn.transactionHash}&eventIndex=${proposalV2LogIndex}&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V2`
         )
       );
 
@@ -846,7 +868,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(
         lastSpyLogIncludes(
           spy,
-          `${sampleBaseUIUrl}/request?transactionHash=${disputeV2Txn.transactionHash}&chainId=${contractProps.chainId}&oracleType=OptimisticV2`
+          `${sampleBaseUIUrl}/?transactionHash=${disputeV2Txn.transactionHash}&eventIndex=${disputeV2LogIndex}&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V2`
         )
       );
 
