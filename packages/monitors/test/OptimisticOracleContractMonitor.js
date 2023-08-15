@@ -708,6 +708,12 @@ describe("OptimisticOracleContractMonitor.js", function () {
       // Should contain etherscan addresses for the transaction
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnySettlementTxn.transactionHash}`));
 
+      assert.isTrue(
+        lastSpyLogIncludes(
+          spy,
+          `${sampleBaseUIUrl}/?transactionHash=${skinnySettlementTxn.transactionHash}&eventIndex=${skinnySettlementLogIndex}&chainId=${contractProps.chainId}&oracleType=Skinny+Optimistic+Oracle`
+        )
+      );
       // should contain the correct settlement information.
       assert.isTrue(lastSpyLogIncludes(spy, requester)); // Requester
       assert.isTrue(lastSpyLogIncludes(spy, skinnyProposer)); // Proposer
@@ -915,6 +921,13 @@ describe("OptimisticOracleContractMonitor.js", function () {
 
       // Should contain etherscan addresses for the transaction
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${settlementV2Txn.transactionHash}`));
+
+      assert.isTrue(
+        lastSpyLogIncludes(
+          spy,
+          `${sampleBaseUIUrl}/?transactionHash=${settlementV2Txn.transactionHash}&eventIndex=${settlementV2LogIndex}&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V2`
+        )
+      );
 
       // should contain the correct settlement information.
       assert.isTrue(lastSpyLogIncludes(spy, optimisticRequesterV2.options.address)); // Requester
