@@ -180,7 +180,7 @@ const EMPTY_BLOCK_RANGE: BlockRange = [0, 0];
  */
 export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> {
   protected provider: Provider;
-  readonly requests: Map<string, R>;
+  readonly requests: ReadonlyMap<string, R>;
   readonly fetchedBlockRange: BlockRange;
 
   /**

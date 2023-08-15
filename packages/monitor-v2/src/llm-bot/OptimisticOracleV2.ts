@@ -143,6 +143,7 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
 
 export class OptimisticOracleClientV2FilterDisputeable
   implements OptimisticOracleClientFilter<OptimisticOracleRequest, OptimisticOracleRequest> {
+  // TODO interpret price values considering UMIPS and magic numbers
   async filter(optimisticOracleRequests: OptimisticOracleRequest[]): Promise<OptimisticOracleRequest[]> {
     return optimisticOracleRequests.filter((request) => {
       return typeof request.disputableUntil == "number" && request.disputableUntil > Date.now() / 1000;
