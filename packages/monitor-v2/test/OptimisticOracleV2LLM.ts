@@ -1,6 +1,6 @@
 import { ExpandedERC20Ethers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { assert } from "chai";
-import { OptimisticOracleClientV2 } from "../src/llm-bot/OptimisticOracleV2";
+import { OptimisticOracleClientV2, OptimisticOracleClientV2FilterDisputeable } from "../src/llm-bot/OptimisticOracleV2";
 import { defaultOptimisticOracleV2Identifier } from "./constants";
 import { optimisticOracleV2Fixture } from "./fixtures/OptimisticOracleV2.Fixture";
 import { Signer, hre, toUtf8Bytes } from "./utils";
@@ -14,6 +14,7 @@ describe("OptimisticOracleV2Client", function () {
   let proposer: Signer;
   let disputer: Signer;
   let oov2Client: OptimisticOracleClientV2;
+  let oov2FilterDisputable: OptimisticOracleClientV2FilterDisputeable;
 
   const bond = ethers.utils.parseEther("1000");
 
@@ -30,6 +31,8 @@ describe("OptimisticOracleV2Client", function () {
     optimisticOracleV2 = optimisticOracleV2Contracts.optimisticOracleV2;
 
     oov2Client = new OptimisticOracleClientV2(optimisticOracleV2.provider);
+
+    oov2FilterDisputable = new OptimisticOracleClientV2FilterDisputeable();
 
     // Fund proposer and disputer with bond amount and approve Optimistic Oracle V2 to spend bond tokens.
     await bondToken.addMinter(await requester.getAddress());
@@ -78,5 +81,24 @@ describe("OptimisticOracleV2Client", function () {
     const requests = Array.from(oov2ClientUpdated.requests.values());
     assert.isArray(requests);
     assert.isEmpty(requests);
+  });
+
+  it("Filters disputeable requests", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    await (await bondToken.connect(proposer).approve(optimisticOracleV2.address, bond)).wait();
+    await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(await requester.getAddress(), defaultOptimisticOracleV2Identifier, 0, ancillaryData, 0)
+    ).wait();
+
+    const oov2ClientUpdated = await oov2Client.updateWithBlockRange();
+    const requests = Array.from(oov2ClientUpdated.requests.values());
+    const filteredRequests = await oov2FilterDisputable.filter(requests);
+
+    assert(filteredRequests.length === 1);
   });
 });

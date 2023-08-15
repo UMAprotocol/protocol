@@ -1,6 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
+import { BigNumber, ethers } from "ethers";
 import { OptimisticOracleV2Ethers } from "@uma/contracts-node";
-import { ethers } from "ethers";
 
 /**
  * Calculate the unique ID for a request.
@@ -44,7 +44,7 @@ interface RequestData {
 
 interface ProposalData {
   readonly proposer: string; // Address of the proposer.
-  readonly proposedValue: number | boolean; // Proposed value.
+  readonly proposedValue: BigNumber | boolean; // Proposed value.
   readonly proposeTx: string; // Transaction hash of the proposal.
   readonly disputableUntil: number; // Timestamp in seconds until the request can be disputed.
 }
@@ -55,7 +55,7 @@ interface DisputeData {
 }
 
 interface ResolutionData {
-  readonly resolvedValue: number | boolean; // Resolved value.
+  readonly resolvedValue: BigNumber | boolean; // Resolved value.
   readonly resolveTx: string; // Transaction hash of the resolution.
 }
 
@@ -127,7 +127,7 @@ export class OptimisticOracleRequest {
     return this.data.proposalData?.proposer;
   }
 
-  get proposedValue(): number | boolean | undefined {
+  get proposedValue(): BigNumber | boolean | undefined {
     return this.data.proposalData?.proposedValue;
   }
 
@@ -139,7 +139,7 @@ export class OptimisticOracleRequest {
     return this.data.proposalData?.disputableUntil;
   }
 
-  get resolvedValue(): number | boolean | undefined {
+  get resolvedValue(): BigNumber | boolean | undefined {
     return this.data.resolutionData?.resolvedValue;
   }
 
@@ -180,14 +180,14 @@ const EMPTY_BLOCK_RANGE: BlockRange = [0, 0];
  */
 export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> {
   protected provider: Provider;
-  readonly requests: Map<string, R>;
+  readonly requests: ReadonlyMap<string, R>;
   readonly fetchedBlockRange: BlockRange;
 
   /**
    * Constructs a new instance of OptimisticOracleClient.
    * @param _provider The provider used for interacting with the blockchain.
    * @param _requests (Optional) The map of Optimistic Oracle requests.
-   * @param _fetchedBlockRange (Optional) The block ranges of the fetched requests.
+   * @param _fetchedBlockRanges (Optional) The block ranges of the fetched requests.
    * @dev requests are stored in a map for faster access and to avoid duplicates.
    */
   protected constructor(
@@ -218,7 +218,7 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
    */
   protected abstract createClientInstance(
     requests: Map<string, R>,
-    fetchedBlockRange: BlockRange
+    fetchedBlockRanges: BlockRange
   ): OptimisticOracleClient<R>;
 
   /**
