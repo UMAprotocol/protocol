@@ -106,13 +106,13 @@ const getModuleParameters = (ogAddress: string, supportedModules: SupportedModul
 };
 
 // Queries snapshot for all space proposals that have been closed and have a plugin of safeSnap. The query also filters
-// only for basic type proposals that oSnap automation supports. This uses provided retry config, but ultimately throws
-// if the Snapshot query fails after all retries.
+// only for basic type proposals that oSnap automation supports. This uses provided retry config, but ultimately returns
+// the error object if the Snapshot query fails after all retries.
 const getSnapshotProposals = async (
   spaceId: string,
   url: string,
   retryOptions: RetryOptions
-): Promise<Array<SnapshotProposalGraphql>> => {
+): Promise<Array<SnapshotProposalGraphql> | Error> => {
   const query = gql(/* GraphQL */ `
     query GetProposals($spaceId: String) {
       proposals(
@@ -137,16 +137,24 @@ const getSnapshotProposals = async (
       }
     }
   `);
-  const graphqlData = await retry(
-    () => request<GraphqlData, { spaceId: string }>(url, query, { spaceId }),
-    retryOptions
-  );
-  // Filter only for proposals that have a properly configured safeSnap plugin.
-  return graphqlData.proposals.filter(isSnapshotProposalGraphql);
+
+  // If the GraphQL request fails for any reason, we return an Error object that will be logged by the bot.
+  try {
+    const graphqlData = await retry(
+      () => request<GraphqlData, { spaceId: string }>(url, query, { spaceId }),
+      retryOptions
+    );
+    // Filter only for proposals that have a properly configured safeSnap plugin.
+    return graphqlData.proposals.filter(isSnapshotProposalGraphql);
+  } catch (error) {
+    assert(error instanceof Error, "Unexpected Error type!");
+    return error;
+  }
 };
 
 // Get all finalized basic safeSnap proposals for supported spaces and safes.
 const getSupportedSnapshotProposals = async (
+  logger: typeof Logger,
   supportedModules: SupportedModules,
   params: MonitoringParams
 ): Promise<Array<SnapshotProposalExpanded>> => {
@@ -162,8 +170,21 @@ const getSupportedSnapshotProposals = async (
     )
   ).flat();
 
+  // Log all errors that occurred when fetching Snapshot proposals and filter them out.
+  const nonErrorProposals = snapshotProposals.filter((proposal) => {
+    if (!(proposal instanceof Error)) return true;
+    logger.error({
+      at: "oSnapAutomation",
+      message: "Server error when fetching Snapshot proposals",
+      mrkdwn: "Failed to fetch Snapshot proposals",
+      error: proposal,
+      notificationPath: "optimistic-governor",
+    });
+    return false;
+  }) as SnapshotProposalGraphql[];
+
   // Expand Snapshot proposals to include only one safe per proposal.
-  const expandedProposals: SnapshotProposalExpanded[] = snapshotProposals.flatMap((proposal) => {
+  const expandedProposals: SnapshotProposalExpanded[] = nonErrorProposals.flatMap((proposal) => {
     const { plugins, ...clonedObject } = proposal;
     return proposal.plugins.safeSnap.safes.map((safe) => ({ ...clonedObject, safe }));
   });
@@ -366,16 +387,38 @@ const getSupportedProposals = async (
 
 // Filter proposals that did not pass verification and also retain verification result for logging.
 const getDisputableProposals = async (
+  logger: typeof Logger,
   proposals: SupportedProposal[],
   params: MonitoringParams
 ): Promise<DisputableProposal[]> => {
-  // TODO: We should separately handle IPFS and Graphql server errors. We don't want to submit disputes immediately just
-  // because IPFS gateway or Snapshot backend is down.
   return (
     await Promise.all(
       proposals.map(async (proposal) => {
         const verificationResult = await verifyProposal(proposal.event, params);
-        return !verificationResult.verified ? { ...proposal, verificationResult } : null;
+
+        // Verification passed: no dispute.
+        if (verificationResult.verified) return null;
+
+        // Verification failed: dispute, except for server error.
+        if (!verificationResult.serverError) return { ...proposal, verificationResult };
+
+        // Verification failed due to server error: no dispute, but log all the details.
+        logger.error({
+          at: "oSnapAutomation",
+          message: "Server error when verifying proposal",
+          mrkdwn:
+            "Failed to verify proposal with hash " +
+            proposal.event.args.proposalHash +
+            " and assertio ID " +
+            proposal.event.args.assertionId +
+            " posted on oSnap module " +
+            createEtherscanLinkMarkdown(proposal.event.address, params.chainId) +
+            " at Snapshot space " +
+            proposal.parameters.parsedRules.space,
+          error: verificationResult.error,
+          notificationPath: "optimistic-governor",
+        });
+        return null;
       })
     )
   ).filter((proposal) => proposal !== null) as DisputableProposal[];
@@ -611,7 +654,7 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   const supportedModules = await getSupportedModules(params);
 
   // Get all finalized basic safeSnap proposals for supported spaces and safes.
-  const supportedProposals = await getSupportedSnapshotProposals(supportedModules, params);
+  const supportedProposals = await getSupportedSnapshotProposals(logger, supportedModules, params);
 
   // Get all undiscarded on-chain proposals for supported modules.
   const onChainProposals = await getUndiscardedProposals(Object.keys(supportedModules), params);
@@ -640,7 +683,7 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
   const supportedProposals = await getSupportedProposals(liveProposals, params);
 
   // Filter proposals that did not pass verification and also retain verification result for logging.
-  const disputableProposals = await getDisputableProposals(supportedProposals, params);
+  const disputableProposals = await getDisputableProposals(logger, supportedProposals, params);
 
   // Submit disputes.
   await submitDisputes(logger, disputableProposals, params);

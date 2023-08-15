@@ -6,7 +6,7 @@ import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { BigNumber, utils as ethersUtils } from "ethers";
 import { CID } from "multiformats/cid";
-import fetch from "node-fetch";
+import fetch, { Response } from "node-fetch";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
@@ -64,12 +64,21 @@ interface IpfsData {
   };
 }
 
-export type VerificationResponse = { verified: true } | { verified: false; error: string };
+export type VerificationResponse = { verified: true } | { verified: false; error: string; serverError?: boolean };
 
 export interface RulesParameters {
   space: string;
   quorum: number;
   votingPeriod: number;
+}
+
+// Custom error to detect when IPFS fetch failed.
+class IpfsFetchError extends Error {
+  constructor(error: Error) {
+    super(error.message);
+    Error.captureStackTrace(this, IpfsFetchError);
+    Object.setPrototypeOf(this, IpfsFetchError.prototype);
+  }
 }
 
 // Type guard for MainTransaction.
@@ -228,15 +237,18 @@ const getGraphqlData = async (ipfsHash: string, url: string, retryOptions: Retry
 // We don't want to throw an error if the IPFS request fails for any reason, so we return an Error object instead that
 // will be logged by the bot.
 const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<unknown | Error> => {
-  try {
-    const response = await retry(async () => {
-      const fetchResponse = await fetch(`${url}/${ipfsHash}`);
-      if (!fetchResponse.ok) {
-        throw new Error(`Request on ${fetchResponse.url} failed with status ${fetchResponse.status}`);
-      }
-      return fetchResponse;
-    }, retryOptions);
+  let response: Response;
 
+  // Separate try/catch block to catch errors from the fetch() call itself.
+  try {
+    response = await retry(async () => await fetch(`${url}/${ipfsHash}`), retryOptions);
+  } catch (error) {
+    assert(error instanceof Error, "Unexpected Error type!");
+    return new IpfsFetchError(error);
+  }
+  if (!response.ok) return new Error(`Request on ${response.url} failed with status ${response.status}`);
+
+  try {
     const data = await response.json();
 
     // Try to parse the plugins property as JSON.
@@ -404,6 +416,8 @@ export const verifyIpfs = async (
   params: MonitoringParams
 ): Promise<VerificationResponse> => {
   const ipfsData = await getIpfsData(graphqlProposal.ipfs, params.ipfsEndpoint, params.retryOptions);
+  if (ipfsData instanceof IpfsFetchError)
+    return { verified: false, error: `IPFS request failed with error ${ipfsData.message}`, serverError: true };
   if (ipfsData instanceof Error)
     return { verified: false, error: `IPFS request failed with error ${ipfsData.message}` };
   if (!isIpfsData(ipfsData)) return { verified: false, error: "IPFS data does not match expected format" };
@@ -484,7 +498,7 @@ export const verifyProposal = async (
   // Get proposal data from GraphQL.
   const graphqlData = await getGraphqlData(ipfsHash, params.graphqlEndpoint, params.retryOptions);
   if (graphqlData instanceof Error) {
-    return { verified: false, error: `GraphQL request failed with error ${graphqlData.message}` };
+    return { verified: false, error: `GraphQL request failed with error ${graphqlData.message}`, serverError: true };
   }
   if (!isGraphqlData(graphqlData)) {
     return { verified: false, error: "GraphQL data does not match expected format" };
