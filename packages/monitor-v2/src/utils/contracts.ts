@@ -49,3 +49,12 @@ export const getCurrencySymbol = async (provider: Provider, currencyAddress: str
     }
   }
 };
+
+// Gets the topic of an event from its name. In case of overloaded events, the first one found is returned.
+export const getEventTopic = (contractName: ContractName, eventName: string): string => {
+  const contractAbi = getAbi(contractName);
+  const iface = new utils.Interface(contractAbi);
+  const eventKey = Object.keys(iface.events).find((key) => iface.events[key].name === eventName);
+  if (!eventKey) throw new Error(`Event ${eventName} not found in contract ${contractName}`);
+  return utils.keccak256(utils.toUtf8Bytes(eventKey));
+};

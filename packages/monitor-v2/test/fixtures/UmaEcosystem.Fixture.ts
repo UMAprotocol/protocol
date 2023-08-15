@@ -58,6 +58,8 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
     await finder.changeImplementationAddress(formatBytes32String("IdentifierWhitelist"), identifierWhitelist.address);
     await finder.changeImplementationAddress(formatBytes32String("Oracle"), mockOracle.address);
 
+    await collateralWhitelist.whitelist(votingToken.address);
+
     await store.setFinalFee(votingToken.address, { rawValue: utils.parseEther("1.0") });
     // Add voting token to global hardhatTestingAddresses.
     addGlobalHardhatTestingAddress("VotingToken", votingToken.address);

@@ -1,4 +1,5 @@
 import { calculateProxyAddress } from "@gnosis.pm/zodiac";
+import { time as hardhatTime } from "@nomicfoundation/hardhat-network-helpers";
 import {
   ExpandedERC20Ethers,
   ModuleProxyFactoryEthers,
@@ -12,7 +13,7 @@ import { assert } from "chai";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { network } from "hardhat";
 import sinon from "sinon";
-import { BotModes, MonitoringParams } from "../src/monitor-og/common";
+import { initMonitoringParams, MonitoringParams, SupportedBonds } from "../src/monitor-og/common";
 import {
   monitorProposalDeleted,
   monitorProposalExecuted,
@@ -25,14 +26,16 @@ import {
   monitorTransactionsExecuted,
   monitorTransactionsProposed,
 } from "../src/monitor-og/MonitorEvents";
+import { executeProposals } from "../src/monitor-og/oSnapAutomation";
+import { RulesParameters } from "../src/monitor-og/SnapshotVerification";
 import { optimisticGovernorFixture } from "./fixtures/OptimisticGovernor.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import {
   formatBytes32String,
   getBlockNumberFromTx,
+  getContractFactory,
   hre,
   parseEther,
-  Provider,
   Signer,
   toUtf8Bytes,
   toUtf8String,
@@ -42,8 +45,16 @@ import { getContractInstanceWithProvider } from "../src/utils/contracts";
 const ethers = hre.ethers;
 
 interface OGModuleProxyDeployment {
+  customAvatar: TestAvatarEthers;
   ogModuleProxy: OptimisticGovernorEthers;
   proxyCreationTx: TransactionResponse;
+}
+
+interface ExtraParams {
+  ogDiscovery?: boolean;
+  signer?: Signer;
+  supportedBonds?: SupportedBonds;
+  submitAutomation?: boolean;
 }
 
 describe("OptimisticGovernorMonitor", function () {
@@ -56,44 +67,63 @@ describe("OptimisticGovernorMonitor", function () {
   let disputer: Signer;
   let random: Signer;
   let proposer: Signer;
+  let executor: Signer;
   let timer: TimerEthers;
 
   // Create monitoring params for single block to pass to monitor modules.
-  const createMonitoringParams = async (blockNumber: number): Promise<MonitoringParams> => {
-    // Bot modes are not used as we are calling monitor modules directly.
-    const botModes: BotModes = {
-      transactionsProposedEnabled: false,
-      transactionsExecutedEnabled: false,
-      proposalExecutedEnabled: false,
-      proposalDeletedEnabled: false,
-      setCollateralAndBondEnabled: false,
-      setRulesEnabled: false,
-      setLivenessEnabled: false,
-      setIdentifierEnabled: false,
-      setEscalationManagerEnabled: false,
-      proxyDeployedEnabled: false,
+  const createMonitoringParams = async (
+    blockNumber: number,
+    extraParams: ExtraParams = {}
+  ): Promise<MonitoringParams> => {
+    const env: NodeJS.ProcessEnv = {
+      CHAIN_ID: (await ethers.provider.getNetwork()).chainId.toString(),
+      MODULE_PROXY_FACTORY_ADDRESSES: JSON.stringify([moduleProxyFactory.address]),
+      OG_MASTER_COPY_ADDRESSES: JSON.stringify([optimisticGovernor.address]),
+      POLLING_DELAY: "0",
     };
-    return {
-      ogAddress: optimisticGovernor.address,
-      moduleProxyFactoryAddresses: [moduleProxyFactory.address],
-      ogMasterCopyAddresses: [optimisticGovernor.address],
-      provider: ethers.provider as Provider,
-      chainId: (await ethers.provider.getNetwork()).chainId,
-      blockRange: { start: blockNumber, end: blockNumber },
-      pollingDelay: 0,
-      botModes,
-    };
+    const STARTING_BLOCK_KEY = `STARTING_BLOCK_NUMBER_${env.CHAIN_ID}`;
+    const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${env.CHAIN_ID}`;
+    env[STARTING_BLOCK_KEY] = blockNumber.toString();
+    env[ENDING_BLOCK_KEY] = blockNumber.toString();
+
+    // If ogDiscovery is not set or false, add static OG_ADDRESS. Otherwise, tests will use automatic OG discovery.
+    if (!extraParams.ogDiscovery) {
+      env.OG_ADDRESS = optimisticGovernor.address;
+    }
+
+    // submitAutomation defaults to true, only set to false if explicitly set in extraParams.
+    if (extraParams.submitAutomation === false) env.SUBMIT_AUTOMATION = "false";
+
+    const initialParams = await initMonitoringParams(env, ethers.provider);
+
+    return { ...initialParams, signer: extraParams.signer, supportedBonds: extraParams.supportedBonds };
   };
 
-  const deployOgModuleProxy = async (): Promise<OGModuleProxyDeployment> => {
+  const deployOgModuleProxy = async (parsedRules?: RulesParameters): Promise<OGModuleProxyDeployment> => {
     // Use the same parameters as mastercopy, except for the owner and rules.
+    const customAvatar = (await (await getContractFactory("TestAvatar", deployer)).deploy()) as TestAvatarEthers;
+    const rules = parsedRules
+      ? "I assert that this transaction proposal is valid according to the following rules: Proposals approved on" +
+        " Snapshot, as verified at https://snapshot.org/#/" +
+        parsedRules.space +
+        ", are valid as long as there is a minimum quorum of " +
+        parsedRules.quorum +
+        " and a minimum voting period of " +
+        parsedRules.votingPeriod +
+        " hours and it does not appear that the Snapshot voting system is being exploited or is otherwise unavailable." +
+        " The quorum and voting period are minimum requirements for a proposal to be valid. Quorum and voting period" +
+        " values set for a specific proposal in Snapshot should be used if they are more strict than the rules" +
+        " parameter. The explanation included with the on-chain proposal must be the unique IPFS identifier for the" +
+        " specific Snapshot proposal that was approved or a unique identifier for a proposal in an alternative" +
+        " voting system approved by DAO social consensus if Snapshot is being exploited or is otherwise unavailable."
+      : "test proxy rules";
     const initializerParams = ethers.utils.defaultAbiCoder.encode(
       ["address", "address", "uint256", "string", "bytes32", "uint64"],
       [
-        avatar.address,
+        customAvatar.address,
         await optimisticGovernor.collateral(),
         await optimisticGovernor.bondAmount(),
-        "test proxy rules",
+        rules,
         await optimisticGovernor.identifier(),
         await optimisticGovernor.liveness(),
       ]
@@ -122,12 +152,16 @@ describe("OptimisticGovernorMonitor", function () {
       ethers.provider,
       proxyAddress
     );
-    return { ogModuleProxy, proxyCreationTx };
+
+    // Allow proxy to control the avatar.
+    await customAvatar.setModule(proxyAddress);
+
+    return { customAvatar, ogModuleProxy, proxyCreationTx };
   };
 
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.
-    [deployer, random, proposer, disputer] = (await ethers.getSigners()) as Signer[];
+    [deployer, random, proposer, disputer, executor] = (await ethers.getSigners()) as Signer[];
 
     // Get contract instances.
     const umaContracts = await umaEcosystemFixture();
@@ -181,8 +215,9 @@ describe("OptimisticGovernorMonitor", function () {
 
     // When calling monitoring module directly there should be only one log (index 0) with the proposal caught by spy.
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
-    assert.equal(spy.getCall(0).lastArg.message, "Transactions Proposed 📝");
+    assert.equal(spy.getCall(0).lastArg.message, "Unverified Transactions Proposed 🚩");
     assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposer));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.rules));
@@ -232,6 +267,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Transactions Executed ✅");
     assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -243,6 +279,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spyTwo.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spyTwo.getCall(0).lastArg.message, "Proposal Executed ✅");
     assert.equal(spyLogLevel(spyTwo, 0), "warn");
+    assert.isTrue(spyLogIncludes(spyTwo, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spyTwo, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spyTwo, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spyTwo.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -292,6 +329,7 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Proposal Deleted 🗑️");
     assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -322,6 +360,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Collateral And Bond Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, bondToken.address));
     assert.isTrue(spyLogIncludes(spy, 0, parseEther("1").toString()));
     assert.equal(spyLogLevel(spy, 0), "warn");
@@ -338,6 +377,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Rules Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newRules));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -353,6 +393,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Liveness Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newLiveness.toString()));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -368,6 +409,7 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Identifier Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newIdentifier));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
@@ -383,12 +425,13 @@ describe("OptimisticGovernorMonitor", function () {
 
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Escalation Manager Set 📝");
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, newEscalationManager));
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
   });
   it("Monitor proxy deployment", async function () {
-    const { ogModuleProxy, proxyCreationTx } = await deployOgModuleProxy();
+    const { customAvatar, ogModuleProxy, proxyCreationTx } = await deployOgModuleProxy();
     const proxyDeployBlockNumber = await getBlockNumberFromTx(proxyCreationTx);
 
     const spy = sinon.spy();
@@ -398,10 +441,504 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Optimistic Governor Deployed 📝");
     assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
-    assert.isTrue(spyLogIncludes(spy, 0, avatar.address));
+    assert.isTrue(spyLogIncludes(spy, 0, customAvatar.address));
     assert.isTrue(spyLogIncludes(spy, 0, optimisticGovernor.address));
     assert.isTrue(spyLogIncludes(spy, 0, proxyCreationTx.hash));
     assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
+  });
+  it("Monitor TransactionsProposed with automatic OG discovery", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const { ogModuleProxy } = await deployOgModuleProxy();
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Construct the transaction data
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Call monitorTransactionsProposed directly for the block when the proposeTransactions was made using automatic OG discovery.
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposed(
+      spyLogger,
+      await createMonitoringParams(proposeBlockNumber, { ogDiscovery: true })
+    );
+
+    // When calling monitoring module directly there should be only one log (index 0) with the proposal caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "OptimisticGovernorMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Unverified Transactions Proposed 🚩");
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.assertionId));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposer));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.rules));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
+    assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(explanation)));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
+  });
+  it("Automatically execute transactions", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const space = "test.eth";
+    const { customAvatar, ogModuleProxy } = await deployOgModuleProxy({
+      space,
+      quorum: 0,
+      votingPeriod: 0,
+    });
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Set supported bond settings.
+    const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).toString();
+
+    // Fund the avatar
+    await bondToken.mint(customAvatar.address, parseEther("500"));
+
+    // Construct the transaction data for spending tokens from the avatar.
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Create the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Move time forward to the execution time. This also requires mining new block as the bot checks challenge window
+    // based on block time.
+    await timer.setCurrentTime(transactionProposedEvent.args.challengeWindowEnds);
+    await hardhatTime.increaseTo(transactionProposedEvent.args.challengeWindowEnds);
+    let latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await executeProposals(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, { ogDiscovery: true, signer: executor, supportedBonds })
+    );
+
+    // Get the ProposalExecuted events (there should be only one).
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+    const proposalExecutionEvents = await ogModuleProxy.queryFilter(
+      ogModuleProxy.filters.ProposalExecuted(),
+      proposeBlockNumber,
+      latestBlockNumber
+    );
+    assert.equal(proposalExecutionEvents.length, 1);
+
+    // When calling the bot module directly there should be only one log (index 0) with the execution caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "oSnapAutomation");
+    assert.equal(spy.getCall(0).lastArg.message, "Submitted oSnap Execution 🏁");
+    assert.equal(spyLogLevel(spy, 0), "info");
+    assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
+    assert.isTrue(spyLogIncludes(spy, 0, space));
+    assert.isTrue(spyLogIncludes(spy, 0, proposalExecutionEvents[0].transactionHash));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
+  });
+  it("Automatic execution not run for unsupported bonds", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const space = "test.eth";
+    const { customAvatar, ogModuleProxy } = await deployOgModuleProxy({
+      space,
+      quorum: 0,
+      votingPeriod: 0,
+    });
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Populate supported bond settings with correct token, but wrong amount and wrong token with correct amount.
+    const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).add(1).toString();
+    supportedBonds[ethers.constants.AddressZero] = (await ogModuleProxy.getProposalBond()).toString();
+
+    // Fund the avatar
+    await bondToken.mint(customAvatar.address, parseEther("500"));
+
+    // Construct the transaction data for spending tokens from the avatar.
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Create the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Move time forward to the execution time. This also requires mining new block as the bot checks challenge window
+    // based on block time.
+    await timer.setCurrentTime(transactionProposedEvent.args.challengeWindowEnds);
+    await hardhatTime.increaseTo(transactionProposedEvent.args.challengeWindowEnds);
+    let latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await executeProposals(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, { ogDiscovery: true, signer: executor, supportedBonds })
+    );
+
+    // There should be no ProposalExecuted events.
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+    const proposalExecutionEvents = await ogModuleProxy.queryFilter(
+      ogModuleProxy.filters.ProposalExecuted(),
+      proposeBlockNumber,
+      latestBlockNumber
+    );
+    assert.equal(proposalExecutionEvents.length, 0);
+
+    // There should be no logs caught by spy.
+    assert.equal(spy.callCount, 0);
+  });
+  it("Automatic execution not run for unsupported rules", async function () {
+    // Deploy a new OG module proxy with no parsed rules and approve the proposal bond.
+    const { customAvatar, ogModuleProxy } = await deployOgModuleProxy();
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Set supported bond settings.
+    const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).toString();
+
+    // Fund the avatar
+    await bondToken.mint(customAvatar.address, parseEther("500"));
+
+    // Construct the transaction data for spending tokens from the avatar.
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Create the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Move time forward to the execution time. This also requires mining new block as the bot checks challenge window
+    // based on block time.
+    await timer.setCurrentTime(transactionProposedEvent.args.challengeWindowEnds);
+    await hardhatTime.increaseTo(transactionProposedEvent.args.challengeWindowEnds);
+    let latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await executeProposals(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, { ogDiscovery: true, signer: executor, supportedBonds })
+    );
+
+    // There should be no ProposalExecuted events.
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+    const proposalExecutionEvents = await ogModuleProxy.queryFilter(
+      ogModuleProxy.filters.ProposalExecuted(),
+      proposeBlockNumber,
+      latestBlockNumber
+    );
+    assert.equal(proposalExecutionEvents.length, 0);
+
+    // There should be no logs caught by spy.
+    assert.equal(spy.callCount, 0);
+  });
+  it("Automatic execution not run before challenge period", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const space = "test.eth";
+    const { customAvatar, ogModuleProxy } = await deployOgModuleProxy({
+      space,
+      quorum: 0,
+      votingPeriod: 0,
+    });
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Set supported bond settings.
+    const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).toString();
+
+    // Fund the avatar
+    await bondToken.mint(customAvatar.address, parseEther("500"));
+
+    // Construct the transaction data for spending tokens from the avatar.
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Create the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Move time forward 1 second before the challenge period. This also requires mining new block as the bot checks
+    // challenge window based on block time.
+    await timer.setCurrentTime(transactionProposedEvent.args.challengeWindowEnds.sub(1));
+    await hardhatTime.increaseTo(transactionProposedEvent.args.challengeWindowEnds.sub(1));
+    let latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await executeProposals(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, { ogDiscovery: true, signer: executor, supportedBonds })
+    );
+
+    // There should be no ProposalExecuted events.
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+    const proposalExecutionEvents = await ogModuleProxy.queryFilter(
+      ogModuleProxy.filters.ProposalExecuted(),
+      proposeBlockNumber,
+      latestBlockNumber
+    );
+    assert.equal(proposalExecutionEvents.length, 0);
+
+    // There should be no logs caught by spy.
+    assert.equal(spy.callCount, 0);
+  });
+  it("Automatic execution not run for failing transactions", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const space = "test.eth";
+    const { customAvatar, ogModuleProxy } = await deployOgModuleProxy({
+      space,
+      quorum: 0,
+      votingPeriod: 0,
+    });
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Set supported bond settings.
+    const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).toString();
+
+    // Don't fund the avatar up to the required amount. This should fail the execution simulation.
+    await bondToken.mint(customAvatar.address, parseEther("499"));
+
+    // Construct the transaction data for spending tokens from the avatar.
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Create the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Move time forward to the execution time. This also requires mining new block as the bot checks challenge window
+    // based on block time.
+    await timer.setCurrentTime(transactionProposedEvent.args.challengeWindowEnds);
+    await hardhatTime.increaseTo(transactionProposedEvent.args.challengeWindowEnds);
+    let latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await executeProposals(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, { ogDiscovery: true, signer: executor, supportedBonds })
+    );
+
+    // There should be no ProposalExecuted events.
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+    const proposalExecutionEvents = await ogModuleProxy.queryFilter(
+      ogModuleProxy.filters.ProposalExecuted(),
+      proposeBlockNumber,
+      latestBlockNumber
+    );
+    assert.equal(proposalExecutionEvents.length, 0);
+
+    // When calling the bot module directly there should be only one log (index 0) with the execution warn caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "oSnapAutomation");
+    assert.equal(spy.getCall(0).lastArg.message, "Proposal execution would fail!");
+    assert.equal(spyLogLevel(spy, 0), "info");
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
+    assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
+    assert.isTrue(spyLogIncludes(spy, 0, space));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
+  });
+  it("Execution submission disabled", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const space = "test.eth";
+    const { customAvatar, ogModuleProxy } = await deployOgModuleProxy({
+      space,
+      quorum: 0,
+      votingPeriod: 0,
+    });
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Set supported bond settings.
+    const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).toString();
+
+    // Fund the avatar
+    await bondToken.mint(customAvatar.address, parseEther("500"));
+
+    // Construct the transaction data for spending tokens from the avatar.
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Create the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Move time forward to the execution time. This also requires mining new block as the bot checks challenge window
+    // based on block time.
+    await timer.setCurrentTime(transactionProposedEvent.args.challengeWindowEnds);
+    await hardhatTime.increaseTo(transactionProposedEvent.args.challengeWindowEnds);
+    let latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    // Simulate execution of proposals without submitting transaction.
+    await executeProposals(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, {
+        ogDiscovery: true,
+        signer: executor,
+        supportedBonds,
+        submitAutomation: false,
+      })
+    );
+
+    // There should be no ProposalExecuted events.
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+    const proposalExecutionEvents = await ogModuleProxy.queryFilter(
+      ogModuleProxy.filters.ProposalExecuted(),
+      proposeBlockNumber,
+      latestBlockNumber
+    );
+    assert.equal(proposalExecutionEvents.length, 0);
+
+    // When calling the bot module directly there should be only one log (index 0) with the execution attempt caught by spy.
+    assert.equal(spy.getCall(0).lastArg.at, "oSnapAutomation");
+    assert.equal(spy.getCall(0).lastArg.message, "Execution transaction would succeed");
+    assert.equal(spyLogLevel(spy, 0), "info");
+    assert.isTrue(spyLogIncludes(spy, 0, ogModuleProxy.address));
+    assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
+    assert.isTrue(spyLogIncludes(spy, 0, space));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
   });
 });

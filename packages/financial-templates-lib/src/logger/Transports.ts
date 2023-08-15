@@ -8,6 +8,11 @@ import { createJsonTransport } from "./JsonTransport";
 import { createSlackTransport } from "./SlackTransport";
 import { PagerDutyTransport } from "./PagerDutyTransport";
 import {
+  Config as DiscordTicketConfig,
+  createConfig as discordTicketCreateConfig,
+  DiscordTicketTransport,
+} from "./DiscordTicketTransport";
+import {
   PagerDutyV2Transport,
   Config as PagerDutyV2Config,
   createConfig as pagerDutyV2CreateConfig,
@@ -29,6 +34,7 @@ interface TransportsConfig {
   createConsoleTransport?: boolean;
   slackConfig?: SlackConfig;
   discordConfig?: DiscordConfig;
+  discordTicketConfig?: DiscordTicketConfig;
   pdApiToken?: string;
   pagerDutyConfig?: PagerDutyConfig;
   pagerDutyV2Config?: PagerDutyV2Config;
@@ -72,6 +78,13 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
           transportsConfig.discordConfig ?? JSON.parse(process.env.DISCORD_CONFIG || "null")
         )
       );
+    }
+
+    // If there is a discord ticket config, create a new transport.
+    if (transportsConfig.discordTicketConfig || process.env.DISCORD_TICKET_CONFIG) {
+      const discordTicketConfig =
+        transportsConfig.discordTicketConfig ?? JSON.parse(process.env.DISCORD_TICKET_CONFIG || "null");
+      transports.push(new DiscordTicketTransport({ level: "info" }, discordTicketCreateConfig(discordTicketConfig)));
     }
 
     // If there is a Pagerduty API key then add the pagerduty winston transport.

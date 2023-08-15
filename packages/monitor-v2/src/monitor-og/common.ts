@@ -2,11 +2,19 @@ import {
   ContractAddresses as zodiacContractAddresses,
   SupportedNetworks as zodiacSupportedNetworks,
 } from "@gnosis.pm/zodiac";
-import { getRetryProvider } from "@uma/common";
+import {
+  getGckmsSigner,
+  getRetryProvider,
+  simulateTenderlyTx,
+  TenderlySimulationParams,
+  TenderlySimulationResult,
+} from "@uma/common";
 import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
+import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import { delay } from "@uma/financial-templates-lib";
-import { Contract, Event, EventFilter, utils } from "ethers";
+import { Options as RetryOptions } from "async-retry";
+import { BigNumber, Contract, Event, EventFilter, Signer, utils, Wallet } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
 
@@ -14,7 +22,6 @@ import type { Provider } from "@ethersproject/abstract-provider";
 
 export { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
-export { constants as ethersConstants } from "ethers";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 export { generateOOv3UILink } from "../utils/logger";
 
@@ -29,6 +36,9 @@ export interface BotModes {
   setIdentifierEnabled: boolean;
   setEscalationManagerEnabled: boolean;
   proxyDeployedEnabled: boolean;
+  automaticProposalsEnabled: boolean;
+  automaticDisputesEnabled: boolean;
+  automaticExecutionsEnabled: boolean;
 }
 
 export interface BlockRange {
@@ -36,26 +46,89 @@ export interface BlockRange {
   end: number;
 }
 
+export interface SupportedBonds {
+  [key: string]: string; // We enforce that the keys are valid addresses and the values are valid amounts in type guard.
+}
+
 export interface MonitoringParams {
-  ogAddress: string;
+  ogAddresses: string[];
+  ogBlacklist?: string[]; // Optional. Only used in automatic OG address discovery mode.
   moduleProxyFactoryAddresses: string[];
   ogMasterCopyAddresses: string[];
   provider: Provider;
+  signer?: Signer; // Optional. Only used in automatic support mode.
   chainId: number;
   blockRange: BlockRange;
   pollingDelay: number;
+  snapshotEndpoint: string;
+  graphqlEndpoint: string;
+  ipfsEndpoint: string;
+  approvalChoices: string[];
+  supportedBonds?: SupportedBonds; // Optional. Only used in automated support mode.
+  submitAutomation: boolean; // Defaults to true, but only used in automated support mode.
+  useTenderly: boolean;
   botModes: BotModes;
+  retryOptions: RetryOptions;
 }
 
-export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
-  if (!env.OG_ADDRESS) throw new Error("OG_ADDRESS must be defined in env");
-  const ogAddress = String(env.OG_ADDRESS);
+// Helper type guard for dictionary objects.
+export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
+  return typeof arg === "object" && arg !== null && !Array.isArray(arg);
+};
 
+// Type guard for SupportedBonds.
+const isSupportedBonds = (bonds: unknown): bonds is SupportedBonds => {
+  if (!isDictionary(bonds)) return false;
+
+  // addressKeys is used to check for duplicate addresses.
+  const addressKeys = new Set<string>();
+  for (const key in bonds) {
+    if (!utils.isAddress(key)) return false;
+
+    // Check for duplicate addresses.
+    const addressKey = utils.getAddress(key);
+    if (addressKeys.has(addressKey)) return false;
+    addressKeys.add(addressKey);
+
+    // Check for valid amounts.
+    if (typeof bonds[key] !== "string") return false;
+    try {
+      BigNumber.from(bonds[key]); // BigNumber.from throws if value is not a valid number.
+    } catch {
+      return false;
+    }
+    if (!BigNumber.from(bonds[key]).gte(0)) return false; // Bond amount cannot be negative.
+  }
+  return true;
+};
+
+const parseSupportedBonds = (env: NodeJS.ProcessEnv): SupportedBonds => {
+  if (!env.SUPPORTED_BONDS) throw new Error("SUPPORTED_BONDS must be defined in env");
+  const supportedBonds = JSON.parse(env.SUPPORTED_BONDS);
+  if (!isSupportedBonds(supportedBonds)) throw new Error("SUPPORTED_BONDS must contain valid addresses and amounts");
+  return supportedBonds;
+};
+
+const getSigner = async (env: NodeJS.ProcessEnv, provider: Provider): Promise<Signer> => {
+  if (env.GCKMS_WALLET) {
+    return (await getGckmsSigner()).connect(provider);
+  } else if (env.MNEMONIC) {
+    return Wallet.fromMnemonic(env.MNEMONIC).connect(provider);
+  } else throw new Error("Must define either GCKMS_WALLET or MNEMONIC in env");
+};
+
+export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: Provider): Promise<MonitoringParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
-  // If no module proxy factory addresses are provided, default to the latest version of zodiac factory address if
-  // chainId is supported. This can be empty if bot config does not require monitoring proxy deployments.
+  // OG_ADDRESS, OG_WHITELIST and OG_BLACKLIST are mutually exclusive.
+  // If none are provided, the bots will monitor all deployed proxies.
+  if ([env.OG_ADDRESS, env.OG_WHITELIST, env.OG_BLACKLIST].filter(Boolean).length > 1) {
+    throw new Error("OG_ADDRESS, OG_WHITELIST and OG_BLACKLIST are mutually exclusive");
+  }
+
+  // If no module proxy factory addresses are provided, default to the latest version of Zodiac factory address if
+  // chainId is supported. This can be empty as not all bot configs require monitoring proxy deployments.
   const fallbackModuleProxyFactoryAddresses = Object.values(zodiacSupportedNetworks).includes(chainId)
     ? [zodiacContractAddresses[chainId as zodiacSupportedNetworks].factory]
     : [];
@@ -64,7 +137,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     : fallbackModuleProxyFactoryAddresses;
 
   // If no OG mastercopy addresses are provided, default to the protocol deployment address if chainId is supported.
-  // This can be empty if bot config does not require monitoring proxy deployments.
+  // This can be empty as not all bot configs require monitoring proxy deployments.
   const fallbackOgMasterCopyAddresses = [];
   try {
     const ogMasterCopyAddress = await getAddress("OptimisticGovernor", chainId);
@@ -80,7 +153,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const ENDING_BLOCK_KEY = `ENDING_BLOCK_NUMBER_${chainId}`;
 
   // Creating provider will check for other chainId specific env variables.
-  const provider = getRetryProvider(chainId) as Provider;
+  // When testing, we can pass in a provider directly.
+  const provider = _provider === undefined ? ((await getRetryProvider(chainId)) as Provider) : _provider;
 
   // Default to 1 minute polling delay.
   const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
@@ -98,6 +172,16 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     throw new Error(`${STARTING_BLOCK_KEY} must be less than or equal to ${ENDING_BLOCK_KEY}`);
   }
 
+  // Parameters for Snapshot proposal verification.
+  const snapshotEndpoint = env.SNAPSHOT_ENDPOINT || "https://snapshot.org";
+  const graphqlEndpoint = env.GRAPHQL_ENDPOINT || "https://hub.snapshot.org/graphql";
+  const ipfsEndpoint = env.IPFS_ENDPOINT || "https://cloudflare-ipfs.com/ipfs";
+  const approvalChoices = env.APPROVAL_CHOICES ? JSON.parse(env.APPROVAL_CHOICES) : ["Yes", "For", "YAE"];
+
+  // Use Tenderly simulation link only if all required environment variables are set.
+  const useTenderly =
+    env.TENDERLY_USER !== undefined && env.TENDERLY_PROJECT !== undefined && env.TENDERLY_ACCESS_KEY !== undefined;
+
   const botModes = {
     transactionsProposedEnabled: env.TRANSACTIONS_PROPOSED_ENABLED === "true",
     transactionsExecutedEnabled: env.TRANSACTIONS_EXECUTED_ENABLED === "true",
@@ -109,26 +193,102 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     setIdentifierEnabled: env.SET_IDENTIFIER_ENABLED === "true",
     setEscalationManagerEnabled: env.SET_ESCALATION_MANAGER_ENABLED === "true",
     proxyDeployedEnabled: env.PROXY_DEPLOYED_ENABLED === "true",
+    automaticProposalsEnabled: env.AUTOMATIC_PROPOSALS_ENABLED === "true",
+    automaticDisputesEnabled: env.AUTOMATIC_DISPUTES_ENABLED === "true",
+    automaticExecutionsEnabled: env.AUTOMATIC_EXECUTIONS_ENABLED === "true",
   };
 
-  // If monitoring proxy deployements is enabled, ensure that the required env variables are set.
-  if (botModes.proxyDeployedEnabled && ogMasterCopyAddresses.length === 0) {
-    throw new Error("OG_MASTER_COPY_ADDRESSES must be set in env if PROXY_DEPLOYED_ENABLED is true");
-  }
-  if (botModes.proxyDeployedEnabled && moduleProxyFactoryAddresses.length === 0) {
-    throw new Error("MODULE_PROXY_FACTORY_ADDRESSES must be set in env if PROXY_DEPLOYED_ENABLED is true");
+  // Parse supported bonds and get signer if any of automatic support modes are enabled.
+  let supportedBonds: SupportedBonds | undefined;
+  let signer: Signer | undefined;
+  if (botModes.automaticProposalsEnabled || botModes.automaticDisputesEnabled || botModes.automaticExecutionsEnabled) {
+    supportedBonds = parseSupportedBonds(env);
+    signer = await getSigner(env, provider);
   }
 
-  return {
-    ogAddress,
+  // By default, submit automation mode transactions (propose/dispute/execute) unless explicitly disabled. This does not
+  // apply to bond approvals as these are always submitted on chain.
+  const submitAutomation = env.SUBMIT_AUTOMATION === "false" ? false : true;
+
+  // Mastercopy and module proxy factory addresses are required when monitoring proxy deployments or when not
+  // explicitly providing OG_ADDRESS to monitor in other modes.
+  if (
+    (botModes.proxyDeployedEnabled || !env.OG_ADDRESS) &&
+    (ogMasterCopyAddresses.length === 0 || moduleProxyFactoryAddresses.length === 0)
+  ) {
+    throw new Error(
+      "No mastercopy or module proxy factory addresses found: required when monitoring proxy deployments" +
+        " or OG_ADDRESS is not set"
+    );
+  }
+
+  // Retry options used when fetching off-chain information from Snapshot.
+  const retryOptions: RetryOptions = {
+    retries: env.SNAPSHOT_RETRIES ? Number(env.SNAPSHOT_RETRIES) : 3, // Maximum number of retries.
+    minTimeout: env.SNAPSHOT_TIMEOUT ? Number(env.SNAPSHOT_TIMEOUT) : 1000, // Milliseconds before starting the first retry.
+  };
+
+  const initialParams: MonitoringParams = {
+    ogAddresses: [], // Will be added later after validation.
     moduleProxyFactoryAddresses,
     ogMasterCopyAddresses,
     provider,
+    signer,
     chainId,
     blockRange: { start: startingBlock, end: endingBlock },
     pollingDelay,
+    snapshotEndpoint,
+    graphqlEndpoint,
+    ipfsEndpoint,
+    approvalChoices,
+    supportedBonds,
+    submitAutomation,
+    useTenderly,
     botModes,
+    retryOptions,
   };
+
+  // If OG_ADDRESS is provided, use it in the monitored address list and return monitoring params.
+  // Invalid address will throw an error in getAddress call.
+  if (env.OG_ADDRESS) {
+    initialParams.ogAddresses = [utils.getAddress(env.OG_ADDRESS)];
+    return initialParams;
+  }
+
+  // Verify that OG whitelist and blacklist contain only deployed proxy addresses.
+  // Invalid addresses will throw an error in getAddress call.
+  const deployedProxyAddresses = await getDeployedProxyAddresses(initialParams, {
+    start: 0,
+    end: initialParams.blockRange.end,
+  });
+  const deployedProxyAddressesSet = new Set(deployedProxyAddresses);
+  const ogWhitelist: string[] = env.OG_WHITELIST ? JSON.parse(env.OG_WHITELIST) : [];
+  const ogBlacklist: string[] = env.OG_BLACKLIST ? JSON.parse(env.OG_BLACKLIST) : [];
+  ogWhitelist.forEach((address) => {
+    if (!deployedProxyAddressesSet.has(utils.getAddress(address))) {
+      throw new Error(`OG_WHITELIST contains address ${address} that is not a deployed proxy`);
+    }
+  });
+  ogBlacklist.forEach((address) => {
+    if (!deployedProxyAddressesSet.has(utils.getAddress(address))) {
+      throw new Error(`OG_BLACKLIST contains address ${address} that is not a deployed proxy`);
+    }
+  });
+
+  // If OG whitelist is provided, use it in the monitored address list and return monitoring params.
+  if (env.OG_WHITELIST) {
+    initialParams.ogAddresses = ogWhitelist.map((address) => utils.getAddress(address));
+    return initialParams;
+  }
+
+  // We are in automatic OG address discovery mode. Return monitoring params with all deployed proxies except those
+  // in the blacklist.
+  initialParams.ogAddresses = deployedProxyAddresses.filter(
+    (address) => !ogBlacklist.includes(utils.getAddress(address))
+  );
+  initialParams.ogBlacklist = ogBlacklist.map((address) => utils.getAddress(address));
+
+  return initialParams;
 };
 
 export const waitNextBlockRange = async (params: MonitoringParams): Promise<BlockRange> => {
@@ -185,14 +345,6 @@ export const runQueryFilter = async <T extends Event>(
   return contract.queryFilter(filter, blockRange.start, blockRange.end) as Promise<Array<T>>;
 };
 
-export const getOg = async (params: MonitoringParams): Promise<OptimisticGovernorEthers> => {
-  return await getContractInstanceWithProvider<OptimisticGovernorEthers>(
-    "OptimisticGovernor",
-    params.provider,
-    params.ogAddress
-  );
-};
-
 export const getOgByAddress = async (params: MonitoringParams, address: string): Promise<OptimisticGovernorEthers> => {
   return await getContractInstanceWithProvider<OptimisticGovernorEthers>(
     "OptimisticGovernor",
@@ -231,4 +383,50 @@ export const getProxyDeploymentTxs = async (params: MonitoringParams): Promise<A
     )
   ).flat(2);
   return transactions;
+};
+
+const getDeployedProxyAddresses = async (
+  params: MonitoringParams,
+  blockRangeOverride: BlockRange
+): Promise<Array<string>> => {
+  const clonedParams = Object.assign({}, params);
+  clonedParams.blockRange = blockRangeOverride;
+  const transactions = await getProxyDeploymentTxs(clonedParams);
+  return transactions.map((tx) => utils.getAddress(tx.args.proxy));
+};
+
+export const getOgAddresses = async (params: MonitoringParams): Promise<Array<string>> => {
+  // Return the same list of addresses if not in automatic OG address discovery mode.
+  if (params.ogBlacklist === undefined) return params.ogAddresses;
+
+  const deployedProxyAddresses = await getDeployedProxyAddresses(params, params.blockRange);
+  const ogAddresses = deployedProxyAddresses.filter(
+    (address) => !params.ogBlacklist?.includes(utils.getAddress(address))
+  );
+  return [...params.ogAddresses, ...ogAddresses];
+};
+
+export const getBlockTimestamp = async (provider: Provider, blockNumber: number): Promise<number> => {
+  const block = await provider.getBlock(blockNumber);
+  return block.timestamp;
+};
+
+export const generateTenderlySimulation = async (
+  proposedEvent: TransactionsProposedEvent,
+  params: MonitoringParams
+): Promise<TenderlySimulationResult> => {
+  // Get the execution payload.
+  const og = await getOgByAddress(params, proposedEvent.address);
+  const executionPayload = og.interface.encodeFunctionData("executeProposal", [
+    proposedEvent.args.proposal.transactions,
+  ]);
+
+  // Simulate proposal execution from zero address after challenge window ends.
+  const simulationParams: TenderlySimulationParams = {
+    chainId: params.chainId,
+    to: proposedEvent.address,
+    input: executionPayload,
+    timestampOverride: proposedEvent.args.challengeWindowEnds.toNumber(),
+  };
+  return await simulateTenderlyTx(simulationParams, params.retryOptions);
 };

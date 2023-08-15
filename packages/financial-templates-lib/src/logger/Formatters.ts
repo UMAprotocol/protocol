@@ -64,3 +64,11 @@ const iterativelyReplaceBigNumbers = (obj: Record<string | symbol, any>) => {
   // Only copy if something changed. Otherwise, return the original object.
   return copyNeeded ? Object.fromEntries(replacements) : obj;
 };
+
+// Some transports do not support markdown formatted links (e.g. <https://google.com|google.com>). This method removes
+// the text anchor and leave plain URLs in the message.
+export function removeAnchorTextFromLinks(msg: string): string {
+  const anchorTextRegex = /<([^|]+)\|[^>]+>/g;
+  // $1 is a backreference to the first capture group containing plain URL.
+  return msg.replace(anchorTextRegex, "$1");
+}

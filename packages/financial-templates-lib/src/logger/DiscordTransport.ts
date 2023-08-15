@@ -1,10 +1,20 @@
 import { delay } from "../helpers/delay";
+import { isDictionary } from "./Logger";
+import { TransportError } from "./TransportError";
 
 import Transport from "winston-transport";
 
 import axios from "axios";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
+
+// Interface for log info object.
+interface DiscordInfo {
+  message: string;
+  mrkdwn: string;
+  notificationPath?: string;
+  discordPaths?: string[] | null; // Optional as also might send to default channel.
+}
 
 interface Body {
   username: string;
@@ -16,13 +26,28 @@ interface QueueElement {
   webHook: string;
 }
 
+// Type guard for log info object.
+export const isDiscordInfo = (info: unknown): info is DiscordInfo => {
+  if (!isDictionary(info)) return false;
+  if (typeof info.message !== "string" || typeof info.mrkdwn !== "string") return false;
+  if (typeof info.notificationPath !== "undefined" && typeof info.notificationPath !== "string") return false;
+  if (typeof info.discordPaths === "undefined") return true; // Optional
+  if (info.discordPaths === null) return true; // Can be explicitly set to null.
+
+  // If provided and not null, discordPaths should be an array of strings.
+  if (!Array.isArray(info.discordPaths)) return false;
+  return info.discordPaths.every((path) => typeof path === "string");
+};
+
 export class DiscordTransport extends Transport {
-  private readonly defaultWebHookUrl: string | string[];
-  private readonly escalationPathWebhookUrls: { [key: string]: string | string[] };
+  private readonly defaultWebHookUrl: string;
+  private readonly escalationPathWebhookUrls: { [key: string]: string };
   private readonly postOnNonEscalationPaths: boolean;
 
   private logQueue: QueueElement[];
-  private isQueueBeingExecuted = false;
+  private isQueueBeingExecuted: boolean;
+
+  private enqueuedLogCounter: number;
 
   constructor(
     winstonOpts: TransportOptions,
@@ -38,48 +63,63 @@ export class DiscordTransport extends Transport {
     this.postOnNonEscalationPaths = ops.postOnNonEscalationPaths ?? true;
 
     this.logQueue = [];
+    this.isQueueBeingExecuted = false;
+    this.enqueuedLogCounter = 0;
+  }
+
+  // Getter for checking if the transport is flushed.
+  get isFlushed(): boolean {
+    return this.enqueuedLogCounter === 0;
   }
 
   // Note: info must be any because that's what the base class uses.
-  async log(info: any, callback: () => void): Promise<void> {
-    try {
-      if (!info.mrkdwn) return; // We only ever want to send messages to Discord that have Markdown in them.
-      const body = {
-        username: "UMA Infrastructure",
-        avatar_url: "https://i.imgur.com/RCcxxEZ.png",
-        embeds: [{ title: `${info.message}`, description: this.formatLinks(info.mrkdwn), color: 9696729 }],
-      };
+  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
+    // We only try sending if we have message and mrkdwn.
+    // Also if discordPaths is null when provided then this is a noop message for Discord and the log should be skipped
+    const canSend = isDiscordInfo(info) && info.discordPaths !== null;
 
-      // A log message can conditionally contain additional Discord specific paths. Validate these first.
-      let webHooks: string[] = [];
-      if (info.discordPaths) {
-        // If it is null then this is a noop message for Discord and the log should be skipped.
-        if (info.discordPaths === null) return;
+    if (canSend) {
+      try {
+        this.enqueuedLogCounter++; // Used by isFlushed getter. Make sure to decrement when done or catching an error.
 
-        // Else, Assign a webhook for each escalationPathWebHook defined for the provided discordPaths. This lets
-        // the logger define exactly which logs should go to which discord channel.
-        webHooks = info.discordPaths.map((discordPath: string) => this.escalationPathWebhookUrls[discordPath]);
+        const body = {
+          username: "UMA Infrastructure",
+          avatar_url: "https://i.imgur.com/RCcxxEZ.png",
+          embeds: [{ title: `${info.message}`, description: this.formatLinks(info.mrkdwn), color: 9696729 }],
+        };
+
+        // A log message can conditionally contain additional Discord specific paths. Validate these first.
+        let webHooks: string[] = [];
+        if (info.discordPaths) {
+          // Assign a webhook for each escalationPathWebHook defined for the provided discordPaths. This lets
+          // the logger define exactly which logs should go to which discord channel.
+          webHooks = info.discordPaths.map((discordPath) => this.escalationPathWebhookUrls[discordPath]);
+        }
+
+        // Else, There are no discord specific settings. In this case, we treat this like a normal log. Either the
+        // transport is configured to send on undefined escalation paths (will use default path if path does
+        // not exist) or the transport has a defined escalation path for the given message's notification path.
+        else if (
+          this.postOnNonEscalationPaths ||
+          (info.notificationPath && this.escalationPathWebhookUrls[info.notificationPath])
+        ) {
+          // The webhook is preferentially set to the defined escalation path, or the default webhook.
+          webHooks =
+            info.notificationPath && this.escalationPathWebhookUrls[info.notificationPath]
+              ? [this.escalationPathWebhookUrls[info.notificationPath]]
+              : [this.defaultWebHookUrl];
+        }
+
+        // Send webhook request to each of the configured webhooks upstream. This posts the messages on Discord. Add
+        // them to log queue to avoid hitting the discord rate limit.
+        if (webHooks.length > 0) for (const webHook of webHooks) this.logQueue.push({ webHook, body });
+
+        await this.executeLogQueue(); // Start processing the log que.
+        this.enqueuedLogCounter--; // Decrement counter for the isFlushed getter when done.
+      } catch (error) {
+        this.enqueuedLogCounter--; // Decrement the counter for the isFlushed getter when catching an error.
+        return callback(new TransportError("Discord", error, info));
       }
-
-      // Else, There are no discord specific settings. In this case, we treat this like a normal log. Either the
-      // transport is configured to send on undefined escalation paths (will use default path if path does
-      // not exist) or the transport has a defined escalation path for the given message's notification path.
-      else if (this.postOnNonEscalationPaths || this.escalationPathWebhookUrls[info.notificationPath]) {
-        // The webhook is preferentially set to the defined escalation path, or the default webhook.
-        const webHook = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
-
-        // If the webHook is an object it can contain multiple hooks within it. Else, it must be a single hook.
-        if (Array.isArray(webHook)) webHooks = webHook;
-        else webHooks = [webHook];
-      }
-
-      // Send webhook request to each of the configured webhooks upstream. This posts the messages on Discord. Execute
-      // these sequentially with a soft delay of 2 seconds between calls to avoid hitting the discord rate limit.
-      if (webHooks.length) for (const webHook of webHooks) this.logQueue.push({ webHook, body });
-
-      await this.executeLogQueue(); // Start processing the log que.
-    } catch (error) {
-      console.error("Discord error", error);
     }
 
     callback();
@@ -88,17 +128,14 @@ export class DiscordTransport extends Transport {
   // Processes a queue of logs produced by the transport. Executes sequentially and listens to the response from the
   // Discord API to back off and sleep if we are exceeding their rate limiting. Sets the parent transports isFlushed
   // variable to block the bot from closing until the whole queue has been flushed.
-  async executeLogQueue(backOffDuration = 0): Promise<void> {
+  private async executeLogQueue(backOffDuration = 0): Promise<void> {
     if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
     this.isQueueBeingExecuted = true; // Set the queue to being executed.
-    // Set the parent isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
-    // is separate variable from the isQueueBeingExecuted flag as this isFlushed is global for the logger instance.
-    (this as any).parent.isFlushed = false;
 
     // If the previous iteration set a backOffDuration then wait for this duration.
     if (backOffDuration != 0) await delay(backOffDuration);
 
-    while (this.logQueue.length) {
+    while (this.logQueue.length > 0) {
       try {
         // Pop off the first element (oldest) and try send it to discord. If this errors then we are being rate limited.
         await axios.post(this.logQueue[0].webHook, this.logQueue[0].body);
@@ -117,10 +154,8 @@ export class DiscordTransport extends Transport {
       }
     }
 
-    // Only if we get to the end of the function (no errors) then we can set isQueueBeingExecuted to false and can
-    // set the parent isFlushed to true, enabling the bot to close out.
+    // Unlock the queue execution.
     this.isQueueBeingExecuted = false;
-    (this as any).parent.isFlushed = true;
   }
 
   // Discord URLS are formatted differently to markdown links produced upstream in the bots. For example, slack links

@@ -5,17 +5,20 @@ import { getContractInstanceWithProvider } from "../utils/contracts";
 import type { Provider } from "@ethersproject/abstract-provider";
 import request from "graphql-request";
 
-import { Event, ethers } from "ethers";
+import { BigNumber, Event, ethers } from "ethers";
 
 import { Multicall3Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import Web3 from "web3";
+import { formatBytes32String } from "ethers/lib/utils";
 
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 
 const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
+
+export const YES_OR_NO_QUERY = formatBytes32String("YES_OR_NO_QUERY");
 
 export interface BotModes {
   transactionsProposedEnabled: boolean;
@@ -26,6 +29,12 @@ export interface TradeInformation {
   type: "buy" | "sell";
   amount: number;
   timestamp: number;
+}
+
+export interface MarketKeyStoreData {
+  txHash: string;
+  question: string;
+  proposedPrice: string;
 }
 
 export interface MonitoringParams {
@@ -54,15 +63,30 @@ interface PolymarketMarket {
   umaResolutionStatus: string;
 }
 
-interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
+interface PolymarketMarketGraphql {
+  resolvedBy: string;
+  questionID: string;
+  createdAt: string;
+  question: string;
+  outcomes: string;
+  outcomePrices: string;
+  liquidityNum: number;
+  volumeNum: number;
+  clobTokenIds: string;
+  endDate: string;
+  umaResolutionStatus: string;
+}
+
+export interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
   ancillaryData: string;
+  requestTimestamp: string;
 }
 
 export interface PolymarketWithEventData extends PolymarketMarketWithAncillaryData {
   txHash: string;
   requester: string;
   proposer: string;
-  timestamp: number;
+  timestamp: string;
   expirationTimestamp: number;
   eventTimestamp: number;
   eventBlockNumber: number;
@@ -97,6 +121,7 @@ export interface StoredNotifiedProposal {
   question: string;
   proposedPrice: string;
   notificationTimestamp: number;
+  requestTimestamp: string;
 }
 
 export const formatPriceEvents = async (
@@ -106,7 +131,7 @@ export const formatPriceEvents = async (
     txHash: string;
     requester: string;
     proposer: string;
-    timestamp: number;
+    timestamp: string;
     eventTimestamp: number;
     eventBlockNumber: number;
     expirationTimestamp: number;
@@ -115,6 +140,7 @@ export const formatPriceEvents = async (
     ancillaryData: string;
     proposedPrice: string;
     eventIndex: number;
+    oracleAddress: string;
   }[]
 > => {
   const ooDefaultLiveness = 7200;
@@ -125,7 +151,7 @@ export const formatPriceEvents = async (
         txHash: event.transactionHash,
         requester: event.args.requester,
         proposer: event.args.proposer,
-        timestamp: event.args.timestamp.toNumber(),
+        timestamp: event.args.timestamp.toString(),
         eventTimestamp: block.timestamp,
         eventBlockNumber: event.blockNumber,
         expirationTimestamp: event.args.expirationTimestamp.toNumber(),
@@ -134,55 +160,78 @@ export const formatPriceEvents = async (
         ancillaryData: event.args.ancillaryData,
         proposedPrice: ethers.utils.formatEther(event.args.proposedPrice),
         eventIndex: event.logIndex,
+        oracleAddress: event.address,
       };
     })
   );
 };
 
 export const getPolymarketMarkets = async (params: MonitoringParams): Promise<PolymarketMarket[]> => {
+  const markets = [];
+  const pagination = 100;
+  let offset = 0;
+
   const whereClause =
     "uma_resolution_status!='settled'" +
     " AND uma_resolution_status!='resolved'" +
     " AND question_ID IS NOT NULL" +
     " AND clob_Token_Ids IS NOT NULL";
 
-  const query = `
-    {
-      markets(where: "${whereClause}") {
-        resolvedBy
-        questionID
-        createdAt
-        question
-        outcomes
-        outcomePrices
-        liquidityNum
-        volumeNum
-        clobTokenIds
-        endDate
-        umaResolutionStatus
+  let moreMarketsAvailable = true;
+  while (moreMarketsAvailable) {
+    const query = `
+      {
+        markets(where: "${whereClause}", limit: ${pagination}, offset: ${offset}) {
+          resolvedBy
+          questionID
+          createdAt
+          question
+          outcomes
+          outcomePrices
+          liquidityNum
+          volumeNum
+          clobTokenIds
+          endDate
+          umaResolutionStatus
+        }
       }
+    `;
+
+    const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as {
+      markets: PolymarketMarketGraphql[];
+    };
+
+    // Remove markets with 1 week old endDate or more. So we only monitor markets that ended in the last week
+    // (or are still ongoing).
+    const now = Math.floor(Date.now() / 1000);
+    const oneWeek = 60 * 60 * 24 * 7;
+
+    const filtered = polymarketContracts.filter((contract) => {
+      const parsedDateTime = new Date(contract.endDate).getTime();
+      if (isNaN(parsedDateTime)) return true; // If endDate is not a valid date we keep the market.
+      const endDate = parsedDateTime / 1000;
+      return endDate > now - oneWeek;
+    });
+
+    // Add retrieved markets to the results array
+    markets.push(
+      ...filtered.map((contract) => ({
+        ...contract,
+        outcomes: JSON.parse(contract.outcomes),
+        outcomePrices: JSON.parse(contract.outcomePrices),
+        clobTokenIds: JSON.parse(contract.clobTokenIds),
+      }))
+    );
+
+    // Check if more markets are available
+    if (polymarketContracts.length < pagination) {
+      moreMarketsAvailable = false;
+    } else {
+      offset += pagination;
     }
-  `;
+  }
 
-  const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as any;
-
-  // Remove markets with 1 week old endDate or more. So we only monitor markets that ended in the last week
-  // (or are still ongoing).
-  const now = Math.floor(Date.now() / 1000);
-  const oneWeek = 60 * 60 * 24 * 7;
-  const filtered = polymarketContracts.filter((contract: { [k: string]: any }) => {
-    const parsedDateTime = new Date(contract.endDate).getTime();
-    if (isNaN(parsedDateTime)) return true; // If endDate is not a valid date we keep the market.
-    const endDate = parsedDateTime / 1000;
-    return endDate > now - oneWeek;
-  });
-
-  return filtered.map((contract: { [k: string]: any }) => ({
-    ...contract,
-    outcomes: JSON.parse(contract.outcomes),
-    outcomePrices: JSON.parse(contract.outcomePrices),
-    clobTokenIds: JSON.parse(contract.clobTokenIds),
-  }));
+  return markets;
 };
 
 const getTradeInfoFromOrderFilledEvent = async (provider: Provider, event: any): Promise<TradeInformation> => {
@@ -297,32 +346,46 @@ export const getMarketsAncillary = async (
     chunks.push(calls.slice(i, i + chunkSize));
   }
 
-  const ancillaryMap = new Map<string, string>();
+  const ancillaryMap = new Map<
+    string,
+    {
+      ancillaryData: string;
+      requestTimestamp: string;
+    }
+  >();
 
   const chunkPromises = chunks.map(async (chunk, i) => {
     try {
       const chunkResults = (await aggregateTransactionsAndCall(multicall.address, web3, chunk)) as {
         ancillaryData: string;
+        requestTimestamp: BigNumber;
       }[];
       // Update the ancillaryMap and results with the chunkResults
       chunkResults.forEach((result, index) => {
         const market = markets[i * chunkSize + index];
-        ancillaryMap.set(market.questionID, result.ancillaryData);
+        ancillaryMap.set(market.questionID, {
+          ancillaryData: result.ancillaryData,
+          requestTimestamp: result.requestTimestamp.toString(),
+        });
       });
     } catch (error) {
       for (let j = 0; j < chunk.length; j++) {
         const call = chunk[j];
         const market = markets[i * chunkSize + j];
-        let ancillaryData;
+        let ancillaryData, requestTimestamp;
         try {
           const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
           const result = await adapter.callStatic.questions(market.questionID);
           ancillaryData = result.ancillaryData;
+          requestTimestamp = result.requestTimestamp.toString();
         } catch {
           ancillaryData = failed;
           console.error("Failed to get ancillary data for market ", JSON.stringify(call), JSON.stringify(market));
         }
-        ancillaryMap.set(market.questionID, ancillaryData);
+        ancillaryMap.set(market.questionID, {
+          ancillaryData,
+          requestTimestamp,
+        });
       }
     }
   });
@@ -334,7 +397,9 @@ export const getMarketsAncillary = async (
     return {
       ...market,
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      ancillaryData: ancillaryMap.get(market.questionID)!,
+      ancillaryData: ancillaryMap.get(market.questionID)!.ancillaryData,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      requestTimestamp: ancillaryMap.get(market.questionID)!.requestTimestamp,
     };
   });
 };
@@ -426,12 +491,19 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   };
 };
 
-export const getMarketKeyToStore = (market: { txHash: string; question: string; proposedPrice: string }): string => {
-  return market.txHash + "_" + market.question + "_" + market.proposedPrice;
+export const getUnknownProposalKeyData = (question: string): MarketKeyStoreData & { requestTimestamp: string } => ({
+  txHash: "unknown",
+  question: question,
+  proposedPrice: "unknown",
+  requestTimestamp: "unknown",
+});
+
+export const getMarketKeyToStore = (market: MarketKeyStoreData & { requestTimestamp?: string }): string => {
+  return market.txHash + "_" + market.question + "_" + market.proposedPrice + "_" + (market.requestTimestamp || "");
 };
 
 export const storeNotifiedProposals = async (
-  notifiedContracts: { txHash: string; question: string; proposedPrice: string }[]
+  notifiedContracts: { txHash: string; question: string; proposedPrice: string; requestTimestamp: string }[]
 ): Promise<void> => {
   const currentTime = new Date().getTime();
   const promises = notifiedContracts.map((contract) => {
@@ -441,7 +513,8 @@ export const storeNotifiedProposals = async (
       question: contract.question,
       proposedPrice: contract.proposedPrice,
       notificationTimestamp: currentTime,
-    };
+      requestTimestamp: contract.requestTimestamp,
+    } as StoredNotifiedProposal;
     datastore.save({ key: key, data: data });
   });
   await Promise.all(promises);
@@ -459,7 +532,8 @@ export const getNotifiedProposals = async (): Promise<{
         question: contract.question,
         proposedPrice: contract.proposedPrice,
         notificationTimestamp: contract.notificationTimestamp,
-      },
+        requestTimestamp: contract.requestTimestamp,
+      } as StoredNotifiedProposal,
     };
   }, {});
 };

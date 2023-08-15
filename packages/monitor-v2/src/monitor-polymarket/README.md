@@ -4,7 +4,7 @@ This app continuously monitors UMA Optimistic Oracle contract proposals and send
 
 The Polymarket notifier looks for ProposePrice events related to the Polymarket contracts and uses the Polymarket API to fetch all active contract market prices. It compares proposed prices against the Polymarket API and notifies the user through a logging mechanism that can forward an alert to Slack or any other configured transport mechanism. Notified proposals are stored on Google Datastore, so on repeated runs the application does not notify the same proposal.
 
-The main entry point to Optimistic Governor monitor bots is running:
+The main entry point to Polymarket notifier bot is running:
 
 ```
 node ./packages/monitor-v2/dist/monitor-polymarket/index.js
@@ -23,3 +23,4 @@ All the configuration should be provided with following environment variables:
   in serverless mode will exit after the loop.
 - `THRESHOLD_ASKS` Price threshold for winner outcome asks in the orderbook that triggers a notification (defaults to `1`).
 - `THRESHOLD_BIDS` Price threshold for loser outcome bids in the orderbook that triggers a notification (defaults to `0`).
+- `THRESHOLD_VOLUME` Volume threshold for the market that triggers a notification (defaults to `500000`).

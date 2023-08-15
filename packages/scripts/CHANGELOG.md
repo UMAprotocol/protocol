@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.27.0...@uma/scripts@1.28.0) (2023-07-17)
+
+### Bug Fixes
+
+- fix unstake health check by avoiding Promise.all ([#4550](https://github.com/UMAprotocol/protocol/issues/4550)) ([a3e1668](https://github.com/UMAprotocol/protocol/commit/a3e16680278dcb6875b8763a8edc94d890f9f229))
+- remove account with uma ([#4548](https://github.com/UMAprotocol/protocol/issues/4548)) ([fadc1e7](https://github.com/UMAprotocol/protocol/commit/fadc1e70f27c467690364e0e5255091bafdc9a13))
+- update trackers health checks ([#4565](https://github.com/UMAprotocol/protocol/issues/4565)) ([e5d16e4](https://github.com/UMAprotocol/protocol/commit/e5d16e4ca5f3476dd15996d0a0ffbecd28392be4))
+- **monitor-v2:** pm tests ([#4543](https://github.com/UMAprotocol/protocol/issues/4543)) ([13628d4](https://github.com/UMAprotocol/protocol/commit/13628d49e87b2553e018b87be5f9dbc853e2ac18))
+
+### Features
+
+- add automated DV deployment script that produces a Safe json ([#4552](https://github.com/UMAprotocol/protocol/issues/4552)) ([879b82c](https://github.com/UMAprotocol/protocol/commit/879b82cb6d3363a630f39bcb3dc4c6681b8bd303))
+- add dvm2.0 add identifer script ([#4559](https://github.com/UMAprotocol/protocol/issues/4559)) ([7f1eaf2](https://github.com/UMAprotocol/protocol/commit/7f1eaf234ce2e54000eae48171c0b2e98c69d07b))
+- add dvm2.0 set final fee proposal scripts ([#4575](https://github.com/UMAprotocol/protocol/issues/4575)) ([684a162](https://github.com/UMAprotocol/protocol/commit/684a162d490ce132043abbbaf909d96b37291ce1))
+- add sherlock identifier update proposal script ([#4547](https://github.com/UMAprotocol/protocol/issues/4547)) ([3369652](https://github.com/UMAprotocol/protocol/commit/33696527048b600d3f322e566d207124228e5fb9))
+- improve dvm2.0 monitor scripts duration ([#4540](https://github.com/UMAprotocol/protocol/issues/4540)) ([eefb03b](https://github.com/UMAprotocol/protocol/commit/eefb03b772c94f2ead49a0ab701b761684abd229))
+
 # [1.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.26.0...@uma/scripts@1.27.0) (2023-04-18)
 
 ### Bug Fixes
