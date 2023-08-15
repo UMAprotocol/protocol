@@ -1,6 +1,6 @@
 import { ExpandedERC20Ethers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { assert } from "chai";
-import { OptimisticOracleClientV2 } from "../src/llm-bot/OptimisticOracleV2Client";
+import { OptimisticOracleClientV2 } from "../src/llm-bot/OptimisticOracleV2";
 import { defaultOptimisticOracleV2Identifier } from "./constants";
 import { optimisticOracleV2Fixture } from "./fixtures/OptimisticOracleV2.Fixture";
 import { Signer, hre, toUtf8Bytes } from "./utils";
