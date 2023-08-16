@@ -341,7 +341,6 @@ export interface OptimisticOracleClientFilter<I extends OptimisticOracleRequest,
 
 /**
  * Abstract class representing a strategy for processing Optimistic Oracle requests.
- * Implementations should take an array of input OptimisticOracleRequests and generate results based on the defined strategy.
  * @template I The type of the input OptimisticOracleRequest.
  * @template R The type of the result, based on OptimisticOracleRequestDisputable.
  */
