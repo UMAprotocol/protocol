@@ -173,6 +173,53 @@ export class OptimisticOracleRequest {
   }
 }
 
+/**
+ * Interface representing the additional data fields for a disputable oracle request.
+ */
+interface DisputableData {
+  correctAnswer: boolean;
+  rawLLMInput: string;
+  rawLLMOutput: string;
+  shouldDispute: boolean;
+}
+
+/**
+ * Interface extending the base oracle request data to include disputable data.
+ */
+export interface OptimisticOracleRequestDisputableData extends OptimisticOracleRequestData {
+  readonly disputableData: DisputableData;
+}
+
+/**
+ * Class representing an oracle request that can potentially be disputed.
+ * It extends the base OptimisticOracleRequest class and includes additional disputable data.
+ */
+export class OptimisticOracleRequestDisputable extends OptimisticOracleRequest {
+  constructor(readonly data: OptimisticOracleRequestDisputableData) {
+    super(data);
+  }
+
+  get correctAnswer(): boolean {
+    return this.data.disputableData.correctAnswer;
+  }
+
+  get rawLLMInput(): string {
+    return this.data.disputableData.rawLLMInput;
+  }
+
+  get rawLLMOutput(): string {
+    return this.data.disputableData.rawLLMOutput;
+  }
+
+  get shouldDispute(): boolean {
+    return this.data.disputableData.shouldDispute;
+  }
+
+  get isDisputable(): boolean {
+    return this.disputableUntil !== undefined && this.disputableUntil > Date.now() / 1000;
+  }
+}
+
 const EMPTY_BLOCK_RANGE: BlockRange = [0, 0];
 
 /**
@@ -231,7 +278,6 @@ export abstract class OptimisticOracleClient<R extends OptimisticOracleRequest> 
   /**
    * Updates the OptimisticOracleClient instance by fetching new Oracle requests within the specified block range. Returns a new instance.
    * @param blockRange (Optional) The block range to fetch new requests from.
-   * @param existingRequests (Optional) The list of existing requests to merge with the new requests.
    * @returns A Promise that resolves to a new OptimisticOracleClient instance with updated requests.
    */
   async updateWithBlockRange(blockRange?: BlockRange): Promise<OptimisticOracleClient<R>> {
@@ -297,32 +343,13 @@ export interface OptimisticOracleClientFilter<I extends OptimisticOracleRequest,
  * Abstract class representing a strategy for processing Optimistic Oracle requests.
  * Implementations should take an array of input OptimisticOracleRequests and generate results based on the defined strategy.
  * @template I The type of the input OptimisticOracleRequest.
- * @template R The type of the result, which could be a different kind of OptimisticOracleRequest or some other type.
+ * @template R The type of the result, based on OptimisticOracleRequestDisputable.
  */
-export abstract class LLMStrategy<I extends OptimisticOracleRequest, R extends OptimisticOracleRequest> {
-  protected optimisticOracleRequests: I[];
-  protected results: R[] = [];
-
-  /**
-   * Creates a new LLMStrategy.
-   * @param optimisticOracleRequests The Optimistic Oracle requests to be processed.
-   */
-  constructor(optimisticOracleRequests: I[]) {
-    this.optimisticOracleRequests = optimisticOracleRequests;
-  }
-
+export interface LLMDisputerStrategy<I extends OptimisticOracleRequest, R extends OptimisticOracleRequestDisputable> {
   /**
    * Processes Optimistic Oracle requests using the strategy implementation.
-   * This method should be overridden by implementations of LLMStrategy.
-   * @returns A Promise that resolves once the processing is complete.
+   * @param request The Optimistic Oracle request to be processed.
+   * @returns A Promise that resolves to the result of the processing.
    */
-  abstract process(): Promise<void>;
-
-  /**
-   * Returns the results of the processing.
-   * @returns An array of Optimistic Oracle requests representing the results.
-   */
-  getResults(): R[] {
-    return this.results;
-  }
+  process(request: I): Promise<R>;
 }
