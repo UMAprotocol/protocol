@@ -75,6 +75,13 @@ describe("OptimisticOracleEventClient.js", function () {
       .send({ from: accounts[0] });
   };
 
+  // Helper function to get the log index of a given event name in a transaction.
+  const getLogIndex = (txn, eventName, abi) => {
+    const signature = abi.find((i) => i.type === "event" && i.name === eventName).signature;
+    const eventKey = Object.keys(txn.events).find((key) => txn.events[key].raw.topics[0] === signature);
+    return txn.events[eventKey].logIndex;
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, requester, skinnyRequester, proposer, disputer] = accounts;
@@ -102,6 +109,15 @@ describe("OptimisticOracleEventClient.js", function () {
 
   let requestTxn1, requestTxn2, proposalTxn1, proposalTxn2, disputeTxn1, disputeTxn2, settlementTxn1, settlementTxn2;
 
+  let requestLogIndex1,
+    requestLogIndex2,
+    proposalLogIndex1,
+    proposalLogIndex2,
+    disputeLogIndex1,
+    disputeLogIndex2,
+    settlementLogIndex1,
+    settlementLogIndex2;
+
   let requestV2Txn1,
     requestV2Txn2,
     proposalV2Txn1,
@@ -111,6 +127,15 @@ describe("OptimisticOracleEventClient.js", function () {
     settlementV2Txn1,
     settlementV2Txn2;
 
+  let requestV2LogIndex1,
+    requestV2LogIndex2,
+    proposalV2LogIndex1,
+    proposalV2LogIndex2,
+    disputeV2LogIndex1,
+    disputeV2LogIndex2,
+    settlementV2LogIndex1,
+    settlementV2LogIndex2;
+
   let skinnyRequestTxn1,
     skinnyRequestTxn2,
     skinnyProposalTxn1,
@@ -119,6 +144,16 @@ describe("OptimisticOracleEventClient.js", function () {
     skinnyDisputeTxn2,
     skinnySettlementTxn1,
     skinnySettlementTxn2;
+
+  let skinnyRequestLogIndex1,
+    skinnyRequestLogIndex2,
+    skinnyProposalLogIndex1,
+    skinnyProposalLogIndex2,
+    skinnyDisputeLogIndex1,
+    skinnyDisputeLogIndex2,
+    skinnySettlementLogIndex1,
+    skinnySettlementLogIndex2;
+
   let requestEvents, proposeEvents, disputeEvents, settleEvents;
   beforeEach(async function () {
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: accounts[0] });
@@ -193,23 +228,29 @@ describe("OptimisticOracleEventClient.js", function () {
     requestTxn1 = await optimisticOracle.methods
       .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, 0)
       .send({ from: requester });
+    requestLogIndex1 = getLogIndex(requestTxn1, "RequestPrice", OptimisticOracle.abi);
     requestTxn2 = await optimisticOracle.methods
       .requestPrice(identifier, requestTime + 1, defaultAncillaryData, collateral.options.address, 0)
       .send({ from: requester });
+    requestLogIndex2 = getLogIndex(requestTxn2, "RequestPrice", OptimisticOracle.abi);
 
     requestV2Txn1 = await optimisticOracleV2.methods
       .requestPrice(identifier, requestTime + 2, defaultAncillaryData, collateral.options.address, 0)
       .send({ from: requester });
+    requestV2LogIndex1 = getLogIndex(requestV2Txn1, "RequestPrice", OptimisticOracleV2.abi);
     requestV2Txn2 = await optimisticOracleV2.methods
       .requestPrice(identifier, requestTime + 3, defaultAncillaryData, collateral.options.address, 0)
       .send({ from: requester });
+    requestV2LogIndex2 = getLogIndex(requestV2Txn2, "RequestPrice", OptimisticOracleV2.abi);
 
     skinnyRequestTxn1 = await skinnyOptimisticOracle.methods
       .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, 0, finalFee, 0)
       .send({ from: skinnyRequester });
+    skinnyRequestLogIndex1 = getLogIndex(skinnyRequestTxn1, "RequestPrice", SkinnyOptimisticOracle.abi);
     skinnyRequestTxn2 = await skinnyOptimisticOracle.methods
       .requestPrice(identifier, requestTime + 1, defaultAncillaryData, collateral.options.address, 0, finalFee, 0)
       .send({ from: skinnyRequester });
+    skinnyRequestLogIndex2 = getLogIndex(skinnyRequestTxn2, "RequestPrice", SkinnyOptimisticOracle.abi);
 
     // Make proposals
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: proposer });
@@ -221,16 +262,20 @@ describe("OptimisticOracleEventClient.js", function () {
     proposalTxn1 = await optimisticOracle.methods
       .proposePrice(requester, identifier, requestTime, defaultAncillaryData, correctPrice)
       .send({ from: proposer });
+    proposalLogIndex1 = getLogIndex(proposalTxn1, "ProposePrice", OptimisticOracle.abi);
     proposalTxn2 = await optimisticOracle.methods
       .proposePrice(requester, identifier, requestTime + 1, defaultAncillaryData, correctPrice)
       .send({ from: proposer });
+    proposalLogIndex2 = getLogIndex(proposalTxn2, "ProposePrice", OptimisticOracle.abi);
 
     proposalV2Txn1 = await optimisticOracleV2.methods
       .proposePrice(requester, identifier, requestTime + 2, defaultAncillaryData, correctPrice)
       .send({ from: proposer });
+    proposalV2LogIndex1 = getLogIndex(proposalV2Txn1, "ProposePrice", OptimisticOracleV2.abi);
     proposalV2Txn2 = await optimisticOracleV2.methods
       .proposePrice(requester, identifier, requestTime + 3, defaultAncillaryData, correctPrice)
       .send({ from: proposer });
+    proposalV2LogIndex2 = getLogIndex(proposalV2Txn2, "ProposePrice", OptimisticOracleV2.abi);
 
     skinnyProposalTxn1 = await skinnyOptimisticOracle.methods
       .proposePrice(
@@ -242,6 +287,7 @@ describe("OptimisticOracleEventClient.js", function () {
         correctPrice
       )
       .send({ from: proposer });
+    skinnyProposalLogIndex1 = getLogIndex(skinnyProposalTxn1, "ProposePrice", SkinnyOptimisticOracle.abi);
     skinnyProposalTxn2 = await skinnyOptimisticOracle.methods
       .proposePrice(
         skinnyRequester,
@@ -252,6 +298,7 @@ describe("OptimisticOracleEventClient.js", function () {
         correctPrice
       )
       .send({ from: proposer });
+    skinnyProposalLogIndex2 = getLogIndex(skinnyProposalTxn2, "ProposePrice", SkinnyOptimisticOracle.abi);
 
     // Make disputes and resolve them
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });
@@ -261,19 +308,23 @@ describe("OptimisticOracleEventClient.js", function () {
     disputeTxn1 = await optimisticOracle.methods
       .disputePrice(requester, identifier, requestTime, defaultAncillaryData)
       .send({ from: disputer });
+    disputeLogIndex1 = getLogIndex(disputeTxn1, "DisputePrice", OptimisticOracle.abi);
     await pushPrice(correctPrice);
     disputeTxn2 = await optimisticOracle.methods
       .disputePrice(requester, identifier, requestTime + 1, defaultAncillaryData)
       .send({ from: disputer });
+    disputeLogIndex2 = getLogIndex(disputeTxn2, "DisputePrice", OptimisticOracle.abi);
     await pushPrice(correctPrice);
 
     disputeV2Txn1 = await optimisticOracleV2.methods
       .disputePrice(requester, identifier, requestTime + 2, defaultAncillaryData)
       .send({ from: disputer });
+    disputeV2LogIndex1 = getLogIndex(disputeV2Txn1, "DisputePrice", OptimisticOracleV2.abi);
     await pushPrice(correctPrice);
     disputeV2Txn2 = await optimisticOracleV2.methods
       .disputePrice(requester, identifier, requestTime + 3, defaultAncillaryData)
       .send({ from: disputer });
+    disputeV2LogIndex2 = getLogIndex(disputeV2Txn2, "DisputePrice", OptimisticOracleV2.abi);
     await pushPrice(correctPrice);
 
     skinnyDisputeTxn1 = await skinnyOptimisticOracle.methods
@@ -285,6 +336,7 @@ describe("OptimisticOracleEventClient.js", function () {
         proposeEvents[0].returnValues.request
       )
       .send({ from: disputer });
+    skinnyDisputeLogIndex1 = getLogIndex(skinnyDisputeTxn1, "DisputePrice", SkinnyOptimisticOracle.abi);
     await pushPrice(correctPrice);
     skinnyDisputeTxn2 = await skinnyOptimisticOracle.methods
       .disputePrice(
@@ -295,6 +347,7 @@ describe("OptimisticOracleEventClient.js", function () {
         proposeEvents[1].returnValues.request
       )
       .send({ from: disputer });
+    skinnyDisputeLogIndex2 = getLogIndex(skinnyDisputeTxn2, "DisputePrice", SkinnyOptimisticOracle.abi);
     await pushPrice(correctPrice);
 
     // Settle expired proposals and resolved disputes
@@ -302,23 +355,29 @@ describe("OptimisticOracleEventClient.js", function () {
     settlementTxn1 = await optimisticOracle.methods
       .settle(requester, identifier, requestTime, defaultAncillaryData)
       .send({ from: accounts[0] });
+    settlementLogIndex1 = getLogIndex(settlementTxn1, "Settle", OptimisticOracle.abi);
     settlementTxn2 = await optimisticOracle.methods
       .settle(requester, identifier, requestTime + 1, defaultAncillaryData)
       .send({ from: accounts[0] });
+    settlementLogIndex2 = getLogIndex(settlementTxn2, "Settle", OptimisticOracle.abi);
 
     settlementV2Txn1 = await optimisticOracleV2.methods
       .settle(requester, identifier, requestTime + 2, defaultAncillaryData)
       .send({ from: accounts[0] });
+    settlementV2LogIndex1 = getLogIndex(settlementV2Txn1, "Settle", OptimisticOracleV2.abi);
     settlementV2Txn2 = await optimisticOracleV2.methods
       .settle(requester, identifier, requestTime + 3, defaultAncillaryData)
       .send({ from: accounts[0] });
+    settlementV2LogIndex2 = getLogIndex(settlementV2Txn2, "Settle", OptimisticOracleV2.abi);
 
     skinnySettlementTxn1 = await skinnyOptimisticOracle.methods
       .settle(skinnyRequester, identifier, requestTime, defaultAncillaryData, disputeEvents[0].returnValues.request)
       .send({ from: accounts[0] });
+    skinnySettlementLogIndex1 = getLogIndex(skinnySettlementTxn1, "Settle", SkinnyOptimisticOracle.abi);
     skinnySettlementTxn2 = await skinnyOptimisticOracle.methods
       .settle(skinnyRequester, identifier, requestTime + 1, defaultAncillaryData, disputeEvents[1].returnValues.request)
       .send({ from: accounts[0] });
+    skinnySettlementLogIndex2 = getLogIndex(skinnySettlementTxn2, "Settle", SkinnyOptimisticOracle.abi);
 
     settleEvents = await skinnyOptimisticOracle.getPastEvents("Settle", { fromBlock: 0 });
   });
@@ -333,6 +392,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: requestTxn1.transactionHash,
         blockNumber: requestTxn1.blockNumber,
+        logIndex: requestLogIndex1,
         requester: requester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -344,6 +404,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: requestTxn2.transactionHash,
         blockNumber: requestTxn2.blockNumber,
+        logIndex: requestLogIndex2,
         requester: requester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -365,12 +426,14 @@ describe("OptimisticOracleEventClient.js", function () {
         0
       )
       .send({ from: requester });
+    const newLogIndex = getLogIndex(newTxn, "RequestPrice", OptimisticOracle.abi);
     await client.clearState();
     await client.update();
     objectsInArrayInclude(client.getAllRequestPriceEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: requester,
         identifier: hexToUtf8(identifier),
         // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
@@ -393,6 +456,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: requestV2Txn1.transactionHash,
         blockNumber: requestV2Txn1.blockNumber,
+        logIndex: requestV2LogIndex1,
         requester: requester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -404,6 +468,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: requestV2Txn2.transactionHash,
         blockNumber: requestV2Txn2.blockNumber,
+        logIndex: requestV2LogIndex2,
         requester: requester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -425,12 +490,14 @@ describe("OptimisticOracleEventClient.js", function () {
         0
       )
       .send({ from: requester });
+    const newLogIndex = getLogIndex(newTxn, "RequestPrice", OptimisticOracleV2.abi);
     await clientV2.clearState();
     await clientV2.update();
     objectsInArrayInclude(clientV2.getAllRequestPriceEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: requester,
         identifier: hexToUtf8(identifier),
         // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
@@ -452,6 +519,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: skinnyRequestTxn1.transactionHash,
         blockNumber: skinnyRequestTxn1.blockNumber,
+        logIndex: skinnyRequestLogIndex1,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -461,6 +529,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: skinnyRequestTxn2.transactionHash,
         blockNumber: skinnyRequestTxn2.blockNumber,
+        logIndex: skinnyRequestLogIndex2,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -482,6 +551,7 @@ describe("OptimisticOracleEventClient.js", function () {
         0
       )
       .send({ from: skinnyRequester });
+    const newLogIndex = getLogIndex(newTxn, "RequestPrice", SkinnyOptimisticOracle.abi);
     const newRequestEvent = (await skinnyOptimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 })).slice(-1)[0];
     await skinnyClient.clearState();
     await skinnyClient.update();
@@ -489,6 +559,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
@@ -508,6 +579,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: proposalTxn1.transactionHash,
         blockNumber: proposalTxn1.blockNumber,
+        logIndex: proposalLogIndex1,
         requester: requester,
         proposer,
         identifier: hexToUtf8(identifier),
@@ -520,6 +592,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: proposalTxn2.transactionHash,
         blockNumber: proposalTxn2.blockNumber,
+        logIndex: proposalLogIndex2,
         requester: requester,
         proposer,
         identifier: hexToUtf8(identifier),
@@ -547,12 +620,14 @@ describe("OptimisticOracleEventClient.js", function () {
         correctPrice
       )
       .send({ from: proposer });
+    const newLogIndex = getLogIndex(newTxn, "ProposePrice", OptimisticOracle.abi);
     await client.clearState();
     await client.update();
     objectsInArrayInclude(client.getAllProposePriceEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: requester,
         proposer,
         identifier: hexToUtf8(identifier),
@@ -573,6 +648,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: proposalV2Txn1.transactionHash,
         blockNumber: proposalV2Txn1.blockNumber,
+        logIndex: proposalV2LogIndex1,
         requester: requester,
         proposer,
         identifier: hexToUtf8(identifier),
@@ -585,6 +661,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: proposalV2Txn2.transactionHash,
         blockNumber: proposalV2Txn2.blockNumber,
+        logIndex: proposalV2LogIndex2,
         requester: requester,
         proposer,
         identifier: hexToUtf8(identifier),
@@ -612,12 +689,14 @@ describe("OptimisticOracleEventClient.js", function () {
         correctPrice
       )
       .send({ from: proposer });
+    const newLogIndex = getLogIndex(newTxn, "ProposePrice", OptimisticOracleV2.abi);
     await clientV2.clearState();
     await clientV2.update();
     objectsInArrayInclude(clientV2.getAllProposePriceEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: requester,
         proposer,
         identifier: hexToUtf8(identifier),
@@ -638,6 +717,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: skinnyProposalTxn1.transactionHash,
         blockNumber: skinnyProposalTxn1.blockNumber,
+        logIndex: skinnyProposalLogIndex1,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -647,6 +727,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: skinnyProposalTxn2.transactionHash,
         blockNumber: skinnyProposalTxn2.blockNumber,
+        logIndex: skinnyProposalLogIndex2,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -672,6 +753,7 @@ describe("OptimisticOracleEventClient.js", function () {
         correctPrice
       )
       .send({ from: proposer });
+    const newLogIndex = getLogIndex(newTxn, "ProposePrice", SkinnyOptimisticOracle.abi);
     await skinnyClient.clearState();
     await skinnyClient.update();
     const newProposeEvent = (await skinnyOptimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 })).slice(-1)[0];
@@ -679,6 +761,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: collateral.options.address.toLowerCase(),
@@ -696,6 +779,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: disputeTxn1.transactionHash,
         blockNumber: disputeTxn1.blockNumber,
+        logIndex: disputeLogIndex1,
         requester: requester,
         proposer,
         disputer,
@@ -708,6 +792,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: disputeTxn2.transactionHash,
         blockNumber: disputeTxn2.blockNumber,
+        logIndex: disputeLogIndex2,
         requester: requester,
         proposer,
         disputer,
@@ -729,12 +814,14 @@ describe("OptimisticOracleEventClient.js", function () {
     const newTxn = await optimisticOracle.methods
       .disputePrice(requester, identifier, requestTime, collateral.options.address.toLowerCase())
       .send({ from: disputer });
+    const newLogIndex = getLogIndex(newTxn, "DisputePrice", OptimisticOracle.abi);
     await client.clearState();
     await client.update();
     objectsInArrayInclude(client.getAllDisputePriceEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: requester,
         proposer,
         disputer,
@@ -757,6 +844,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: disputeV2Txn1.transactionHash,
         blockNumber: disputeV2Txn1.blockNumber,
+        logIndex: disputeV2LogIndex1,
         requester: requester,
         proposer,
         disputer,
@@ -769,6 +857,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: disputeV2Txn2.transactionHash,
         blockNumber: disputeV2Txn2.blockNumber,
+        logIndex: disputeV2LogIndex2,
         requester: requester,
         proposer,
         disputer,
@@ -790,12 +879,14 @@ describe("OptimisticOracleEventClient.js", function () {
     const newTxn = await optimisticOracleV2.methods
       .disputePrice(requester, identifier, requestTime, collateral.options.address.toLowerCase())
       .send({ from: disputer });
+    const newLogIndex = getLogIndex(newTxn, "DisputePrice", OptimisticOracleV2.abi);
     await clientV2.clearState();
     await clientV2.update();
     objectsInArrayInclude(clientV2.getAllDisputePriceEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: requester,
         proposer,
         disputer,
@@ -818,6 +909,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: skinnyDisputeTxn1.transactionHash,
         blockNumber: skinnyDisputeTxn1.blockNumber,
+        logIndex: skinnyDisputeLogIndex1,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -827,6 +919,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: skinnyDisputeTxn2.transactionHash,
         blockNumber: skinnyDisputeTxn2.blockNumber,
+        logIndex: skinnyDisputeLogIndex2,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -860,6 +953,7 @@ describe("OptimisticOracleEventClient.js", function () {
         newProposeEvent.returnValues.request
       )
       .send({ from: disputer });
+    const newLogIndex = getLogIndex(newTxn, "DisputePrice", SkinnyOptimisticOracle.abi);
     await skinnyClient.clearState();
     await skinnyClient.update();
     const newDisputeEvent = (await skinnyOptimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 })).slice(-1)[0];
@@ -867,6 +961,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
@@ -886,6 +981,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: settlementTxn1.transactionHash,
         blockNumber: settlementTxn1.blockNumber,
+        logIndex: settlementLogIndex1,
         requester: requester,
         proposer,
         disputer,
@@ -899,6 +995,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: settlementTxn2.transactionHash,
         blockNumber: settlementTxn2.blockNumber,
+        logIndex: settlementLogIndex2,
         requester: requester,
         proposer,
         disputer,
@@ -925,12 +1022,14 @@ describe("OptimisticOracleEventClient.js", function () {
     const newTxn = await optimisticOracle.methods
       .settle(requester, identifier, requestTime, collateral.options.address.toLowerCase())
       .send({ from: accounts[0] });
+    const newLogIndex = getLogIndex(newTxn, "Settle", OptimisticOracle.abi);
     await client.clearState();
     await client.update();
     objectsInArrayInclude(client.getAllSettlementEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: requester,
         proposer,
         disputer: ZERO_ADDRESS,
@@ -954,6 +1053,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: settlementV2Txn1.transactionHash,
         blockNumber: settlementV2Txn1.blockNumber,
+        logIndex: settlementV2LogIndex1,
         requester: requester,
         proposer,
         disputer,
@@ -967,6 +1067,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: settlementV2Txn2.transactionHash,
         blockNumber: settlementV2Txn2.blockNumber,
+        logIndex: settlementV2LogIndex2,
         requester: requester,
         proposer,
         disputer,
@@ -993,12 +1094,14 @@ describe("OptimisticOracleEventClient.js", function () {
     const newTxn = await optimisticOracleV2.methods
       .settle(requester, identifier, requestTime, collateral.options.address.toLowerCase())
       .send({ from: accounts[0] });
+    const newLogIndex = getLogIndex(newTxn, "Settle", OptimisticOracleV2.abi);
     await clientV2.clearState();
     await clientV2.update();
     objectsInArrayInclude(clientV2.getAllSettlementEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: requester,
         proposer,
         disputer: ZERO_ADDRESS,
@@ -1022,6 +1125,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: skinnySettlementTxn1.transactionHash,
         blockNumber: skinnySettlementTxn1.blockNumber,
+        logIndex: skinnySettlementLogIndex1,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -1031,6 +1135,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: skinnySettlementTxn2.transactionHash,
         blockNumber: skinnySettlementTxn2.blockNumber,
+        logIndex: skinnySettlementLogIndex2,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -1068,6 +1173,7 @@ describe("OptimisticOracleEventClient.js", function () {
         newProposeEvent.returnValues.request
       )
       .send({ from: accounts[0] });
+    const newLogIndex = getLogIndex(newTxn, "Settle", SkinnyOptimisticOracle.abi);
     await skinnyClient.clearState();
     await skinnyClient.update();
     const newSettleEvent = (await skinnyOptimisticOracle.getPastEvents("Settle", { fromBlock: 0 })).slice(-1)[0];
@@ -1075,6 +1181,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
+        logIndex: newLogIndex,
         requester: skinnyRequester,
         identifier: hexToUtf8(identifier),
         // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
@@ -1147,6 +1254,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: requestTxn1.transactionHash,
         blockNumber: requestTxn1.blockNumber,
+        logIndex: requestLogIndex1,
         requester: requester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -1158,6 +1266,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: requestTxn2.transactionHash,
         blockNumber: requestTxn2.blockNumber,
+        logIndex: requestLogIndex2,
         requester: requester,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
@@ -1171,6 +1280,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: proposalTxn1.transactionHash,
         blockNumber: proposalTxn1.blockNumber,
+        logIndex: proposalLogIndex1,
         requester: requester,
         proposer,
         identifier: hexToUtf8(identifier),
@@ -1183,6 +1293,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: proposalTxn2.transactionHash,
         blockNumber: proposalTxn2.blockNumber,
+        logIndex: proposalLogIndex2,
         requester: requester,
         proposer,
         identifier: hexToUtf8(identifier),
@@ -1197,6 +1308,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: disputeTxn1.transactionHash,
         blockNumber: disputeTxn1.blockNumber,
+        logIndex: disputeLogIndex1,
         requester: requester,
         proposer,
         disputer,
@@ -1209,6 +1321,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: disputeTxn2.transactionHash,
         blockNumber: disputeTxn2.blockNumber,
+        logIndex: disputeLogIndex2,
         requester: requester,
         proposer,
         disputer,
@@ -1223,6 +1336,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: settlementTxn1.transactionHash,
         blockNumber: settlementTxn1.blockNumber,
+        logIndex: settlementLogIndex1,
         requester: requester,
         proposer,
         disputer,
@@ -1236,6 +1350,7 @@ describe("OptimisticOracleEventClient.js", function () {
       {
         transactionHash: settlementTxn2.transactionHash,
         blockNumber: settlementTxn2.blockNumber,
+        logIndex: settlementLogIndex2,
         requester: requester,
         proposer,
         disputer,
