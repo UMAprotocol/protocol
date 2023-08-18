@@ -61,7 +61,18 @@ async function main() {
       .filter(([mode]) => params.botModes[mode as keyof BotModes])
       .map(([, cmd]) => cmd(logger, params));
 
-    await Promise.all(runCmds);
+    // Run all commands in parallel and wait for them to finish so that an error in any of modules does not interrupt
+    // the processing of other modules.
+    const results = await Promise.allSettled(runCmds);
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        logger.error({
+          at: "OptimisticGovernorMonitor",
+          message: "Optimistic Governor Monitor execution error🚨",
+          error: result.reason,
+        });
+      }
+    });
 
     // If polling delay is 0 then we are running in serverless mode and should exit after one iteration.
     if (params.pollingDelay === 0) {
