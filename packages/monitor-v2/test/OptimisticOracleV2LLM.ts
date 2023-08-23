@@ -1,9 +1,15 @@
-import { ExpandedERC20Ethers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
+import { ExpandedERC20Ethers, OptimisticOracleV2Ethers, TimerEthers } from "@uma/contracts-node";
 import { assert } from "chai";
-import { OptimisticOracleClientV2, OptimisticOracleClientV2FilterDisputeable } from "../src/llm-bot/OptimisticOracleV2";
+import {
+  Backtest,
+  DisputerStrategy,
+  OptimisticOracleClientV2,
+  OptimisticOracleClientV2FilterDisputeable,
+} from "../src/llm-bot/OptimisticOracleV2";
 import { defaultOptimisticOracleV2Identifier } from "./constants";
 import { optimisticOracleV2Fixture } from "./fixtures/OptimisticOracleV2.Fixture";
 import { Signer, hre, toUtf8Bytes } from "./utils";
+import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 
 const ethers = hre.ethers;
 
@@ -15,6 +21,7 @@ describe("OptimisticOracleV2Client", function () {
   let disputer: Signer;
   let oov2Client: OptimisticOracleClientV2;
   let oov2FilterDisputable: OptimisticOracleClientV2FilterDisputeable;
+  let timer: TimerEthers;
 
   const bond = ethers.utils.parseEther("1000");
 
@@ -26,7 +33,9 @@ describe("OptimisticOracleV2Client", function () {
     [requester, proposer, disputer] = (await ethers.getSigners()) as Signer[];
 
     // Get contract instances.
+    const umaContracts = await umaEcosystemFixture();
     const optimisticOracleV2Contracts = await optimisticOracleV2Fixture();
+    timer = umaContracts.timer;
     bondToken = optimisticOracleV2Contracts.bondToken;
     optimisticOracleV2 = optimisticOracleV2Contracts.optimisticOracleV2;
 
@@ -100,5 +109,51 @@ describe("OptimisticOracleV2Client", function () {
     const filteredRequests = await oov2FilterDisputable.filter(requests);
 
     assert(filteredRequests.length === 1);
+  });
+
+  it("Strategy works with backtest", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    await (await bondToken.connect(proposer).approve(optimisticOracleV2.address, bond)).wait();
+    const receipt = await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    // get the timestamp of the block of the proposePrice tx
+    const block = await optimisticOracleV2.provider.getBlock(receipt.blockNumber);
+    const timestamp = block.timestamp;
+
+    await (await timer.setCurrentTime(timestamp + (await optimisticOracleV2.defaultLiveness()).toNumber())).wait();
+
+    await (
+      await optimisticOracleV2.settle(
+        await requester.getAddress(),
+        defaultOptimisticOracleV2Identifier,
+        0,
+        ancillaryData
+      )
+    ).wait();
+
+    const oov2ClientUpdated = await oov2Client.updateWithBlockRange();
+    const requests = Array.from(oov2ClientUpdated.requests.values());
+    const filteredRequests = await oov2FilterDisputable.filter(requests);
+
+    const disputable = await Promise.all(filteredRequests.map(DisputerStrategy.process));
+
+    const correctness = disputable.map((request) => Backtest.test(request));
+
+    assert(filteredRequests.length === 1);
+
+    assert(correctness[0]);
   });
 });

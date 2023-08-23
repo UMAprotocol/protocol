@@ -177,7 +177,7 @@ export class OptimisticOracleRequest {
  * Interface representing the additional data fields for a disputable oracle request.
  */
 interface DisputableData {
-  correctAnswer: boolean;
+  correctAnswer: boolean | BigNumber;
   rawLLMInput: string;
   rawLLMOutput: string;
   shouldDispute: boolean;
@@ -199,7 +199,7 @@ export class OptimisticOracleRequestDisputable extends OptimisticOracleRequest {
     super(data);
   }
 
-  get correctAnswer(): boolean {
+  get correctAnswer(): boolean | BigNumber {
     return this.data.disputableData.correctAnswer;
   }
 

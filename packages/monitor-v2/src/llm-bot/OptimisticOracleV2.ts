@@ -1,8 +1,12 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { paginatedEventQuery } from "@uma/common";
-import { RequestPriceEvent, ProposePriceEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticOracleV2";
+import {
+  RequestPriceEvent,
+  ProposePriceEvent,
+  SettleEvent,
+} from "@uma/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { OptimisticOracleV2Ethers } from "@uma/contracts-node";
-import { Event, EventFilter, ethers } from "ethers";
+import { BigNumber, Event, EventFilter, ethers } from "ethers";
 import { blockDefaults } from "../utils/constants";
 import { getContractInstanceWithProvider, tryHexToUtf8String } from "../utils/contracts";
 import {
@@ -10,6 +14,7 @@ import {
   OptimisticOracleClient,
   OptimisticOracleClientFilter,
   OptimisticOracleRequest,
+  OptimisticOracleRequestDisputable,
   OptimisticOracleType,
   calculateRequestId,
 } from "./common";
@@ -99,6 +104,28 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     );
   }
 
+  async applySettleEvent(
+    settleEvent: SettleEvent,
+    requestsToUpdate: Map<string, OptimisticOracleRequest>
+  ): Promise<void> {
+    const body = tryHexToUtf8String(settleEvent.args.ancillaryData);
+    const identifier = ethers.utils.parseBytes32String(settleEvent.args.identifier);
+    const timestamp = settleEvent.args.timestamp.toNumber();
+    const requester = settleEvent.args.requester;
+    const requestId = calculateRequestId(body, identifier, timestamp, requester);
+
+    requestsToUpdate.set(
+      requestId,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      requestsToUpdate.get(requestId)!.update({
+        resolutionData: {
+          resolvedValue: settleEvent.args.price,
+          resolveTx: settleEvent.transactionHash,
+        },
+      })
+    );
+  }
+
   protected async updateOracleRequests(newRange: BlockRange): Promise<Map<string, OptimisticOracleRequest>> {
     const requestsCopy = new Map<string, OptimisticOracleRequest>(this.requests);
     const ooV2Contract = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
@@ -118,6 +145,12 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
       newRange[1]
     );
 
+    const settleEvents = await this.getEventsWithPagination<SettleEvent>(
+      ooV2Contract.filters.Settle(),
+      newRange[0],
+      newRange[1]
+    );
+
     await Promise.all(
       requestPriceEvents.map((requestPriceEvent) => {
         return this.applyRequestPriceEvent(requestPriceEvent, requestsCopy);
@@ -127,6 +160,12 @@ export class OptimisticOracleClientV2 extends OptimisticOracleClient<OptimisticO
     await Promise.all([
       ...proposePriceEvents.map(async (proposePriceEvent) => {
         return this.applyProposePriceEvent(proposePriceEvent, requestsCopy);
+      }),
+    ]);
+
+    await Promise.all([
+      ...settleEvents.map(async (settleEvent) => {
+        return this.applySettleEvent(settleEvent, requestsCopy);
       }),
     ]);
 
@@ -148,5 +187,34 @@ export class OptimisticOracleClientV2FilterDisputeable
     return optimisticOracleRequests.filter((request) => {
       return typeof request.disputableUntil == "number" && request.disputableUntil > Date.now() / 1000;
     });
+  }
+}
+
+export class DisputerStrategy {
+  static process(request: OptimisticOracleRequest): Promise<OptimisticOracleRequestDisputable> {
+    return Promise.resolve(
+      new OptimisticOracleRequestDisputable({
+        requestData: request.data.requestData,
+        proposalData: request.data.proposalData,
+        disputeData: request.data.disputeData,
+        resolutionData: request.data.resolutionData,
+        disputableData: {
+          correctAnswer: ethers.utils.parseEther("1"),
+          rawLLMInput: "",
+          rawLLMOutput: "",
+          shouldDispute: true,
+        },
+      })
+    );
+  }
+}
+
+export class Backtest {
+  static test(request: OptimisticOracleRequestDisputable): boolean {
+    if (typeof request.resolvedValue === "boolean") {
+      return request.resolvedValue === request.data.disputableData.correctAnswer;
+    }
+    // At this point, we assume request.resolvedValue is of type BigNumber
+    return (request.resolvedValue as BigNumber).eq(request.data.disputableData.correctAnswer as BigNumber);
   }
 }
