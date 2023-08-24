@@ -91,7 +91,7 @@ async function main() {
     .propose(
       adminProposalTransactions,
       hre.ethers.utils.toUtf8Bytes(
-        `UMIP-${umipNumber} ${process.env.ADDRESS} new whitelisted address in AddressWhitelist and final fee`
+        `UMIP-${umipNumber}: whitelist ${process.env.ADDRESS} in AddressWhitelist and set final fee to ${finalFee}`
       )
     );
 
