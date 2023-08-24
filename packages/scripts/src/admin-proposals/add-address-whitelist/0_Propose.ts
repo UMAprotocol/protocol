@@ -66,7 +66,7 @@ async function main() {
   const erc20 = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, newAddress);
   const decimals = await erc20.decimals();
 
-  // add new identifier to whitelist
+  // add new address to whitelist
   const addAddressTx = await addressWhitelist.populateTransaction.addToWhitelist(newAddress);
   if (!addAddressTx.data) throw "addAddressTx.data is null";
   adminProposalTransactions.push({ to: addressWhitelist.address, value: 0, data: addAddressTx.data });
