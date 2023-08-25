@@ -20,7 +20,7 @@ const { getAbi, getAddress } = require("@uma/contracts-node");
 // Note: Keys and valuesmust match the contract names listed in core/networks file so that this file can use them
 // as input into getAbi and getAddress.
 const OracleType = {
-  Voting: "VotingV2", // Used on mainnet when optimistic oracle directly submits price requests to VotingV2.
+  VotingV2: "VotingV2", // Used on mainnet when optimistic oracle directly submits price requests to VotingV2.
   OracleChildTunnel: "OracleChildTunnel", // Used in production when running proposer bot on Polygon that needs to
   // bridge price requests back to L1.
   MockOracleAncillary: "MockOracleAncillary", // Used for testing when caller wants to be able to manually push prices
@@ -40,7 +40,7 @@ const OracleType = {
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Number} [blocksPerEventSearch] Amount of blocks to search per web3 request.
  * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
- * @param {OracleType} [oracleType] Type of "Oracle" for this network, defaults to "Voting"
+ * @param {OracleType} [oracleType] Type of "Oracle" for this network, defaults to "VotingV2"
  * @param {OptimisticOracleType} [optimisticOracleType] Type of "OptimisticOracle" for this network, defaults to "OptimisticOracle"
  * @return None or throws an Error.
  */
@@ -53,7 +53,7 @@ async function run({
   commonPriceFeedConfig,
   blocksPerEventSearch,
   optimisticOracleProposerConfig,
-  oracleType = OracleType.Voting,
+  oracleType = OracleType.VotingV2,
   optimisticOracleType = OptimisticOracleType.OptimisticOracle,
   ignoredIdentifiersPostExpiry,
   ignoredIdentifiers,
@@ -182,9 +182,9 @@ async function Poll(callback) {
       optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
         ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
         : {},
-      // Type of "Oracle" to that optimistic oracle on this network submits price requests to, default is "Voting".
+      // Type of "Oracle" to that optimistic oracle on this network submits price requests to, default is "VotingV2".
       // The other possible types are exported in an enum in this file.
-      oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : OracleType.Voting,
+      oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : OracleType.VotingV2,
       // Type of "OptimisticOracle" to load in client, default is OptimisticOracle. The other possible types are
       // exported in an enum from financial-templates-lib/OptimisticOracleClient.
       optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
