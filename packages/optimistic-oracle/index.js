@@ -20,7 +20,7 @@ const { getAbi, getAddress } = require("@uma/contracts-node");
 // Note: Keys and valuesmust match the contract names listed in core/networks file so that this file can use them
 // as input into getAbi and getAddress.
 const OracleType = {
-  Voting: "Voting", // Used on mainnet when optimistic oracle directly submits price requests to Voting.
+  Voting: "VotingV2", // Used on mainnet when optimistic oracle directly submits price requests to Voting.
   OracleChildTunnel: "OracleChildTunnel", // Used in production when running proposer bot on Polygon that needs to
   // bridge price requests back to L1.
   MockOracleAncillary: "MockOracleAncillary", // Used for testing when caller wants to be able to manually push prices
