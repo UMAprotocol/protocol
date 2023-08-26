@@ -64,7 +64,7 @@ describe("index.js", function () {
       address: skinnyOptimisticOracle.options.address,
       abi: SkinnyOptimisticOracle.abi,
     });
-    deployments.save("Voting", { address: mockOracle.options.address, abi: MockOracle.abi });
+    deployments.save("VotingV2", { address: mockOracle.options.address, abi: MockOracle.abi });
   });
 
   it("Completes one iteration without logging any errors", async function () {
@@ -86,7 +86,7 @@ describe("index.js", function () {
     // and auto detected the OO's deployed address.
     assert.isTrue(spyLogIncludes(spy, 0, "OptimisticOracle proposer started"));
     assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.options.address));
-    assert.equal(spy.getCall(0).lastArg.oracleType, "Voting");
+    assert.equal(spy.getCall(0).lastArg.oracleType, "VotingV2");
     assert.equal(spy.getCall(0).lastArg.optimisticOracleType, "OptimisticOracle");
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });
