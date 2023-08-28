@@ -173,6 +173,53 @@ export class OptimisticOracleRequest {
   }
 }
 
+/**
+ * Interface representing the additional data fields for a disputable oracle request.
+ */
+interface DisputableData {
+  correctAnswer: boolean | BigNumber;
+  rawLLMInput: string;
+  rawLLMOutput: string;
+  shouldDispute: boolean;
+}
+
+/**
+ * Interface extending the base oracle request data to include disputable data.
+ */
+export interface OptimisticOracleRequestDisputableData extends OptimisticOracleRequestData {
+  readonly disputableData: DisputableData;
+}
+
+/**
+ * Class representing an oracle request that can potentially be disputed.
+ * It extends the base OptimisticOracleRequest class and includes additional disputable data.
+ */
+export class OptimisticOracleRequestDisputable extends OptimisticOracleRequest {
+  constructor(readonly data: OptimisticOracleRequestDisputableData) {
+    super(data);
+  }
+
+  get correctAnswer(): boolean | BigNumber {
+    return this.data.disputableData.correctAnswer;
+  }
+
+  get rawLLMInput(): string {
+    return this.data.disputableData.rawLLMInput;
+  }
+
+  get rawLLMOutput(): string {
+    return this.data.disputableData.rawLLMOutput;
+  }
+
+  get shouldDispute(): boolean {
+    return this.data.disputableData.shouldDispute;
+  }
+
+  get isDisputable(): boolean {
+    return this.disputableUntil !== undefined && this.disputableUntil > Date.now() / 1000;
+  }
+}
+
 const EMPTY_BLOCK_RANGE: BlockRange = [0, 0];
 
 /**
@@ -290,4 +337,18 @@ export interface OptimisticOracleClientFilter<I extends OptimisticOracleRequest,
    * @returns A Promise that resolves to the filtered Optimistic Oracle requests.
    */
   filter(optimisticOracleRequests: I[]): Promise<O[]>;
+}
+
+/**
+ * Abstract class representing a strategy for processing Optimistic Oracle requests.
+ * @template I The type of the input OptimisticOracleRequest.
+ * @template R The type of the result, based on OptimisticOracleRequestDisputable.
+ */
+export interface LLMDisputerStrategy<I extends OptimisticOracleRequest, R extends OptimisticOracleRequestDisputable> {
+  /**
+   * Processes Optimistic Oracle requests using the strategy implementation.
+   * @param request The Optimistic Oracle request to be processed.
+   * @returns A Promise that resolves to the result of the processing.
+   */
+  process(request: I): Promise<R>;
 }
