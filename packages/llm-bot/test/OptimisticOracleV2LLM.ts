@@ -6,10 +6,14 @@ import {
   OptimisticOracleClientV2,
   OptimisticOracleClientV2FilterDisputeable,
 <<<<<<< HEAD
+<<<<<<< HEAD
 } from "../src/core/OptimisticOracleV2";
 =======
 } from "../src/OptimisticOracleV2";
 >>>>>>> 746ff5a88 (refactor: move llm bots to separate package)
+=======
+} from "../src/core/OptimisticOracleV2";
+>>>>>>> 99d3cdc95 (refactor: folders)
 import { defaultOptimisticOracleV2Identifier } from "./constants";
 import { optimisticOracleV2Fixture } from "./fixtures/OptimisticOracleV2.Fixture";
 import { Signer, hre, toUtf8Bytes } from "./utils";
