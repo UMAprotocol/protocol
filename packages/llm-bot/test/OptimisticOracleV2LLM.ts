@@ -5,7 +5,11 @@ import {
   DisputerStrategy,
   OptimisticOracleClientV2,
   OptimisticOracleClientV2FilterDisputeable,
+<<<<<<< HEAD
 } from "../src/core/OptimisticOracleV2";
+=======
+} from "../src/OptimisticOracleV2";
+>>>>>>> 746ff5a88 (refactor: move llm bots to separate package)
 import { defaultOptimisticOracleV2Identifier } from "./constants";
 import { optimisticOracleV2Fixture } from "./fixtures/OptimisticOracleV2.Fixture";
 import { Signer, hre, toUtf8Bytes } from "./utils";
