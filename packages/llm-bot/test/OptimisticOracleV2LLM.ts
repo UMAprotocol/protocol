@@ -5,7 +5,7 @@ import {
   DisputerStrategy,
   OptimisticOracleClientV2,
   OptimisticOracleClientV2FilterDisputeable,
-} from "../src/OptimisticOracleV2";
+} from "../src/core/OptimisticOracleV2";
 import { defaultOptimisticOracleV2Identifier } from "./constants";
 import { optimisticOracleV2Fixture } from "./fixtures/OptimisticOracleV2.Fixture";
 import { Signer, hre, toUtf8Bytes } from "./utils";
