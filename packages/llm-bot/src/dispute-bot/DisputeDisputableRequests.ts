@@ -3,9 +3,9 @@ import {
   OptimisticOracleClientV2,
   OptimisticOracleClientV2FilterDisputeable,
 } from "../core/OptimisticOracleV2";
-import { Logger, MonitoringParams } from "./common";
+import { Logger, BotParams } from "./common";
 
-export async function disputeDisputableRequests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function disputeDisputableRequests(logger: typeof Logger, params: BotParams): Promise<void> {
   const oov2 = new OptimisticOracleClientV2(params.provider);
 
   // Update the client with the latest block range.

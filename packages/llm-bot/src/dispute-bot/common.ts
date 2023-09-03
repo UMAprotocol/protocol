@@ -20,7 +20,7 @@ export interface BlockRange {
   end: number;
 }
 
-export interface MonitoringParams {
+export interface BotParams {
   chainId: number;
   provider: Provider;
   botModes: BotModes;
@@ -30,7 +30,7 @@ export interface MonitoringParams {
   pollingDelay: number;
 }
 
-export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
+export const initBotParams = async (env: NodeJS.ProcessEnv): Promise<BotParams> => {
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
@@ -66,6 +66,6 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   };
 };
 
-export const startupLogLevel = (params: MonitoringParams): "debug" | "info" => {
+export const startupLogLevel = (params: BotParams): "debug" | "info" => {
   return params.pollingDelay === 0 ? "debug" : "info";
 };

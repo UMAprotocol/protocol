@@ -1,11 +1,11 @@
 import { delay, waitForLogger } from "@uma/financial-templates-lib";
-import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
+import { BotModes, initBotParams, Logger, startupLogLevel } from "./common";
 import { disputeDisputableRequests } from "./DisputeDisputableRequests";
 
 const logger = Logger;
 
 async function main() {
-  const params = await initMonitoringParams(process.env);
+  const params = await initBotParams(process.env);
 
   logger[startupLogLevel(params)]({
     at: "LLMDisputeBot",
