@@ -1,5 +1,4 @@
-Funds receiver from UMA governance through a proposal in ProposerV2 and vote in VotingV2.
-Currently the script only supports single ERC-20 token transfers defaulting to UMA (no native ETH funding).
+Funds receiver from UMA governance through a proposal in ProposerV2 and vote in VotingV2. Currently the script only supports single ERC-20 token transfers defaulting to UMA (no native ETH funding).
 
 Console 1
 
@@ -23,5 +22,4 @@ SKIP_EXECUTE=1 yarn hardhat run ./packages/scripts/src/admin-proposals/simulateV
 TRACE=1 yarn hardhat run ./packages/scripts/src/admin-proposals/executeProposalV2.ts --network localhost
 ```
 
-Since verifying transfer execution would require manually providing starting balances, it is easier to simulate vote and
- execute the proposal separately and look for emitted token transfer event in execution traces (`TRACE=1`).
+Since verifying transfer execution would require manually providing starting balances, it is easier to simulate vote and execute the proposal separately and look for emitted token transfer event in execution traces (`TRACE=1`).
