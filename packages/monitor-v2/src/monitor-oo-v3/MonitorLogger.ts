@@ -59,7 +59,7 @@ export async function logDispute(
   },
   params: MonitoringParams
 ): Promise<void> {
-  logger.error({
+  logger.warn({
     at: "OOv3Monitor",
     message: "Assertion disputed ❌",
     mrkdwn:
@@ -75,7 +75,7 @@ export async function logDispute(
       ". " +
       generateOOv3UILink(dispute.tx, dispute.eventIndex, params.chainId) +
       ".",
-    notificationPath: "optimistic-oracle",
+    notificationPath: "optimistic-oracle-disputes",
     discordPaths: ["oo-fact-checking", "oo-events"],
   });
 }
