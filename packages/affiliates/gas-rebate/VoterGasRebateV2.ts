@@ -13,6 +13,8 @@ import { findBlockNumberAtTimestamp, getWeb3 } from "@uma/common";
 import fs from "fs";
 import path from "path";
 
+const { OVERRIDE_FROM_BLOCK, OVERRIDE_TO_BLOCK } = process.env;
+
 export async function run(): Promise<void> {
   console.log("Running UMA2.0 Gas rebate script! This script assumes you are running it for the previous month🍌.");
 
@@ -28,8 +30,13 @@ export async function run(): Promise<void> {
   prevMonthEnd.setUTCHours(23, 59, 59);
 
   // Fetch associated block numbers for the start and end of the previous month.
-  const fromBlock = (await findBlockNumberAtTimestamp(getWeb3(), prevMonthStart.getTime() / 1000)).blockNumber;
-  const toBlock = (await findBlockNumberAtTimestamp(getWeb3(), prevMonthEnd.getTime() / 1000)).blockNumber;
+  const fromBlock = OVERRIDE_FROM_BLOCK
+    ? Number(OVERRIDE_FROM_BLOCK)
+    : (await findBlockNumberAtTimestamp(getWeb3(), prevMonthStart.getTime() / 1000)).blockNumber;
+
+  const toBlock = OVERRIDE_TO_BLOCK
+    ? Number(OVERRIDE_TO_BLOCK)
+    : (await findBlockNumberAtTimestamp(getWeb3(), prevMonthEnd.getTime() / 1000)).blockNumber;
 
   console.log("Current time:", moment(currentDate).format());
   console.log("Previous Month Start:", moment(prevMonthStart).format(), "& block", fromBlock);
