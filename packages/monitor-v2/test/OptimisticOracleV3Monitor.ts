@@ -156,11 +156,11 @@ describe("OptimisticOracleV3Monitor", function () {
     // When calling monitoring module directly there should be only one log (index 0) with the dispute caught by spy.
     assert.equal(spy.getCall(0).lastArg.at, "OOv3Monitor");
     assert.equal(spy.getCall(0).lastArg.message, "Assertion disputed ❌");
-    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(spyLogIncludes(spy, 0, assertionId));
     assert.isTrue(spyLogIncludes(spy, 0, disputeTx.hash));
     assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle-disputes");
     assert.equal(
       JSON.stringify(spy.getCall(0).lastArg.discordPaths),
       JSON.stringify(["oo-fact-checking", "oo-events"])

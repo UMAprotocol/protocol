@@ -229,7 +229,7 @@ class OptimisticOracleContractMonitor {
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Dispute Alert ⛔️!`,
         mrkdwn,
-        notificationPath: "optimistic-oracle",
+        notificationPath: "optimistic-oracle-disputes",
       });
     }
     this.lastDisputePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);

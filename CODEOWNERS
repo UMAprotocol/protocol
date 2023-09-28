@@ -6,9 +6,4 @@
 
 # These owners will be the default owners for everything in
 # the repo unless a later match takes precedence.
-*       @mrice32 @chrismaree @md0x @Reinis-FRP
-
-# Add @daywiss for sdk, api, and affiliates.
-/packages/sdk/           @mrice32 @chrismaree @daywiss
-/packages/api/           @mrice32 @chrismaree @daywiss
-/packages/affiliates/    @mrice32 @chrismaree @daywiss
+*       @mrice32 @chrismaree @md0x @Reinis-FRP @daywiss

@@ -1,25 +1,20 @@
 {
-  "name": "@uma/monitor-v2",
-  "version": "1.4.0",
-  "description": "Set of monitor and health check runners for oracle system",
+  "name": "@uma/llm-bot",
+  "version": "1.1.0",
+  "description": "LLM bots for UMA",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "scripts": {
-    "build": "tsc --build && yarn run monitor-polymarket-post-build",
-    "monitor-polymarket-post-build": "mkdir -p ./dist/monitor-polymarket/abi && cp ./src/monitor-polymarket/abi/* ./dist/monitor-polymarket/abi",
+    "build": "tsc --build",
     "test": "hardhat test"
   },
   "dependencies": {
     "@ethersproject/abstract-provider": "^5.4.0",
-    "@gnosis.pm/zodiac": "^3.3.2",
     "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.4.17",
     "@uma/financial-templates-lib": "^2.34.0",
     "async-retry": "^1.3.3",
-    "ethers": "^5.4.2",
-    "graphql-request": "^5.2.0",
-    "graphql-tag": "^2.12.6",
-    "multiformats": "^9.9.0"
+    "ethers": "^5.4.2"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",

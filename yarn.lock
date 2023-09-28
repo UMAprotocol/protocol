@@ -3431,17 +3431,17 @@
   dependencies:
     "@openzeppelin/contracts" "^4.2.0"
 
-"@maticnetwork/maticjs-web3@^1.0.0":
+"@maticnetwork/maticjs-web3@^1.0.4":
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/@maticnetwork/maticjs-web3/-/maticjs-web3-1.0.4.tgz#11c39457b737b07c89170c6818f182dda9e3c0a3"
   integrity sha512-cMnp42jjGNfVZRL80yUYfD9abcyUC2VpKvjFQtU44A3A0M9sbCtOOMMkE4k8FWoccxIPi891rtc+nowdNahKxg==
   dependencies:
     web3 "^1.8.0"
 
-"@maticnetwork/maticjs@^3.2.0":
-  version "3.5.0"
-  resolved "https://registry.yarnpkg.com/@maticnetwork/maticjs/-/maticjs-3.5.0.tgz#a20f353dc283199b0cd74f2c34aa0f25f69cf57c"
-  integrity sha512-f7wZucF38Ii/nIBV9qqQzlEE33/IWCVaToSXIhGC3DaZZME9VlUf4cgt/n43hQouwYpmkpgEoTDDs3QzTr5UcQ==
+"@maticnetwork/maticjs@^3.6.6":
+  version "3.6.6"
+  resolved "https://registry.yarnpkg.com/@maticnetwork/maticjs/-/maticjs-3.6.6.tgz#2e4eb8dfb22e123cbe4776ac9b6cf9e042e3e520"
+  integrity sha512-VhbK9yHdRgQl9GWt1XwasHTDEImd0ApmHFG0yCN8xjPz0YvXgsSPb+p+M5JzQYEgLQGZ3L/K3nnVYHBTiRIhPA==
   dependencies:
     "@ethereumjs/block" "^3.6.2"
     ethereumjs-util "^7.1.4"
@@ -13104,9 +13104,9 @@ graphql-tag@^2.12.6:
     tslib "^2.1.0"
 
 graphql@^16.6.0:
-  version "16.6.0"
-  resolved "https://registry.yarnpkg.com/graphql/-/graphql-16.6.0.tgz#c2dcffa4649db149f6282af726c8c83f1c7c5fdb"
-  integrity sha512-KPIBPDlW7NxrbT/eh4qPXz5FiFdL5UbaA0XUNz2Rp3Z3hqBSkbj0GVjwFDztsWVauZUWsbKHgMg++sk8UX0bkw==
+  version "16.8.1"
+  resolved "https://registry.yarnpkg.com/graphql/-/graphql-16.8.1.tgz#1930a965bef1170603702acdb68aedd3f3cf6f07"
+  integrity sha512-59LZHPdGZVh695Ud9lRzPBVTtlX9ZCV150Er2W43ro37wVof0ctenSaskPPjN7lVTIN8mSZt8PHUNKZuNQUuxw==
 
 growl@1.10.5:
   version "1.10.5"
