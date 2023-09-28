@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/contract-notifier
 
-
-
-
-
 ## [1.3.29](https://github.com/UMAprotocol/protocol/compare/@uma/contract-notifier@1.3.28...@uma/contract-notifier@1.3.29) (2023-07-17)
 
 **Note:** Version bump only for package @uma/contract-notifier

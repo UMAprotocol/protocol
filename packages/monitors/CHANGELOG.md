@@ -5,20 +5,14 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.15.1...@uma/monitors@2.16.0) (2023-09-28)
 
-
 ### Bug Fixes
 
-* add event index to oo contract monitor ([#4625](https://github.com/UMAprotocol/protocol/issues/4625)) ([f1abe5a](https://github.com/UMAprotocol/protocol/commit/f1abe5af1268fd199cfbbdabfa4cf59c95a21403))
-
+- add event index to oo contract monitor ([#4625](https://github.com/UMAprotocol/protocol/issues/4625)) ([f1abe5a](https://github.com/UMAprotocol/protocol/commit/f1abe5af1268fd199cfbbdabfa4cf59c95a21403))
 
 ### Features
 
-* add discord ticket channel for oo verification ([#4612](https://github.com/UMAprotocol/protocol/issues/4612)) ([ae09692](https://github.com/UMAprotocol/protocol/commit/ae096928f795765c8f18bab38a305825b4038825))
-* dedicated channel for oo disputes ([#4635](https://github.com/UMAprotocol/protocol/issues/4635)) ([92d726f](https://github.com/UMAprotocol/protocol/commit/92d726fb1bcdb55002d65f3a43f1a9483c4d5c2a))
-
-
-
-
+- add discord ticket channel for oo verification ([#4612](https://github.com/UMAprotocol/protocol/issues/4612)) ([ae09692](https://github.com/UMAprotocol/protocol/commit/ae096928f795765c8f18bab38a305825b4038825))
+- dedicated channel for oo disputes ([#4635](https://github.com/UMAprotocol/protocol/issues/4635)) ([92d726f](https://github.com/UMAprotocol/protocol/commit/92d726fb1bcdb55002d65f3a43f1a9483c4d5c2a))
 
 ## [2.15.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.15.0...@uma/monitors@2.15.1) (2023-07-17)
 

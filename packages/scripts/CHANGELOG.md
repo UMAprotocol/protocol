@@ -5,15 +5,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [1.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.28.0...@uma/scripts@1.29.0) (2023-09-28)
 
-
 ### Features
 
-* add governance funding proposal script ([#4633](https://github.com/UMAprotocol/protocol/issues/4633)) ([4b015bc](https://github.com/UMAprotocol/protocol/commit/4b015bcad3d2427d2ec75a1dbc45bc037c6635f8))
-* add proposal script to whitelist address and set final fee ([#4627](https://github.com/UMAprotocol/protocol/issues/4627)) ([ea2c43e](https://github.com/UMAprotocol/protocol/commit/ea2c43ef89699202e7c7b725a667d549d4fc1e0f))
-
-
-
-
+- add governance funding proposal script ([#4633](https://github.com/UMAprotocol/protocol/issues/4633)) ([4b015bc](https://github.com/UMAprotocol/protocol/commit/4b015bcad3d2427d2ec75a1dbc45bc037c6635f8))
+- add proposal script to whitelist address and set final fee ([#4627](https://github.com/UMAprotocol/protocol/issues/4627)) ([ea2c43e](https://github.com/UMAprotocol/protocol/commit/ea2c43ef89699202e7c7b725a667d549d4fc1e0f))
 
 # [1.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.27.0...@uma/scripts@1.28.0) (2023-07-17)
 
