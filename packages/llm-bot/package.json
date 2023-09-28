@@ -1,6 +1,6 @@
 {
   "name": "@uma/llm-bot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "LLM bots for UMA",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
@@ -12,7 +12,7 @@
     "@ethersproject/abstract-provider": "^5.4.0",
     "@uma/common": "^2.34.0",
     "@uma/contracts-node": "^0.4.17",
-    "@uma/financial-templates-lib": "^2.33.0",
+    "@uma/financial-templates-lib": "^2.34.0",
     "async-retry": "^1.3.3",
     "ethers": "^5.4.2"
   },
