@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.3.0...@uma/monitor-v2@1.4.0) (2023-09-28)
+
+
+### Bug Fixes
+
+* **monitor-v2:** filter blocking osnap proposals ([#4604](https://github.com/UMAprotocol/protocol/issues/4604)) ([d314228](https://github.com/UMAprotocol/protocol/commit/d314228f5bae1e7ba03eca7cc98fe20c6fb7d7d1))
+* **monitor-v2:** settle all promises in osnap bot ([#4626](https://github.com/UMAprotocol/protocol/issues/4626)) ([b1ee45e](https://github.com/UMAprotocol/protocol/commit/b1ee45e0b89c46c9ae262284d68276b8c6bcda96))
+* **monitor-v2:** wait for logger ([#4611](https://github.com/UMAprotocol/protocol/issues/4611)) ([f009fb5](https://github.com/UMAprotocol/protocol/commit/f009fb5349d5213b65a56c07c66b243ffbafa1fa))
+
+
+### Features
+
+* add discord ticket channel for oo verification ([#4612](https://github.com/UMAprotocol/protocol/issues/4612)) ([ae09692](https://github.com/UMAprotocol/protocol/commit/ae096928f795765c8f18bab38a305825b4038825))
+* add llm filter interface ([#4594](https://github.com/UMAprotocol/protocol/issues/4594)) ([6aaf13b](https://github.com/UMAprotocol/protocol/commit/6aaf13b75396d94288a2856502903a33900f2922))
+* add llm oov2 disputable request filter ([#4621](https://github.com/UMAprotocol/protocol/issues/4621)) ([4ccd553](https://github.com/UMAprotocol/protocol/commit/4ccd553e62f7e17a48d8372c8c82fc3b49dca3e4))
+* add llm strategy class ([#4597](https://github.com/UMAprotocol/protocol/issues/4597)) ([32a8f57](https://github.com/UMAprotocol/protocol/commit/32a8f57b680b590fec14c38bca51ead5e3ba29d5))
+* base oov2 client implementation ([#4606](https://github.com/UMAprotocol/protocol/issues/4606)) ([9a2ce51](https://github.com/UMAprotocol/protocol/commit/9a2ce51d9b35bcc59ef72c9292afd867d9f00009))
+* dedicated channel for oo disputes ([#4635](https://github.com/UMAprotocol/protocol/issues/4635)) ([92d726f](https://github.com/UMAprotocol/protocol/commit/92d726fb1bcdb55002d65f3a43f1a9483c4d5c2a))
+* **monitor-v2:** add disable tx option on osnap automation ([#4603](https://github.com/UMAprotocol/protocol/issues/4603)) ([bcea0e6](https://github.com/UMAprotocol/protocol/commit/bcea0e61b3ae7fe79db7c5ced851f0d03fa1cf06))
+* **monitor-v2:** handle failed verification due to server errors  ([#4613](https://github.com/UMAprotocol/protocol/issues/4613)) ([651bee3](https://github.com/UMAprotocol/protocol/commit/651bee3e70c6e0b2222e6e976026bc960e3298ac))
+* **monitor-v2:** osnap executor ([#4596](https://github.com/UMAprotocol/protocol/issues/4596)) ([2e53f84](https://github.com/UMAprotocol/protocol/commit/2e53f84cc66f43bf6eda4befd798ca393f782622))
+* **monitor-v2:** validate osnap explanation ([#4620](https://github.com/UMAprotocol/protocol/issues/4620)) ([3a20e7c](https://github.com/UMAprotocol/protocol/commit/3a20e7cf2d96663d83ff0bdac7f7092a56aff689))
+
+
+
+
+
 # [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.2.0...@uma/monitor-v2@1.3.0) (2023-07-17)
 
 ### Bug Fixes

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.37](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.36...@uma/fx-tunnel-relayer@1.3.37) (2023-09-28)
+
+
+### Bug Fixes
+
+* **fx-tunnel-relayer:** bumb matic lib dependencies ([#4638](https://github.com/UMAprotocol/protocol/issues/4638)) ([a80c0e2](https://github.com/UMAprotocol/protocol/commit/a80c0e218bd48c9a3c714c96fe25877e329a3c0a))
+
+
+
+
+
 ## [1.3.36](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.35...@uma/fx-tunnel-relayer@1.3.36) (2023-07-17)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer

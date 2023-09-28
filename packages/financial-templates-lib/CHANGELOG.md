@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.33.0...@uma/financial-templates-lib@2.34.0) (2023-09-28)
+
+
+### Bug Fixes
+
+* add event index to oo contract monitor ([#4625](https://github.com/UMAprotocol/protocol/issues/4625)) ([f1abe5a](https://github.com/UMAprotocol/protocol/commit/f1abe5af1268fd199cfbbdabfa4cf59c95a21403))
+* **financial-templates-lib:** discord ticket channel config ([#4608](https://github.com/UMAprotocol/protocol/issues/4608)) ([4f9d0f7](https://github.com/UMAprotocol/protocol/commit/4f9d0f7b953b9694e44b3f8c4d3fb91e1521174a))
+* **financial-templates-lib:** handle logger transport errors ([#4609](https://github.com/UMAprotocol/protocol/issues/4609)) ([38ac297](https://github.com/UMAprotocol/protocol/commit/38ac297998f3df653a5bb0e330917a8cd7c712ed))
+* **financial-templates-lib:** handle slack transport errors ([#4610](https://github.com/UMAprotocol/protocol/issues/4610)) ([a15aec4](https://github.com/UMAprotocol/protocol/commit/a15aec4e0f655227df97907aa540bb249d8d4428))
+* **financial-templates-lib:** remove anchor text from pd links ([#4622](https://github.com/UMAprotocol/protocol/issues/4622)) ([9196df9](https://github.com/UMAprotocol/protocol/commit/9196df9c72746630cc28b30563cfeb1e6632553c))
+* **financial-templates-lib:** truncate discord ticket transport ([#4618](https://github.com/UMAprotocol/protocol/issues/4618)) ([a41a47f](https://github.com/UMAprotocol/protocol/commit/a41a47faf6601544606a9ae9ebc4b4f5bd33b95e))
+* gas estimator calculation ([#4593](https://github.com/UMAprotocol/protocol/issues/4593)) ([1e8a60e](https://github.com/UMAprotocol/protocol/commit/1e8a60efad6e694fb0ae4a0e549be27ca75a2e68))
+
+
+### Features
+
+* **financial-templates-lib:** implement discord ticket transport ([#4605](https://github.com/UMAprotocol/protocol/issues/4605)) ([a87d228](https://github.com/UMAprotocol/protocol/commit/a87d2286814ee673c8fb663ec68d3df532710032))
+* **financial-templates-lib:** preserve url in truncated discord ticket ([#4619](https://github.com/UMAprotocol/protocol/issues/4619)) ([3555f3f](https://github.com/UMAprotocol/protocol/commit/3555f3f450f077f0a6df8b9a352ff117c129d616))
+* **financial-templates-lib:** rate limit discord ticket transport ([#4607](https://github.com/UMAprotocol/protocol/issues/4607)) ([f8c9afc](https://github.com/UMAprotocol/protocol/commit/f8c9afc6cc9bdfbe1bb733ed2faca12ada1e0434))
+
+
+
+
+
 # [2.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.32.11...@uma/financial-templates-lib@2.33.0) (2023-07-17)
 
 ### Bug Fixes
