@@ -37,6 +37,7 @@ import {
   RulesParameters,
   SafeSnapSafe,
   SnapshotProposalGraphql,
+  translateToSafeSnap,
   verifyIpfs,
   verifyProposal,
   verifyRules,
@@ -105,9 +106,9 @@ const getModuleParameters = (ogAddress: string, supportedModules: SupportedModul
   return supportedModules[ethersUtils.getAddress(ogAddress)];
 };
 
-// Queries snapshot for all space proposals that have been closed and have a plugin of safeSnap. The query also filters
-// only for basic type proposals that oSnap automation supports. This uses provided retry config, but ultimately returns
-// the error object if the Snapshot query fails after all retries.
+// Queries snapshot for all space proposals that have been closed and have either safeSnap or oSnap plugin. The query
+// also filters only for basic type proposals that oSnap automation supports. This uses provided retry config, but
+// ultimately returns the error object if the Snapshot query fails after all retries.
 const getSnapshotProposals = async (
   spaceId: string,
   url: string,
@@ -116,7 +117,13 @@ const getSnapshotProposals = async (
   const query = gql(/* GraphQL */ `
     query GetProposals($spaceId: String) {
       proposals(
-        where: { space: $spaceId, type: "basic", plugins_contains: "safeSnap", scores_state: "final", state: "closed" }
+        where: {
+          space: $spaceId
+          type: "basic"
+          plugins_contains: ["safeSnap", "oSnap"]
+          scores_state: "final"
+          state: "closed"
+        }
         orderBy: "created"
         orderDirection: desc
       ) {
@@ -186,7 +193,8 @@ const getSupportedSnapshotProposals = async (
   // Expand Snapshot proposals to include only one safe per proposal.
   const expandedProposals: SnapshotProposalExpanded[] = nonErrorProposals.flatMap((proposal) => {
     const { plugins, ...clonedObject } = proposal;
-    return proposal.plugins.safeSnap.safes.map((safe) => ({ ...clonedObject, safe }));
+    const safeSnapPlugin = translateToSafeSnap(plugins);
+    return safeSnapPlugin.safeSnap.safes.map((safe) => ({ ...clonedObject, safe }));
   });
 
   // Return only proposals from supported safes.
@@ -312,8 +320,9 @@ const filterVerifiedProposals = async (
         const ipfsVerified = (await verifyIpfs(proposal, params)).verified;
 
         // Check that the proposal meets rules requirements for the target oSnap module.
+        const safeSnapPlugin = translateToSafeSnap(proposal.plugins);
         const rulesVerified = verifyRules(
-          getModuleParameters(proposal.plugins.safeSnap.safes[0].umaAddress, supportedModules).parsedRules,
+          getModuleParameters(safeSnapPlugin.safeSnap.safes[0].umaAddress, supportedModules).parsedRules,
           proposal
         ).verified;
 
@@ -327,7 +336,8 @@ const filterVerifiedProposals = async (
   return verifiedProposals.map((verificationResult) => {
     const proposal = verificationResult.proposal;
     const { plugins, ...clonedObject } = proposal;
-    return { ...clonedObject, safe: proposal.plugins.safeSnap.safes[0] };
+    const safeSnapPlugin = translateToSafeSnap(plugins);
+    return { ...clonedObject, safe: safeSnapPlugin.safeSnap.safes[0] };
   });
 };
 
