@@ -153,7 +153,7 @@ const getSnapshotProposals = async (
   }
 };
 
-// Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes.
+// Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes (returned in safeSnap format).
 const getSupportedSnapshotProposals = async (
   logger: typeof Logger,
   supportedModules: SupportedModules,
@@ -657,7 +657,7 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   // Get supported modules.
   const supportedModules = await getSupportedModules(params);
 
-  // Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes.
+  // Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes (returned in safeSnap format)
   const supportedProposals = await getSupportedSnapshotProposals(logger, supportedModules, params);
 
   // Get all undiscarded on-chain proposals for supported modules.
