@@ -117,13 +117,7 @@ const getSnapshotProposals = async (
   const query = gql(/* GraphQL */ `
     query GetProposals($spaceId: String) {
       proposals(
-        where: {
-          space: $spaceId
-          type: "basic"
-          plugins_contains: ["safeSnap", "oSnap"]
-          scores_state: "final"
-          state: "closed"
-        }
+        where: { space: $spaceId, type: "basic", scores_state: "final", state: "closed" }
         orderBy: "created"
         orderDirection: desc
       ) {
