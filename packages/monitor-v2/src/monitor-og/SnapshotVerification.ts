@@ -356,7 +356,7 @@ const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOpt
 const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlProposal: SnapshotProposalGraphql): boolean => {
   const ipfsProposal = ipfsData.data.message;
 
-  // Verify common properties, except for safeSnap plugin.
+  // Verify common properties, except for plugin.
   if (
     ipfsProposal.space !== graphqlProposal.space.id ||
     ipfsProposal.type !== graphqlProposal.type ||

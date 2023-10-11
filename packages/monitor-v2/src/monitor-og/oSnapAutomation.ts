@@ -106,9 +106,9 @@ const getModuleParameters = (ogAddress: string, supportedModules: SupportedModul
   return supportedModules[ethersUtils.getAddress(ogAddress)];
 };
 
-// Queries snapshot for all space proposals that have been closed and have either safeSnap or oSnap plugin. The query
-// also filters only for basic type proposals that oSnap automation supports. This uses provided retry config, but
-// ultimately returns the error object if the Snapshot query fails after all retries.
+// Queries snapshot for all space proposals that have been closed and are of basic type that oSnap automation supports.
+// This uses provided retry config, but ultimately returns the error object if the Snapshot query fails after all
+// retries. This also validates returned data and filters only proposals that use either safeSnap or oSnap plugin.
 const getSnapshotProposals = async (
   spaceId: string,
   url: string,
@@ -145,7 +145,7 @@ const getSnapshotProposals = async (
       () => request<GraphqlData, { spaceId: string }>(url, query, { spaceId }),
       retryOptions
     );
-    // Filter only for proposals that have a properly configured safeSnap plugin.
+    // Filter only for proposals that have a properly configured safeSnap or oSnap plugin.
     return graphqlData.proposals.filter(isSnapshotProposalGraphql);
   } catch (error) {
     assert(error instanceof Error, "Unexpected Error type!");
@@ -153,7 +153,7 @@ const getSnapshotProposals = async (
   }
 };
 
-// Get all finalized basic safeSnap proposals for supported spaces and safes.
+// Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes.
 const getSupportedSnapshotProposals = async (
   logger: typeof Logger,
   supportedModules: SupportedModules,
@@ -164,7 +164,7 @@ const getSupportedSnapshotProposals = async (
     new Set(Object.values(supportedModules).map((supportedModule) => supportedModule.parsedRules.space))
   );
 
-  // Get all finalized basic safeSnap proposals for supported spaces.
+  // Get all finalized basic safeSnap/oSnap proposals for supported spaces.
   const snapshotProposals = (
     await Promise.all(
       supportedSpaces.map(async (space) => getSnapshotProposals(space, params.graphqlEndpoint, params.retryOptions))
@@ -657,7 +657,7 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   // Get supported modules.
   const supportedModules = await getSupportedModules(params);
 
-  // Get all finalized basic safeSnap proposals for supported spaces and safes.
+  // Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes.
   const supportedProposals = await getSupportedSnapshotProposals(logger, supportedModules, params);
 
   // Get all undiscarded on-chain proposals for supported modules.
