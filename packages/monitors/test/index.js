@@ -20,7 +20,6 @@ const Poll = require("../index.js");
 
 let collateralToken;
 let syntheticToken;
-let financialContract;
 let store;
 let timer;
 let mockOracle;
@@ -65,9 +64,7 @@ describe("index.js", function () {
       return getContract(name, { abi, bytecode });
     };
 
-    // Import the tested versions of contracts. note that FinancialContract is either an ExpiringMultiParty or the perp
-    // depending on the current iteration version.
-    const FinancialContract = createContract(contractVersion.contractType);
+    // Import the tested versions of contracts.
     const Finder = createContract("Finder");
     const IdentifierWhitelist = createContract("IdentifierWhitelist");
     const AddressWhitelist = createContract("AddressWhitelist");
@@ -189,35 +186,12 @@ describe("index.js", function () {
           // Note: an identifier which is part of the default config is required for this test.
           { priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64) }
         );
-        financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
-        await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: contractCreator });
-        await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: contractCreator });
 
         defaultMonitorConfig = {};
         defaultTokenPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
         defaultMedianizerPricefeedConfig = {};
       });
 
-      it("FinancialContract monitor: Completes one iteration without logging any errors", async function () {
-        // Once specifying just the `financialContractAddress`, once specifying
-        // the `optimisticOracleAddress`, and once specifying both:
-        await Poll.run({
-          logger: spyLogger,
-          web3,
-          financialContractAddress: financialContract.options.address,
-          pollingDelay,
-          errorRetries,
-          errorRetriesTimeout,
-          startingBlock: fromBlock,
-          endingBlock: toBlock,
-          monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
-        });
-        for (let i = 0; i < spy.callCount; i++) {
-          assert.notEqual(spyLogLevel(spy, i), "error");
-        }
-      });
       it("OptimisticOracle monitor: Completes one iteration without logging any errors", async function () {
         await Poll.run({
           logger: spyLogger,
@@ -257,98 +231,6 @@ describe("index.js", function () {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
         assert.equal(spy.getCall(0).lastArg.optimisticOracleType, OptimisticOracleType.SkinnyOptimisticOracle);
-      });
-      it("Activating all monitors: Completes one iteration without logging any errors", async function () {
-        await Poll.run({
-          logger: spyLogger,
-          web3,
-          financialContractAddress: financialContract.options.address,
-          optimisticOracleAddress: optimisticOracle.options.address,
-          optimisticOracleType: OptimisticOracleType.OptimisticOracle,
-          pollingDelay,
-          errorRetries,
-          errorRetriesTimeout,
-          startingBlock: fromBlock,
-          endingBlock: toBlock,
-          monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
-        });
-        for (let i = 0; i < spy.callCount; i++) {
-          assert.notEqual(spyLogLevel(spy, i), "error");
-        }
-      });
-      it("Detects price feed, collateral and synthetic decimals", async function () {
-        spy = sinon.spy(); // Create a new spy for each test.
-        spyLogger = winston.createLogger({
-          level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        });
-        spyLogger.isFlushed = true; // exit instantly when requested to do so.
-
-        collateralToken = await Token.new("USDC", "USDC", 6).send({ from: contractCreator });
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6).send({ from: contractCreator });
-        constructorParams = {
-          ...constructorParams,
-          collateralAddress: collateralToken.options.address,
-          tokenAddress: syntheticToken.options.address,
-        };
-        financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
-        await syntheticToken.methods.addMinter(financialContract.options.address);
-        await syntheticToken.methods.addBurner(financialContract.options.address);
-
-        await Poll.run({
-          logger: spyLogger,
-          web3,
-          financialContractAddress: financialContract.options.address,
-          pollingDelay,
-          errorRetries,
-          errorRetriesTimeout,
-          startingBlock: fromBlock,
-          endingBlock: toBlock,
-          monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
-        });
-
-        for (let i = 0; i < spy.callCount; i++) {
-          assert.notEqual(spyLogLevel(spy, i), "error");
-        }
-
-        // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
-        assert.isTrue(spyLogIncludes(spy, 9, '"collateralDecimals":6'));
-        assert.isTrue(spyLogIncludes(spy, 9, '"syntheticDecimals":6'));
-        assert.isTrue(spyLogIncludes(spy, 9, '"priceFeedDecimals":18'));
-      });
-      it("Correctly detects contract type and rejects unknown contract types", async function () {
-        spy = sinon.spy();
-        spyLogger = winston.createLogger({
-          level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        });
-        spyLogger.isFlushed = true; // exit instantly when requested to do so.
-
-        await Poll.run({
-          logger: spyLogger,
-          web3,
-          financialContractAddress: financialContract.options.address,
-          pollingDelay,
-          errorRetries,
-          errorRetriesTimeout,
-          startingBlock: fromBlock,
-          endingBlock: toBlock,
-          monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
-        });
-
-        for (let i = 0; i < spy.callCount; i++) {
-          assert.notEqual(spyLogLevel(spy, i), "error");
-        }
-
-        // To verify contract type detection is correct for a standard feed, check the 9th log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 9, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 9, `"contractType":"${contractVersion.contractType}"`));
       });
       it("Correctly rejects unknown contract types", async function () {
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
