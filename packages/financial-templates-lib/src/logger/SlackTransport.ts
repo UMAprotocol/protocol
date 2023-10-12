@@ -45,17 +45,20 @@ interface DividerBlock {
 
 type Block = SectionBlock | DividerBlock; // Add more | types here to add more types of blocks.
 
-interface SlackFormatterResponse {
+type SlackFormatterResponse = {
   blocks: Block[];
-}
+};
 
 export const SLACK_MAX_CHAR_LIMIT = 3000;
+let botIdentifier: string | undefined;
 
 // Note: info is any because it comes directly from winston.
 function slackFormatter(info: any): SlackFormatterResponse {
   try {
     if (!("level" in info) || !("at" in info) || !("message" in info))
       throw new Error("WINSTON MESSAGE INCORRECTLY CONFIGURED");
+
+    botIdentifier ??= info["bot-identifier"];
 
     // Each part of the slack response is a separate block with markdown text within it.
     // All slack responses start with the heading level and where the message came from.
@@ -64,7 +67,10 @@ function slackFormatter(info: any): SlackFormatterResponse {
       blocks: [
         {
           type: "section",
-          text: { type: "mrkdwn", text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n` },
+          text: {
+            type: "mrkdwn",
+            text: `[${info.level}] *${info["bot-identifier"] ?? botIdentifier}* (${info.at})⭢${info.message}\n`,
+          },
         },
       ],
     };
@@ -186,19 +192,32 @@ class SlackHook extends Transport {
       // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
       // different slack channels depending on the context of the log.
       const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
-
-      const payload: { blocks?: Block[]; text?: string; mrkdwn?: boolean } = { mrkdwn: this.mrkdwn };
       const layout = this.formatter(info);
-      payload.blocks = layout.blocks || undefined;
-      // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
-      if (JSON.stringify(payload).length < SLACK_MAX_CHAR_LIMIT) {
-        await this.axiosInstance.post(webhookUrl, payload);
-      } else {
-        // Iterate over each message to send and generate a axios call for each message.
-        for (const processedBlock of processMessageBlocks(payload.blocks)) {
-          payload.blocks = processedBlock;
-          await this.axiosInstance.post(webhookUrl, payload);
-        }
+
+      // Deliver in chunks if the the combined payload is more than SLACK_MAX_CHAR_LIMIT chars.
+      const payloads: (SlackFormatterResponse & { text?: string; mrkdwn?: boolean })[] =
+        JSON.stringify(layout.blocks).length < SLACK_MAX_CHAR_LIMIT
+          ? [{ blocks: layout.blocks, mrkdwn: this.mrkdwn }]
+          : processMessageBlocks(layout.blocks).map((blocks) => {
+              return { blocks, mrkdwn: this.mrkdwn };
+            });
+
+      for (const payload of payloads) {
+        // HTTP 400: probably a badly formatted message (recoverable)
+        // HTTP > 400: indicative of a hard error (non-recoverable)
+        // https://api.slack.com/messaging/webhooks#handling_errors
+        await this.axiosInstance.post(webhookUrl, payload).catch(async (err) => {
+          if (err?.["isAxiosError"]) {
+            const code = err?.["response"]?.["status"];
+            if (code !== 400) {
+              throw err; // Probably a hard error -> escalate.
+            }
+            const dropped = JSON.stringify(payload).slice(0, SLACK_MAX_CHAR_LIMIT - 1000);
+            const warning = { at: "SlackHook::log", level: "warn", message: "Dropped log message!", dropped };
+            const formattedWarning = this.formatter(warning);
+            await this.axiosInstance.post(webhookUrl, { blocks: formattedWarning.blocks, mrkdwn: false });
+          }
+        });
       }
     } catch (error) {
       return callback(new TransportError("Slack", error, info));
