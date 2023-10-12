@@ -250,17 +250,21 @@ export function splitByNewLine(block: Block): Block[] {
   }
 
   const lines = block.text.text.split("\n");
-  const smallerBlocks = [createSectionBlock("")];
+  const smallerBlocks: SectionBlock[] = [];
   for (let line of lines) {
     // Skip empty lines.
     if (line.length == 0) continue;
 
     // Add a new block if the previous block's content + current line exceed the char limit.
     line += "\n";
-    const newBlock = createSectionBlock(smallerBlocks[smallerBlocks.length - 1].text.text + line);
+    const newBlock =
+      smallerBlocks.length === 0
+        ? createSectionBlock(line)
+        : createSectionBlock(smallerBlocks[smallerBlocks.length - 1].text.text + line);
     if (JSON.stringify(newBlock).length + line.length > SLACK_MAX_CHAR_LIMIT) {
       smallerBlocks.push(createSectionBlock(line));
     } else {
+      if (smallerBlocks.length === 0) smallerBlocks.push(createSectionBlock(""));
       smallerBlocks[smallerBlocks.length - 1].text.text += line;
     }
   }
