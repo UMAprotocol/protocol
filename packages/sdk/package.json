@@ -38,7 +38,7 @@
     "@eth-optimism/core-utils": "^0.7.7",
     "@ethersproject/abstract-signer": "^5.4.0",
     "@ethersproject/providers": "^5.4.2",
-    "@google-cloud/datastore": "^7.0.0",
+    "@google-cloud/datastore": "^8.2.1",
     "@types/lodash-es": "^4.17.5",
     "@uma/contracts-frontend": "^0.4.17",
     "@uma/contracts-node": "^0.4.17",
