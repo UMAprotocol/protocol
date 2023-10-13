@@ -17,7 +17,7 @@
     "ts-node": "^10.1.0"
   },
   "dependencies": {
-    "@google-cloud/datastore": "^7.0.0",
+    "@google-cloud/datastore": "^8.2.1",
     "@types/express": "^4.17.11",
     "@uma/financial-templates-lib": "^2.34.0",
     "@uma/sdk": "^0.34.2",
