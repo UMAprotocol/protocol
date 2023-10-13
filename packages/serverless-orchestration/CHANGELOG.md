@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.15.4](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.15.3...@uma/serverless-orchestration@2.15.4) (2023-10-13)
+
+### Bug Fixes
+
+- use oo monitors in serverless tests ([#4650](https://github.com/UMAprotocol/protocol/issues/4650)) ([8483c92](https://github.com/UMAprotocol/protocol/commit/8483c92fa7b7654b1c6548af1c7e9836d989a83f))
+
 ## [2.15.3](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.15.2...@uma/serverless-orchestration@2.15.3) (2023-09-28)
 
 **Note:** Version bump only for package @uma/serverless-orchestration
