@@ -2,7 +2,6 @@ const hre = require("hardhat");
 const { getContract, web3, network } = hre;
 const { assert } = require("chai");
 const Web3 = require("web3");
-const { toWei, utf8ToHex, padRight } = Web3.utils;
 
 // Enables testing http requests to an express server.
 const request = require("supertest");
@@ -14,34 +13,22 @@ const spoke = require("../src/ServerlessSpoke");
 // Helper scripts to test different kind of rejection behaviour.
 const timeoutSpoke = require("../test-helpers/TimeoutSpokeMock.js");
 
-// Contracts and helpers
-const ExpiringMultiParty = getContract("ExpiringMultiParty");
-const Finder = getContract("Finder");
-const IdentifierWhitelist = getContract("IdentifierWhitelist");
-const TokenFactory = getContract("TokenFactory");
-const Token = getContract("ExpandedERC20");
-const Timer = getContract("Timer");
-const UniswapV2Mock = getContract("UniswapV2Mock");
-const SyntheticToken = getContract("SyntheticToken");
+// Contract to monitor
+const OptimisticOracleV2 = getContract("OptimisticOracleV2");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
-const { ZERO_ADDRESS, runDefaultFixture, addGlobalHardhatTestingAddress } = require("@uma/common");
+const { runDefaultFixture } = require("@uma/common");
 
 // Use Ganache to create additional web3 providers with different chain ID's
 const ganache = require("ganache-core");
 
 describe("ServerlessHub.js", function () {
-  let contractDeployer, accounts;
+  let optimisticOracleV2Address;
 
-  let collateralToken;
-  let syntheticToken;
-  let emp;
-  let uniswap;
   let defaultPricefeedConfig;
-  let identifierWhitelist;
 
   let hubSpy;
   let hubSpyLogger;
@@ -79,17 +66,8 @@ describe("ServerlessHub.js", function () {
   };
 
   before(async function () {
-    accounts = await web3.eth.getAccounts();
-    [contractDeployer] = accounts;
     defaultChainId = await web3.eth.getChainId();
     await runDefaultFixture(hre);
-
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractDeployer });
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractDeployer });
-
-    // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex("ETH/BTC")).send({ from: contractDeployer });
   });
 
   beforeEach(async function () {
@@ -120,36 +98,11 @@ describe("ServerlessHub.js", function () {
     // Start the serverless spoke instance with the spy logger injected.
     spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
 
-    const constructorParams = {
-      expirationTimestamp: "22345678900",
-      withdrawalLiveness: "1000",
-      collateralAddress: collateralToken.options.address,
-      tokenAddress: syntheticToken.options.address,
-      finderAddress: (await Finder.deployed()).options.address,
-      tokenFactoryAddress: (await TokenFactory.deployed()).options.address,
-      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64),
-      liquidationLiveness: "1000",
-      collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPercentage: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: (await Timer.deployed()).options.address,
-      financialProductLibraryAddress: ZERO_ADDRESS,
-    };
-
-    // Deploy a new expiring multi party
-    emp = await ExpiringMultiParty.new(constructorParams).send({ from: contractDeployer });
-
-    uniswap = await UniswapV2Mock.new().send({ from: contractDeployer });
-
+    // Only used for testing environment variables.
     defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
-    // Set two uniswap prices to give it a little history.
-    await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: contractDeployer });
-    await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: contractDeployer });
-
-    addGlobalHardhatTestingAddress("Voting", ZERO_ADDRESS);
+    // Get deployed OptimisticOracleV2 address to monitor.
+    optimisticOracleV2Address = (await OptimisticOracleV2.deployed()).options.address;
   });
   afterEach(async function () {
     hubInstance.close();
@@ -195,9 +148,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
     };
@@ -231,9 +183,8 @@ describe("ServerlessHub.js", function () {
       environmentVariables: {
         CUSTOM_NODE_URL: network.config.url,
         POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.options.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-        MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+        OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
       },
     };
     const hubConfig = {
@@ -266,9 +217,8 @@ describe("ServerlessHub.js", function () {
       environmentVariables: {
         CUSTOM_NODE_URL: network.config.url,
         POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.options.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-        MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+        OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
       },
     };
     const hubConfig = { testInvalidInstance: { ...defaultConfig, spokeUrlName: "invalid" } };
@@ -292,9 +242,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
     };
@@ -337,9 +286,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
     };
@@ -391,9 +339,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
       testServerlessMonitor2: {
@@ -401,9 +348,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
       testServerlessMonitor3: {
@@ -411,9 +357,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
     };
@@ -458,9 +403,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
       testServerlessMonitorError: {
@@ -469,8 +413,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
       testServerlessMonitorError2: {
@@ -479,9 +423,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: "0x0000000000000000000000000000000000000000",
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: "0x0000000000000000000000000000000000000000",
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
     };
@@ -528,10 +471,10 @@ describe("ServerlessHub.js", function () {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "error Command INVALID not found"));
     assert.isTrue(
       responseObject.output.errorOutputs["testServerlessMonitorError2"].execResponse.stderr.includes(
-        "Contract code hash is null"
+        "Returned values aren't valid"
       )
-    ); // invalid emp error
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Contract code hash is null"));
+    ); // invalid oo error
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Returned values aren't valid"));
   });
   it("ServerlessHub can correctly inject common config into child configs", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
@@ -542,7 +485,7 @@ describe("ServerlessHub.js", function () {
       commonConfig: {
         environmentVariables: {
           SOME_TEST_ENV: "some value", // a unique env that should be appended to all.
-          MONITOR_CONFIG: { contractType: "Perpetual" }, // a repeated key and a repeated child key. should ignore
+          MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://example.com/" }, // a repeated key and a repeated child key. should ignore
           TOKEN_PRICE_FEED_CONFIG: { someKey: "shouldAppend" }, // a clashing parent with a unique child. should append.
         },
       },
@@ -551,29 +494,32 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
+          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
+          MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
       },
       testServerlessMonitor2: {
-        serverlessCommand: "yarn --silent monitor --network test",
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
+          PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
+          MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
       },
       testServerlessMonitor3: {
-        serverlessCommand: "yarn --silent monitor --network test",
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
+          PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
+          MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
       },
     };
@@ -589,10 +535,10 @@ describe("ServerlessHub.js", function () {
     const spyHubExecution = hubSpy.getCall(2).lastArg;
 
     // validate that the appending worked as expected.
-    // Monitor config applied to the monitor should NOT have changed the contract type as the monitor config should take preference.
+    // Monitor config applied to the monitor should NOT have changed the OO URL as the monitor config should take preference.
     assert.equal(
-      spyHubExecution.configObject.testServerlessMonitor.environmentVariables.MONITOR_CONFIG.contractType,
-      "ExpiringMultiParty"
+      spyHubExecution.configObject.testServerlessMonitor.environmentVariables.MONITOR_CONFIG.optimisticOracleUIBaseUrl,
+      "https://oracle.uma.xyz"
     );
 
     // All objects should correctly append the "SOME_TEST_ENV".
@@ -631,9 +577,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
       testServerlessMonitor2: {
@@ -641,9 +586,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
       testServerlessMonitor3: {
@@ -651,9 +595,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
     };
@@ -688,9 +631,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
       testServerlessMonitorError: {
@@ -699,8 +641,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: emp.options.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
       testServerlessMonitorError2: {
@@ -709,9 +651,8 @@ describe("ServerlessHub.js", function () {
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           POLLING_DELAY: 0,
-          EMP_ADDRESS: "0x0000000000000000000000000000000000000000",
-          PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+          OPTIMISTIC_ORACLE_ADDRESS: "0x0000000000000000000000000000000000000000",
+          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
         },
       },
     };
