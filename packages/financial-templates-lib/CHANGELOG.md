@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.34.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.34.0...@uma/financial-templates-lib@2.34.1) (2023-10-13)
+
+### Bug Fixes
+
+- avoid empty blocks in slack transport ([#4647](https://github.com/UMAprotocol/protocol/issues/4647)) ([e3a281f](https://github.com/UMAprotocol/protocol/commit/e3a281ff4035dcdf4993564b7c81095907265638))
+
 # [2.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.33.0...@uma/financial-templates-lib@2.34.0) (2023-09-28)
 
 ### Bug Fixes

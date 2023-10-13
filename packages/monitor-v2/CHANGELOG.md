@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.4.0...@uma/monitor-v2@1.5.0) (2023-10-13)
+
+### Features
+
+- osnap plugin support in bots ([#4642](https://github.com/UMAprotocol/protocol/issues/4642)) ([3550aaf](https://github.com/UMAprotocol/protocol/commit/3550aafaec2f51ad86488bd3c59c9c101144ac01))
+
 # [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.3.0...@uma/monitor-v2@1.4.0) (2023-09-28)
 
 ### Bug Fixes

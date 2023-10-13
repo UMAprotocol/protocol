@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.16.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.16.0...@uma/monitors@2.16.1) (2023-10-13)
+
+### Bug Fixes
+
+- remove cryptowatch related tests ([#4649](https://github.com/UMAprotocol/protocol/issues/4649)) ([11190f9](https://github.com/UMAprotocol/protocol/commit/11190f9c7896aaa04db74054fa8fd1c53cc431b0))
+
 # [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.15.1...@uma/monitors@2.16.0) (2023-09-28)
 
 ### Bug Fixes
