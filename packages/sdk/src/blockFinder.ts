@@ -27,7 +27,7 @@ export default class BlockFinder<T extends { number: number; timestamp: number |
       if (timestamp >= block.timestamp) return block;
     }
 
-    // Check the first block. If it's grater than our timestamp, we need to find an earlier block.
+    // Check the first block. If it's greater than our timestamp, we need to find an earlier block.
     if (this.blocks[0].timestamp > timestamp) {
       const initialBlock = this.blocks[0] as WithoutStringTimestamp<T>;
       // We use a 2x cushion to reduce the number of iterations in the following loop and increase the chance
