@@ -27,7 +27,7 @@ import {
   monitorTransactionsProposed,
 } from "../src/monitor-og/MonitorEvents";
 import { executeProposals } from "../src/monitor-og/oSnapAutomation";
-import { RulesParameters } from "../src/monitor-og/SnapshotVerification";
+import { parseRules, RulesParameters } from "../src/monitor-og/SnapshotVerification";
 import { optimisticGovernorFixture } from "./fixtures/OptimisticGovernor.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import {
@@ -940,5 +940,35 @@ describe("OptimisticGovernorMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.isTrue(spyLogIncludes(spy, 0, space));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
+  });
+  it("Parse rules, space with no trailing slash", async function () {
+    const space = "test.eth";
+    const quorum = 10;
+    const votingPeriod = 3600;
+
+    // Deploy contract only to reuse standard rules constructor.
+    const { ogModuleProxy } = await deployOgModuleProxy({ space, quorum, votingPeriod });
+    const rules = await ogModuleProxy.rules();
+
+    // Check parsed rules.
+    const parsedRules = parseRules(rules);
+    assert.equal(parsedRules?.space, space);
+    assert.equal(parsedRules?.quorum, quorum);
+    assert.equal(parsedRules?.votingPeriod, votingPeriod);
+  });
+  it("Parse rules, space with trailing slash", async function () {
+    const space = "test.eth";
+    const quorum = 10;
+    const votingPeriod = 3600;
+
+    // Deploy contract only to reuse standard rules constructor.
+    const { ogModuleProxy } = await deployOgModuleProxy({ space: space + "/", quorum, votingPeriod });
+    const rules = await ogModuleProxy.rules();
+
+    // Check parsed rules.
+    const parsedRules = parseRules(rules);
+    assert.equal(parsedRules?.space, space);
+    assert.equal(parsedRules?.quorum, quorum);
+    assert.equal(parsedRules?.votingPeriod, votingPeriod);
   });
 });
