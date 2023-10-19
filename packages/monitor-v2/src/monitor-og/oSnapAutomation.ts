@@ -501,7 +501,7 @@ const submitProposals = async (
     } catch (error) {
       // Log and proceed with the next proposal. This should be error unless submitting transactions is disabled and
       // we don't have sufficient funding.
-      const logLevel = params.submitAutomation || funded ? "error" : "info";
+      const logLevel = params.submitAutomation || funded ? "error" : "warn";
       logger[logLevel]({ ...proposalAttemptLog, message: "Proposal submission would fail!", error });
       continue;
     }
@@ -576,7 +576,7 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
     } catch (error) {
       // Log and proceed with the next dispute. This should be error unless submitting transactions is disabled and
       // we don't have sufficient funding.
-      const logLevel = params.submitAutomation || funded ? "error" : "info";
+      const logLevel = params.submitAutomation || funded ? "error" : "warn";
       logger[logLevel]({ ...disputeAttemptLog, message: "Dispute submission would fail!", error });
       continue;
     }
