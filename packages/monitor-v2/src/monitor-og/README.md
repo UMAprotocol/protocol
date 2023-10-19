@@ -60,6 +60,8 @@ All the configuration should be provided with following environment variables:
 - `AUTOMATIC_EXECUTIONS_ENABLED` is boolean enabling/disabling automatic execution of supported oSnap proposals (`false`
   by default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET` or
   `MNEMONIC` for signing execution transactions.
+- `DISPUTE_IPFS_SERVER_ERRORS` is boolean enabling/disabling automatic dispute of proposals with IPFS server errors
+  (`false` by default). This is used only in conjunction with `AUTOMATIC_DISPUTES_ENABLED` set to `true`.
 - `SUPPORTED_BONDS` is a mapping of supported bond tokens and bond values. This is required when running in automated
   support mode. Only oSnap modules with exact match of bond token and bond value will be supported.
 - `SUBMIT_AUTOMATION` is boolean enabling/disabling transaction submission in any of automated support modes (`true` by

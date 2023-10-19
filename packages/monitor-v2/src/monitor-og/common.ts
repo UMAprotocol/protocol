@@ -66,6 +66,7 @@ export interface MonitoringParams {
   approvalChoices: string[];
   supportedBonds?: SupportedBonds; // Optional. Only used in automated support mode.
   submitAutomation: boolean; // Defaults to true, but only used in automated support mode.
+  disputeIpfsServerErrors: boolean; // Defaults to false, but only used in automated support mode.
   useTenderly: boolean;
   botModes: BotModes;
   retryOptions: RetryOptions;
@@ -210,6 +211,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
   // apply to bond approvals as these are always submitted on chain.
   const submitAutomation = env.SUBMIT_AUTOMATION === "false" ? false : true;
 
+  // By default, do not dispute on IPFS server errors unless explicitly enabled.
+  const disputeIpfsServerErrors = env.DISPUTE_IPFS_SERVER_ERRORS === "true" ? true : false;
+
   // Mastercopy and module proxy factory addresses are required when monitoring proxy deployments or when not
   // explicitly providing OG_ADDRESS to monitor in other modes.
   if (
@@ -243,6 +247,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     approvalChoices,
     supportedBonds,
     submitAutomation,
+    disputeIpfsServerErrors,
     useTenderly,
     botModes,
     retryOptions,

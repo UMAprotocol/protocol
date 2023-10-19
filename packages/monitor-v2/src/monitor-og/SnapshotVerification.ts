@@ -329,7 +329,12 @@ const getGraphqlData = async (ipfsHash: string, url: string, retryOptions: Retry
 
 // We don't want to throw an error if the IPFS request fails for any reason, so we return an Error object instead that
 // will be logged by the bot.
-const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOptions): Promise<unknown | Error> => {
+const getIpfsData = async (
+  ipfsHash: string,
+  url: string,
+  strictValidation: boolean,
+  retryOptions: RetryOptions
+): Promise<unknown | Error> => {
   let response: Response;
 
   // Separate try/catch block to catch errors from the fetch() call itself.
@@ -337,9 +342,13 @@ const getIpfsData = async (ipfsHash: string, url: string, retryOptions: RetryOpt
     response = await retry(async () => await fetch(`${url}/${ipfsHash}`), retryOptions);
   } catch (error) {
     assert(error instanceof Error, "Unexpected Error type!");
-    return new IpfsFetchError(error);
+    return new IpfsFetchError(error); // This happens when the IPFS gateway is not returning HTTP response.
   }
-  if (!response.ok) return new Error(`Request on ${response.url} failed with status ${response.status}`);
+  if (!response.ok) {
+    const validationError = new Error(`Request on ${response.url} failed with status ${response.status}`);
+    if (strictValidation) return validationError;
+    return new IpfsFetchError(validationError); // Caller would detect the wrapped error to identify it as server issue.
+  }
 
   try {
     const data = await response.json();
@@ -512,7 +521,12 @@ export const verifyIpfs = async (
   graphqlProposal: SnapshotProposalGraphql,
   params: MonitoringParams
 ): Promise<VerificationResponse> => {
-  const ipfsData = await getIpfsData(graphqlProposal.ipfs, params.ipfsEndpoint, params.retryOptions);
+  const { disputeIpfsServerErrors, ipfsEndpoint, retryOptions } = params;
+  const ipfsData = await getIpfsData(graphqlProposal.ipfs, ipfsEndpoint, disputeIpfsServerErrors, retryOptions);
+
+  // In case of error we detect its instance type to flag this as server error so that caller can abstain from dispute.
+  // With disputeIpfsServerErrors enabled we mark it as server error only if the IPFS gateway did not return HTTP response.
+  // With disputeIpfsServerErrors disabled we also mark it as server error if the IPFS gateway returned non-OK response.
   if (ipfsData instanceof IpfsFetchError)
     return { verified: false, error: `IPFS request failed with error ${ipfsData.message}`, serverError: true };
   if (ipfsData instanceof Error)
