@@ -9,7 +9,7 @@ import {
 import { createEtherscanLinkMarkdown } from "@uma/common";
 import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
-import { ContractReceipt, utils as ethersUtils } from "ethers";
+import { BigNumber, ContractReceipt, utils as ethersUtils } from "ethers";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
@@ -449,6 +449,12 @@ const approveBond = async (
   }
 };
 
+const hasFunds = async (provider: Provider, signer: Signer, currency: string, bond: string): Promise<boolean> => {
+  const currencyContract = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, currency);
+  const balance = await currencyContract.balanceOf(await signer.getAddress());
+  return balance.gte(BigNumber.from(bond));
+};
+
 const submitProposals = async (
   logger: typeof Logger,
   proposals: SnapshotProposalExpanded[],
@@ -460,9 +466,10 @@ const submitProposals = async (
   for (const proposal of proposals) {
     const og = await getOgByAddress(params, proposal.safe.umaAddress);
 
-    // Approve bond based on stored module parameters.
-    const moduleParameters = getModuleParameters(proposal.safe.umaAddress, supportedModules);
-    await approveBond(params.provider, params.signer, moduleParameters.currency, moduleParameters.bond, og.address);
+    // Approve bond and check funding based on stored module parameters.
+    const { currency, bond } = getModuleParameters(proposal.safe.umaAddress, supportedModules);
+    await approveBond(params.provider, params.signer, currency, bond, og.address);
+    const funded = await hasFunds(params.provider, params.signer, currency, bond);
 
     // Create transaction parameters.
     const transactions = proposal.safe.txs.map((transaction) => {
@@ -492,8 +499,10 @@ const submitProposals = async (
     try {
       await og.callStatic.proposeTransactions(transactions, explanation, { from: await params.signer.getAddress() });
     } catch (error) {
-      // Log error and proceed with the next proposal.
-      logger.error({ ...proposalAttemptLog, message: "Proposal submission would fail!", error });
+      // Log and proceed with the next proposal. This should be error unless submitting transactions is disabled and
+      // we don't have sufficient funding.
+      const logLevel = params.submitAutomation || funded ? "error" : "warn";
+      logger[logLevel]({ ...proposalAttemptLog, message: "Proposal submission would fail!", error });
       continue;
     }
 
@@ -539,14 +548,10 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
   for (const proposal of proposals) {
     const oo = await getOo(params);
 
-    // Approve bond based on passed proposal parameters.
-    await approveBond(
-      params.provider,
-      params.signer,
-      proposal.parameters.currency,
-      proposal.parameters.bond,
-      oo.address
-    );
+    // Approve bond and check funding based on passed proposal parameters.
+    const { currency, bond } = proposal.parameters;
+    await approveBond(params.provider, params.signer, currency, bond, oo.address);
+    const funded = await hasFunds(params.provider, params.signer, currency, bond);
 
     // Create potential log for simulating/disputing.
     const disputeAttemptLog = {
@@ -569,8 +574,10 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
         from: disputerAddress,
       });
     } catch (error) {
-      // Log error and proceed with the next dispute.
-      logger.error({ ...disputeAttemptLog, message: "Dispute submission would fail!", error });
+      // Log and proceed with the next dispute. This should be error unless submitting transactions is disabled and
+      // we don't have sufficient funding.
+      const logLevel = params.submitAutomation || funded ? "error" : "warn";
+      logger[logLevel]({ ...disputeAttemptLog, message: "Dispute submission would fail!", error });
       continue;
     }
 
