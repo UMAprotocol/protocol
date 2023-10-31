@@ -85,8 +85,23 @@ export const runTransaction = async ({
     }
   }
 
-  // Compute the selected account nonce. If the account has a pending transaction then use the subsequent index after the
-  // pending transactions to ensure this new transaction does not collide with any existing transactions in the mempool.
+  // Simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
+  // modifying, then successfully sending it will return the transaction receipt, not the return value, so we grab it here.
+  let returnValue, estimatedGas;
+  try {
+    [returnValue, estimatedGas] = await Promise.all([
+      transaction.call({ from: transactionConfig.from }),
+      transaction.estimateGas({ from: transactionConfig.from }),
+    ]);
+  } catch (error) {
+    const castedError = error as Error & { type?: string };
+    castedError.type = "call";
+    throw castedError;
+  }
+
+  // .call() succeeded, compute selected account nonce. If the account has a pending transaction then use the subsequent
+  // index after the pending transactions to ensure this new transaction does not collide with any existing transactions
+  // in the mempool.
   if (await accountHasPendingTransactions(web3, transactionConfig.from))
     transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
@@ -104,21 +119,7 @@ export const runTransaction = async ({
       };
   }
 
-  // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
-  // modifying, then successfully sending it will return the transaction receipt, not the return value, so we grab it here.
-  let returnValue, estimatedGas;
-  try {
-    [returnValue, estimatedGas] = await Promise.all([
-      transaction.call({ from: transactionConfig.from }),
-      transaction.estimateGas({ from: transactionConfig.from }),
-    ]);
-  } catch (error) {
-    const castedError = error as Error & { type?: string };
-    castedError.type = "call";
-    throw castedError;
-  }
-
-  // .call() succeeded, now broadcast transaction.
+  // Now broadcast the transaction.
   try {
     transactionConfig = { ...transactionConfig, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) };
 
