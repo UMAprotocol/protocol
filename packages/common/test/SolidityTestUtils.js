@@ -19,6 +19,6 @@ describe("SolidityTestUtils.js", function () {
     const transaction = erc20Contract.methods.transferFrom(accounts[0], accounts[1], "1").send({ from: accounts[1] });
 
     // This should fail because the owner has not approved the transfer.
-    assert.isTrue(await didContractRevertWith(transaction, "ERC20: transfer amount exceeds allowance"));
+    assert.isTrue(await didContractRevertWith(transaction, "ERC20: insufficient allowance"));
   });
 });
