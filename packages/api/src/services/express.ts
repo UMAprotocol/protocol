@@ -27,7 +27,7 @@ export default async (config: Config, actions: Actions) => {
     return res.send("ok");
   });
 
-  app.post("/:action", (req: Request, res: Response, next: NextFunction) => {
+  function actionHandler(req: Request, res: Response, next: NextFunction) {
     const action = req?.params?.action;
 
     const end = profile(`action: ${action}`);
@@ -35,7 +35,12 @@ export default async (config: Config, actions: Actions) => {
       .then(res.json.bind(res))
       .catch(next)
       .finally(end);
-  });
+  }
+
+  app.post("/:action", actionHandler);
+
+  // duplicate calls on get
+  app.get("/:action", actionHandler);
 
   app.use(cors());
 
