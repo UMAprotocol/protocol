@@ -33,18 +33,22 @@ export default (config: Config, channels: Channels = []) => {
     return res.send("ok");
   });
 
+  const ActionHandler = (actions: Actions) => (req: Request, res: Response, next: NextFunction) => {
+    const action = req?.params?.action;
+    const end = profile(`action: ${action}`);
+    actions(action, ...lodash.castArray(req.body))
+      .then(res.json.bind(res))
+      .catch(next)
+      .finally(end);
+  };
+
   // loops over all channels and adds the channel name to the url path. If no name exists it will put it at the root.
   channels.forEach(([path, actions]) => {
     const actionPath = path && path.length ? `/${path}/:action` : "/:action";
-    app.post(actionPath, (req: Request, res: Response, next: NextFunction) => {
-      const action = req?.params?.action;
+    app.post(actionPath, ActionHandler(actions));
 
-      const end = profile(`action: ${action}`);
-      actions(action, ...lodash.castArray(req.body))
-        .then(res.json.bind(res))
-        .catch(next)
-        .finally(end);
-    });
+    // duplicate get calls
+    app.get(actionPath, ActionHandler(actions));
   });
 
   app.use(cors());
