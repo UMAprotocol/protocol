@@ -1,7 +1,6 @@
 # @uma/logger
 
-This package contains various clients and helpers to interact with UMA's financial templates. It is primarily used to
-power the disputer, liquidator, and monitor bots.
+@uma/logger is a specialized logger package optimized for minimal dependencies, ensuring compatibility and ease of integration.
 
 ## Installing the package
 
@@ -15,18 +14,14 @@ The [Logger](./src/logger) directory contains helpers and factories for logging 
 logger:
 
 ```js
-const { Logger, createPriceFeed, Networker } = require("@uma/logger");
-
-// A winston logger is required for createPriceFeed, networker and other objects in logger.
-const networker = new Networker(Logger);
-const priceFeed = createPriceFeed(Logger, web3, networker, ...);
+const { Logger } = require("@uma/logger")
 
 // You can also log directly using the winston logger.
 Logger.debug({
-    at: "createPriceFeed",
-    message: "Creating CryptoWatchPriceFeed",
-    otherParam: 5
-});
+  at: "createPriceFeed",
+  message: "Creating CryptoWatchPriceFeed",
+  otherParam: 5,
+})
 ```
 
 ## Helpers
