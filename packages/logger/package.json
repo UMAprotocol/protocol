@@ -1,0 +1,59 @@
+{
+  "name": "@uma/logger",
+  "version": "1.0.0",
+  "description": "Logger library",
+  "dependencies": {
+    "@google-cloud/logging-winston": "^4.1.1",
+    "@google-cloud/trace-agent": "^5.1.6",
+    "@pagerduty/pdjs": "^2.2.4",
+    "@uma/common": "^2.34.0",
+    "@uma/sdk": "^0.34.3",
+    "@uniswap/sdk": "^2.0.5",
+    "bluebird": "^3.7.2",
+    "bn.js": "^4.11.9",
+    "discord.js": "^14.11.0",
+    "dotenv": "^9.0.0",
+    "lodash": "^4.17.20",
+    "mathjs": "^9.2.0",
+    "minimist": "^1.2.0",
+    "moment": "^2.29.1",
+    "moment-timezone": "^0.5.33",
+    "node-fetch": "^2.6.0",
+    "node-pagerduty": "^1.2.0",
+    "superstruct": "^1.0.3",
+    "web3": "^1.6.0",
+    "winston": "^3.2.1",
+    "winston-transport": "^4.3.0"
+  },
+  "devDependencies": {
+    "@openzeppelin/contracts": "4.9.3",
+    "@tsconfig/node14": "^1.0.0",
+    "@types/sinon": "^10.0.0",
+    "chai": "^4.3.4",
+    "mocha": "^9.1.1",
+    "sinon": "^9.0.2"
+  },
+  "homepage": "https://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "files": [
+    "/src/**/*.js",
+    "/dist/**/*"
+  ],
+  "scripts": {
+    "test": "mocha 'test/**/*.js'",
+    "build": "tsc"
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
+  }
+}
