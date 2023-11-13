@@ -1,7 +1,7 @@
 const { web3 } = require("hardhat");
 const { assert } = require("chai");
 const { USPACPriceFeed } = require("../../dist/price-feed/USPACPriceFeed");
-const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
+const { spyLogIncludes, SpyTransport } = require("@uma/logger");
 const winston = require("winston");
 const sinon = require("sinon");
 

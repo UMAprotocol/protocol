@@ -33,7 +33,7 @@ const { DefiPulsePriceFeed } = require("../../dist/price-feed/DefiPulsePriceFeed
 const { ETHVIXPriceFeed } = require("../../dist/price-feed/EthVixPriceFeed");
 const { ForexDailyPriceFeed } = require("../../dist/price-feed/ForexDailyPriceFeed");
 const { QuandlPriceFeed } = require("../../dist/price-feed/QuandlPriceFeed");
-const { SpyTransport } = require("../../dist/logger/SpyTransport");
+const { SpyTransport } = require("@uma/logger");
 
 const winston = require("winston");
 const sinon = require("sinon");
