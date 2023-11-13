@@ -6,7 +6,7 @@ const bn = require("bignumber.js");
 
 const { UniswapV3PriceFeed } = require("../../dist/price-feed/UniswapPriceFeed");
 const { mineTransactionsAtTimeHardhat, MAX_SAFE_JS_INT, parseFixed } = require("@uma/common");
-const { delay } = require("../../dist/helpers/delay.js");
+const { delay } = require("@uma/logger");
 
 const UniswapMock = getContract("UniswapV3Mock");
 const Uniswap = getContract("UniswapV3");

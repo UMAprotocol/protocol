@@ -2,7 +2,8 @@ const { web3, getContract } = require("hardhat");
 const { assert } = require("chai");
 const { toWei } = web3.utils;
 
-const { GasEstimator, SpyTransport, spyLogIncludes } = require("../../dist/index");
+const { GasEstimator, spyLogIncludes } = require("../../dist/index");
+const { SpyTransport } = require("@uma/logger");
 
 const winston = require("winston");
 const sinon = require("sinon");

@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const winston = require("winston");
 // Helper
-const { delay } = require("../../dist/helpers/delay");
+const { delay } = require("@uma/logger");
 
 // Script to test
 const { GasEstimator, MAPPING_BY_NETWORK } = require("../../dist/helpers/GasEstimator");

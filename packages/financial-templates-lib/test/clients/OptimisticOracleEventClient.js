@@ -3,7 +3,7 @@ const { assert } = require("chai");
 
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport } = require("../../dist/logger/SpyTransport");
+const { SpyTransport } = require("@uma/logger");
 
 const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
 

@@ -4,7 +4,7 @@ const { CryptoWatchPriceFeed } = require("../../dist/price-feed/CryptoWatchPrice
 const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport } = require("../../dist/logger/SpyTransport");
+const { SpyTransport } = require("@uma/logger");
 
 describe("CryptoWatchPriceFeed.js", function () {
   let cryptoWatchPriceFeed;

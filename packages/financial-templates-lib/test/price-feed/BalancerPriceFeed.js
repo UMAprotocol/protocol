@@ -5,7 +5,7 @@ const winston = require("winston");
 
 const { BalancerPriceFeed } = require("../../dist/price-feed/BalancerPriceFeed");
 const { mineTransactionsAtTimeHardhat, MAX_SAFE_JS_INT } = require("@uma/common");
-const { delay } = require("../../dist/helpers/delay.js");
+const { delay } = require("@uma/logger");
 
 const BalancerMock = getContract("BalancerMock");
 const Balancer = getContract("Balancer");

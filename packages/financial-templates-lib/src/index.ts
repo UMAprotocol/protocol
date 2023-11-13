@@ -17,4 +17,3 @@ export * from "./price-feed/PriceFeedMockScaled";
 export * from "./price-feed/InvalidPriceFeedMock";
 export * from "./price-feed/utils";
 export * from "./proxy-transaction-handler/DSProxyManager";
-export * from "@uma/logger";
