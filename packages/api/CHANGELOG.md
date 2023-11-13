@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [0.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.25...@uma/api@0.12.0) (2023-11-13)
 
-
 ### Features
 
-* **api:** add GET routes that mirror POST routes in express ([#4661](https://github.com/UMAprotocol/protocol/issues/4661)) ([209b6db](https://github.com/UMAprotocol/protocol/commit/209b6dbe1239645e912fc7e54d8fe2325cc01b47))
-
-
-
-
+- **api:** add GET routes that mirror POST routes in express ([#4661](https://github.com/UMAprotocol/protocol/issues/4661)) ([209b6db](https://github.com/UMAprotocol/protocol/commit/209b6dbe1239645e912fc7e54d8fe2325cc01b47))
 
 ## [0.11.25](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.24...@uma/api@0.11.25) (2023-10-13)
 

@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/llm-bot
 
-
-
-
-
 ## [1.1.1](https://github.com/UMAprotocol/protocol/compare/@uma/llm-bot@1.1.0...@uma/llm-bot@1.1.1) (2023-10-13)
 
 ### Bug Fixes

@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.34.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.34.0...@uma/common@2.34.1) (2023-11-13)
 
-
 ### Bug Fixes
 
-* increment nonce after static call ([#4660](https://github.com/UMAprotocol/protocol/issues/4660)) ([3f81778](https://github.com/UMAprotocol/protocol/commit/3f81778d15b3eea47c8578b4536de65ec92c1afc))
-
-
-
-
+- increment nonce after static call ([#4660](https://github.com/UMAprotocol/protocol/issues/4660)) ([3f81778](https://github.com/UMAprotocol/protocol/commit/3f81778d15b3eea47c8578b4536de65ec92c1afc))
 
 # [2.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.33.0...@uma/common@2.34.0) (2023-07-17)
 

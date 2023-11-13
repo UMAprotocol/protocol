@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/core
 
-
-
-
-
 ## [2.56.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.56.0...@uma/core@2.56.1) (2023-10-13)
 
 **Note:** Version bump only for package @uma/core

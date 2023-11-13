@@ -5,16 +5,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [1.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.5.0...@uma/monitor-v2@1.5.1) (2023-11-13)
 
-
 ### Bug Fixes
 
-* allow trailing slash after space in osnap rules ([#4653](https://github.com/UMAprotocol/protocol/issues/4653)) ([c02a772](https://github.com/UMAprotocol/protocol/commit/c02a772a43e7e29c8445ed9ed3f042bc328f017c))
-* do not dispute ipfs server errors by default ([#4657](https://github.com/UMAprotocol/protocol/issues/4657)) ([8c997b9](https://github.com/UMAprotocol/protocol/commit/8c997b93123759c5839ecff0403702940124f54d))
-* suppress error based on balance ([#4656](https://github.com/UMAprotocol/protocol/issues/4656)) ([e8b3ef6](https://github.com/UMAprotocol/protocol/commit/e8b3ef63bbf59fa1af708686f038303dcf500d75))
-
-
-
-
+- allow trailing slash after space in osnap rules ([#4653](https://github.com/UMAprotocol/protocol/issues/4653)) ([c02a772](https://github.com/UMAprotocol/protocol/commit/c02a772a43e7e29c8445ed9ed3f042bc328f017c))
+- do not dispute ipfs server errors by default ([#4657](https://github.com/UMAprotocol/protocol/issues/4657)) ([8c997b9](https://github.com/UMAprotocol/protocol/commit/8c997b93123759c5839ecff0403702940124f54d))
+- suppress error based on balance ([#4656](https://github.com/UMAprotocol/protocol/issues/4656)) ([e8b3ef6](https://github.com/UMAprotocol/protocol/commit/e8b3ef63bbf59fa1af708686f038303dcf500d75))
 
 # [1.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.4.0...@uma/monitor-v2@1.5.0) (2023-10-13)
 
