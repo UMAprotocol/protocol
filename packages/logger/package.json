@@ -1,6 +1,6 @@
 {
   "name": "@uma/logger",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Logger library",
   "dependencies": {
     "@google-cloud/logging-winston": "^4.1.1",
@@ -20,9 +20,9 @@
     "@tsconfig/node14": "^1.0.0",
     "@types/sinon": "^10.0.0",
     "chai": "^4.3.4",
+    "lodash": "^4.17.20",
     "mocha": "^9.1.1",
-    "sinon": "^9.0.2",
-    "lodash": "^4.17.20"
+    "sinon": "^9.0.2"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",

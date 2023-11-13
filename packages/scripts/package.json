@@ -1,6 +1,6 @@
 {
   "name": "@uma/scripts",
-  "version": "1.29.1",
+  "version": "1.29.2",
   "description": "UMA Core Peripheral Scripts",
   "dependencies": {
     "@ethersproject/abstract-provider": "^5.4.0",
@@ -8,8 +8,8 @@
     "@gnosis.pm/zodiac": "^3.2.0",
     "@google-cloud/bigquery": "^5.3.0",
     "@safe-global/safe-deployments": "^1.21.1",
-    "@uma/common": "^2.34.0",
-    "@uma/financial-templates-lib": "^2.34.1",
+    "@uma/common": "^2.34.1",
+    "@uma/financial-templates-lib": "^2.35.0",
     "dotenv": "^6.2.0",
     "ethers": "^5.4.2",
     "hardhat": "^2.12.6",
