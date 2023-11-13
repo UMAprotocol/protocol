@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.21.0...@uma/affiliates@1.22.0) (2023-11-13)
+
+
+### Features
+
+* gas rebates october 2023 ([#4662](https://github.com/UMAprotocol/protocol/issues/4662)) ([7b91963](https://github.com/UMAprotocol/protocol/commit/7b9196349e181f34655d3ec81fade352f3c351c9))
+
+
+
+
+
 # [1.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.20.0...@uma/affiliates@1.21.0) (2023-10-13)
 
 ### Features
