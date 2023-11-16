@@ -55,6 +55,7 @@ interface ExtraParams {
   signer?: Signer;
   supportedBonds?: SupportedBonds;
   submitAutomation?: boolean;
+  assertionBlacklist?: string[];
 }
 
 describe("OptimisticGovernorMonitor", function () {
@@ -93,6 +94,9 @@ describe("OptimisticGovernorMonitor", function () {
 
     // submitAutomation defaults to true, only set to false if explicitly set in extraParams.
     if (extraParams.submitAutomation === false) env.SUBMIT_AUTOMATION = "false";
+
+    // assertionBlacklist defaults to empty array, only set if explicitly set in extraParams.
+    if (extraParams.assertionBlacklist) env.ASSERTION_BLACKLIST = JSON.stringify(extraParams.assertionBlacklist);
 
     const initialParams = await initMonitoringParams(env, ethers.provider);
 
@@ -940,6 +944,83 @@ describe("OptimisticGovernorMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, transactionProposedEvent.args.proposalHash));
     assert.isTrue(spyLogIncludes(spy, 0, space));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
+  });
+  it("Execution disabled in blacklist", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const space = "test.eth";
+    const { customAvatar, ogModuleProxy } = await deployOgModuleProxy({
+      space,
+      quorum: 0,
+      votingPeriod: 0,
+    });
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Set supported bond settings.
+    const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).toString();
+
+    // Fund the avatar
+    await bondToken.mint(customAvatar.address, parseEther("500"));
+
+    // Construct the transaction data for spending tokens from the avatar.
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    const txnData2 = await bondToken.populateTransaction.transfer(await random.getAddress(), parseEther("250"));
+
+    if (!txnData1.data || !txnData2.data) throw new Error("Transaction data is undefined");
+
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Create the proposal with multiple transactions.
+    const transactions = [
+      { to: bondToken.address, operation, value: 0, data: txnData1.data },
+      { to: bondToken.address, operation, value: 0, data: txnData2.data },
+    ];
+
+    const explanation = toUtf8Bytes("These transactions were approved by majority vote on Snapshot.");
+
+    const proposeTx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, explanation);
+
+    const proposeBlockNumber = await getBlockNumberFromTx(proposeTx);
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        ogModuleProxy.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    // Move time forward to the execution time. This also requires mining new block as the bot checks challenge window
+    // based on block time.
+    await timer.setCurrentTime(transactionProposedEvent.args.challengeWindowEnds);
+    await hardhatTime.increaseTo(transactionProposedEvent.args.challengeWindowEnds);
+    let latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    // Simulate execution of proposals by including current proposal's assertionId in the blacklist.
+    await executeProposals(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, {
+        ogDiscovery: true,
+        signer: executor,
+        supportedBonds,
+        submitAutomation: true,
+        assertionBlacklist: [transactionProposedEvent.args.assertionId],
+      })
+    );
+
+    // There should be no ProposalExecuted events.
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+    const proposalExecutionEvents = await ogModuleProxy.queryFilter(
+      ogModuleProxy.filters.ProposalExecuted(),
+      proposeBlockNumber,
+      latestBlockNumber
+    );
+    assert.equal(proposalExecutionEvents.length, 0);
+
+    // There should be no logs caught by spy.
+    assert.equal(spy.callCount, 0);
   });
   it("Parse rules, space with no trailing slash", async function () {
     const space = "test.eth";
