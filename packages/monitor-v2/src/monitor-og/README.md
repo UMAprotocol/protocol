@@ -62,6 +62,9 @@ All the configuration should be provided with following environment variables:
   `MNEMONIC` for signing execution transactions.
 - `DISPUTE_IPFS_SERVER_ERRORS` is boolean enabling/disabling automatic dispute of proposals with IPFS server errors
   (`false` by default). This is used only in conjunction with `AUTOMATIC_DISPUTES_ENABLED` set to `true`.
+- `ASSERTION_BLACKLIST` is an array of assertion IDs that should be ignored when submitting disputes or trying to
+  execute. This is used only in conjunction with `AUTOMATIC_DISPUTES_ENABLED` or `AUTOMATIC_EXECUTIONS_ENABLED` set to
+  `true`.
 - `SUPPORTED_BONDS` is a mapping of supported bond tokens and bond values. This is required when running in automated
   support mode. Only oSnap modules with exact match of bond token and bond value will be supported.
 - `SUBMIT_AUTOMATION` is boolean enabling/disabling transaction submission in any of automated support modes (`true` by

@@ -366,6 +366,12 @@ const hasChallengePeriodEnded = (proposal: TransactionsProposedEvent, timestamp:
   return timestamp >= proposal.args.challengeWindowEnds.toNumber();
 };
 
+// Filter function to check if the proposal has been blacklisted by its corresponding assertionId.
+const isProposalBlacklisted = (proposal: TransactionsProposedEvent, params: MonitoringParams): boolean => {
+  const assertionBlaclistSet = new Set(params.assertionBlacklist.map((assertionId) => assertionId.toLowerCase()));
+  return assertionBlaclistSet.has(proposal.args.assertionId.toLowerCase());
+};
+
 // Filters supported proposal events and adds their parameters to the result.
 const getSupportedProposals = async (
   proposals: TransactionsProposedEvent[],
@@ -386,7 +392,8 @@ const getSupportedProposals = async (
     )
   ).filter((proposal) => proposal !== null) as SupportedProposal[];
 
-  return supportedProposals;
+  // Filter out all proposals that have been blacklisted.
+  return supportedProposals.filter((proposal) => !isProposalBlacklisted(proposal.event, params));
 };
 
 // Filter proposals that did not pass verification and also retain verification result for logging.
