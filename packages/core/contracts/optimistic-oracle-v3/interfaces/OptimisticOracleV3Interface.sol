@@ -39,6 +39,15 @@ interface OptimisticOracleV3Interface {
     }
 
     /**
+     * @notice Disputes an assertion. Depending on how the assertion was configured, this may either escalate to the UMA
+     * DVM or the configured escalation manager for arbitration.
+     * @dev The caller must approve this contract to spend at least bond amount of currency for the associated assertion.
+     * @param assertionId unique identifier for the assertion to dispute.
+     * @param disputer receives bonds back at settlement.
+     */
+    function disputeAssertion(bytes32 assertionId, address disputer) external;
+
+    /**
      * @notice Returns the default identifier used by the Optimistic Oracle V3.
      * @return The default identifier.
      */
