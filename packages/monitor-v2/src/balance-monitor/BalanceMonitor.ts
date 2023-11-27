@@ -87,7 +87,7 @@ export class BalanceMonitor {
         const monitoredBalancePromise = (async () => {
           const tokenSymbolPromise = token.address
             ? getCurrencySymbol(provider, token.address)
-            : PublicNetworks[account.chainId].nativeToken;
+            : PublicNetworks[account.chainId]?.nativeToken || "UNKNOWN";
           const tokenDecimalsPromise = token.address ? getCurrencyDecimals(provider, token.address) : 18;
 
           const [tokenSymbol, tokenDecimals] = await Promise.all([tokenSymbolPromise, tokenDecimalsPromise]);
@@ -97,7 +97,7 @@ export class BalanceMonitor {
             accountAddress: account.address,
             provider,
             chainId: account.chainId,
-            networkName: PublicNetworks[account.chainId].name,
+            networkName: PublicNetworks[account.chainId]?.name || "unknown",
             tokenSymbol,
             tokenAddress: token.address,
             tokenDecimals,
