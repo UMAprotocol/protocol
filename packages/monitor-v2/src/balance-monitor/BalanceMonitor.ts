@@ -129,7 +129,7 @@ export class BalanceMonitor {
       let logLevel: "warn" | "error" | undefined;
       if (balance.lt(monitoredBalance.errorThreshold)) logLevel = "error";
       else if (balance.lt(monitoredBalance.warnThreshold)) logLevel = "warn";
-      if (!logLevel) return; // No need to log as balance is above all thresholds.
+      else return; // No need to log as balance is above all thresholds.
 
       logger[logLevel]({
         at: "BalanceMonitor",
