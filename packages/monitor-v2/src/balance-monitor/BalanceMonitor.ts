@@ -75,42 +75,37 @@ export class BalanceMonitor {
     providers: Map<number, Provider>,
     monitoredAccounts: MonitoredAccount[]
   ): Promise<BalanceMonitor> {
-    const monitoredBalances: MonitoredBalance[] = [];
+    // Will parallelize all async calls.
+    const monitoredBalances = await Promise.all(
+      monitoredAccounts
+        .map((account) => {
+          const provider = providers.get(account.chainId);
+          if (!provider) throw new Error(`No provider for chainId ${account.chainId}`);
 
-    const monitoredBalancesPromises: Promise<void>[] = []; // Will parallelize all async calls.
+          return account.tokens.map(async (token) => {
+            const tokenSymbolPromise = token.address
+              ? getCurrencySymbol(provider, token.address)
+              : PublicNetworks[account.chainId]?.nativeToken || "UNKNOWN";
+            const tokenDecimalsPromise = token.address ? getCurrencyDecimals(provider, token.address) : 18;
 
-    for (const account of monitoredAccounts) {
-      const provider = providers.get(account.chainId);
-      if (!provider) throw new Error(`No provider for chainId ${account.chainId}`);
+            const [tokenSymbol, tokenDecimals] = await Promise.all([tokenSymbolPromise, tokenDecimalsPromise]);
 
-      for (const token of account.tokens) {
-        const monitoredBalancePromise = (async () => {
-          const tokenSymbolPromise = token.address
-            ? getCurrencySymbol(provider, token.address)
-            : PublicNetworks[account.chainId]?.nativeToken || "UNKNOWN";
-          const tokenDecimalsPromise = token.address ? getCurrencyDecimals(provider, token.address) : 18;
-
-          const [tokenSymbol, tokenDecimals] = await Promise.all([tokenSymbolPromise, tokenDecimalsPromise]);
-
-          monitoredBalances.push({
-            accountName: account.name || account.address,
-            accountAddress: account.address,
-            provider,
-            chainId: account.chainId,
-            networkName: PublicNetworks[account.chainId]?.name || "unknown",
-            tokenSymbol,
-            tokenAddress: token.address,
-            tokenDecimals,
-            warnThreshold: BalanceMonitor.parseThreshold(token.warnThreshold, tokenDecimals),
-            errorThreshold: BalanceMonitor.parseThreshold(token.errorThreshold, tokenDecimals),
+            return {
+              accountName: account.name || account.address,
+              accountAddress: account.address,
+              provider,
+              chainId: account.chainId,
+              networkName: PublicNetworks[account.chainId]?.name || "unknown",
+              tokenSymbol,
+              tokenAddress: token.address,
+              tokenDecimals,
+              warnThreshold: BalanceMonitor.parseThreshold(token.warnThreshold, tokenDecimals),
+              errorThreshold: BalanceMonitor.parseThreshold(token.errorThreshold, tokenDecimals),
+            };
           });
-        })();
-
-        monitoredBalancesPromises.push(monitoredBalancePromise);
-      }
-    }
-
-    await Promise.all(monitoredBalancesPromises);
+        })
+        .flat() // Flattens since there will be nested arrays of promises.
+    );
 
     return new BalanceMonitor(monitoredBalances);
   }
