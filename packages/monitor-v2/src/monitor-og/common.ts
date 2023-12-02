@@ -71,6 +71,7 @@ export interface MonitoringParams {
   useTenderly: boolean;
   botModes: BotModes;
   retryOptions: RetryOptions;
+  storage: "datastore" | "file"; // Defaults to "datastore", but only used when notifying new proposals.
 }
 
 // Helper type guard for dictionary objects.
@@ -198,6 +199,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     automaticProposalsEnabled: env.AUTOMATIC_PROPOSALS_ENABLED === "true",
     automaticDisputesEnabled: env.AUTOMATIC_DISPUTES_ENABLED === "true",
     automaticExecutionsEnabled: env.AUTOMATIC_EXECUTIONS_ENABLED === "true",
+    notifyNewProposalsEnabled: env.NOTIFY_NEW_PROPOSALS_ENABLED === "true",
   };
 
   // Parse supported bonds and get signer if any of automatic support modes are enabled.
@@ -236,6 +238,12 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     minTimeout: env.SNAPSHOT_TIMEOUT ? Number(env.SNAPSHOT_TIMEOUT) : 1000, // Milliseconds before starting the first retry.
   };
 
+  // Storage type to keep state on notified Snapshot proposals.
+  const storage = env.STORAGE || "datastore";
+  if (storage !== "datastore" && storage !== "file") {
+    throw new Error(`Invalid STORAGE type: ${storage}`);
+  }
+
   const initialParams: MonitoringParams = {
     ogAddresses: [], // Will be added later after validation.
     moduleProxyFactoryAddresses,
@@ -256,6 +264,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     useTenderly,
     botModes,
     retryOptions,
+    storage,
   };
 
   // If OG_ADDRESS is provided, use it in the monitored address list and return monitoring params.

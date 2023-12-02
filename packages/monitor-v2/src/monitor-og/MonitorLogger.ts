@@ -4,7 +4,7 @@ import { BigNumber } from "ethers";
 import { createSnapshotProposalLink, createTenderlySimulationLink } from "../utils/logger";
 import { generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
 import { DisputableProposal, SnapshotProposalExpanded, SupportedProposal } from "./oSnapAutomation";
-import { VerificationResponse } from "./SnapshotVerification";
+import { SnapshotProposalGraphql, VerificationResponse } from "./SnapshotVerification";
 
 interface ProposalLogContent {
   at: string;
@@ -327,5 +327,26 @@ export async function logSubmittedExecution(
       createEtherscanLinkMarkdown(executeTx, params.chainId) +
       ".",
     notificationPath: "optimistic-governor",
+  });
+}
+
+export function logSnapshotProposal(
+  logger: typeof Logger,
+  proposal: SnapshotProposalGraphql,
+  params: MonitoringParams
+): void {
+  logger.info({
+    at: "oSnapMonitor",
+    message: "Snapshot Proposal Created 📝",
+    mrkdwn:
+      "Snapshot proposal for " +
+      proposal.space.id +
+      " with id " +
+      proposal.id +
+      " has been created. More details: " +
+      createSnapshotProposalLink(params.snapshotEndpoint, proposal.space.id, proposal.id) +
+      ".",
+    notificationPath: "optimistic-governor",
+    discordTicketChannel: "verifications-start-here",
   });
 }
