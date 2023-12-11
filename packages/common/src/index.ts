@@ -11,5 +11,6 @@ export * from "./types";
 export * from "./EthersSignerUtils";
 export * from "./EthersProviderUtils";
 export * from "./EventUtils";
+export * from "./TenderlyFork";
 export * from "./TenderlySimulation";
 export * from "./AxiosRetry";
