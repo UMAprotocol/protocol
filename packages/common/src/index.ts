@@ -12,3 +12,4 @@ export * from "./EthersSignerUtils";
 export * from "./EthersProviderUtils";
 export * from "./EventUtils";
 export * from "./TenderlySimulation";
+export * from "./AxiosRetry";
