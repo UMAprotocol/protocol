@@ -5,7 +5,7 @@ import { promises as fsPromises } from "fs";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { ForkedTenderlyResult, generateForkedSimulation, getOgByAddress, Logger, MonitoringParams } from "./common";
+import { ForkedTenderlyResult, generateForkedSimulation, Logger, MonitoringParams } from "./common";
 import { logSnapshotProposal } from "./MonitorLogger";
 import {
   GraphqlData,
@@ -25,45 +25,22 @@ const getDatastoreInstance = () => {
   return datastoreInstance;
 };
 
-// Returns null if the rules string does not contain Snapshot space url.
-const parseSpaceFromRules = (rules: string, params: MonitoringParams): string | null => {
-  // Will match the first Snapshot space url in the rules string.
-  const regexPattern = `${params.snapshotEndpoint.replace(".", "\\.")}/#\\/([a-zA-Z0-9-.]+)\\/?`;
-  const regex = new RegExp(regexPattern);
-
-  const match = rules.match(regex);
-  if (!match) return null;
-
-  return match[1];
-};
-
-// Filters through all monitored OGs and returns all Snapshot spaces their rules are pointing at.
-const getMonitoredSpaces = async (params: MonitoringParams): Promise<string[]> => {
-  const monitoredSpaces = new Set<string>();
-
-  await Promise.all(
-    params.ogAddresses.map(async (ogAddress) => {
-      const og = await getOgByAddress(params, ogAddress);
-      const rules = await og.rules();
-      const parsedSpace = parseSpaceFromRules(rules, params);
-      if (parsedSpace !== null) monitoredSpaces.add(parsedSpace);
-    })
-  );
-
-  return Array.from(monitoredSpaces);
-};
-
-// Queries Snapshot for all space proposals that are still active and are of basic type that oSnap supports.
+// Queries Snapshot for all proposals that are still active and have the required plugin.
 // This uses provided retry config, but ultimately returns the error object if the Snapshot query fails after all
 // retries. This also validates returned data and filters only proposals that use either safeSnap or oSnap plugin.
-const getActiveSpaceProposals = async (
-  spaceId: string,
+const getActivePluginProposals = async (
+  plugin: string,
   url: string,
   retryOptions: RetryOptions
 ): Promise<Array<SnapshotProposalGraphql> | Error> => {
   const query = gql(/* GraphQL */ `
-    query GetActiveProposals($spaceId: String) {
-      proposals(where: { space: $spaceId, type: "basic", state: "active" }, orderBy: "created", orderDirection: desc) {
+    query GetActiveProposals($plugin: String) {
+      proposals(
+        first: 1000 # Maximum number that can be returned by Snapshot (should be enough for active plugin proposals).
+        where: { plugins_contains: $plugin, state: "active" }
+        orderBy: "created"
+        orderDirection: desc
+      ) {
         id
         ipfs
         type
@@ -85,7 +62,7 @@ const getActiveSpaceProposals = async (
   // If the GraphQL request fails for any reason, we return an Error object that will be logged by the bot.
   try {
     const graphqlData = await retry(
-      () => request<GraphqlData, { spaceId: string }>(url, query, { spaceId }),
+      () => request<GraphqlData, { plugin: string }>(url, query, { plugin }),
       retryOptions
     );
     // Filter only for proposals that have a properly configured safeSnap or oSnap plugin.
@@ -96,18 +73,17 @@ const getActiveSpaceProposals = async (
   }
 };
 
-// Get all active basic safeSnap/oSnap proposals for monitored spaces and safes (returned in safeSnap format).
+// Get all active safeSnap/oSnap proposals from all spaces targeting monitored safes (returned in safeSnap format).
 const getActiveSnapshotProposals = async (
   logger: typeof Logger,
   params: MonitoringParams
 ): Promise<Array<SnapshotProposalGraphql>> => {
-  // Get all spaces from monitored OGs.
-  const monitoredSpaces = await getMonitoredSpaces(params);
-
-  // Get all active basic safeSnap/oSnap proposals for monitored spaces.
+  // Get all active safeSnap/oSnap proposals from all spaces.
   const snapshotProposals = (
     await Promise.all(
-      monitoredSpaces.map(async (space) => getActiveSpaceProposals(space, params.graphqlEndpoint, params.retryOptions))
+      ["oSnap", "safeSnap"].map(async (plugin) =>
+        getActivePluginProposals(plugin, params.graphqlEndpoint, params.retryOptions)
+      )
     )
   ).flat();
 
