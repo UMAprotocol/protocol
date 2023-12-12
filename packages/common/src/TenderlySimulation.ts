@@ -64,14 +64,27 @@ interface TenderlyRequestBody {
   description?: string;
 }
 
-// Response body returned by Tenderly simulation API. We only type API response properties that we use.
-interface TenderlyAPIResponse {
+// Response body returned by Tenderly API for regular simulations. We only type API response properties that we use.
+interface TenderlyAPIResponseRegular {
   simulation: {
     id: string;
+    status: boolean;
+    gas_used: number;
+  };
+}
+
+// Response body returned by Tenderly API for forked simulations. We only type API response properties that we use.
+interface TenderlyAPIResponseFork {
+  simulation: {
+    id: string;
+    fork_id: string;
     status: boolean;
     receipt: { gasUsed: string };
   };
 }
+
+// Possible response body returned by Tenderly simulation API. We only type API response properties that we use.
+type TenderlyAPIResponse = TenderlyAPIResponseRegular | TenderlyAPIResponseFork;
 
 /**
  * @notice Checks for required environment variables and returns a TenderlyEnvironment object.
@@ -135,12 +148,27 @@ const createRequestBody = (simulationParams: TenderlySimulationParams): Tenderly
   return body;
 };
 
-// Type guard function to check if the API response conforms to the required TenderlyAPIResponse interface
-function isTenderlyAPIResponse(response: unknown): response is TenderlyAPIResponse {
+// Type guard function to check if the API response conforms to the required TenderlyAPIResponseRegular interface
+function isTenderlyAPIResponseRegular(response: unknown): response is TenderlyAPIResponseRegular {
   if (
     isRecordStringUnknown(response) &&
     isRecordStringUnknown(response.simulation) &&
     typeof response.simulation.id === "string" &&
+    typeof response.simulation.status === "boolean" &&
+    typeof response.simulation.gas_used === "number"
+  ) {
+    return true;
+  }
+  return false;
+}
+
+// Type guard function to check if the API response conforms to the required TenderlyAPIResponseFork interface
+function isTenderlyAPIResponseFork(response: unknown): response is TenderlyAPIResponseFork {
+  if (
+    isRecordStringUnknown(response) &&
+    isRecordStringUnknown(response.simulation) &&
+    typeof response.simulation.id === "string" &&
+    typeof response.simulation.fork_id === "string" &&
     typeof response.simulation.status === "boolean" &&
     isRecordStringUnknown(response.simulation.receipt) &&
     typeof response.simulation.receipt.gasUsed === "string"
@@ -148,6 +176,11 @@ function isTenderlyAPIResponse(response: unknown): response is TenderlyAPIRespon
     return true;
   }
   return false;
+}
+
+// Type guard function to check if the API response conforms to the required TenderlyAPIResponse interface
+function isTenderlyAPIResponse(response: unknown): response is TenderlyAPIResponse {
+  return isTenderlyAPIResponseRegular(response) || isTenderlyAPIResponseFork(response);
 }
 
 // Send Tenderly simulation API request and return the response body.
@@ -245,7 +278,9 @@ export const simulateTenderlyTx = async (
   return {
     id: simulationResponse.simulation.id,
     status: simulationResponse.simulation.status,
-    gasUsed: parseInt(simulationResponse.simulation.receipt.gasUsed),
+    gasUsed: isTenderlyAPIResponseRegular(simulationResponse)
+      ? simulationResponse.simulation.gas_used
+      : parseInt(simulationResponse.simulation.receipt.gasUsed),
     resultUrl,
   };
 };
