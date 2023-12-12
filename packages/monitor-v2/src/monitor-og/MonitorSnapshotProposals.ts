@@ -5,7 +5,7 @@ import { promises as fsPromises } from "fs";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 
-import { getOgByAddress, Logger, MonitoringParams } from "./common";
+import { ForkedTenderlyResult, generateForkedSimulation, getOgByAddress, Logger, MonitoringParams } from "./common";
 import { logSnapshotProposal } from "./MonitorLogger";
 import {
   GraphqlData,
@@ -170,16 +170,59 @@ const updateNotifiedProposals = async (proposalId: string, params: MonitoringPar
   }
 };
 
+// Tries to run simulations for all safes in the proposal. If this fails or simulation is not enabled, it will be skipped.
+const tryProposalSimulations = async (
+  logger: typeof Logger,
+  proposal: SnapshotProposalGraphql,
+  params: MonitoringParams
+): Promise<ForkedTenderlyResult[]> => {
+  if (!params.useTenderly) return []; // Simulation is not enabled.
+
+  // safeSnap plugin proposal might target multiple safes, so we will expand it and run a simulation for each safe.
+  const safeSnapPlugin = translateToSafeSnap(proposal.plugins);
+  const simulationResults: ForkedTenderlyResult[] = [];
+  const expandedProposals = safeSnapPlugin.safeSnap.safes.map((safe) => {
+    const { plugins, ...clonedObject } = proposal;
+    return { ...clonedObject, safe };
+  });
+  for (const expandedProposal of expandedProposals) {
+    try {
+      const simulationResult = await generateForkedSimulation(expandedProposal, params.retryOptions);
+      simulationResults.push(simulationResult);
+    } catch (error) {
+      // Simulation failed to generate, so we will skip this safe and debug the issue.
+      logger.debug({
+        at: "oSnapMonitor",
+        message: "Failed to generate forked Tenderly simulation 🤷‍♀️",
+        mrkdwn:
+          "Failed to generate Tenderly simulation for " +
+          expandedProposal.space.id +
+          " proposal " +
+          expandedProposal.id +
+          " targeting oSnap module " +
+          expandedProposal.safe.umaAddress +
+          " on chainId " +
+          expandedProposal.safe.network,
+        error,
+        notificationPath: "optimistic-governor",
+      });
+    }
+  }
+  return simulationResults;
+};
+
 // Logs all new proposals that have not been notified yet.
 export const notifyNewProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
   const snapshotProposals = await getActiveSnapshotProposals(logger, params);
   const notifiedProposals = await getNotifiedProposals(params);
 
-  // Filter out proposals that have already been notified.
+  // Filter out proposals that have already been notified. Since oSnap modules on different chains might reference the
+  // same space, it is still possible to have duplicate notifications from bot instances that are running in parallel.
   const newProposals = snapshotProposals.filter((proposal) => !notifiedProposals.includes(proposal.id));
 
   for (const proposal of newProposals) {
-    logSnapshotProposal(logger, proposal, params);
+    const simulationResults = await tryProposalSimulations(logger, proposal, params);
+    logSnapshotProposal(logger, proposal, params, simulationResults);
     await updateNotifiedProposals(proposal.id, params);
   }
 };

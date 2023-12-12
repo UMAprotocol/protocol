@@ -1,8 +1,8 @@
 import { createEtherscanLinkMarkdown, TenderlySimulationResult } from "@uma/common";
 import { BigNumber } from "ethers";
 
-import { createSnapshotProposalLink, createTenderlySimulationLink } from "../utils/logger";
-import { generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
+import { createSnapshotProposalLink, createTenderlyForkLink, createTenderlySimulationLink } from "../utils/logger";
+import { ForkedTenderlyResult, generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
 import { DisputableProposal, SnapshotProposalExpanded, SupportedProposal } from "./oSnapAutomation";
 import { SnapshotProposalGraphql, VerificationResponse } from "./SnapshotVerification";
 
@@ -333,9 +333,22 @@ export async function logSubmittedExecution(
 export function logSnapshotProposal(
   logger: typeof Logger,
   proposal: SnapshotProposalGraphql,
-  params: MonitoringParams
+  params: MonitoringParams,
+  simulationResults: ForkedTenderlyResult[]
 ): void {
-  logger.info({
+  // If any of the simulations reverted, log as error, otherwise log as info.
+  const logLevel = simulationResults.every((simulationResult) => simulationResult.lastSimulation.status)
+    ? "info"
+    : "error";
+  const simulationLinks = simulationResults
+    .map(
+      (simulationResult) =>
+        createTenderlySimulationLink(simulationResult.lastSimulation) +
+        " on " +
+        createTenderlyForkLink(simulationResult.forkUrl)
+    )
+    .join(", ");
+  logger[logLevel]({
     at: "oSnapMonitor",
     message: "Snapshot Proposal Created 📝",
     mrkdwn:
@@ -345,6 +358,8 @@ export function logSnapshotProposal(
       proposal.id +
       " has been created. More details: " +
       createSnapshotProposalLink(params.snapshotEndpoint, proposal.space.id, proposal.id) +
+      ". " +
+      simulationLinks +
       ".",
     notificationPath: "optimistic-governor",
     discordTicketChannel: "verifications-start-here",
