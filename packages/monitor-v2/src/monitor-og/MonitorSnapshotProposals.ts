@@ -1,5 +1,4 @@
 import { Datastore } from "@google-cloud/datastore";
-import assert from "assert";
 import retry, { Options as RetryOptions } from "async-retry";
 import { promises as fsPromises } from "fs";
 import { request } from "graphql-request";
@@ -26,13 +25,13 @@ const getDatastoreInstance = () => {
 };
 
 // Queries Snapshot for all proposals that are still active and have the required plugin.
-// This uses provided retry config, but ultimately returns the error object if the Snapshot query fails after all
-// retries. This also validates returned data and filters only proposals that use either safeSnap or oSnap plugin.
+// This uses provided retry config, but ultimately throws the error if the Snapshot query fails after all retries.
+// This also validates returned data and filters only proposals that use either safeSnap or oSnap plugin.
 const getActivePluginProposals = async (
   plugin: string,
   url: string,
   retryOptions: RetryOptions
-): Promise<Array<SnapshotProposalGraphql> | Error> => {
+): Promise<Array<SnapshotProposalGraphql>> => {
   const query = gql(/* GraphQL */ `
     query GetActiveProposals($plugin: String) {
       proposals(
@@ -59,18 +58,12 @@ const getActivePluginProposals = async (
     }
   `);
 
-  // If the GraphQL request fails for any reason, we return an Error object that will be logged by the bot.
-  try {
-    const graphqlData = await retry(
-      () => request<GraphqlData, { plugin: string }>(url, query, { plugin }),
-      retryOptions
-    );
-    // Filter only for proposals that have a properly configured safeSnap or oSnap plugin.
-    return graphqlData.proposals.filter(isSnapshotProposalGraphql);
-  } catch (error) {
-    assert(error instanceof Error, "Unexpected Error type!");
-    return error;
-  }
+  const graphqlData = await retry(
+    () => request<GraphqlData, { plugin: string }>(url, query, { plugin }),
+    retryOptions
+  );
+  // Filter only for proposals that have a properly configured safeSnap or oSnap plugin.
+  return graphqlData.proposals.filter(isSnapshotProposalGraphql);
 };
 
 // Get all active safeSnap/oSnap proposals from all spaces targeting monitored safes (returned in safeSnap format).
@@ -78,27 +71,28 @@ const getActiveSnapshotProposals = async (
   logger: typeof Logger,
   params: MonitoringParams
 ): Promise<Array<SnapshotProposalGraphql>> => {
-  // Get all active safeSnap/oSnap proposals from all spaces.
-  const snapshotProposals = (
-    await Promise.all(
-      ["oSnap", "safeSnap"].map(async (plugin) =>
-        getActivePluginProposals(plugin, params.graphqlEndpoint, params.retryOptions)
-      )
+  // Get all active safeSnap/oSnap proposals from all spaces (including rejected promises that we will handle below).
+  const allProposals = await Promise.allSettled(
+    ["oSnap", "safeSnap"].map(async (plugin) =>
+      getActivePluginProposals(plugin, params.graphqlEndpoint, params.retryOptions)
     )
-  ).flat();
+  );
 
-  // Log all errors that occurred when fetching Snapshot proposals and filter them out.
-  const nonErrorProposals = snapshotProposals.filter((proposal) => {
-    if (!(proposal instanceof Error)) return true;
-    logger.error({
-      at: "oSnapAutomation",
-      message: "Server error when fetching Snapshot proposals",
-      mrkdwn: "Failed to fetch Snapshot proposals",
-      error: proposal,
-      notificationPath: "optimistic-governor",
-    });
-    return false;
-  }) as SnapshotProposalGraphql[];
+  // Log any errors that occurred when fetching Snapshot proposals and filter them out.
+  const nonErrorProposals: SnapshotProposalGraphql[] = [];
+  for (const proposal of allProposals) {
+    if (proposal.status === "fulfilled") {
+      nonErrorProposals.push(...proposal.value);
+    } else {
+      logger.error({
+        at: "oSnapMonitor",
+        message: "Server error when fetching Snapshot proposals 🤖",
+        mrkdwn: "Failed to fetch Snapshot proposals",
+        error: proposal.reason,
+        notificationPath: "optimistic-governor",
+      });
+    }
+  }
 
   // Filter out proposals that do not target any of the monitored safes.
   return nonErrorProposals.filter((proposal) => {
