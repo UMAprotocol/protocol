@@ -1,6 +1,6 @@
 import { Datastore } from "@google-cloud/datastore";
 import retry, { Options as RetryOptions } from "async-retry";
-import { promises as fsPromises } from "fs";
+import fs from "fs";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
 import path from "path";
@@ -114,14 +114,8 @@ const getNotifiedProposals = async (params: MonitoringParams): Promise<string[]>
     const [notifiedProposals] = await datastore.runQuery(query);
     return notifiedProposals.map((proposal) => proposal.id);
   } else {
-    let notifiedProposalsStringified: string;
-    try {
-      notifiedProposalsStringified = await fsPromises.readFile(filePath, "utf-8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-      throw error;
-    }
-    return JSON.parse(notifiedProposalsStringified);
+    if (!fs.existsSync(filePath)) return [];
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
   }
 };
 
@@ -136,7 +130,7 @@ const updateNotifiedProposals = async (proposalId: string, params: MonitoringPar
     const notifiedProposals = await getNotifiedProposals(params);
     if (!notifiedProposals.includes(proposalId)) {
       notifiedProposals.push(proposalId);
-      await fsPromises.writeFile(filePath, JSON.stringify(notifiedProposals, null, 2), "utf-8");
+      fs.writeFileSync(filePath, JSON.stringify(notifiedProposals, null, 2), "utf-8");
     }
   }
 };
