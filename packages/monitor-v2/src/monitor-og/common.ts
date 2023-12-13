@@ -3,20 +3,23 @@ import {
   SupportedNetworks as zodiacSupportedNetworks,
 } from "@gnosis.pm/zodiac";
 import {
+  createTenderlyFork,
   getGckmsSigner,
   getRetryProvider,
+  shareTenderlyFork,
   simulateTenderlyTx,
   TenderlySimulationParams,
   TenderlySimulationResult,
 } from "@uma/common";
-import { ERC20Ethers, getAddress, ModuleProxyFactoryEthers } from "@uma/contracts-node";
+import { ERC20Ethers, FinderEthers, getAddress, ModuleProxyFactoryEthers, StoreEthers } from "@uma/contracts-node";
 import { ModuleProxyCreationEvent } from "@uma/contracts-node/typechain/core/ethers/ModuleProxyFactory";
 import { TransactionsProposedEvent } from "@uma/contracts-node/typechain/core/ethers/OptimisticGovernor";
 import { delay } from "@uma/financial-templates-lib";
 import { Options as RetryOptions } from "async-retry";
-import { BigNumber, Contract, Event, EventFilter, Signer, utils, Wallet } from "ethers";
+import { BigNumber, Contract, Event, EventFilter, providers, Signer, utils, Wallet } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { OptimisticGovernorEthers, OptimisticOracleV3Ethers } from "./common";
+import { SnapshotProposalExpanded } from "./oSnapAutomation";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 
@@ -71,6 +74,12 @@ export interface MonitoringParams {
   useTenderly: boolean;
   botModes: BotModes;
   retryOptions: RetryOptions;
+  storage: "datastore" | "file"; // Defaults to "datastore", but only used when notifying new proposals.
+}
+
+export interface ForkedTenderlyResult {
+  forkUrl: string;
+  lastSimulation: TenderlySimulationResult;
 }
 
 // Helper type guard for dictionary objects.
@@ -198,6 +207,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     automaticProposalsEnabled: env.AUTOMATIC_PROPOSALS_ENABLED === "true",
     automaticDisputesEnabled: env.AUTOMATIC_DISPUTES_ENABLED === "true",
     automaticExecutionsEnabled: env.AUTOMATIC_EXECUTIONS_ENABLED === "true",
+    notifyNewProposalsEnabled: env.NOTIFY_NEW_PROPOSALS_ENABLED === "true",
   };
 
   // Parse supported bonds and get signer if any of automatic support modes are enabled.
@@ -236,6 +246,12 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     minTimeout: env.SNAPSHOT_TIMEOUT ? Number(env.SNAPSHOT_TIMEOUT) : 1000, // Milliseconds before starting the first retry.
   };
 
+  // Storage type to keep state on notified Snapshot proposals.
+  const storage = env.STORAGE || "datastore";
+  if (storage !== "datastore" && storage !== "file") {
+    throw new Error(`Invalid STORAGE type: ${storage}`);
+  }
+
   const initialParams: MonitoringParams = {
     ogAddresses: [], // Will be added later after validation.
     moduleProxyFactoryAddresses,
@@ -256,6 +272,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     useTenderly,
     botModes,
     retryOptions,
+    storage,
   };
 
   // If OG_ADDRESS is provided, use it in the monitored address list and return monitoring params.
@@ -439,4 +456,106 @@ export const generateTenderlySimulation = async (
     timestampOverride: proposedEvent.args.challengeWindowEnds.toNumber(),
   };
   return await simulateTenderlyTx(simulationParams, params.retryOptions);
+};
+
+// Generates forked Tenderly simulation for active proposals. This is used to verify the proposal before it is posted
+// on-chain.
+export const generateForkedSimulation = async (
+  proposal: SnapshotProposalExpanded,
+  retryOptions: RetryOptions
+): Promise<ForkedTenderlyResult> => {
+  // Create and share Tenderly fork.
+  const chainId = Number(proposal.safe.network);
+  const alias = `${proposal.space.id} proposal ${proposal.id} on ${proposal.safe.umaAddress}, chainId ${chainId}`;
+  const fork = await createTenderlyFork({ chainId, alias });
+  const forkProvider = new providers.StaticJsonRpcProvider(fork.rpcUrl);
+  const forkUrl = await shareTenderlyFork(fork.id);
+
+  // Set bond amount to 0 in order to simplify proposal simulation. First, set it on the OG module.
+  const og = await getContractInstanceWithProvider<OptimisticGovernorEthers>(
+    "OptimisticGovernor",
+    forkProvider,
+    proposal.safe.umaAddress
+  );
+  const ogOwnerAddress = await og.owner();
+  const collateralAddress = await og.collateral();
+  const simulation1 = await simulateTenderlyTx(
+    {
+      chainId,
+      from: ogOwnerAddress,
+      to: proposal.safe.umaAddress,
+      input: og.interface.encodeFunctionData("setCollateralAndBond", [collateralAddress, 0]),
+      fork: { id: fork.id, root: fork.headId },
+      description: "Set bond to 0 in oSnap module",
+    },
+    retryOptions
+  );
+  if (!simulation1.status) return { forkUrl, lastSimulation: simulation1 };
+
+  // Also set bond amount to 0 in Store.
+  const finderAddress = await og.finder();
+  const finder = await getContractInstanceWithProvider<FinderEthers>("Finder", forkProvider, finderAddress);
+  const storeAddress = await finder.getImplementationAddress(utils.formatBytes32String("Store"));
+  const store = await getContractInstanceWithProvider<StoreEthers>("Store", forkProvider, storeAddress);
+  const storeOwnerAddress = await store.getMember(0);
+  const simulation2 = await simulateTenderlyTx(
+    {
+      chainId,
+      from: storeOwnerAddress,
+      to: storeAddress,
+      input: store.interface.encodeFunctionData("setFinalFee", [collateralAddress, { rawValue: 0 }]),
+      fork: { id: fork.id, root: simulation1.id },
+      description: "Set bond to 0 in Store",
+    },
+    retryOptions
+  );
+  if (!simulation2.status) return { forkUrl, lastSimulation: simulation2 };
+
+  // Finally sync bond amount to 0 in OptimisticOracleV3.
+  const oo = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", forkProvider);
+  const identifier = await og.identifier();
+  const simulation3 = await simulateTenderlyTx(
+    {
+      chainId,
+      from: Wallet.createRandom().address,
+      to: oo.address,
+      input: oo.interface.encodeFunctionData("syncUmaParams", [identifier, collateralAddress]),
+      fork: { id: fork.id, root: simulation2.id },
+      description: "Sync bond to 0 in OptimisticOracleV3",
+    },
+    retryOptions
+  );
+  if (!simulation3.status) return { forkUrl, lastSimulation: simulation3 };
+
+  // Propose transactions.
+  const transactions = proposal.safe.txs.map((tx) => tx.mainTransaction);
+  const simulation4 = await simulateTenderlyTx(
+    {
+      chainId,
+      from: Wallet.createRandom().address,
+      to: proposal.safe.umaAddress,
+      input: og.interface.encodeFunctionData("proposeTransactions", [transactions, utils.toUtf8Bytes(proposal.ipfs)]),
+      fork: { id: fork.id, root: simulation3.id },
+      description: "Propose transactions",
+    },
+    retryOptions
+  );
+  if (!simulation4.status) return { forkUrl, lastSimulation: simulation4 };
+
+  // Execute proposal after challenge window ends.
+  const currentTimestamp = await getBlockTimestamp(forkProvider, await forkProvider.getBlockNumber());
+  const challengeWindowEndTimestamp = currentTimestamp + (await og.liveness()).toNumber();
+  const simulation5 = await simulateTenderlyTx(
+    {
+      chainId,
+      from: Wallet.createRandom().address,
+      to: proposal.safe.umaAddress,
+      input: og.interface.encodeFunctionData("executeProposal", [transactions]),
+      timestampOverride: challengeWindowEndTimestamp,
+      fork: { id: fork.id, root: simulation4.id },
+      description: "Execute proposal",
+    },
+    retryOptions
+  );
+  return { forkUrl, lastSimulation: simulation5 };
 };

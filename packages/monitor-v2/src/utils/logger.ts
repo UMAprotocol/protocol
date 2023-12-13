@@ -27,3 +27,7 @@ export const createTenderlySimulationLink = (simulationResult?: TenderlySimulati
     }>`;
   }
 };
+
+export const createTenderlyForkLink = (forkUrl: string): string => {
+  return `<${forkUrl}|Tenderly fork>`;
+};
