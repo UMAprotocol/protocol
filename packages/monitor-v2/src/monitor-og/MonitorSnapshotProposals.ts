@@ -3,6 +3,7 @@ import retry, { Options as RetryOptions } from "async-retry";
 import { promises as fsPromises } from "fs";
 import { request } from "graphql-request";
 import { gql } from "graphql-tag";
+import path from "path";
 
 import { ForkedTenderlyResult, generateForkedSimulation, Logger, MonitoringParams } from "./common";
 import { logSnapshotProposal } from "./MonitorLogger";
@@ -23,6 +24,8 @@ const getDatastoreInstance = () => {
   }
   return datastoreInstance;
 };
+
+const filePath = `${path.resolve(__dirname)}/notifiedSnapshotProposals.json`; // Only used when state is stored in local file.
 
 // Queries Snapshot for all proposals that are still active and have the required plugin.
 // This uses provided retry config, but ultimately throws the error if the Snapshot query fails after all retries.
@@ -113,7 +116,6 @@ const getNotifiedProposals = async (params: MonitoringParams): Promise<string[]>
   } else {
     let notifiedProposalsStringified: string;
     try {
-      const filePath = "./notifiedSnapshotProposals.json";
       notifiedProposalsStringified = await fsPromises.readFile(filePath, "utf-8");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
@@ -132,7 +134,6 @@ const updateNotifiedProposals = async (proposalId: string, params: MonitoringPar
     await datastore.save({ key, data });
   } else {
     const notifiedProposals = await getNotifiedProposals(params);
-    const filePath = "./notifiedSnapshotProposals.json";
     if (!notifiedProposals.includes(proposalId)) {
       notifiedProposals.push(proposalId);
       await fsPromises.writeFile(filePath, JSON.stringify(notifiedProposals, null, 2), "utf-8");
