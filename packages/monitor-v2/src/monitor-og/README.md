@@ -60,6 +60,7 @@ All the configuration should be provided with following environment variables:
 - `AUTOMATIC_EXECUTIONS_ENABLED` is boolean enabling/disabling automatic execution of supported oSnap proposals (`false`
   by default). This mode requires setting supported bond values in `SUPPORTED_BONDS` and either `GCKMS_WALLET` or
   `MNEMONIC` for signing execution transactions.
+- `NOTIFY_NEW_PROPOSALS_ENABLED` is boolean enabling/disabling notification of new proposals (`false` by default).
 - `DISPUTE_IPFS_SERVER_ERRORS` is boolean enabling/disabling automatic dispute of proposals with IPFS server errors
   (`false` by default). This is used only in conjunction with `AUTOMATIC_DISPUTES_ENABLED` set to `true`.
 - `ASSERTION_BLACKLIST` is an array of assertion IDs that should be ignored when submitting disputes or trying to
@@ -85,5 +86,7 @@ All the configuration should be provided with following environment variables:
 - `SNAPSHOT_TIMEOUT` is the number of milliseconds to wait before starting the first retry when trying to fetch IPFS and
   GraphQL data for Snapshot verification. If not provided, this defaults to 1000. After the first retry, this does
   exponential backoff (using a factor of 2).
+- `STORAGE` is the storage type used to keep state on notified Snapshot proposals. If not provided, this defaults to
+  `datastore`. Supported values are `datastore` (Google Datastore) and `file` (local file system).
 - `TENDERLY_USER`, `TENDERLY_PROJECT` and `TENDERLY_ACCESS_KEY` are used to simulate proposed transaction execution on
   Tenderly. If any of these are missing, the bot will skip the simulation.

@@ -12,6 +12,7 @@ import {
   monitorTransactionsProposed,
   monitorProxyDeployments,
 } from "./MonitorEvents";
+import { notifyNewProposals } from "./MonitorSnapshotProposals";
 import { disputeProposals, executeProposals, proposeTransactions } from "./oSnapAutomation";
 
 const logger = Logger;
@@ -39,6 +40,7 @@ async function main() {
     automaticProposalsEnabled: proposeTransactions,
     automaticDisputesEnabled: disputeProposals,
     automaticExecutionsEnabled: executeProposals,
+    notifyNewProposalsEnabled: notifyNewProposals,
   };
 
   for (;;) {
