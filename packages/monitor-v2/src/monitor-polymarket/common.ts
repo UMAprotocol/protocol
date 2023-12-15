@@ -333,13 +333,8 @@ export const getMarketsAncillary = async (
   const calls = markets.map((market) => {
     const isBinaryResolver = sameAddress(market.resolvedBy, params.binaryAdapterAddress);
     const isCtfV2Resolver = sameAddress(market.resolvedBy, params.ctfAdapterAddressV2);
-    const adapter =
-      isBinaryResolver
-        ? binaryAdapter
-        : isCtfV2Resolver
-          ? ctfAdapterV2
-          : ctfAdapter;
-    
+    const adapter = isBinaryResolver ? binaryAdapter : isCtfV2Resolver ? ctfAdapterV2 : ctfAdapter;
+
     // In CTF v2, the questionId is the negRiskRequestID, not the questionID.
     const questionId = isCtfV2Resolver ? market.negRiskRequestID : market.questionID;
     return {
