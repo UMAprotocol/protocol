@@ -1,6 +1,6 @@
 import { getRetryProvider, paginatedEventQuery } from "@uma/common";
 import { aggregateTransactionsAndCall, NetworkerInterface, TransactionDataDecoder } from "@uma/financial-templates-lib";
-import { getContractInstanceWithProvider } from "../utils/contracts";
+import { getContractInstanceWithProvider, sameAddress } from "../utils/contracts";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 import request from "graphql-request";
@@ -53,6 +53,7 @@ export interface MonitoringParams {
 interface PolymarketMarket {
   resolvedBy: string;
   questionID: string;
+  negRiskRequestID: string | null;
   createdAt: string;
   question: string;
   outcomes: [string, string];
@@ -67,6 +68,7 @@ interface PolymarketMarket {
 interface PolymarketMarketGraphql {
   resolvedBy: string;
   questionID: string;
+  negRiskRequestID: string | null;
   createdAt: string;
   question: string;
   outcomes: string;
@@ -185,6 +187,7 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
         markets(where: "${whereClause}", limit: ${pagination}, offset: ${offset}) {
           resolvedBy
           questionID
+          negRiskRequestID
           createdAt
           question
           outcomes
@@ -324,19 +327,24 @@ export const getMarketsAncillary = async (
   // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
   decoder.abiDecoder.addABI(binaryAdapterAbi);
   decoder.abiDecoder.addABI(ctfAdapterAbi);
+  decoder.abiDecoder.addABI(ctfAdapterV2Abi);
 
   const multicall = await getContractInstanceWithProvider<Multicall3Ethers>("Multicall3", params.provider);
-
   const calls = markets.map((market) => {
+    const isBinaryResolver = sameAddress(market.resolvedBy, params.binaryAdapterAddress);
+    const isCtfV2Resolver = sameAddress(market.resolvedBy, params.ctfAdapterAddressV2);
     const adapter =
-      market.resolvedBy === params.binaryAdapterAddress
+      isBinaryResolver
         ? binaryAdapter
-        : market.resolvedBy === params.ctfAdapterAddressV2
-        ? ctfAdapterV2
-        : ctfAdapter;
+        : isCtfV2Resolver
+          ? ctfAdapterV2
+          : ctfAdapter;
+    
+    // In CTF v2, the questionId is the negRiskRequestID, not the questionID.
+    const questionId = isCtfV2Resolver ? market.negRiskRequestID : market.questionID;
     return {
       target: adapter.address,
-      callData: adapter.interface.encodeFunctionData("questions", [market.questionID]),
+      callData: adapter.interface.encodeFunctionData("questions", [questionId]),
     };
   });
 
@@ -382,7 +390,7 @@ export const getMarketsAncillary = async (
         const market = markets[i * chunkSize + j];
         let ancillaryData, requestTimestamp;
         try {
-          const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
+          const adapter = sameAddress(market.resolvedBy, params.binaryAdapterAddress) ? binaryAdapter : ctfAdapter;
           const result = await adapter.callStatic.questions(market.questionID);
           ancillaryData = result.ancillaryData;
           requestTimestamp = result.requestTimestamp.toString();
