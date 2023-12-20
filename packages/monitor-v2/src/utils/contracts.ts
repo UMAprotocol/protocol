@@ -3,6 +3,9 @@ import { Contract } from "ethers";
 import { Provider } from "@ethersproject/abstract-provider";
 import { utils } from "ethers";
 
+export const sameAddress = (address1: string, address2: string): boolean =>
+  address1.toLowerCase() === address2.toLowerCase();
+
 export const getContractInstanceWithProvider = async <T extends Contract>(
   contractName: ContractName,
   provider: Provider,

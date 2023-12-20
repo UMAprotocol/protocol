@@ -74,6 +74,7 @@ describe("PolymarketNotifier", function () {
   const createMonitoringParams = async (): Promise<MonitoringParams> => {
     const binaryAdapterAddress = "0x1234";
     const ctfAdapterAddress = "0x1234";
+    const ctfAdapterAddressV2 = "0x1234";
     const ctfExchangeAddress = "0x1234";
     const graphqlEndpoint = "endpoint";
     const apiEndpoint = "endpoint";
@@ -81,6 +82,7 @@ describe("PolymarketNotifier", function () {
     return {
       binaryAdapterAddress,
       ctfAdapterAddress,
+      ctfAdapterAddressV2,
       ctfExchangeAddress,
       maxBlockLookBack: 3499,
       graphqlEndpoint,
