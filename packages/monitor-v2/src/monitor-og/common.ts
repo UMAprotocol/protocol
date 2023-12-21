@@ -69,6 +69,7 @@ export interface MonitoringParams {
   approvalChoices: string[];
   supportedBonds?: SupportedBonds; // Optional. Only used in automated support mode.
   submitAutomation: boolean; // Defaults to true, but only used in automated support mode.
+  automaticExecutionGasLimit: BigNumber; // Defaults to 500k, but only used in automated support mode.
   disputeIpfsServerErrors: boolean; // Defaults to false, but only used in automated support mode.
   assertionBlacklist: string[]; // Defaults to empty array. Only used in automated support mode.
   useTenderly: boolean;
@@ -222,6 +223,11 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
   // apply to bond approvals as these are always submitted on chain.
   const submitAutomation = env.SUBMIT_AUTOMATION === "false" ? false : true;
 
+  // By default, set automatic execution gas limit to 500k unless explicitly set.
+  const automaticExecutionGasLimit = env.AUTOMATIC_EXECUTION_GAS_LIMIT
+    ? BigNumber.from(env.AUTOMATIC_EXECUTION_GAS_LIMIT)
+    : BigNumber.from(500000);
+
   // By default, do not dispute on IPFS server errors unless explicitly enabled.
   const disputeIpfsServerErrors = env.DISPUTE_IPFS_SERVER_ERRORS === "true" ? true : false;
 
@@ -267,6 +273,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     approvalChoices,
     supportedBonds,
     submitAutomation,
+    automaticExecutionGasLimit,
     disputeIpfsServerErrors,
     assertionBlacklist,
     useTenderly,
