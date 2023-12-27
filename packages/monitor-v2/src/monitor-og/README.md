@@ -72,6 +72,9 @@ All the configuration should be provided with following environment variables:
   default). If this is set to `false`, the bot will only simulate transaction submission and log the results. Note that
   bond approval transactions would be still submitted as they are required for the subsequent proposal/dispute
   simulation.
+- `AUTOMATIC_EXECUTION_GAS_LIMIT` is the gas limit imposed on automated transaction execution. Transactions requiring
+  more gas will not be submitted. This is used only in conjunction with `AUTOMATIC_EXECUTIONS_ENABLED` set to `true`. If
+  not provided, this defaults to `500000`.
 - `SNAPSHOT_ENDPOINT` is the Snapshot endpoint used to verify Snapshot proposals. If not provided, this defaults to
   `https://snapshot.org`.
 - `GRAPHQL_ENDPOINT` is the GraphQL endpoint used to verify Snapshot proposals. If not provided, this defaults to

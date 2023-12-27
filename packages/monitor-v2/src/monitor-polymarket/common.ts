@@ -1,6 +1,6 @@
 import { getRetryProvider, paginatedEventQuery } from "@uma/common";
 import { aggregateTransactionsAndCall, NetworkerInterface, TransactionDataDecoder } from "@uma/financial-templates-lib";
-import { getContractInstanceWithProvider } from "../utils/contracts";
+import { getContractInstanceWithProvider, sameAddress } from "../utils/contracts";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 import request from "graphql-request";
@@ -40,6 +40,7 @@ export interface MarketKeyStoreData {
 export interface MonitoringParams {
   binaryAdapterAddress: string;
   ctfAdapterAddress: string;
+  ctfAdapterAddressV2: string;
   ctfExchangeAddress: string;
   maxBlockLookBack: number;
   graphqlEndpoint: string;
@@ -52,6 +53,7 @@ export interface MonitoringParams {
 interface PolymarketMarket {
   resolvedBy: string;
   questionID: string;
+  negRiskRequestID: string | null;
   createdAt: string;
   question: string;
   outcomes: [string, string];
@@ -66,6 +68,7 @@ interface PolymarketMarket {
 interface PolymarketMarketGraphql {
   resolvedBy: string;
   questionID: string;
+  negRiskRequestID: string | null;
   createdAt: string;
   question: string;
   outcomes: string;
@@ -184,6 +187,7 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
         markets(where: "${whereClause}", limit: ${pagination}, offset: ${offset}) {
           resolvedBy
           questionID
+          negRiskRequestID
           createdAt
           question
           outcomes
@@ -314,21 +318,28 @@ export const getMarketsAncillary = async (
   const failed = "failed";
   const binaryAdapterAbi = require("./abi/binaryAdapter.json");
   const ctfAdapterAbi = require("./abi/ctfAdapter.json");
+  const ctfAdapterV2Abi = require("./abi/ctfAdapterV2.json");
   const binaryAdapter = new ethers.Contract(params.binaryAdapterAddress, binaryAdapterAbi, params.provider);
   const ctfAdapter = new ethers.Contract(params.ctfAdapterAddress, ctfAdapterAbi, params.provider);
+  const ctfAdapterV2 = new ethers.Contract(params.ctfAdapterAddressV2, ctfAdapterV2Abi, params.provider);
   const decoder = TransactionDataDecoder.getInstance();
 
   // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
   decoder.abiDecoder.addABI(binaryAdapterAbi);
   decoder.abiDecoder.addABI(ctfAdapterAbi);
+  decoder.abiDecoder.addABI(ctfAdapterV2Abi);
 
   const multicall = await getContractInstanceWithProvider<Multicall3Ethers>("Multicall3", params.provider);
-
   const calls = markets.map((market) => {
-    const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
+    const isBinaryResolver = sameAddress(market.resolvedBy, params.binaryAdapterAddress);
+    const isCtfV2Resolver = sameAddress(market.resolvedBy, params.ctfAdapterAddressV2);
+    const adapter = isBinaryResolver ? binaryAdapter : isCtfV2Resolver ? ctfAdapterV2 : ctfAdapter;
+
+    // In CTF v2, the questionId is the negRiskRequestID, not the questionID.
+    const questionId = isCtfV2Resolver ? market.negRiskRequestID : market.questionID;
     return {
       target: adapter.address,
-      callData: adapter.interface.encodeFunctionData("questions", [market.questionID]),
+      callData: adapter.interface.encodeFunctionData("questions", [questionId]),
     };
   });
 
@@ -374,7 +385,7 @@ export const getMarketsAncillary = async (
         const market = markets[i * chunkSize + j];
         let ancillaryData, requestTimestamp;
         try {
-          const adapter = market.resolvedBy === params.binaryAdapterAddress ? binaryAdapter : ctfAdapter;
+          const adapter = sameAddress(market.resolvedBy, params.binaryAdapterAddress) ? binaryAdapter : ctfAdapter;
           const result = await adapter.callStatic.questions(market.questionID);
           ancillaryData = result.ancillaryData;
           requestTimestamp = result.requestTimestamp.toString();
@@ -462,6 +473,7 @@ export const getPolymarketOrderBooks = async (
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
   const binaryAdapterAddress = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
   const ctfAdapterAddress = "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74";
+  const ctfAdapterAddressV2 = "0x2f5e3684cb1f318ec51b00edba38d79ac2c0aa9d";
   const ctfExchangeAddress = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E";
 
   const graphqlEndpoint = "https://gamma-api.polymarket.com/query";
@@ -481,6 +493,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   return {
     binaryAdapterAddress,
     ctfAdapterAddress,
+    ctfAdapterAddressV2,
     ctfExchangeAddress,
     maxBlockLookBack,
     graphqlEndpoint,

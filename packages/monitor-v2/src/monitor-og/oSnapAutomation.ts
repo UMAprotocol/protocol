@@ -649,6 +649,25 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
       continue;
     }
 
+    // Check that execution does not exceed the gas usage limit.
+    try {
+      const gasUsage = await og.estimateGas.executeProposal(proposal.event.args.proposal.transactions, {
+        from: executorAddress,
+      });
+      if (gasUsage.gt(params.automaticExecutionGasLimit)) {
+        logger.info({
+          ...executionAttemptLog,
+          message: `Proposal execution would exceed gas usage limit of ${params.automaticExecutionGasLimit.toString()}`,
+          gasUsage: gasUsage.toString(),
+        });
+        continue;
+      }
+    } catch (error) {
+      // Log error and proceed with the next execution.
+      logger.error({ ...executionAttemptLog, message: "Proposal execution gas estimation failed!", error });
+      continue;
+    }
+
     // Submit execution and get receipt.
     let receipt: ContractReceipt;
     try {
