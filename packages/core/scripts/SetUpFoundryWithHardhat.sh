@@ -14,8 +14,9 @@ fi
 # https://book.getfoundry.sh/config/hardhat#use-foundry-in-an-existing-hardhat-project without wanting to commit the
 # foundry lib & standard lib to the repo.
 
-if [ ! -d "./lib" ]; then
+if [ ! -d "./lib" ] || [ -z "$(ls -A ./lib)" ] || [ -z "$(ls -A ./lib/forge-std)" ]; then
     echo "Configuring UMA core to work with foundry std-lib"
+    rm -rf ./lib
     mv .gitignore .gitignore.tmp
     mkdir temp
     cd temp
