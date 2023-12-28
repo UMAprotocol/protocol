@@ -1,10 +1,10 @@
 import { createEtherscanLinkMarkdown, TenderlySimulationResult } from "@uma/common";
 import { BigNumber } from "ethers";
 
-import { createSnapshotProposalLink, createTenderlySimulationLink } from "../utils/logger";
-import { generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
+import { createSnapshotProposalLink, createTenderlyForkLink, createTenderlySimulationLink } from "../utils/logger";
+import { ForkedTenderlyResult, generateOOv3UILink, MonitoringParams, Logger, tryHexToUtf8String } from "./common";
 import { DisputableProposal, SnapshotProposalExpanded, SupportedProposal } from "./oSnapAutomation";
-import { VerificationResponse } from "./SnapshotVerification";
+import { SnapshotProposalGraphql, VerificationResponse } from "./SnapshotVerification";
 
 interface ProposalLogContent {
   at: string;
@@ -327,5 +327,41 @@ export async function logSubmittedExecution(
       createEtherscanLinkMarkdown(executeTx, params.chainId) +
       ".",
     notificationPath: "optimistic-governor",
+  });
+}
+
+export function logSnapshotProposal(
+  logger: typeof Logger,
+  proposal: SnapshotProposalGraphql,
+  params: MonitoringParams,
+  simulationResults: ForkedTenderlyResult[]
+): void {
+  // If any of the simulations reverted, log as error, otherwise log as info.
+  const logLevel = simulationResults.every((simulationResult) => simulationResult.lastSimulation.status)
+    ? "info"
+    : "error";
+  const simulationLinks = simulationResults
+    .map(
+      (simulationResult) =>
+        createTenderlySimulationLink(simulationResult.lastSimulation) +
+        " on " +
+        createTenderlyForkLink(simulationResult.forkUrl)
+    )
+    .join(", ");
+  logger[logLevel]({
+    at: "oSnapMonitor",
+    message: "Snapshot Proposal Created 📝",
+    mrkdwn:
+      "Snapshot proposal for " +
+      proposal.space.id +
+      " with id " +
+      proposal.id +
+      " has been created. More details: " +
+      createSnapshotProposalLink(params.snapshotEndpoint, proposal.space.id, proposal.id) +
+      ". " +
+      simulationLinks +
+      ".",
+    notificationPath: "optimistic-governor",
+    discordTicketChannel: "verifications-start-here",
   });
 }
