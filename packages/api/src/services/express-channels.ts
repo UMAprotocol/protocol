@@ -4,7 +4,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import assert from "assert";
 import type { Request, Response, NextFunction } from "express";
-import { Json, BaseConfig } from "../types";
+import { BaseConfig, ActionCall } from "../types";
 import { Profile } from "../libs/utils";
 
 interface Config extends BaseConfig {
@@ -12,13 +12,12 @@ interface Config extends BaseConfig {
   path?: string;
 }
 // represents the actions service, a single function which maps to different callable functions
-type Actions = (action: string, ...args: Json[]) => Promise<Json>;
-type Channel = [string, Actions];
+type Channel = [string, ActionCall];
 export type Channels = Channel[];
 // This is very similar to the original express service, but takes in the idea of channels, basically
 // will create paths to different action instances. In most cases each channel should be completely
 // independent of other channels.
-export default (config: Config, channels: Channels = []) => {
+export default (config: Config, channels: Channels = []): (() => Promise<boolean>) => {
   assert(config.port, "requires express port");
   assert(channels.length, "requires a list of action channels");
 
@@ -33,7 +32,7 @@ export default (config: Config, channels: Channels = []) => {
     return res.send("ok");
   });
 
-  const ActionHandler = (actions: Actions) => (req: Request, res: Response, next: NextFunction) => {
+  const ActionHandler = (actions: ActionCall) => (req: Request, res: Response, next: NextFunction) => {
     const action = req?.params?.action;
     const end = profile(`action: ${action}`);
     actions(action, ...lodash.castArray(req.body))

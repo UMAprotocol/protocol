@@ -36,6 +36,7 @@ export type Json = null | undefined | void | boolean | number | string | Json[] 
 // Represents an function where inputs and outputs can serialize to/from json
 export type Action = (...args: any[]) => Json | Promise<Json>;
 export type Actions = { [key: string]: Action };
+export type ActionCall = (action: string, ...args: Json[]) => Promise<Json>;
 
 // this represents valid currencies to check prices against on coingecko
 // see: https://www.coingecko.com/api/documentations/v3#/asset_platforms/get_asset_platforms
