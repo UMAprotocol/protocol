@@ -3,7 +3,7 @@
 cat << 'EOF'
   docker-publish-latest:
     machine:
-      image: ubuntu-2004:202010-01
+      image: ubuntu-2204:2023.10.1
     resource_class: large
     steps:
       - restore_cache:

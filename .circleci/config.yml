@@ -98,6 +98,9 @@ jobs:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn rsync
       - run:
+          name: Ignore new files
+          command: git add . && git commit -m "ci-ignore-untracked-files"
+      - run:
           name: Publish
           command: yarn run publish-release
 workflows:
