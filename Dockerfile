@@ -4,7 +4,7 @@
 # that are not in the protocol repo, such as the Across v2 relayer. To access these set a command 
 
 # Fix node version due to high potential for incompatibilities.
-FROM node:20
+FROM node:16
 
 # All source code and execution happens from the protocol directory.
 WORKDIR /protocol
