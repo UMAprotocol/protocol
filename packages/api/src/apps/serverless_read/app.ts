@@ -118,8 +118,8 @@ export default async (env: ProcessEnv) => {
       projectName: env.TENDERLY_PROJECT_NAME,
       accessKey: env.TENDERLY_ACCESS_KEY,
     };
-    const tenderlies = new libs.osnap.MultiChainTenderly(tenderlyConfig);
-    channels.push(["osnap", Actions.Osnap({ tenderlies })]);
+    const tenderly = new libs.osnap.utils.TenderlyApi(tenderlyConfig);
+    channels.push(["osnap", Actions.Osnap({ tenderly })]);
     console.log("Enabled Tenderly Simulations for Osnap");
   }
 
