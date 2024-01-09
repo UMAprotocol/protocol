@@ -5,7 +5,7 @@ orbs:
 jobs:
   checkout_and_install:
     docker:
-      - image: cimg/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     steps:
       - checkout
@@ -28,7 +28,7 @@ jobs:
             - ~/.ssh
   build:
     docker:
-      - image: cimg/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     resource_class: large
     steps:
@@ -50,7 +50,7 @@ jobs:
             - ~/.ssh
   lint:
     docker:
-      - image: cimg/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -73,7 +73,7 @@ jobs:
           configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
     docker:
-      - image: cimg/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     steps:
       - checkout
@@ -86,7 +86,7 @@ jobs:
           path: packages/core/coverage
   publish:
     docker:
-      - image: cimg/node:lts
+      - image: cimg/node:16.17.0
     working_directory: ~/protocol
     steps:
       - add_ssh_keys:
