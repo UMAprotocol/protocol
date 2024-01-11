@@ -1,7 +1,8 @@
 import { getGckmsSigner, getMnemonicSigner, getRetryProvider } from "@uma/common";
+import { BlockFinder } from "@uma/sdk";
 import { Signer, Wallet } from "ethers";
 
-import type { Provider } from "@ethersproject/abstract-provider";
+import type { Block, Provider } from "@ethersproject/abstract-provider";
 import { blockDefaults } from "../utils/constants";
 
 export { OptimisticOracleV3Ethers } from "@uma/contracts-node";
@@ -22,8 +23,9 @@ export interface MonitoringParams {
   chainId: number;
   botModes: BotModes;
   signer: Signer;
-  blockLookback: number;
+  timeLookback: number;
   maxBlockLookBack: number;
+  blockFinder: BlockFinder<Block>;
   pollingDelay: number;
 }
 
@@ -49,23 +51,23 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     settleAssertionsEnabled: env.SETTLEMENTS_ENABLED === "true",
   };
 
-  const blockLookback =
-    Number(env.BLOCK_LOOKBACK) ||
-    blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.oneHour ||
-    blockDefaults.other.oneHour;
+  const timeLookback = Number(env.TIME_LOOKBACK) || 72 * 60 * 60;
 
   const maxBlockLookBack =
     Number(env.MAX_BLOCK_LOOKBACK) ||
     blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.maxBlockLookBack ||
     blockDefaults.other.maxBlockLookBack;
 
+  const blockFinder = new BlockFinder(provider.getBlock, undefined, chainId);
+
   return {
     provider,
     chainId,
     botModes,
     signer,
-    blockLookback,
+    timeLookback,
     maxBlockLookBack,
+    blockFinder,
     pollingDelay,
   };
 };

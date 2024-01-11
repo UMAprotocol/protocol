@@ -9,12 +9,15 @@ import {
 export async function settleAssertions(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
 
-  const currentBlockNumber = await params.provider.getBlockNumber();
+  const currentBlock = await params.provider.getBlock("latest");
 
-  const loopBack = params.blockLookback;
+  console.log("currentBlock.timestamp", currentBlock.timestamp);
+  console.log("currentBlock.timestamp - params.timeLookback", currentBlock.timestamp - params.timeLookback);
+  const fromBlock = await params.blockFinder.getBlockForTimestamp(currentBlock.timestamp - params.timeLookback);
+
   const searchConfig = {
-    fromBlock: currentBlockNumber - loopBack < 0 ? 0 : currentBlockNumber - loopBack,
-    toBlock: currentBlockNumber,
+    fromBlock: fromBlock.number,
+    toBlock: currentBlock.number,
     maxBlockLookBack: params.maxBlockLookBack,
   };
 
