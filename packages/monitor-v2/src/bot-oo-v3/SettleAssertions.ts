@@ -11,8 +11,6 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
 
   const currentBlock = await params.provider.getBlock("latest");
 
-  console.log("currentBlock.timestamp", currentBlock.timestamp);
-  console.log("currentBlock.timestamp - params.timeLookback", currentBlock.timestamp - params.timeLookback);
   const fromBlock = await params.blockFinder.getBlockForTimestamp(currentBlock.timestamp - params.timeLookback);
 
   const searchConfig = {
