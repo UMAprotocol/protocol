@@ -1,22 +1,13 @@
 import assert from "assert";
 import { Actions, Json, ActionCall } from "../../types";
-import { TenderlyApi } from "../../libs/osnap/utils";
-import type { OsnapPluginData } from "../../libs/osnap/interfaces";
+import { simulateOsnapTx } from "../../libs/osnap/utils";
 
-type Config = {
-  tenderly: TenderlyApi;
-};
-
-export function Handlers(config: Config): Actions {
-  const { tenderly } = config;
-
+export function Handlers(): Actions {
   const actions: Actions = {
     async ping() {
       return "pong";
     },
-    async simulate(space: OsnapPluginData) {
-      return tenderly.simulateOsnapTx(space);
-    },
+    simulate: simulateOsnapTx,
   };
 
   // list all available actions
@@ -26,8 +17,8 @@ export function Handlers(config: Config): Actions {
   return actions;
 }
 
-export default (config: Config): ActionCall => {
-  const actions = Handlers(config);
+export default (): ActionCall => {
+  const actions = Handlers();
   return async (action: string, ...args: Json[]): Promise<Json> => {
     assert(actions[action], `Invalid action: ${action}`);
     return actions[action](...args);

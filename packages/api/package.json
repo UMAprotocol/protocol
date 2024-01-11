@@ -12,15 +12,14 @@
     "@types/node": "^14.14.25",
     "@types/url-join": "^4.0.0",
     "@typescript-eslint/parser": "^4.24.0",
-    "axios": "^1.6.0",
     "ts-mocha": "^8.0.0",
     "ts-node": "^10.1.0"
   },
   "dependencies": {
     "@google-cloud/datastore": "^8.2.1",
     "@snapshot-labs/snapshot.js": "^0.9.9",
-    "@tenderly/sdk": "^0.2.1",
     "@types/express": "^4.17.11",
+    "@uma/common": "^2.34.1",
     "@uma/financial-templates-lib": "^2.35.0",
     "@uma/sdk": "^0.34.4",
     "body-parser": "^1.19.0",
