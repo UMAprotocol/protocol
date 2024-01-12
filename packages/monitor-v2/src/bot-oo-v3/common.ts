@@ -58,7 +58,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     blockDefaults[chainId.toString() as keyof typeof blockDefaults]?.maxBlockLookBack ||
     blockDefaults.other.maxBlockLookBack;
 
-  const blockFinder = new BlockFinder(provider.getBlock, undefined, chainId);
+  const blockFinder = new BlockFinder(provider.getBlock.bind(provider), undefined, chainId);
 
   return {
     provider,
