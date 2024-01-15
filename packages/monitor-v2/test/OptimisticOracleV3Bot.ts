@@ -1,6 +1,7 @@
 import type { Provider } from "@ethersproject/abstract-provider";
 import { ExpandedERC20Ethers, MockOracleAncillaryEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
+import { BlockFinder } from "@uma/sdk";
 import { assert } from "chai";
 import sinon from "sinon";
 import { BotModes, MonitoringParams } from "../src/bot-oo-v3/common";
@@ -25,8 +26,11 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
     chainId: (await ethers.provider.getNetwork()).chainId,
     botModes,
     signer,
-    blockLookback: 2000,
+    timeLookback: 72 * 60 * 60,
     maxBlockLookBack: 1000,
+    blockFinder: new BlockFinder(() => {
+      return { number: 0, timestamp: 0 };
+    }),
     pollingDelay: 0,
   };
 };

@@ -23,7 +23,7 @@ All the configuration should be provided with following environment variables:
 - `SETTLEMENTS_ENABLED` is boolean enabling/disabling settlement of assertions (`false` by default).
 - `BOT_IDENTIFIER` identifies the application name in the logs.
 - `SLACK_CONFIG` is a JSON object containing `defaultWebHookUrl` for the default Slack webhook URL.
-- `BLOCK_LOOKBACK`(Optional) is the number of blocks to look back from the current block to look for past events.
-  See default values in blockDefaults in index.ts
-- `MAX_BLOCK_LOOKBACK`(Optional) is the maximum number of blocks to look back per query.
+- `TIME_LOOKBACK` (Optional) is the number of seconds to look back from the current block to look for past events.
+  Defaults to 72h if not provided.
+- `MAX_BLOCK_LOOKBACK` (Optional) is the maximum number of blocks to look back per query.
   See default values in blockDefaults in index.ts
