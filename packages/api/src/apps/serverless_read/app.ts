@@ -17,7 +17,6 @@ import {
 } from "../../tables";
 
 import type { AppState, ProcessEnv, Channels } from "../../types";
-import * as libs from "../../libs";
 
 export default async (env: ProcessEnv) => {
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
@@ -109,17 +108,8 @@ export default async (env: ProcessEnv) => {
     ["global", Actions.Global(undefined, appState)],
   ];
   // it looks like we want to enable tenderly simulations, so we are goign to validate env and enable osnap route
-  if (env.TENDERLY_ACCOUNT_NAME || env.TENDERLY_PROJECT_NAME || env.TENDERLY_ACCESS_KEY) {
-    assert(env.TENDERLY_ACCOUNT_NAME, `Osnap requires TENDERLY_ACCOUNT_NAME`);
-    assert(env.TENDERLY_PROJECT_NAME, `Osnap requires TENDERLY_PROJECT_NAME`);
-    assert(env.TENDERLY_ACCESS_KEY, `Osnap requires TENDERLY_ACCESS_KEY`);
-    const tenderlyConfig = {
-      accountName: env.TENDERLY_ACCOUNT_NAME,
-      projectName: env.TENDERLY_PROJECT_NAME,
-      accessKey: env.TENDERLY_ACCESS_KEY,
-    };
-    const tenderlies = new libs.osnap.MultiChainTenderly(tenderlyConfig);
-    channels.push(["osnap", Actions.Osnap({ tenderlies })]);
+  if (env.TENDERLY_USER || env.TENDERLY_PROJECT || env.TENDERLY_ACCESS_KEY) {
+    channels.push(["osnap", Actions.Osnap()]);
     console.log("Enabled Tenderly Simulations for Osnap");
   }
 
