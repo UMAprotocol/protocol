@@ -19,8 +19,8 @@ export async function simulateOsnapTx(space: OsnapPluginData, transactionIndex =
 export function mapOsnapTxToTenderlySim(tx: Transaction, chainId: number): TenderlySimulationParams {
   return {
     chainId,
-    from: "0x0000000000000000000000000000000000000000",
     to: tx.to,
+    // TODO: Need to encode executeProposal here
     input: tx.data,
     // TODO: figure out state overrides here
     // state_objects: {},
