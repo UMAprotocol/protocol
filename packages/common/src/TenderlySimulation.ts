@@ -17,6 +17,13 @@ export interface TenderlyEnvironment {
   apiKey: string;
 }
 
+export interface StateOverride {
+  address: string;
+  slot: string;
+  offset?: number; // When used, the caller is responsible to ensure multiple values within a slot don't conflict.
+  value: string;
+}
+
 interface ForkParams {
   id: string;
   root?: string; // If provided, simulation will be performed on top of this earlier simulation id.
@@ -30,6 +37,7 @@ export interface TenderlySimulationParams {
   value?: string;
   from?: string; // If not provided, the zero address is used in the simulation.
   timestampOverride?: number;
+  stateOverrides?: StateOverride[]; // When used, the caller is responsible to ensure no conflicts in array elements.
   fork?: ForkParams;
   description?: string;
 }
@@ -47,6 +55,8 @@ export interface TenderlySimulationResult {
   resultUrl: ResultUrl;
 }
 
+type StateObjects = Record<string, { storage: Record<string, string> }>;
+
 // Simulation request body sent to Tenderly simulation API. We only type API request properties that we use.
 interface TenderlyRequestBody {
   save: boolean;
@@ -61,6 +71,7 @@ interface TenderlyRequestBody {
   block_header?: {
     timestamp: string;
   };
+  state_objects?: StateObjects;
   description?: string;
 }
 
@@ -104,6 +115,23 @@ export const processTenderlyEnv = (): TenderlyEnvironment => {
   };
 };
 
+// Validate hex string value to be within set bytes limit.
+const isValidHexStringValue = (hexString: string, bytesLimit = 32): boolean => {
+  return utils.isHexString(hexString) && BigInt(hexString) >= 0n && BigInt(hexString) < 2n ** BigInt(bytesLimit * 8);
+};
+
+// Validate state override parameter values.
+const validateStateOverride = (stateOverride: StateOverride): void => {
+  if (!utils.isAddress(stateOverride.address))
+    throw new Error(`Invalid state override address: ${stateOverride.address}`);
+  if (!isValidHexStringValue(stateOverride.slot)) throw new Error(`Invalid state override slot: ${stateOverride.slot}`);
+  const offset = stateOverride.offset ?? 0;
+  if (!Number.isInteger(offset) || offset < 0 || offset >= 32)
+    throw new Error(`Invalid state override offset: ${offset}`);
+  if (!isValidHexStringValue(stateOverride.value, 32 - offset))
+    throw new Error(`Invalid state override value: ${stateOverride.value}`);
+};
+
 // Validate simulation parameters passed by the caller.
 const validateSimulationParams = (simulationParams: TenderlySimulationParams): void => {
   if (simulationParams.to !== undefined && !utils.isAddress(simulationParams.to))
@@ -116,6 +144,28 @@ const validateSimulationParams = (simulationParams: TenderlySimulationParams): v
     throw new Error(`Invalid value: ${simulationParams.value}`);
   if (simulationParams.timestampOverride !== undefined && !BigNumber.from(simulationParams.timestampOverride).gte(0))
     throw new Error(`Invalid timestampOverride: ${simulationParams.timestampOverride}`);
+  if (simulationParams.stateOverrides !== undefined)
+    simulationParams.stateOverrides.forEach((stateOverride) => validateStateOverride(stateOverride));
+};
+
+// Convert state override array parameters to raw state interface.
+const createStateObjects = (stateOverrides: StateOverride[]): StateObjects => {
+  const stateObjects: StateObjects = {};
+
+  for (const stateOverride of stateOverrides) {
+    const address = stateOverride.address.toLowerCase();
+    const slot = utils.hexZeroPad(stateOverride.slot.toLowerCase(), 32);
+    const originalSlotValue = stateObjects[address]?.storage[slot] ? BigInt(stateObjects[address].storage[slot]) : 0n;
+    const offset = stateOverride.offset ?? 0;
+
+    // The caller is responsible to ensure values don't conflict within the same slot, we just do bitwise OR here.
+    const value = (BigInt(stateOverride.value) << BigInt(offset * 8)) | originalSlotValue; // Offset is in bytes.
+
+    if (stateObjects[address] === undefined) stateObjects[address] = { storage: {} };
+    stateObjects[address].storage[slot] = utils.hexZeroPad("0x" + value.toString(16), 32);
+  }
+
+  return stateObjects;
 };
 
 // Construct Tenderly simulation API request URL.
@@ -143,6 +193,9 @@ const createRequestBody = (simulationParams: TenderlySimulationParams): Tenderly
     body.block_header = {
       timestamp: BigNumber.from(simulationParams.timestampOverride).toHexString(),
     };
+  }
+  if (simulationParams.stateOverrides !== undefined) {
+    body.state_objects = createStateObjects(simulationParams.stateOverrides);
   }
 
   return body;
