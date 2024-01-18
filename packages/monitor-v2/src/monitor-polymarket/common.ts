@@ -489,7 +489,6 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
-
   if (!env.POLYMARKET_API_KEY) throw new Error("POLYMARKET_API_KEY must be defined in env");
   const polymarketApiKey = env.POLYMARKET_API_KEY;
 
