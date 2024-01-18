@@ -204,7 +204,7 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
 
     const graphQLClient = new GraphQLClient(params.graphqlEndpoint, {
       headers: {
-        authorization: `Bearer ${params.polymarketApiKey}}`,
+        authorization: `Bearer ${params.polymarketApiKey}`,
       },
     });
 
