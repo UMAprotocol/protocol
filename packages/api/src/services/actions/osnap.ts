@@ -1,13 +1,13 @@
 import assert from "assert";
 import { Actions, Json, ActionCall } from "../../types";
-import { simulateOsnapTx } from "../../libs/osnap/utils";
+import { simulateOsnapProposal } from "../../libs/osnap/utils";
 
 export function Handlers(): Actions {
   const actions: Actions = {
     async ping() {
       return "pong";
     },
-    simulate: simulateOsnapTx,
+    simulate: simulateOsnapProposal,
   };
 
   // list all available actions
