@@ -3,7 +3,7 @@ import { aggregateTransactionsAndCall, NetworkerInterface, TransactionDataDecode
 import { getContractInstanceWithProvider, sameAddress } from "../utils/contracts";
 
 import type { Provider } from "@ethersproject/abstract-provider";
-import request from "graphql-request";
+import { GraphQLClient } from "graphql-request";
 
 import { BigNumber, Event, ethers } from "ethers";
 
@@ -44,6 +44,7 @@ export interface MonitoringParams {
   ctfExchangeAddress: string;
   maxBlockLookBack: number;
   graphqlEndpoint: string;
+  polymarketApiKey: string;
   apiEndpoint: string;
   provider: Provider;
   chainId: number;
@@ -201,7 +202,13 @@ export const getPolymarketMarkets = async (params: MonitoringParams): Promise<Po
       }
     `;
 
-    const { markets: polymarketContracts } = (await request(params.graphqlEndpoint, query)) as {
+    const graphQLClient = new GraphQLClient(params.graphqlEndpoint, {
+      headers: {
+        authorization: `Bearer ${params.polymarketApiKey}`,
+      },
+    });
+
+    const { markets: polymarketContracts } = (await graphQLClient.request(query)) as {
       markets: PolymarketMarketGraphql[];
     };
 
@@ -482,6 +489,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   if (!env.CHAIN_ID) throw new Error("CHAIN_ID must be defined in env");
   const chainId = Number(env.CHAIN_ID);
 
+  if (!env.POLYMARKET_API_KEY) throw new Error("POLYMARKET_API_KEY must be defined in env");
+  const polymarketApiKey = env.POLYMARKET_API_KEY;
+
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
 
@@ -497,6 +507,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     ctfExchangeAddress,
     maxBlockLookBack,
     graphqlEndpoint,
+    polymarketApiKey,
     apiEndpoint,
     provider,
     chainId,
