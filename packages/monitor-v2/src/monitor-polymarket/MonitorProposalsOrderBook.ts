@@ -113,7 +113,6 @@ export async function monitorTransactionsProposedOrderBook(
     // If we have already logged this market then we skip it.
     if (pastNotifiedProposal.logged) continue;
 
-    // If after 5 minutes we still haven't found the proposal event then we log it.
     await logUnknownMarketProposal(logger, {
       adapterAddress: market.resolvedBy,
       question: market.question,
