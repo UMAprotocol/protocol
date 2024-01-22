@@ -127,7 +127,7 @@ export interface StoredNotifiedProposal {
   proposedPrice: string;
   notificationTimestamp: number;
   requestTimestamp?: string;
-  logged?: boolean;
+  notified?: boolean;
 }
 
 export const formatPriceEvents = async (
@@ -539,7 +539,7 @@ export const storeNotifiedProposals = async (
     question: string;
     proposedPrice: string;
     requestTimestamp?: string;
-    logged?: boolean;
+    notified?: boolean;
   }[]
 ): Promise<void> => {
   const currentTime = new Date().getTime() / 1000; // Current time in seconds
@@ -551,7 +551,7 @@ export const storeNotifiedProposals = async (
       proposedPrice: contract.proposedPrice,
       notificationTimestamp: currentTime,
       requestTimestamp: contract.requestTimestamp,
-      logged: typeof contract.logged === "boolean" ? contract.logged : true,
+      notified: typeof contract.notified === "boolean" ? contract.notified : true,
     } as StoredNotifiedProposal;
     datastore.save({ key: key, data: data });
   });

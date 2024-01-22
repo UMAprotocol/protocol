@@ -98,7 +98,7 @@ export async function monitorTransactionsProposedOrderBook(
 
     // The first time we see a market proposal event missig we store it as not notified.
     if (!Object.keys(pastNotifiedProposals).includes(marketKey)) {
-      await storeNotifiedProposals([{ ...unknownProposalData, logged: false }]);
+      await storeNotifiedProposals([{ ...unknownProposalData, notified: false }]);
       continue;
     }
 
@@ -109,8 +109,8 @@ export async function monitorTransactionsProposedOrderBook(
     // By default we only log unknown proposals if we don't find the proposal event after some time.
     if (timeSinceLastNotification < params.unknownProposalNotificationInterval) continue;
 
-    // If we have already logged this market then we skip it.
-    if (pastNotifiedProposal.logged) continue;
+    // If we have already notified this market then we skip it.
+    if (pastNotifiedProposal.notified) continue;
 
     await logUnknownMarketProposal(logger, {
       adapterAddress: market.resolvedBy,
@@ -120,7 +120,7 @@ export async function monitorTransactionsProposedOrderBook(
       endDate: market.endDate,
       volumeNum: market.volumeNum,
     });
-    await storeNotifiedProposals([{ ...unknownProposalData, logged: true }]);
+    await storeNotifiedProposals([{ ...unknownProposalData, notified: true }]);
   }
 
   // Get live order books for markets that have a proposal event.
