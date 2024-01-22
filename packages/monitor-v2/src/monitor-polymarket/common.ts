@@ -49,6 +49,7 @@ export interface MonitoringParams {
   provider: Provider;
   chainId: number;
   pollingDelay: number;
+  unknownProposalNotificationInterval: number;
 }
 
 interface PolymarketMarket {
@@ -501,6 +502,10 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const maxBlockLookBack = env.MAX_BLOCK_LOOK_BACK ? Number(env.MAX_BLOCK_LOOK_BACK) : 3499;
 
+  const unknownProposalNotificationInterval = env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL
+    ? Number(env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL)
+    : 300; // 5 minutes
+
   return {
     binaryAdapterAddress,
     ctfAdapterAddress,
@@ -513,6 +518,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     provider,
     chainId,
     pollingDelay,
+    unknownProposalNotificationInterval,
   };
 };
 

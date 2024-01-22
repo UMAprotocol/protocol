@@ -105,10 +105,9 @@ export async function monitorTransactionsProposedOrderBook(
     const pastNotifiedProposal = pastNotifiedProposals[marketKey];
     const now = Date.now() / 1000;
     const timeSinceLastNotification = now - pastNotifiedProposal.notificationTimestamp;
-    const notificationInterval = Number(process.env["UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL"]) || 60 * 5; // 5 minutes
 
-    // By default we only log unknown proposals if we don't find the proposal event after 5 minutes.
-    if (timeSinceLastNotification < notificationInterval) continue;
+    // By default we only log unknown proposals if we don't find the proposal event after some time.
+    if (timeSinceLastNotification < params.unknownProposalNotificationInterval) continue;
 
     // If we have already logged this market then we skip it.
     if (pastNotifiedProposal.logged) continue;
