@@ -134,9 +134,7 @@ describe("PolymarketNotifier", function () {
 
     const getNotifiedProposalsMock = sandbox.stub();
     getNotifiedProposalsMock.returns({});
-    getNotifiedProposalsStub = sandbox
-      .stub(commonModule, "getNotifiedProposals")
-      .callsFake(getNotifiedProposalsMock);
+    getNotifiedProposalsStub = sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
     const storeNotifiedProposalsMock = sandbox.stub();
     storeNotifiedProposalsMock.returns({});
