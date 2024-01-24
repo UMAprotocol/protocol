@@ -27,6 +27,7 @@ describe("PolymarketNotifier", function () {
   let oov2: OptimisticOracleV2Ethers;
   let deployer: Signer;
   let votingToken: VotingTokenEthers;
+  let getNotifiedProposalsStub: sinon.SinonStub;
   const identifier = formatBytes32String("TEST_IDENTIFIER");
   const ancillaryData = toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
 
@@ -90,6 +91,8 @@ describe("PolymarketNotifier", function () {
       provider: ethers.provider as Provider,
       chainId: (await ethers.provider.getNetwork()).chainId,
       pollingDelay: 0,
+      polymarketApiKey: "key",
+      unknownProposalNotificationInterval: 1800,
     };
   };
 
@@ -131,7 +134,9 @@ describe("PolymarketNotifier", function () {
 
     const getNotifiedProposalsMock = sandbox.stub();
     getNotifiedProposalsMock.returns({});
-    sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
+    getNotifiedProposalsStub = sandbox
+      .stub(commonModule, "getNotifiedProposals")
+      .callsFake(getNotifiedProposalsMock);
 
     const storeNotifiedProposalsMock = sandbox.stub();
     storeNotifiedProposalsMock.returns({});
@@ -367,13 +372,22 @@ describe("PolymarketNotifier", function () {
     assert.isTrue(spy.getCall(0).toString().includes(mockData[0].question));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
-  it("It should notify if market adapter is unknown", async function () {
+  it("It should notify if market adapter is unknown and already seen", async function () {
     const mockDataFunction = sandbox.stub();
     mockDataFunction.returns([{ ...mockData[0], resolvedBy: "unknown", umaResolutionStatus: "proposed" }]);
     sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
     sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
     sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
     sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+
+    getNotifiedProposalsStub.restore();
+    const getNotifiedProposalsMock = sandbox.stub();
+    getNotifiedProposalsMock.returns({
+      [getMarketKeyToStore(getUnknownProposalKeyData(mockData[0].question))]: {
+        notificationTimestamp: Date.now() / 1000 - 3600,
+      },
+    });
+    sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -401,11 +415,12 @@ describe("PolymarketNotifier", function () {
     storeNotifiedProposalsMock.returns({});
     sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
 
+    getNotifiedProposalsStub.restore();
     const getNotifiedProposalsMock = sandbox.stub();
     getNotifiedProposalsMock.returns({
-      [getMarketKeyToStore(getUnknownProposalKeyData(mockData[0].question))]: {},
+      [getMarketKeyToStore(getUnknownProposalKeyData(mockData[0].question))]: { notified: true },
     });
-    sandbox.replace(commonModule, "getNotifiedProposals", getNotifiedProposalsMock);
+    sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -415,7 +430,6 @@ describe("PolymarketNotifier", function () {
     // The spy should not have been called as the market adapter is unknown and was already notified.
     assert.equal(spy.callCount, 0);
   });
-
   it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
     mockData[0].proposedPrice = "1.0";
     mockData[0].orderBooks = [
