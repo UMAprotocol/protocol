@@ -24,3 +24,4 @@ All the configuration should be provided with following environment variables:
 - `THRESHOLD_ASKS` Price threshold for winner outcome asks in the orderbook that triggers a notification (defaults to `1`).
 - `THRESHOLD_BIDS` Price threshold for loser outcome bids in the orderbook that triggers a notification (defaults to `0`).
 - `THRESHOLD_VOLUME` Volume threshold for the market that triggers a notification (defaults to `500000`).
+- `UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL` is the interval in seconds we allow to pass before notifying about a proposal event not found (defaults to `300`).

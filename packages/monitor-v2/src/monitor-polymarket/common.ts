@@ -49,6 +49,7 @@ export interface MonitoringParams {
   provider: Provider;
   chainId: number;
   pollingDelay: number;
+  unknownProposalNotificationInterval: number;
 }
 
 interface PolymarketMarket {
@@ -125,7 +126,8 @@ export interface StoredNotifiedProposal {
   question: string;
   proposedPrice: string;
   notificationTimestamp: number;
-  requestTimestamp: string;
+  requestTimestamp?: string;
+  notified?: boolean;
 }
 
 export const formatPriceEvents = async (
@@ -500,6 +502,10 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const maxBlockLookBack = env.MAX_BLOCK_LOOK_BACK ? Number(env.MAX_BLOCK_LOOK_BACK) : 3499;
 
+  const unknownProposalNotificationInterval = env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL
+    ? Number(env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL)
+    : 300; // 5 minutes
+
   return {
     binaryAdapterAddress,
     ctfAdapterAddress,
@@ -512,10 +518,11 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     provider,
     chainId,
     pollingDelay,
+    unknownProposalNotificationInterval,
   };
 };
 
-export const getUnknownProposalKeyData = (question: string): MarketKeyStoreData & { requestTimestamp: string } => ({
+export const getUnknownProposalKeyData = (question: string): MarketKeyStoreData & { requestTimestamp?: string } => ({
   txHash: "unknown",
   question: question,
   proposedPrice: "unknown",
@@ -527,9 +534,15 @@ export const getMarketKeyToStore = (market: MarketKeyStoreData & { requestTimest
 };
 
 export const storeNotifiedProposals = async (
-  notifiedContracts: { txHash: string; question: string; proposedPrice: string; requestTimestamp: string }[]
+  notifiedContracts: {
+    txHash: string;
+    question: string;
+    proposedPrice: string;
+    requestTimestamp?: string;
+    notified?: boolean;
+  }[]
 ): Promise<void> => {
-  const currentTime = new Date().getTime();
+  const currentTime = new Date().getTime() / 1000; // Current time in seconds
   const promises = notifiedContracts.map((contract) => {
     const key = datastore.key(["NotifiedProposals", getMarketKeyToStore(contract)]);
     const data = {
@@ -538,6 +551,7 @@ export const storeNotifiedProposals = async (
       proposedPrice: contract.proposedPrice,
       notificationTimestamp: currentTime,
       requestTimestamp: contract.requestTimestamp,
+      notified: typeof contract.notified === "boolean" ? contract.notified : true,
     } as StoredNotifiedProposal;
     datastore.save({ key: key, data: data });
   });
