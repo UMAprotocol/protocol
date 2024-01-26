@@ -63,7 +63,6 @@ export async function monitorTransactionsProposedOrderBook(
         (event) =>
           market.resolvedBy.toLowerCase() === event.requester.toLowerCase() &&
           event.ancillaryData === market.ancillaryData &&
-          event.timestamp === market.requestTimestamp &&
           event.identifier === YES_OR_NO_QUERY
       );
 
@@ -79,7 +78,6 @@ export async function monitorTransactionsProposedOrderBook(
         (event) =>
           market.resolvedBy.toLowerCase() === event.requester.toLowerCase() &&
           event.ancillaryData === market.ancillaryData &&
-          event.timestamp === market.requestTimestamp &&
           event.identifier === YES_OR_NO_QUERY
       );
       if (!event) throw new Error("Could not find event for market");

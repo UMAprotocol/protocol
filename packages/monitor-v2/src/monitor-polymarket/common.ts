@@ -319,126 +319,99 @@ export const getOrderFilledEvents = async (
   );
 };
 
+const loadAbi = (filename: string): any => {
+  return require(`./abi/${filename}.json`);
+};
+
 export const getMarketsAncillary = async (
   params: MonitoringParams,
   markets: PolymarketMarket[]
 ): Promise<PolymarketMarketWithAncillaryData[]> => {
   console.log(`Fetching ancillary data for ${markets.length} markets...`);
-  const failed = "failed";
-  const binaryAdapterAbi = require("./abi/binaryAdapter.json");
-  const ctfAdapterAbi = require("./abi/ctfAdapter.json");
-  const ctfAdapterV2Abi = require("./abi/ctfAdapterV2.json");
-  const binaryAdapter = new ethers.Contract(params.binaryAdapterAddress, binaryAdapterAbi, params.provider);
-  const ctfAdapter = new ethers.Contract(params.ctfAdapterAddress, ctfAdapterAbi, params.provider);
-  const ctfAdapterV2 = new ethers.Contract(params.ctfAdapterAddressV2, ctfAdapterV2Abi, params.provider);
-  const decoder = TransactionDataDecoder.getInstance();
 
   const adapters = [
     {
       address: params.binaryAdapterAddress,
-      abi: binaryAdapterAbi,
-      contract: binaryAdapter,
+      abi: loadAbi("binaryAdapter"),
+      contract: new ethers.Contract(params.binaryAdapterAddress, loadAbi("binaryAdapter"), params.provider),
     },
     {
       address: params.ctfAdapterAddress,
-      abi: ctfAdapterAbi,
-      contract: ctfAdapter,
+      abi: loadAbi("ctfAdapter"),
+      contract: new ethers.Contract(params.ctfAdapterAddress, loadAbi("ctfAdapter"), params.provider),
     },
     {
       address: params.ctfAdapterAddressV2,
-      abi: ctfAdapterV2Abi,
-      contract: ctfAdapterV2,
+      abi: loadAbi("ctfAdapterV2"),
+      contract: new ethers.Contract(params.ctfAdapterAddressV2, loadAbi("ctfAdapterV2"), params.provider),
     },
   ];
 
-  const multicall = await getContractInstanceWithProvider<Multicall3Ethers>("Multicall3", params.provider);
-
   const rpcUrl =
     process.env[`NODE_URL_${params.chainId}`] || JSON.parse(process.env[`NODE_URLS_${params.chainId}`] || "[]")[0];
-  if (!rpcUrl) throw new Error(`NODE_URL_${params.chainId} or NODE_URLS_${params.chainId} not found in env`);
+  if (!rpcUrl) {
+    throw new Error(`NODE_URL_${params.chainId} or NODE_URLS_${params.chainId} not found in environment variables`);
+  }
 
   const web3Provider = new Web3.providers.HttpProvider(rpcUrl);
   const web3 = new Web3(web3Provider);
+  const decoder = TransactionDataDecoder.getInstance();
+  const multicall = await getContractInstanceWithProvider("Multicall3", params.provider);
 
-  const ancillaryMap = new Map<
-    string,
-    {
-      ancillaryData: string;
-      requestTimestamp: string;
-    }
-  >();
+  const ancillaryMap = new Map();
 
   for (const adapterInfo of adapters) {
-    // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
     decoder.abiDecoder.addABI(adapterInfo.abi);
-
     const adapter = adapterInfo.contract;
+
     const calls = markets
       .filter((market) => sameAddress(market.resolvedBy, adapterInfo.address))
       .map((market) => {
-        // In CTF v2, the questionId is the negRiskRequestID, not the questionID.
-        const isCtfV2Resolver = sameAddress(market.resolvedBy, params.ctfAdapterAddressV2);
-        const questionId = isCtfV2Resolver ? market.negRiskRequestID : market.questionID;
+        const questionId = sameAddress(market.resolvedBy, params.ctfAdapterAddressV2)
+          ? market.negRiskRequestID
+          : market.questionID;
         return {
           target: adapter.address,
           callData: adapter.interface.encodeFunctionData("questions", [questionId]),
+          questionID: market.questionID,
         };
       });
 
-    // batch call to multicall contract
-    const chunkSize = 25;
-    const chunks = [];
-
-    for (let i = 0; i < calls.length; i += chunkSize) {
-      chunks.push(calls.slice(i, i + chunkSize));
-    }
-
-    const chunkPromises = chunks.map(async (chunk, i) => {
+    const batchSize = 25;
+    for (let i = 0; i < calls.length; i += batchSize) {
+      const batch = calls.slice(i, i + batchSize);
       try {
-        const chunkResults = (await aggregateTransactionsAndCall(multicall.address, web3, chunk)) as {
-          ancillaryData: string;
-          requestTimestamp: BigNumber;
-        }[];
-        // Update the ancillaryMap and results with the chunkResults
-        chunkResults.forEach((result, index) => {
-          const market = markets[i * chunkSize + index];
+        const batchResults = await aggregateTransactionsAndCall(multicall.address, web3, batch);
+        batchResults.forEach((result, index) => {
+          const market = calls[i + index];
           ancillaryMap.set(market.questionID, {
             ancillaryData: result.ancillaryData,
             requestTimestamp: result.requestTimestamp.toString(),
           });
         });
       } catch (error) {
-        for (let j = 0; j < chunk.length; j++) {
-          const call = chunk[j];
-          const market = markets[i * chunkSize + j];
-          let ancillaryData, requestTimestamp;
+        console.error(`Error processing batch starting at index ${i}:`, error);
+        for (const call of batch) {
           try {
-            const result = await adapter.callStatic.questions(market.questionID);
-            ancillaryData = result.ancillaryData;
-            requestTimestamp = result.requestTimestamp.toString();
+            const result = await adapter.callStatic.questions(call.questionID);
+            ancillaryMap.set(call.questionID, {
+              ancillaryData: result.ancillaryData,
+              requestTimestamp: result.requestTimestamp.toString(),
+            });
           } catch {
-            ancillaryData = failed;
-            console.error("Failed to get ancillary data for market ", JSON.stringify(call), JSON.stringify(market));
+            console.error(`Failed to get ancillary data for market ${call.questionID}`);
           }
-          ancillaryMap.set(market.questionID, {
-            ancillaryData,
-            requestTimestamp,
-          });
         }
       }
-    });
-
-    await Promise.all(chunkPromises);
+    }
   }
 
   console.log("Finished fetching ancillary data for markets...");
-  return markets.map((market) => {
-    return {
-      ...market,
-      ancillaryData: ancillaryMap.get(market.questionID)?.ancillaryData,
-      requestTimestamp: ancillaryMap.get(market.questionID)?.requestTimestamp,
-    };
-  });
+  return markets.map((market) => ({
+    ...market,
+    ancillaryData: ancillaryMap.get(market.questionID)?.ancillaryData,
+    requestTimestamp: ancillaryMap.get(market.questionID)?.requestTimestamp,
+  }));
 };
 
 export const getPolymarketOrderBooks = async (
