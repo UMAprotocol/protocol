@@ -5,9 +5,8 @@ import { getContractInstanceWithProvider, sameAddress } from "../utils/contracts
 import type { Provider } from "@ethersproject/abstract-provider";
 import { GraphQLClient } from "graphql-request";
 
-import { BigNumber, Event, ethers } from "ethers";
+import { Event, ethers } from "ethers";
 
-import { Multicall3Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import Web3 from "web3";
 import { formatBytes32String } from "ethers/lib/utils";
