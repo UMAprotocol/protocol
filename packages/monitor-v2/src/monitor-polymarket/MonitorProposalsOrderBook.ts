@@ -18,6 +18,7 @@ import {
   getUnknownProposalKeyData,
   storeNotifiedProposals,
   PolymarketMarketWithAncillaryData,
+  FormattedProposePriceEvent,
 } from "./common";
 import { logProposalHighVolume, logProposalOrderBook, logUnknownMarketProposal } from "./MonitorLogger";
 
@@ -50,21 +51,34 @@ export async function monitorTransactionsProposedOrderBook(
   // Merge the events from both OO versions.
   const proposalEvents = await formatPriceEvents([...eventsOo, ...eventsOov2]);
 
+  // Sort the proposalEvents array by event.timestamp in descending order so that the most recent events are first.
+  proposalEvents.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+
   const markets = await getPolymarketMarkets(params);
 
   const marketsWithAncillary = await getMarketsAncillary(params, markets);
 
   const proposedMarketsWithoutProposal: PolymarketMarketWithAncillaryData[] = [];
 
+  const isEventFromSameMarket = (
+    event: FormattedProposePriceEvent,
+    market: PolymarketWithEventData | PolymarketMarketWithAncillaryData
+  ) => {
+    return (
+      event.requester.toLowerCase() === market.resolvedBy.toLowerCase() &&
+      event.ancillaryData.toLowerCase() === market.ancillaryData?.toLowerCase() &&
+      event.identifier === YES_OR_NO_QUERY
+    );
+  };
+
   // Filter out markets that do not have a proposal event.
   const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
     .filter((market) => {
-      const found = proposalEvents.find(
-        (event) =>
-          market.resolvedBy.toLowerCase() === event.requester.toLowerCase() &&
-          event.ancillaryData === market.ancillaryData &&
-          event.identifier === YES_OR_NO_QUERY
-      );
+      // If the market is resolved we don't need to check it.
+      if (market.resolved) return false;
+
+      // Events are sorted in descending order so we can stop searching once we find a proposal event for a market.
+      const found = proposalEvents.find((event) => isEventFromSameMarket(event, market));
 
       // If we don't find a proposal event and the market is "proposed" then we need to log it as an unknown proposal.
       if (!found && market.umaResolutionStatus && market.umaResolutionStatus.toLowerCase().includes("proposed")) {
@@ -74,12 +88,7 @@ export async function monitorTransactionsProposedOrderBook(
       return found;
     })
     .map((market) => {
-      const event = proposalEvents.find(
-        (event) =>
-          market.resolvedBy.toLowerCase() === event.requester.toLowerCase() &&
-          event.ancillaryData === market.ancillaryData &&
-          event.identifier === YES_OR_NO_QUERY
-      );
+      const event = proposalEvents.find((event) => isEventFromSameMarket(event, market));
       if (!event) throw new Error("Could not find event for market");
       return {
         ...market,
