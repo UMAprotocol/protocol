@@ -60,7 +60,7 @@ export async function monitorTransactionsProposedOrderBook(
 
   const proposedMarketsWithoutProposal: PolymarketMarketWithAncillaryData[] = [];
 
-  const isEventFromSameMarket = (
+  const isMatchingMarketAndProposalEvent = (
     event: FormattedProposePriceEvent,
     market: PolymarketWithEventData | PolymarketMarketWithAncillaryData
   ) => {
@@ -78,7 +78,7 @@ export async function monitorTransactionsProposedOrderBook(
       if (market.resolved) return false;
 
       // Events are sorted in descending order so we can stop searching once we find a proposal event for a market.
-      const found = proposalEvents.find((event) => isEventFromSameMarket(event, market));
+      const found = proposalEvents.find((event) => isMatchingMarketAndProposalEvent(event, market));
 
       // If we don't find a proposal event and the market is "proposed" then we need to log it as an unknown proposal.
       if (!found && market.umaResolutionStatus && market.umaResolutionStatus.toLowerCase().includes("proposed")) {
@@ -88,7 +88,7 @@ export async function monitorTransactionsProposedOrderBook(
       return found;
     })
     .map((market) => {
-      const event = proposalEvents.find((event) => isEventFromSameMarket(event, market));
+      const event = proposalEvents.find((event) => isMatchingMarketAndProposalEvent(event, market));
       if (!event) throw new Error("Could not find event for market");
       return {
         ...market,
