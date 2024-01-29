@@ -84,6 +84,7 @@ interface PolymarketMarketGraphql {
 export interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
   ancillaryData?: string;
   requestTimestamp?: string;
+  resolved?: boolean;
 }
 
 export interface PolymarketWithEventData extends PolymarketMarketWithAncillaryData {
@@ -129,25 +130,23 @@ export interface StoredNotifiedProposal {
   notified?: boolean;
 }
 
-export const formatPriceEvents = async (
-  events: ProposePriceEvent[]
-): Promise<
-  {
-    txHash: string;
-    requester: string;
-    proposer: string;
-    timestamp: string;
-    eventTimestamp: number;
-    eventBlockNumber: number;
-    expirationTimestamp: number;
-    proposalTimestamp: number;
-    identifier: string;
-    ancillaryData: string;
-    proposedPrice: string;
-    eventIndex: number;
-    oracleAddress: string;
-  }[]
-> => {
+export interface FormattedProposePriceEvent {
+  txHash: string;
+  requester: string;
+  proposer: string;
+  timestamp: string;
+  eventTimestamp: number;
+  eventBlockNumber: number;
+  expirationTimestamp: number;
+  proposalTimestamp: number;
+  identifier: string;
+  ancillaryData: string;
+  proposedPrice: string;
+  eventIndex: number;
+  oracleAddress: string;
+}
+
+export const formatPriceEvents = async (events: ProposePriceEvent[]): Promise<FormattedProposePriceEvent[]> => {
   const ooDefaultLiveness = 7200;
   return Promise.all(
     events.map(async (event: ProposePriceEvent) => {
@@ -386,6 +385,7 @@ export const getMarketsAncillary = async (
           ancillaryMap.set(market.questionID, {
             ancillaryData: result.ancillaryData,
             requestTimestamp: result.requestTimestamp.toString(),
+            resolved: result.resolved,
           });
         });
       } catch (error) {
@@ -396,6 +396,7 @@ export const getMarketsAncillary = async (
             ancillaryMap.set(call.questionID, {
               ancillaryData: result.ancillaryData,
               requestTimestamp: result.requestTimestamp.toString(),
+              resolved: result.resolved,
             });
           } catch {
             console.error(`Failed to get ancillary data for market ${call.questionID}`);
@@ -410,6 +411,7 @@ export const getMarketsAncillary = async (
     ...market,
     ancillaryData: ancillaryMap.get(market.questionID)?.ancillaryData,
     requestTimestamp: ancillaryMap.get(market.questionID)?.requestTimestamp,
+    resolved: ancillaryMap.get(market.questionID)?.resolved,
   }));
 };
 
