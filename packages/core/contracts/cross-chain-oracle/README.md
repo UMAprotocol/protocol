@@ -229,7 +229,7 @@ yarn hardhat register-accounts --network <l2name> --account <OPTIMISTIC_ORACLE_V
 yarn hardhat --network <l2name> verify --contract <CONTRACT_FILE_PATH:CONTRACT_NAME> <EACH_DEPLOYED_ADDRESS> <ASSOCIATED_CONSTRUCTOR_PARAMS>
 ```
 
-In case of more complex constructor arguments, pass them from file `--constructor-args arguments.js` as discussed in [hardhat-verify docs](https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify#complex-arguments). In order to get constructor argument values, check them in `args` property from respective contract deployment json file (appropriate network directory under [packages/core/deployments](/packages/core/deployments)).
+In case of more complex constructor arguments, pass them from file `--constructor-args arguments.js` as discussed in [hardhat-verify docs](https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify#complex-arguments). In order to get constructor argument values, check them in `args` property from respective contract deployment json file (appropriate network directory under `packages/core/deployments`).
 
 10. Transfer ownership:
 
