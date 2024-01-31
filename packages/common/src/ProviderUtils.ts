@@ -48,6 +48,8 @@ export function getNodeUrl(networkName: string, useHttps = false, chainId: numbe
     if (name === "avalanche") return overrideUrl || "https://api.avax.network/ext/bc/C/rpc";
     if (name === "evmos") return overrideUrl || "https://evmos-json-rpc.stakely.io";
     if (name === "meter") return overrideUrl || "https://rpc.meter.io";
+    if (name === "core-testnet") return overrideUrl || "https://rpc.test.btcs.network/";
+    if (name === "core") return overrideUrl || "https://rpc.coredao.org/";
     if (name === "base-goerli") return overrideUrl || "https://goerli.base.org";
     return (
       overrideUrl ||

@@ -44,6 +44,7 @@ export function getHardhatConfig(
   require("hardhat-gas-reporter");
   require("./gckms/KeyInjectorPlugin");
   require("hardhat-tracer");
+  require("@nomicfoundation/hardhat-verify");
 
   // Custom tasks.
   require("./hardhat");
@@ -172,6 +173,17 @@ export function getHardhatConfig(
         url: getNodeUrl("meter", true, 82),
         accounts: { mnemonic },
       },
+      "core-testnet": {
+        chainId: 1115,
+        url: getNodeUrl("core-testnet", true, 1115),
+        accounts: { mnemonic },
+      },
+      core: {
+        chainId: 1116,
+        url: getNodeUrl("core", true, 1116),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {
@@ -193,6 +205,22 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://api-goerli.basescan.org/api",
             browserURL: "https://goerli.basescan.org",
+          },
+        },
+        {
+          network: "core-testnet",
+          chainId: 1115,
+          urls: {
+            apiURL: "https://api.test.btcs.network/api",
+            browserURL: "https://scan.test.btcs.network",
+          },
+        },
+        {
+          network: "core",
+          chainId: 1116,
+          urls: {
+            apiURL: "https://openapi.coredao.org/api",
+            browserURL: "https://scan.coredao.org/",
           },
         },
       ],

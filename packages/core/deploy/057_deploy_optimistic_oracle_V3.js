@@ -9,6 +9,7 @@ const ADDRESSES_FOR_NETWORK = {
   100: { defaultCurrency: "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83" },
   137: { defaultCurrency: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174" },
   288: { defaultCurrency: "0x66a2A913e447d6b4BF33EFbec43aAeF87890FBbc" },
+  1116: { defaultCurrency: "0xa4151B2B3e269645181dCcF2D426cE75fcbDeca9" },
   9001: { defaultCurrency: "0x51e44FfaD5C2B122C8b635671FCC8139dc636E82" },
   42161: { defaultCurrency: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8" },
   43114: { defaultCurrency: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E" },

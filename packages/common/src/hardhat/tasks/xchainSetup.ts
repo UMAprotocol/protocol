@@ -300,6 +300,29 @@ task("setup-l2-xchain", "Configures L2 cross chain smart contracts").setAction(a
   await setupChildMessenger(finder, deployer, ChildMessenger, Registry);
 });
 
+task("setup-l2-admin-xchain", "Configures L2 cross chain smart contracts with admin messenger").setAction(
+  async function (_, hre_) {
+    const hre = hre_ as CombinedHRE;
+    const { deployments, getNamedAccounts, web3 } = hre;
+    const { deployer } = await getNamedAccounts();
+
+    const Finder = await deployments.get("Finder");
+    const finder = new web3.eth.Contract(Finder.abi, Finder.address);
+    const ChildMessenger = await deployments.get("Admin_ChildMessenger");
+    const childMessenger = new web3.eth.Contract(ChildMessenger.abi, ChildMessenger.address);
+    const Registry = await deployments.get("Registry");
+    const OracleSpoke = await deployments.get("OracleSpoke");
+
+    console.log(`Found Finder @ ${finder.options.address}`);
+
+    await setupChildMessenger(finder, deployer, ChildMessenger, Registry);
+
+    console.log(`Setting Admin_ChildMessenger oracleSpoke to ${OracleSpoke.address}...`);
+    const setOracleSpokeTxn = await childMessenger.methods.setOracleSpoke(OracleSpoke.address).send({ from: deployer });
+    console.log(`...txn: ${setOracleSpokeTxn.transactionHash}`);
+  }
+);
+
 task("verify-xchain", "Checks ownership state of cross chain smart contracts")
   .addParam("l2", "Chain name of the child messenger to check")
   .setAction(async function (taskArguments, hre_) {
@@ -525,3 +548,158 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
      * End: Checking L2 State
      *************************************/
   });
+
+task("verify-admin-xchain", "Checks state of L2 smart contracts with admin messenger").setAction(async function (
+  _,
+  hre_
+) {
+  const hre = hre_ as CombinedHRE;
+  const { deployments, web3 } = hre;
+
+  const [
+    childMessenger,
+    oracleSpoke,
+    governorSpoke,
+    l2Registry,
+    l2Store,
+    l2IdentifierWhitelist,
+    l2AddressWhitelist,
+    l2OptimisticOracle,
+    l2OptimisticOracleV2,
+    l2OptimisticOracleV3,
+    l2Finder,
+  ] = await Promise.all([
+    deployments.get(`Admin_ChildMessenger`),
+    deployments.get(`OracleSpoke`),
+    deployments.get(`GovernorSpoke`),
+    deployments.get(`Registry`),
+    deployments.get(`Store`),
+    deployments.get(`IdentifierWhitelist`),
+    deployments.get(`AddressWhitelist`),
+    deployments.get(`OptimisticOracle`),
+    deployments.get(`OptimisticOracleV2`),
+    deployments.get(`OptimisticOracleV3`),
+    deployments.get(`Finder`),
+  ]);
+
+  /** ***********************************
+   * Begin: Checking L2 State
+   *************************************/
+  console.group("\n🌚 Verifying L2 contract state 🌚");
+
+  console.group("Registry");
+  const l2RegistryContract = new web3.eth.Contract(l2Registry.abi, l2Registry.address);
+  const [
+    optimisticOracleRegistered,
+    optimisticOracleV2Registered,
+    optimisticOracleV3Registered,
+    l2RegistryOwner,
+  ] = await Promise.all([
+    l2RegistryContract.methods.isContractRegistered(l2OptimisticOracle.address).call(),
+    l2RegistryContract.methods.isContractRegistered(l2OptimisticOracleV2.address).call(),
+    l2RegistryContract.methods.isContractRegistered(l2OptimisticOracleV3.address).call(),
+    l2RegistryContract.methods.getMember(0).call(),
+  ]);
+  console.log(`- OptimisticOracle registered: ${optimisticOracleRegistered ? "✅" : "❌"}`);
+  console.log(`- OptimisticOracleV2 registered: ${optimisticOracleV2Registered ? "✅" : "❌"}`);
+  console.log(`- OptimisticOracleV3 registered: ${optimisticOracleV3Registered ? "✅" : "❌"}`);
+  console.log(`- Owned by GovernorSpoke: ${l2RegistryOwner === governorSpoke.address ? "✅" : "❌"}`);
+  console.groupEnd();
+
+  console.group("Store");
+  const l2StoreContract = new web3.eth.Contract(l2Store.abi, l2Store.address);
+  const [l2StoreOwner] = await Promise.all([l2StoreContract.methods.getMember(0).call()]);
+  console.log(`- Owned by GovernorSpoke: ${l2StoreOwner === governorSpoke.address ? "✅" : "❌"}`);
+  console.groupEnd();
+
+  console.group("IdentifierWhitelist");
+  const l2IdentifierWhitelistContract = new web3.eth.Contract(l2IdentifierWhitelist.abi, l2IdentifierWhitelist.address);
+  const [l2IdentifierWhitelistOwner] = await Promise.all([l2IdentifierWhitelistContract.methods.owner().call()]);
+  console.log(`- Owned by GovernorSpoke: ${l2IdentifierWhitelistOwner === governorSpoke.address ? "✅" : "❌"}`);
+  console.groupEnd();
+
+  console.group("AddressWhitelist");
+  const l2AddressWhitelistContract = new web3.eth.Contract(l2AddressWhitelist.abi, l2AddressWhitelist.address);
+  const [l2AddressWhitelistOwner] = await Promise.all([l2AddressWhitelistContract.methods.owner().call()]);
+  console.log(`- Owned by GovernorSpoke: ${l2AddressWhitelistOwner === governorSpoke.address ? "✅" : "❌"}`);
+  console.groupEnd();
+
+  console.group("OptimisticOracleV3");
+  const l2OptimisticOracleV3Contract = new web3.eth.Contract(l2OptimisticOracleV3.abi, l2OptimisticOracleV3.address);
+  const [l2OptimisticOracleV3Owner] = await Promise.all([l2OptimisticOracleV3Contract.methods.owner().call()]);
+  console.log(`- Owned by GovernorSpoke: ${l2OptimisticOracleV3Owner === governorSpoke.address ? "✅" : "❌"}`);
+  console.groupEnd();
+
+  console.group("Admin_ChildMessenger");
+  const childMessengerContract = new web3.eth.Contract(childMessenger.abi, childMessenger.address);
+  const [childMessengerOracleSpoke] = await Promise.all([childMessengerContract.methods.oracleSpoke().call()]);
+  console.log(`- Set oracleSpoke: ${childMessengerOracleSpoke === oracleSpoke.address ? "✅" : "❌"}`);
+  console.groupEnd();
+
+  console.group("Finder");
+  const l2FinderContract = new web3.eth.Contract(l2Finder.abi, l2Finder.address);
+  const [
+    l2FinderOwner,
+    l2FinderStore,
+    l2FinderIdentifierWhitelist,
+    l2FinderAddressWhitelist,
+    l2FinderOracle,
+    l2FinderOptimisticOracle,
+    l2FinderOptimisticOracleV2,
+    l2FinderOptimisticOracleV3,
+    l2FinderChildMessenger,
+  ] = await Promise.all([
+    l2FinderContract.methods.owner().call(),
+    l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.Store)).call(),
+    l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.IdentifierWhitelist)).call(),
+    l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.CollateralWhitelist)).call(),
+    l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.Oracle)).call(),
+    l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.OptimisticOracle)).call(),
+    l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.OptimisticOracleV2)).call(),
+    l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.OptimisticOracleV3)).call(),
+    l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.ChildMessenger)).call(),
+  ]);
+  console.log(`- Owned by GovernorSpoke: ${l2FinderOwner === governorSpoke.address ? "✅" : "❌"}`);
+  console.log(`- Set "${interfaceName.Store}" in Finder: ${l2FinderStore === l2Store.address ? "✅" : "❌"}`);
+  console.log(
+    `- Set "${interfaceName.IdentifierWhitelist}": ${
+      l2FinderIdentifierWhitelist === l2IdentifierWhitelist.address ? "✅" : "❌"
+    }`
+  );
+  console.log(
+    `- Set "${interfaceName.CollateralWhitelist}" in Finder: ${
+      l2FinderAddressWhitelist === l2AddressWhitelist.address ? "✅" : "❌"
+    }`
+  );
+  console.log(
+    `- Set "${interfaceName.Oracle}" in Finder (to OracleSpoke): ${
+      l2FinderOracle === oracleSpoke.address ? "✅" : "❌"
+    }`
+  );
+  console.log(
+    `- Set "${interfaceName.OptimisticOracle}" in Finder: ${
+      l2FinderOptimisticOracle === l2OptimisticOracle.address ? "✅" : "❌"
+    }`
+  );
+  console.log(
+    `- Set "${interfaceName.OptimisticOracleV2}" in Finder: ${
+      l2FinderOptimisticOracleV2 === l2OptimisticOracleV2.address ? "✅" : "❌"
+    }`
+  );
+  console.log(
+    `- Set "${interfaceName.OptimisticOracleV3}" in Finder: ${
+      l2FinderOptimisticOracleV3 === l2OptimisticOracleV3.address ? "✅" : "❌"
+    }`
+  );
+  console.log(
+    `- Set "${interfaceName.ChildMessenger}" in Finder: ${
+      l2FinderChildMessenger === childMessenger.address ? "✅" : "❌"
+    }`
+  );
+  console.groupEnd();
+
+  console.groupEnd();
+  /** ***********************************
+   * End: Checking L2 State
+   *************************************/
+});

@@ -2,6 +2,7 @@ import { Web3Contract } from "./../../ContractUtils";
 import { task, types } from "hardhat/config";
 import assert from "assert";
 import Web3 from "web3";
+import { AbiItem } from "web3-utils";
 import dotenv from "dotenv";
 import { getEventsWithPaginatedBlockSearch, ZERO_ADDRESS } from "../../index";
 import fetch from "node-fetch";
@@ -9,6 +10,19 @@ import fetch from "node-fetch";
 import type { CombinedHRE } from "./types";
 
 dotenv.config();
+
+// LZ chainId mappings from https://github.com/LayerZero-Labs/wrapped-asset-bridge/blob/main/constants/chainIds.json
+const LZ_CHAIN_IDS: Record<number, number> = {
+  1: 101, // ethereum
+  10: 111, // optimism
+  137: 109, // polygon
+  1116: 153, // coredao
+  42161: 110, // arbitrum
+};
+
+const LZ_WRAPPED_TOKEN_BRIDGES: Record<number, string> = {
+  1116: "0xA4218e1F39DA4AaDaC971066458Db56e901bcbdE", // coredao
+};
 
 const tokenAbi = [
   {
@@ -39,6 +53,19 @@ const L2StandardBridgeAbi = [
     ],
     name: "DepositFinalized",
     type: "event",
+  },
+];
+
+const wrappedTokenBridgeAbi: AbiItem[] = [
+  {
+    outputs: [{ name: "", internalType: "address", type: "address" }],
+    inputs: [
+      { name: "", internalType: "address", type: "address" },
+      { name: "", internalType: "uint16", type: "uint16" },
+    ],
+    name: "remoteToLocal",
+    stateMutability: "view",
+    type: "function",
   },
 ];
 
@@ -205,6 +232,10 @@ async function findL2TokenForL1Token(l1Web3: Web3, l2Web3: Web3, l2chainid: numb
   if (l2chainid == 100) {
     return await _findL2TokenFromTokenList(l1Web3, l2chainid, l1TokenAddress);
   }
+
+  if (l2chainid == 1116) {
+    return await _findL2TokenFromLZBridge(l1Web3, l2Web3, l2chainid, l1TokenAddress);
+  }
 }
 
 async function _findL2TokenFromTokenList(l1Web3: Web3, l2chainid: number, l1TokenAddress: string) {
@@ -255,4 +286,16 @@ async function _findL2TokenForOvmChain(l2Web3: Web3, l1TokenAddress: string) {
 
   if (depositFinalizedEvents.length === 0) return ZERO_ADDRESS;
   return depositFinalizedEvents[0].returnValues._l2Token;
+}
+
+async function _findL2TokenFromLZBridge(l1Web3: Web3, l2Web3: Web3, l2chainid: number, l1TokenAddress: string) {
+  const l1chainid = await l1Web3.eth.getChainId();
+  const layerZeroOriginChainId = LZ_CHAIN_IDS[l1chainid];
+  assert(layerZeroOriginChainId !== undefined, `Missing LayerZero mapping for chain ${l1chainid}`);
+  const wrappedTokenBridgeAddress = LZ_WRAPPED_TOKEN_BRIDGES[l2chainid];
+  assert(wrappedTokenBridgeAddress !== undefined, `Missing WrappedTokenBridge mapping for chain ${l2chainid}`);
+
+  const wrappedTokenBridge = new l2Web3.eth.Contract(wrappedTokenBridgeAbi, wrappedTokenBridgeAddress);
+
+  return await wrappedTokenBridge.methods.remoteToLocal(l1TokenAddress, layerZeroOriginChainId).call();
 }
