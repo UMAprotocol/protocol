@@ -146,13 +146,14 @@ export MNEMONIC="Your 12-word mnemonic here"
 export ETHERSCAN_API_KEY="Your L2 Etherscan API key"
 ```
 
-2. Add new network variables in `@uma/common` package:
+2. Add new network variables in `@uma/common` and `@uma/financial-templates-lib` packages:
 
 - Hardhat `defaultConfig.networks` configuration in [packages/common/src/HardhatConfig.ts](/packages/common/src/HardhatConfig.ts). Adding `companionNetworks` parameter pointing to L1 mainnet is required for approved collateral migration task.
 - `etherscan.customChains` configuration in [packages/common/src/HardhatConfig.ts](/packages/common/src/HardhatConfig.ts) if the L2 is not supported by `@nomicfoundation/hardhat-verify` library.
 - `PublicNetworks` configuration in [packages/common/src/PublicNetworks.ts](/packages/common/src/PublicNetworks.ts)
 - `averageBlockTimeSeconds` in [packages/common/src/TimeUtils.ts](/packages/common/src/TimeUtils.ts)
 - Default RPC to `getNodeUrl` in [packages/common/src/ProviderUtils.ts](/packages/common/src/ProviderUtils.ts)
+- Gas estimator settings to `MAPPING_BY_NETWORK` in [packages/financial-templates-lib/src/helpers/GasEstimator.ts](/packages/financial-templates-lib/src/helpers/GasEstimator.ts)
 - Rebuild `@uma/common` package:
 
   ```sh

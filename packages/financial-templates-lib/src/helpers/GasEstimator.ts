@@ -62,6 +62,8 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
     type: NetworkType.London,
   },
   288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
+  1115: { defaultFastPriceGwei: 30, type: NetworkType.Legacy },
+  1116: { defaultFastPriceGwei: 30, type: NetworkType.Legacy },
   42161: { defaultFastPriceGwei: 10, type: NetworkType.Legacy },
   80001: {
     url: "https://gasstation-testnet.polygon.technology/v2",
