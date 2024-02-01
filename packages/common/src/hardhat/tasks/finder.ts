@@ -15,6 +15,8 @@ task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("addresswhitelist", "Use if you want to set AddressWhitelist")
   .addFlag("financialcontractsadmin", "Use if you want to set FinancialContractsAdmin")
   .addFlag("optimisticoracle", "Use if you want to set OptimisticOracle")
+  .addFlag("optimisticoraclev2", "Use if you want to set OptimisticOracleV2")
+  .addFlag("optimisticoraclev3", "Use if you want to set OptimisticOracleV3")
   .addFlag("store", "Use if you want to set Store")
   .addFlag("oraclespoke", "Use if you want to set OracleSpoke as the Oracle")
   .addFlag("mockoracle", "Use if you want to set MockOracle as the Oracle")
@@ -35,6 +37,8 @@ task("setup-finder", "Points Finder to DVM system contracts")
       financialcontractsadmin,
       store,
       optimisticoracle,
+      optimisticoraclev2,
+      optimisticoraclev3,
       sinkoracle,
     } = taskArguments;
 
@@ -47,6 +51,8 @@ task("setup-finder", "Points Finder to DVM system contracts")
     if (addresswhitelist) contractsToSet.push("AddressWhitelist");
     if (financialcontractsadmin) contractsToSet.push("FinancialContractsAdmin");
     if (optimisticoracle) contractsToSet.push("OptimisticOracle");
+    if (optimisticoraclev2) contractsToSet.push("OptimisticOracleV2");
+    if (optimisticoraclev3) contractsToSet.push("OptimisticOracleV3");
     if (store) contractsToSet.push("Store");
     if (mockoracle) contractsToSet.push("MockOracleAncillary");
     if (sinkoracle) contractsToSet.push("SinkOracle");

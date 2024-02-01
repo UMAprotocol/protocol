@@ -76,6 +76,8 @@ export const PublicNetworks: PublicNetworksType = {
   288: { name: "boba", nativeToken: "ETH", etherscan: "https://blockexplorer.boba.network/" },
   324: { name: "zksync", nativeToken: "ETH", etherscan: "https://explorer.zksync.io/" },
   416: { name: "sx", nativeToken: "SX", etherscan: "https://explorer.sx.technology/" },
+  1115: { name: "core-testnet", nativeToken: "tCORE", etherscan: "https://scan.test.btcs.network/" },
+  1116: { name: "core", nativeToken: "CORE", etherscan: "https://scan.coredao.org/" },
   9001: { name: "evmos", nativeToken: "EVMOS", etherscan: "https://evm.evmos.org" },
   80001: {
     name: "polygon-mumbai",
