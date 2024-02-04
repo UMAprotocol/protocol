@@ -448,11 +448,32 @@ const approveBond = async (
   if (currentAllowance.toString() === bond) return;
 
   try {
-    await (await currencyContract.connect(signer).approve(spender, bond)).wait();
+    await (await currencyContract.connect(signer).approve(spender, bond, { ...(await getGasParams(provider)) })).wait();
   } catch (error) {
     // There is no point in proceeding with proposal/dispute if bond approval failed, so we throw an error.
     assert(error instanceof Error, "Unexpected Error type!");
     throw new Error(`Bond approval for ${spender} failed: ${error.message}`);
+  }
+};
+
+const getGasParams = async (provider: Provider) => {
+  // This is a hack to ensure that polygon's gas prices are more conservative. Ethers seems to incorrectly estimate them.
+  if ((await provider.getNetwork()).chainId === 137) {
+    const { gasPrice, lastBaseFeePerGas, maxPriorityFeePerGas } = await provider.getFeeData();
+
+    // These should all be present for polygon, but if they aren't just return undefined.
+    if (!lastBaseFeePerGas || !gasPrice || !maxPriorityFeePerGas) return undefined;
+    const inferredPriorityFee = gasPrice.sub(lastBaseFeePerGas);
+    const averagePriorityFee = maxPriorityFeePerGas.gt(inferredPriorityFee)
+      ? maxPriorityFeePerGas
+      : inferredPriorityFee;
+    const boostedPriorityFee = averagePriorityFee.mul(150).div(100);
+
+    // Ensure that maxFeePerGas is always greater than priorityFee.
+    return {
+      maxPriorityFeePerGas: boostedPriorityFee,
+      maxFeePerGas: lastBaseFeePerGas.mul(5).add(boostedPriorityFee),
+    };
   }
 };
 
@@ -522,7 +543,9 @@ const submitProposals = async (
     // Submit proposal and get receipt.
     let receipt: ContractReceipt;
     try {
-      const tx = await og.connect(params.signer).proposeTransactions(transactions, explanation);
+      const tx = await og
+        .connect(params.signer)
+        .proposeTransactions(transactions, explanation, { ...(await getGasParams(params.provider)) });
       receipt = await tx.wait();
     } catch (error) {
       // Log error and proceed with the next proposal.
@@ -577,9 +600,7 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
 
     // Check that dispute submission would succeed.
     try {
-      await oo.callStatic.disputeAssertion(proposal.event.args.assertionId, disputerAddress, {
-        from: disputerAddress,
-      });
+      await oo.callStatic.disputeAssertion(proposal.event.args.assertionId, disputerAddress, { from: disputerAddress });
     } catch (error) {
       // Log and proceed with the next dispute. This should be error unless submitting transactions is disabled and
       // we don't have sufficient funding.
@@ -597,7 +618,9 @@ const submitDisputes = async (logger: typeof Logger, proposals: DisputablePropos
     // Submit dispute and get receipt.
     let receipt: ContractReceipt;
     try {
-      const tx = await oo.connect(params.signer).disputeAssertion(proposal.event.args.assertionId, disputerAddress);
+      const tx = await oo.connect(params.signer).disputeAssertion(proposal.event.args.assertionId, disputerAddress, {
+        ...(await getGasParams(params.provider)),
+      });
       receipt = await tx.wait();
     } catch (error) {
       // Log error and proceed with the next dispute.
@@ -671,7 +694,9 @@ const submitExecutions = async (logger: typeof Logger, proposals: SupportedPropo
     // Submit execution and get receipt.
     let receipt: ContractReceipt;
     try {
-      const tx = await og.connect(params.signer).executeProposal(proposal.event.args.proposal.transactions);
+      const tx = await og
+        .connect(params.signer)
+        .executeProposal(proposal.event.args.proposal.transactions, { ...(await getGasParams(params.provider)) });
       receipt = await tx.wait();
     } catch (error) {
       // Log error and proceed with the next execution.
