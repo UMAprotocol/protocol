@@ -712,13 +712,13 @@ describe("ServerlessHub.js", function () {
     const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
 
     const hubConfig = {
-      testServerlessMonitor: {
+      testServerlessBot: {
         serverlessCommand: "echo single network bot started",
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
         },
       },
-      testServerlessMonitor2: {
+      testServerlessBot2: {
         serverlessCommand: "echo multiple network bot started",
         environmentVariables: {
           [`NODE_URL_${defaultChainId}`]: network.config.url,
@@ -741,5 +741,63 @@ describe("ServerlessHub.js", function () {
     // Check for hub logs caching each unique chain ID seen:
     assert.isTrue(spyLogIncludes(hubSpy, 3, defaultChainId));
     assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
+  });
+
+  it("ServerlessHub correctly sets latestBlockNumber in multiple network config", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+
+    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to store the latest
+    // block number for this alternative network when passed together with default network within the same bot config.
+    const alternateChainId = 666;
+    const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
+
+    // Mine additional block and store its number.
+    await alternateWeb3.currentProvider.send({ method: "evm_mine", params: [] });
+    const latestAlternateBlockNumber = await alternateWeb3.eth.getBlockNumber();
+
+    const hubConfig = {
+      testServerlessBot: {
+        serverlessCommand: "echo single network bot started",
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
+      },
+      testServerlessBot2: {
+        serverlessCommand: "echo multiple network bot started",
+        environmentVariables: {
+          [`NODE_URL_${defaultChainId}`]: network.config.url,
+          [`NODE_URL_${alternateChainId}`]: alternateWeb3.currentProvider.host,
+          STORE_MULTI_CHAIN_BLOCK_NUMBERS: [defaultChainId, alternateChainId],
+        },
+      },
+    };
+
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, "0");
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+    setEnvironmentVariable(`lastQueriedBlockNumber-${alternateChainId}-${testConfigFile}`, "0");
+
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
+
+    const validResponse = await sendHubRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // no error code
+
+    // Logs should include correct starting and latest block numbers for the alternate network.
+    const alternateBlockNumbers = {
+      [alternateChainId]: {
+        lastQueriedBlockNumber: 0,
+        latestBlockNumber: latestAlternateBlockNumber,
+      },
+    };
+
+    // Strip enclosing curly braces as there are also other items in the logged object.
+    const alternateBlockNumbersFragment = JSON.stringify(alternateBlockNumbers).substring(
+      1,
+      JSON.stringify(alternateBlockNumbers).length - 1
+    );
+
+    // Check for hub logs include correct starting and latest block numbers for the alternate network:
+    assert.isTrue(spyLogIncludes(hubSpy, 3, alternateBlockNumbersFragment));
   });
 });
