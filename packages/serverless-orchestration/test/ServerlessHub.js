@@ -63,7 +63,7 @@ describe("ServerlessHub.js", function () {
       ganacheServer.close();
       ganacheServers.pop();
     }
-  }
+  };
 
   const sendHubRequest = (body, port = hubTestPort) => {
     return request(`http://localhost:${port}`).post("/").send(body).set("Accept", "application/json");
