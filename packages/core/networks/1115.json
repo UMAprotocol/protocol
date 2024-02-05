@@ -1,0 +1,50 @@
+[
+  {
+    "contractName": "Registry",
+    "address": "0x28077B47Cd03326De7838926A63699849DD4fa87"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75"
+  },
+  {
+    "contractName": "Admin_ChildMessenger",
+    "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xD29C85F15DF544bA632C9E25829fd29d767d7978"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x2271a5E74eA8A29764ab10523575b41AA52455f0"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x6999526e507Cc3b03b180BbE05E1Ff938259A874"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0xd85630E361cEbBC4c7f13e6eEd3587050fB81B86"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0x73C6f823cba34a2AE5e67A46aBB7C6A9Fb815A00"
+  },
+  {
+    "contractName": "OptimisticGovernor",
+    "address": "0xD43463Fadd73373bE260b67F5825274F4403dAF0"
+  }
+]
