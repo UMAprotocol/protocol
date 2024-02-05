@@ -700,4 +700,46 @@ describe("ServerlessHub.js", function () {
       )
     ); // check the catcher for missing `Started` key words, sent at the booting sequency of all bots, is captured correctly.
   });
+
+  it("ServerlessHub sets multiple network block numbers", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
+    // alternative network when passed together with default network within the same bot config.
+    const alternateChainId = 666;
+    const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: "echo single network bot started",
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
+      },
+      testServerlessMonitor2: {
+        serverlessCommand: "echo multiple network bot started",
+        environmentVariables: {
+          [`NODE_URL_${defaultChainId}`]: network.config.url,
+          [`NODE_URL_${alternateChainId}`]: alternateWeb3.currentProvider.host,
+          STORE_MULTI_CHAIN_BLOCK_NUMBERS: [defaultChainId, alternateChainId],
+        },
+      },
+    };
+
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+    setEnvironmentVariable(`lastQueriedBlockNumber-${alternateChainId}-${testConfigFile}`, startingBlockNumber);
+
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
+
+    const validResponse = await sendHubRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // no error code
+
+    // Check for hub logs caching each unique chain ID seen:
+    assert.isTrue(spyLogIncludes(hubSpy, 3, defaultChainId));
+    assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
+  });
 });
