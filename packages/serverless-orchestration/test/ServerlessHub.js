@@ -42,6 +42,8 @@ describe("ServerlessHub.js", function () {
 
   let defaultChainId;
 
+  let ganacheServers = []; // keep track of all ganache instances so they can be closed after each test to avoid port conflicts
+
   let setEnvironmentVariableKes = []; // record all envs set within a test to unset them after in the afterEach block
   const setEnvironmentVariable = (key, value) => {
     assert(key && value, "Must provide both a key and value to set an environment variable");
@@ -55,6 +57,14 @@ describe("ServerlessHub.js", function () {
     setEnvironmentVariableKes = [];
   };
 
+  const closeGanacheServers = () => {
+    for (let i = ganacheServers.length - 1; i >= 0; i--) {
+      const ganacheServer = ganacheServers[i];
+      ganacheServer.close();
+      ganacheServers.pop();
+    }
+  }
+
   const sendHubRequest = (body, port = hubTestPort) => {
     return request(`http://localhost:${port}`).post("/").send(body).set("Accept", "application/json");
   };
@@ -62,6 +72,7 @@ describe("ServerlessHub.js", function () {
   const startGanacheServer = (chainId, port) => {
     const node = ganache.server({ _chainIdRpc: chainId });
     node.listen(port);
+    ganacheServers.push(node);
     return new Web3("http://127.0.0.1:" + port);
   };
 
@@ -108,6 +119,7 @@ describe("ServerlessHub.js", function () {
     hubInstance.close();
     spokeInstance.close();
     unsetEnvironmentVariables();
+    closeGanacheServers();
   });
 
   it("ServerlessHub rejects empty json request bodies", async function () {
