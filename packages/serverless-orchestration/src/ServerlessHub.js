@@ -150,9 +150,6 @@ hub.post("/", async (req, res) => {
       // Cache the chain id for this node url.
       nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
 
-      // If we've seen this chain ID already we can skip it.
-      if (blockNumbersForChain[chainId]) continue;
-
       // If STORE_MULTI_CHAIN_BLOCK_NUMBERS is set then this bot requires to know a number of last seen blocks across
       // a set of chainIds. Construct a batch promise to evaluate the latest block number for each chainId.
       if (configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS) {
@@ -169,11 +166,14 @@ hub.post("/", async (req, res) => {
           if (index % 2 !== 0) return;
           const chainId = multiChainIds[Math.floor(index / 2)];
           blockNumbersForChain[chainId] = {
-            lastQueriedBlockNumber: results[index + 1],
-            latestBlockNumber: results[index],
+            lastQueriedBlockNumber: results[index],
+            latestBlockNumber: results[index + 1],
           };
         });
       }
+
+      // If we've seen this chain ID already we can skip it.
+      if (blockNumbersForChain[chainId]) continue;
 
       // Fetch last seen block for this chain and get the head block for the chosen chain, which we'll use to override the last queried block number
       // stored in GCP at the end of this hub execution.
