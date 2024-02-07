@@ -92,6 +92,7 @@ export const PublicNetworks: PublicNetworksType = {
   421611: { name: "arbitrum-rinkeby", nativeToken: "ETH", etherscan: "https://testnet.arbiscan.io/" },
   421613: { name: "arbitrum-goerli", nativeToken: "ETH", etherscan: "https://goerli.arbiscan.io/" },
   11155111: { name: "sepolia", nativeToken: "ETH", etherscan: "https://sepolia.etherscan.io/" },
+  168587773: { name: "blast-sepolia", nativeToken: "ETH", etherscan: "https://testnet.blastscan.io" },
 };
 
 export function isPublicNetwork(name: string): boolean {
