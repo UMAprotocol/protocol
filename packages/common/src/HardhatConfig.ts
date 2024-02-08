@@ -112,6 +112,11 @@ export function getHardhatConfig(
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },
       "base-goerli": { chainId: 84531, url: getNodeUrl("base-goerli", true, 84531), accounts: { mnemonic } },
+      "blast-sepolia": {
+        chainId: 168587773,
+        url: getNodeUrl("blast-sepolia", true, 168587773),
+        accounts: { mnemonic },
+      },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true, 42), accounts: { mnemonic } },
       optimism: {
         chainId: 10,
@@ -205,6 +210,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://api-goerli.basescan.org/api",
             browserURL: "https://goerli.basescan.org",
+          },
+        },
+        {
+          network: "blast-sepolia",
+          chainId: 168587773,
+          urls: {
+            apiURL: "https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan",
+            browserURL: "https://testnet.blastscan.io",
           },
         },
         {
