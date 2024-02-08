@@ -240,10 +240,10 @@ Transfer deployed contract ownership for each of `Registry`, `Store`, `Identifie
 yarn hardhat transfer-owner --network <l2name> --contract <CONTRACT_ADDRESS> --owner <GOVERNOR_SPOKE_ADDRESS>
 ```
 
-Also transfer `GovernorSpoke` contract ownership to multisig:
+Also transfer `Admin_ChildMessenger` contract ownership to multisig:
 
 ```sh
-yarn hardhat transfer-owner --network <l2name> --contract <GOVERNOR_SPOKE_ADDRESS> --owner <MULTISIG_ADDRESS>
+yarn hardhat transfer-owner --network <l2name> --contract <ADMIN_CHILD_MESSENGER_ADDRESS> --owner <MULTISIG_ADDRESS>
 ```
 
 11. Run the following script to check all required steps:
