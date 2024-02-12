@@ -99,7 +99,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn rsync
       - run:
           name: Ignore untracked files
-          command: rm -rf packages/core/temp/lib/forge-std lerna_output lerna_packages
+          command: rm -rf lerna_output lerna_packages
       - run:
           name: Publish
           command: yarn run publish-release
