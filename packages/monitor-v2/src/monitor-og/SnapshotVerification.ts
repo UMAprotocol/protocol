@@ -67,8 +67,6 @@ interface SnapshotProposalIpfs {
   space: string;
   type: string;
   choices: string[];
-  start: number;
-  end: number;
   plugins: SafeSnapPlugin | OsnapPlugin;
 }
 
@@ -79,6 +77,8 @@ export interface SnapshotProposalGraphql extends Omit<SnapshotProposalIpfs, "spa
   ipfs: string;
   state: string;
   space: { id: string };
+  start: number;
+  end: number;
   scores: number[];
   quorum: number;
   scores_total: number;
@@ -203,8 +203,6 @@ const isSnapshotProposalIpfs = (proposal: unknown): proposal is SnapshotProposal
     typeof proposal.type === "string" &&
     Array.isArray(proposal.choices) &&
     proposal.choices.every((choice) => typeof choice === "string") &&
-    typeof proposal.start === "number" &&
-    typeof proposal.end === "number" &&
     (isSafeSnapPlugin(proposal.plugins) || isOsnapPlugin(proposal.plugins)) &&
     !("safeSnap" in proposal.plugins && "oSnap" in proposal.plugins) // We don't support both plugins at the same time.
   );
@@ -221,6 +219,8 @@ export const isSnapshotProposalGraphql = (proposal: unknown): proposal is Snapsh
     typeof proposal.id === "string" &&
     typeof proposal.ipfs === "string" &&
     typeof proposal.state === "string" &&
+    typeof proposal.start === "number" &&
+    typeof proposal.end === "number" &&
     Array.isArray(proposal.scores) &&
     proposal.scores.every((score) => typeof score === "number") &&
     typeof proposal.quorum === "number" &&
@@ -369,9 +369,7 @@ const ipfsMatchGraphql = (ipfsData: IpfsData, graphqlProposal: SnapshotProposalG
   if (
     ipfsProposal.space !== graphqlProposal.space.id ||
     ipfsProposal.type !== graphqlProposal.type ||
-    JSON.stringify(ipfsProposal.choices) !== JSON.stringify(graphqlProposal.choices) ||
-    ipfsProposal.start !== graphqlProposal.start ||
-    ipfsProposal.end !== graphqlProposal.end
+    JSON.stringify(ipfsProposal.choices) !== JSON.stringify(graphqlProposal.choices)
   ) {
     return false;
   }
