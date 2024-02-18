@@ -3,7 +3,7 @@
 // and then running this script with:
 // GCKMS_WALLET=<OPTIONAL-GCKMS-WALLET> \
 // ORIGIN_VALIDATOR_ADDRESS=<ORIGIN-VALIDATOR-ADDRESS> \
-// yarn hardhat run ./src/upgrade-tests/sherlock-update/1_Propose.ts --network <network>
+// yarn hardhat run ./src/upgrade-tests/across-v3-update/1_Propose.ts --network <network>
 
 const hre = require("hardhat");
 
@@ -23,7 +23,7 @@ interface AdminProposalTransaction {
 }
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
-const sherlockIdentifier = formatBytes32String("SHERLOCK_CLAIM");
+const acrossIdentifier = formatBytes32String("ACROSS-V2");
 
 async function main() {
   const adminProposalTransactions: AdminProposalTransaction[] = [];
@@ -40,7 +40,7 @@ async function main() {
     proposerSigner = (await hre.ethers.getSigner(proposerWallet)) as Signer;
   }
 
-  console.log("Running Sherlock identifier update script");
+  console.log("Running Across identifier update script");
   console.log("1. LOADING DEPLOYED CONTRACT STATE");
 
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
@@ -60,19 +60,17 @@ async function main() {
   if (!validateOriginTx.data) throw "validateOriginTx.data is null";
   adminProposalTransactions.push({ to: originValidator.address, value: 0, data: validateOriginTx.data });
 
-  // remove sherlock identifier from whitelist
-  const removeSherlockIdentifierTx = await identifierWhitelist.populateTransaction.removeSupportedIdentifier(
-    sherlockIdentifier
+  // remove across identifier from whitelist
+  const removeAcrossIdentifierTx = await identifierWhitelist.populateTransaction.removeSupportedIdentifier(
+    acrossIdentifier
   );
-  if (!removeSherlockIdentifierTx.data) throw "removeSherlockIdentifierTx.data is null";
-  adminProposalTransactions.push({ to: identifierWhitelist.address, value: 0, data: removeSherlockIdentifierTx.data });
+  if (!removeAcrossIdentifierTx.data) throw "removeAcrossIdentifierTx.data is null";
+  adminProposalTransactions.push({ to: identifierWhitelist.address, value: 0, data: removeAcrossIdentifierTx.data });
 
-  // add sherlock identifier to whitelist
-  const addSherlockIdentifierTx = await identifierWhitelist.populateTransaction.addSupportedIdentifier(
-    sherlockIdentifier
-  );
-  if (!addSherlockIdentifierTx.data) throw "addSherlockIdentifierTx.data is null";
-  adminProposalTransactions.push({ to: identifierWhitelist.address, value: 0, data: addSherlockIdentifierTx.data });
+  // add across identifier to whitelist
+  const addAcrossIdentifierTx = await identifierWhitelist.populateTransaction.addSupportedIdentifier(acrossIdentifier);
+  if (!addAcrossIdentifierTx.data) throw "addAcrossIdentifierTx.data is null";
+  adminProposalTransactions.push({ to: identifierWhitelist.address, value: 0, data: addAcrossIdentifierTx.data });
 
   const defaultBond = await proposer.bond();
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);
@@ -84,7 +82,7 @@ async function main() {
 
   const tx = await (await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address))
     .connect(proposerSigner)
-    .propose(adminProposalTransactions, hre.ethers.utils.toUtf8Bytes("UMIP-176 SHERLOCK_CLAIM identifier update"));
+    .propose(adminProposalTransactions, hre.ethers.utils.toUtf8Bytes("UMIP-179 ACROSS-V2 identifier update"));
 
   await tx.wait();
 

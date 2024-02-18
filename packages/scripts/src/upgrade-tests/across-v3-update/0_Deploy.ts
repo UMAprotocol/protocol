@@ -2,7 +2,7 @@
 // This script can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
-// yarn hardhat run ./src/upgrade-tests/sherlock-update/0_Deploy.ts --network localhost
+// yarn hardhat run ./src/upgrade-tests/across-v3-update/0_Deploy.ts --network localhost
 
 const hre = require("hardhat");
 const { getContractFactory } = hre.ethers;
