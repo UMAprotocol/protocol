@@ -5,17 +5,16 @@
 // Finally set FORK_NETWORK to true to fork each network and simulate the relays.
 // Then execute the script:
 // FORK_NETWORK=true \ => optional
-// NEW_FINAL_FEE_USD=<NEW_FINAL_FEE_USD> \
-// NEW_FINAL_FEE_WETH=<NEW_FINAL_FEE_WETH> \
 // NODE_URL_10=<OPTIMISM-NODE-URL> \
 // NODE_URL_137=<POLYGON-NODE-URL> \
 // NODE_URL_42161=<ARBITRUM-NODE-URL> \
 // PROPOSAL_DATA=<PROPOSAL_DATA> \
+// TOKENS_TO_UPDATE='{"USDC":{"finalFee":"250.00","mainnet":"0x123","polygon":"0x123","arbitrum":"0x123"}}'
 // yarn hardhat run ./src/admin-proposals/change-final-fee/2_VerifyRelays.ts
 
 import { Provider } from "@ethersproject/abstract-provider";
 import { getRetryProvider } from "@uma/common";
-import { ERC20Ethers, StoreEthers } from "@uma/contracts-node";
+import { AddressWhitelistEthers, ERC20Ethers, StoreEthers } from "@uma/contracts-node";
 import { getContractInstanceWithProvider } from "../../utils/contracts";
 import {
   GovernorChildTunnelEthers,
@@ -28,7 +27,8 @@ import {
   getAddress,
   getContractInstance,
   hre,
-  tokensToUpdateFee,
+  isSupportedNetwork,
+  parseAndValidateTokensConfig,
 } from "./common";
 
 async function main() {
@@ -36,17 +36,12 @@ async function main() {
   const callData = process.env["PROPOSAL_DATA"];
   if (!callData) throw new Error("PROPOSAL_DATA environment variable not set");
 
-  if (!process.env.NEW_FINAL_FEE_USD) throw new Error("NEW_FINAL_FEE_USD is not set");
-  if (!process.env.NEW_FINAL_FEE_WETH) throw new Error("NEW_FINAL_FEE_WETH is not set");
-
-  const newFinalFeeUSD = Number(process.env.NEW_FINAL_FEE_USD);
-  const newFinalFeeWeth = Number(process.env.NEW_FINAL_FEE_WETH);
+  const tokensToUpdate = parseAndValidateTokensConfig(process.env.TOKENS_TO_UPDATE);
 
   const { governorRootRelays, governorHubRelays } = decodeRelayMessages(callData);
 
-  const l2NetworksNumber = { polygon: 137, optimism: 10, arbitrum: 42161 };
-
-  for (const [networkName, networkId] of Object.entries(l2NetworksNumber)) {
+  for (const [networkName, networkId] of Object.entries({ polygon: 137, optimism: 10, arbitrum: 42161 })) {
+    if (!isSupportedNetwork(networkName)) throw new Error(`Unsupported network: ${networkName}`);
     const l2NodeUrl = process.env[String("NODE_URL_" + networkId)];
 
     if (!l2NodeUrl) throw new Error("NODE_URL_" + networkId + " environment variable not set");
@@ -54,6 +49,11 @@ async function main() {
     if (shouldForkNetwork) await forkNetwork(l2NodeUrl, undefined);
 
     const store = await getContractInstance<StoreEthers>("Store", undefined, networkId);
+    const addressWhitelist = await getContractInstance<AddressWhitelistEthers>(
+      "AddressWhitelist",
+      undefined,
+      networkId
+    );
 
     if (networkName === "polygon") {
       const governorChildTunnel = await getContractInstance<GovernorChildTunnelEthers>(
@@ -125,14 +125,18 @@ async function main() {
       }
     }
 
-    for (const tokenName of Object.keys(tokensToUpdateFee)) {
-      const tokens = tokensToUpdateFee[tokenName as keyof typeof tokensToUpdateFee];
-      const tokenAddress = tokens[networkName as keyof typeof tokens];
+    for (const tokenName of Object.keys(tokensToUpdate)) {
+      const tokens = tokensToUpdate[tokenName];
+      const tokenAddress = tokens[networkName];
+      if (!tokenAddress) continue;
       const provider = getRetryProvider(networkId) as Provider;
       const erc20 = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, tokenAddress);
       const decimals = await erc20.decimals();
-      const isWeth = tokenName == "WETH";
-      const newFinalFee = isWeth ? newFinalFeeWeth : newFinalFeeUSD;
+      const newFinalFee = tokens.finalFee;
+
+      console.log(`Verifying ${tokenName} in whitelist...`);
+      assert(await addressWhitelist.isOnWhitelist(tokenAddress));
+      console.log("Verified!");
 
       console.log(`Verifying ${tokenName} final fee ${networkName}...`);
       assert((await store.finalFees(tokenAddress)).eq(hre.ethers.utils.parseUnits(newFinalFee.toString(), decimals)));

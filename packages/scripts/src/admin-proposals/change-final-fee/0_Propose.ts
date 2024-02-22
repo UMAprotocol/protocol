@@ -3,13 +3,12 @@
 // To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script:
-// NEW_FINAL_FEE_USD=<NEW_FINAL_FEE_USD> \
-// NEW_FINAL_FEE_WETH=<NEW_FINAL_FEE_WETH> \
-// UMIP_NUMBER=<UMIP_NUMBER> \
+// PROPOSAL_TITLE=<PROPOSAL_TITLE> \
 // NODE_URL_1=<MAINNET-NODE-URL> \
 // NODE_URL_10=<OPTIMISM-NODE-URL> \
 // NODE_URL_137=<POLYGON-NODE-URL> \
 // NODE_URL_42161=<ARBITRUM-NODE-URL> \
+// TOKENS_TO_UPDATE='{"USDC":{"finalFee":"250.00","mainnet":"0x123","polygon":"0x123","arbitrum":"0x123"}}'
 // yarn hardhat run ./src/admin-proposals/change-final-fee/0_Propose.ts --network localhost
 
 const hre = require("hardhat");
@@ -20,7 +19,6 @@ import {
   GovernorRootTunnelEthers,
   ParentMessengerBaseEthers,
   ProposerV2Ethers,
-  StoreEthers,
   VotingTokenEthers,
 } from "@uma/contracts-node";
 
@@ -28,9 +26,16 @@ import { Provider } from "@ethersproject/abstract-provider";
 import { getGckmsSigner, getRetryProvider } from "@uma/common";
 import { BigNumberish, PopulatedTransaction, Signer, Wallet } from "ethers";
 import { BytesLike } from "ethers/lib/utils";
-import { getContractInstance, getContractInstanceByUrl, getContractInstanceWithProvider } from "../../utils/contracts";
+import { getContractInstance, getContractInstanceWithProvider } from "../../utils/contracts";
 import { fundArbitrumParentMessengerForRelays, relayGovernanceMessages } from "../../utils/relay";
-import { tokensToUpdateFee } from "./common";
+import {
+  getConnectedAddressWhitelist,
+  getConnectedStore,
+  isSupportedNetwork,
+  networksNumber,
+  parseAndValidateTokensConfig,
+  supportedNetworks,
+} from "./common";
 
 interface AdminProposalTransaction {
   to: string;
@@ -48,22 +53,15 @@ async function main() {
 
   let proposerSigner: Signer;
 
-  if (!process.env.NEW_FINAL_FEE_USD) throw new Error("NEW_FINAL_FEE_USD is not set");
-  if (!process.env.NEW_FINAL_FEE_WETH) throw new Error("NEW_FINAL_FEE_WETH is not set");
-  if (!process.env.UMIP_NUMBER) throw new Error("UMIP_NUMBER is not set");
+  const tokensToUpdate = parseAndValidateTokensConfig(process.env.TOKENS_TO_UPDATE);
+  if (!process.env.PROPOSAL_TITLE) throw new Error("PROPOSAL_TITLE is not set");
 
-  const umipNumber = Number(process.env.UMIP_NUMBER);
-
-  const newFinalFeeUSD = Number(process.env.NEW_FINAL_FEE_USD);
-  const newFinalFeeWeth = Number(process.env.NEW_FINAL_FEE_WETH);
+  const proposalTitle = Number(process.env.PROPOSAL_TITLE);
 
   const arbitrumParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Arbitrum_ParentMessenger");
 
   const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnel"); // for polygon
   const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHub"); // rest of l2
-
-  const l2Networks = ["polygon", "arbitrum", "optimism"];
-  const l2NetworksNumber = { polygon: 137, optimism: 10, arbitrum: 42161 };
 
   if (process.env.GCKMS_WALLET) {
     proposerSigner = ((await getGckmsSigner()) as Wallet).connect(hre.ethers.provider as Provider);
@@ -76,19 +74,36 @@ async function main() {
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
 
   const proposer = await await getContractInstance<ProposerV2Ethers>("ProposerV2");
-  const store = await getContractInstance<StoreEthers>("Store");
 
   // case mainnet
-  for (const token in tokensToUpdateFee) {
+  for (const token in tokensToUpdate) {
     const provider = getRetryProvider(1) as Provider;
 
-    const isWeth = token == "WETH";
-    const newFinalFee = isWeth ? newFinalFeeWeth : newFinalFeeUSD;
+    const tokenAddress = tokensToUpdate[token].mainnet;
+    const newFinalFee = tokensToUpdate[token].finalFee;
+    if (!tokenAddress) continue;
 
-    const tokenAddress = tokensToUpdateFee[token as keyof typeof tokensToUpdateFee].mainnet;
     const erc20 = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, tokenAddress);
     const decimals = await erc20.decimals();
 
+    // Check if the token is already whitelisted
+    const addressWhitelist = await getConnectedAddressWhitelist(1);
+    const isWhitelisted = await addressWhitelist.isOnWhitelist(tokenAddress);
+    if (!isWhitelisted) {
+      console.log(`Adding ${token} to the whitelist on mainnet...`);
+      const addAddressTx = await addressWhitelist.populateTransaction.addToWhitelist(tokenAddress);
+      if (!addAddressTx.data) throw "addAddressTx.data is null";
+      adminProposalTransactions.push({ to: addressWhitelist.address, value: 0, data: addAddressTx.data });
+    }
+
+    // Check if the final fee is different from the current one
+    const store = await getConnectedStore(1);
+    const currentFinalFee = await store.finalFees(tokenAddress);
+    if (currentFinalFee.eq(hre.ethers.utils.parseUnits(newFinalFee.toString(), decimals))) {
+      console.log(`Final fee for ${token} is already ${newFinalFee} on mainnet`);
+      continue;
+    }
+    console.log(`Setting final fee for ${token} to ${newFinalFee} in mainnet...`);
     const setFinalFeeTx = await store.populateTransaction.setFinalFee(tokenAddress, {
       rawValue: hre.ethers.utils.parseUnits(newFinalFee.toString(), decimals),
     });
@@ -96,43 +111,55 @@ async function main() {
     adminProposalTransactions.push({ to: store.address, value: 0, data: setFinalFeeTx.data });
   }
 
-  for (const i in l2Networks) {
-    const networkName = l2Networks[i];
-    const provider = getRetryProvider(l2NetworksNumber[networkName as keyof typeof l2NetworksNumber]) as Provider;
-    const l2ChainId = l2NetworksNumber[networkName as keyof typeof l2NetworksNumber];
+  for (const networkName of supportedNetworks.filter((network) => network !== "mainnet")) {
+    if (!isSupportedNetwork(networkName)) throw new Error(`Unsupported network: ${networkName}`);
+    const l2ChainId = networksNumber[networkName];
+    const provider = getRetryProvider(l2ChainId) as Provider;
     const l2NodeUrl = process.env[String(NODE_URL_ENV + l2ChainId)];
     const isPolygon = l2ChainId === 137;
     const isArbitrum = l2ChainId === 42161;
 
-    // If is arbitrum we need to fund the parent messenger
-    if (isArbitrum)
-      await fundArbitrumParentMessengerForRelays(
-        arbitrumParentMessenger,
-        proposerSigner,
-        Object.keys(tokensToUpdateFee).length
-      );
-
     const governanceMessages: { targetAddress: string; tx: PopulatedTransaction }[] = [];
-
-    for (const token in tokensToUpdateFee) {
-      const isWeth = token == "WETH";
-      const newFinalFee = isWeth ? newFinalFeeWeth : newFinalFeeUSD;
-      const tokenAddresses = tokensToUpdateFee[token as keyof typeof tokensToUpdateFee];
-      const tokenAddress = tokenAddresses[networkName as keyof typeof tokenAddresses];
+    let fundArbitrumCount = 0;
+    for (const token in tokensToUpdate) {
+      const newFinalFee = tokensToUpdate[token].finalFee;
+      const tokenAddresses = tokensToUpdate[token];
+      const tokenAddress = tokenAddresses[networkName];
+      if (!tokenAddress) continue;
 
       if (!l2NodeUrl) throw new Error(`Missing ${networkName} network config`);
 
       const l2Erc20 = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, tokenAddress);
-      const l2Store = await getContractInstanceByUrl<StoreEthers>("Store", l2NodeUrl);
+      const l2Store = await getConnectedStore(l2ChainId);
+      const l2AddressWhitelist = await getConnectedAddressWhitelist(l2ChainId);
+
+      const isWhitelisted = await l2AddressWhitelist.isOnWhitelist(tokenAddress);
+      if (!isWhitelisted) {
+        console.log(`Adding ${token} to the whitelist in ${networkName}...`);
+        if (isArbitrum) fundArbitrumCount++;
+        const addAddressTx = await l2AddressWhitelist.populateTransaction.addToWhitelist(tokenAddress);
+        if (!addAddressTx.data) throw "addAddressTx.data is null";
+        governanceMessages.push({ targetAddress: l2AddressWhitelist.address, tx: addAddressTx });
+      }
 
       const decimals = await l2Erc20.decimals();
 
+      // Check if the final fee is different from the current one
+      const currentFinalFee = await l2Store.finalFees(tokenAddress);
+      if (currentFinalFee.eq(hre.ethers.utils.parseUnits(newFinalFee.toString(), decimals))) {
+        console.log(`Final fee for ${token} on ${networkName} is already ${newFinalFee}`);
+        continue;
+      }
+      console.log(`Setting final fee for ${token} to ${newFinalFee} on ${networkName}...`);
+      if (isArbitrum) fundArbitrumCount++;
       const setFinalFeeTx = await l2Store.populateTransaction.setFinalFee(tokenAddress, {
         rawValue: hre.ethers.utils.parseUnits(newFinalFee.toString(), decimals),
       });
-
       governanceMessages.push({ targetAddress: l2Store.address, tx: setFinalFeeTx });
     }
+
+    if (fundArbitrumCount)
+      await fundArbitrumParentMessengerForRelays(arbitrumParentMessenger, proposerSigner, fundArbitrumCount);
 
     const relayedMessages = await relayGovernanceMessages(
       governanceMessages,
@@ -153,10 +180,7 @@ async function main() {
 
   const tx = await (await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address))
     .connect(proposerSigner)
-    .propose(
-      adminProposalTransactions,
-      hre.ethers.utils.toUtf8Bytes(`UMIP-${umipNumber} - Update final fee to ${newFinalFeeUSD} USD`)
-    );
+    .propose(adminProposalTransactions, hre.ethers.utils.toUtf8Bytes(proposalTitle));
 
   await tx.wait();
 

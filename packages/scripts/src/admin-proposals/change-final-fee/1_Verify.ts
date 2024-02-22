@@ -3,38 +3,34 @@
 // To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script from core with the PROPOSAL_DATA logged by  ./src/admin-proposals/change-final-fee/0_Propose.ts:
-// NEW_FINAL_FEE_USD=<NEW_FINAL_FEE_USD> \
-// NEW_FINAL_FEE_WETH=<NEW_FINAL_FEE_WETH> \
 // NODE_URL_1=<MAINNET-NODE-URL> \
-// PROPOSAL_DATA=<PROPOSAL_DATA> \
+// TOKENS_TO_UPDATE='{"USDC":{"finalFee":"250.00","mainnet":"0x123","polygon":"0x123","arbitrum":"0x123"}}' \
 // yarn hardhat run ./src/admin-proposals/change-final-fee/1_Verify.ts --network localhost
 
-import { ERC20Ethers, StoreEthers } from "@uma/contracts-node";
-import { Provider, assert, getContractInstance } from "./common";
-import { tokensToUpdateFee } from "./common";
+import { AddressWhitelistEthers, ERC20Ethers, StoreEthers } from "@uma/contracts-node";
+import { Provider, assert, getContractInstance, parseAndValidateTokensConfig } from "./common";
 import { getRetryProvider } from "@uma/common";
 import { getContractInstanceWithProvider } from "../../utils/contracts";
 
 async function main() {
-  const callData = process.env["PROPOSAL_DATA"];
-  if (!callData) throw new Error("PROPOSAL_DATA environment variable not set");
-  if (!process.env.NEW_FINAL_FEE_USD) throw new Error("NEW_FINAL_FEE_USD is not set");
-  if (!process.env.NEW_FINAL_FEE_WETH) throw new Error("NEW_FINAL_FEE_WETH is not set");
-
-  const newFinalFeeUSD = Number(process.env.NEW_FINAL_FEE_USD);
-  const newFinalFeeWeth = Number(process.env.NEW_FINAL_FEE_WETH);
-
   const store = await getContractInstance<StoreEthers>("Store");
+  const addressWhitelist = await getContractInstance<AddressWhitelistEthers>("AddressWhitelist");
 
-  for (const tokenName of Object.keys(tokensToUpdateFee)) {
-    const tokenAddress = tokensToUpdateFee[tokenName as keyof typeof tokensToUpdateFee]["mainnet"];
+  const tokensToUpdate = parseAndValidateTokensConfig(process.env.TOKENS_TO_UPDATE);
+
+  for (const tokenName of Object.keys(tokensToUpdate)) {
+    const tokenAddress = tokensToUpdate[tokenName]["mainnet"];
+    if (!tokenAddress) continue;
+    const newFinalFee = tokensToUpdate[tokenName]["finalFee"];
     const provider = getRetryProvider(1) as Provider;
     const erc20 = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, tokenAddress);
     const decimals = await erc20.decimals();
-    const isWeth = tokenName == "WETH";
-    const newFinalFee = isWeth ? newFinalFeeWeth : newFinalFeeUSD;
 
-    console.log(`Verifying ${tokenName} final fee...`);
+    console.log(`Verifying ${tokenName} in whitelist on mainnet...`);
+    assert(await addressWhitelist.isOnWhitelist(tokenAddress));
+    console.log("Verified!");
+
+    console.log(`Verifying ${tokenName} final fee on mainnet...`);
     assert((await store.finalFees(tokenAddress)).eq(hre.ethers.utils.parseUnits(newFinalFee.toString(), decimals)));
     console.log("Verified!");
 

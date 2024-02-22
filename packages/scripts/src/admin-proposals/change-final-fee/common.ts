@@ -1,5 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
-import { ContractName, DeploymentName } from "@uma/contracts-node";
+import { AddressWhitelistEthers, ContractName, DeploymentName, StoreEthers } from "@uma/contracts-node";
 import hre from "hardhat";
 
 import { Provider } from "@ethersproject/abstract-provider";
@@ -21,7 +21,7 @@ import {
   RegistryEthers,
 } from "@uma/contracts-node";
 import { BaseContract, PopulatedTransaction, Signer, Wallet } from "ethers";
-import { getContractInstance, getContractInstanceByUrl } from "../../utils/contracts";
+import { getContractInstance, getContractInstanceByUrl, getContractInstanceWithProvider } from "../../utils/contracts";
 import {
   decodeData,
   decodeRelayMessages,
@@ -31,7 +31,7 @@ import {
   RelayTransaction,
 } from "../../utils/relay";
 
-import { getGckmsSigner, interfaceName, RegistryRolesEnum } from "@uma/common";
+import { getGckmsSigner, getRetryProvider, interfaceName, RegistryRolesEnum } from "@uma/common";
 
 import { strict as assert } from "assert";
 
@@ -45,36 +45,72 @@ const getAddress = (contractName: string, networkId: number): Promise<string> =>
 
 const newContractName = interfaceName.OptimisticOracleV3 as ContractName | DeploymentName;
 
-const tokensToUpdateFee = {
-  USDC: {
-    mainnet: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-    polygon: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-    arbitrum: "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",
-    optimism: "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
-  },
-  USDT: {
-    mainnet: "0xdac17f958d2ee523a2206206994597c13d831ec7",
-    polygon: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-    arbitrum: "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",
-    optimism: "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",
-  },
-  DAI: {
-    mainnet: "0x6b175474e89094c44da98b954eedeac495271d0f",
-    polygon: "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",
-    arbitrum: "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1",
-    optimism: "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1",
-  },
-  WETH: {
-    mainnet: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-    polygon: "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619",
-    arbitrum: "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
-    optimism: "0x4200000000000000000000000000000000000006",
-  },
+const supportedNetworks = ["mainnet", "polygon", "arbitrum", "optimism"] as const;
+type SupportedNetwork = typeof supportedNetworks[number];
+
+const networksNumber: Record<SupportedNetwork, number> = {
+  mainnet: 1,
+  polygon: 137,
+  optimism: 10,
+  arbitrum: 42161,
 };
+
+function isSupportedNetwork(key: string): key is SupportedNetwork {
+  return supportedNetworks.includes(key as any);
+}
+
+interface TokensConfig {
+  [token: string]: {
+    finalFee: string;
+  } & {
+    [network in SupportedNetwork]?: string;
+  };
+}
+
+function parseAndValidateTokensConfig(jsonString: string | undefined): TokensConfig | never {
+  let config: any;
+  try {
+    config = JSON.parse(jsonString || "{}");
+  } catch (error) {
+    throw new Error("Invalid JSON format");
+  }
+
+  // Validate the structure of the config
+  for (const [token, tokenConfig] of Object.entries(config)) {
+    if (typeof token !== "string" || typeof tokenConfig !== "object" || tokenConfig === null) {
+      throw new Error(`Invalid format for token '${token}'`);
+    }
+
+    if (!("finalFee" in tokenConfig) || typeof tokenConfig.finalFee !== "string") {
+      throw new Error(`Missing or invalid 'finalFee' for token '${token}'`);
+    }
+
+    for (const network in tokenConfig) {
+      if (network !== "finalFee" && !isSupportedNetwork(network)) {
+        throw new Error(`Unsupported network '${network}' in token '${token}'`);
+      }
+    }
+  }
+
+  return config as TokensConfig;
+}
+
+const getConnectedAddressWhitelist = async (chainId: number): Promise<AddressWhitelistEthers> =>
+  getContractInstanceWithProvider<AddressWhitelistEthers>("AddressWhitelist", getRetryProvider(chainId));
+
+const getConnectedStore = async (chainId: number): Promise<StoreEthers> =>
+  getContractInstanceWithProvider<StoreEthers>("Store", getRetryProvider(chainId));
 
 export {
   hre,
   interfaceName,
+  parseAndValidateTokensConfig,
+  getConnectedAddressWhitelist,
+  getConnectedStore,
+  TokensConfig,
+  supportedNetworks,
+  isSupportedNetwork,
+  networksNumber,
   newContractName,
   getContractInstance,
   getContractInstanceByUrl,
@@ -107,5 +143,4 @@ export {
   Provider,
   getGckmsSigner,
   Wallet,
-  tokensToUpdateFee,
 };
