@@ -101,6 +101,9 @@ jobs:
           name: Ignore untracked files
           command: rm -rf lerna_output lerna_packages
       - run:
+          name: Check if empty packages folder exists
+          command: path="packages/core/temp/lib/forge-std"; [ -d "$path" ] || mkdir -p "$path"
+      - run:
           name: Publish
           command: yarn run publish-release
 workflows:
