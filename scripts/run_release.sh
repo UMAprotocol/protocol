@@ -9,7 +9,7 @@ cat > ~/.npmrc << EOF
 EOF
 
 # Publish any packages whose versions are not present in the registry.
-yarn lerna publish from-package --yes --no-verify-access
+yarn lerna publish from-package --yes --no-verify-access --ignore-changes "packages/core/temp/lib/forge-std"
 
 # Set a name and email in git if they aren't already defined.
 git config --get user.email || git config user.email ci@umaproject.org
