@@ -8,7 +8,7 @@
 // NODE_URL_10=<OPTIMISM-NODE-URL> \
 // NODE_URL_137=<POLYGON-NODE-URL> \
 // NODE_URL_42161=<ARBITRUM-NODE-URL> \
-// TOKENS_TO_UPDATE='{"USDC":{"finalFee":"250.00","mainnet":"0x123","polygon":"0x123","arbitrum":"0x123"}}'
+// TOKENS_TO_UPDATE='{"USDC":{"finalFee":"250.00","mainnet":"0x123","polygon":"0x123","arbitrum":"0x123"}}' \
 // yarn hardhat run ./src/admin-proposals/change-final-fee/0_Propose.ts --network localhost
 
 const hre = require("hardhat");
