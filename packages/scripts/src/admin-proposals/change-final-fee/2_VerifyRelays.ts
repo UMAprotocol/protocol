@@ -28,6 +28,7 @@ import {
   getContractInstance,
   hre,
   isSupportedNetwork,
+  networksNumber,
   parseAndValidateTokensConfig,
 } from "./common";
 
@@ -40,7 +41,8 @@ async function main() {
 
   const { governorRootRelays, governorHubRelays } = decodeRelayMessages(callData);
 
-  for (const [networkName, networkId] of Object.entries({ polygon: 137, optimism: 10, arbitrum: 42161 })) {
+  const l2s = (({ mainnet, ...others }) => others)(networksNumber);
+  for (const [networkName, networkId] of Object.entries(l2s)) {
     if (!isSupportedNetwork(networkName)) throw new Error(`Unsupported network: ${networkName}`);
     const l2NodeUrl = process.env[String("NODE_URL_" + networkId)];
 
@@ -125,8 +127,8 @@ async function main() {
       }
     }
 
-    for (const tokenName of Object.keys(tokensToUpdate)) {
-      const tokens = tokensToUpdate[tokenName];
+    for (const [token, updateInfo] of Object.entries(tokensToUpdate)) {
+      const tokens = updateInfo;
       const tokenAddress = tokens[networkName];
       if (!tokenAddress) continue;
       const provider = getRetryProvider(networkId) as Provider;
@@ -134,11 +136,11 @@ async function main() {
       const decimals = await erc20.decimals();
       const newFinalFee = tokens.finalFee;
 
-      console.log(`Verifying ${tokenName} in whitelist...`);
+      console.log(`Verifying ${token} in whitelist...`);
       assert(await addressWhitelist.isOnWhitelist(tokenAddress));
       console.log("Verified!");
 
-      console.log(`Verifying ${tokenName} final fee ${networkName}...`);
+      console.log(`Verifying ${token} final fee ${networkName}...`);
       assert((await store.finalFees(tokenAddress)).eq(hre.ethers.utils.parseUnits(newFinalFee.toString(), decimals)));
       console.log("Verified!");
     }

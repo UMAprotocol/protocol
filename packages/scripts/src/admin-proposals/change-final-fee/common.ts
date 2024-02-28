@@ -67,10 +67,11 @@ interface TokensConfig {
   };
 }
 
-function parseAndValidateTokensConfig(jsonString: string | undefined): TokensConfig | never {
+function parseAndValidateTokensConfig(jsonString: string | undefined): TokensConfig {
   let config: any;
   try {
-    config = JSON.parse(jsonString || "{}");
+    if (!jsonString) throw new Error("Missing JSON string");
+    config = JSON.parse(jsonString);
   } catch (error) {
     throw new Error("Invalid JSON format");
   }

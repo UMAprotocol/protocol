@@ -18,19 +18,19 @@ async function main() {
 
   const tokensToUpdate = parseAndValidateTokensConfig(process.env.TOKENS_TO_UPDATE);
 
-  for (const tokenName of Object.keys(tokensToUpdate)) {
-    const tokenAddress = tokensToUpdate[tokenName]["mainnet"];
+  for (const [token, updateInfo] of Object.entries(tokensToUpdate)) {
+    const tokenAddress = updateInfo["mainnet"];
     if (!tokenAddress) continue;
-    const newFinalFee = tokensToUpdate[tokenName]["finalFee"];
+    const newFinalFee = updateInfo["finalFee"];
     const provider = getRetryProvider(1) as Provider;
     const erc20 = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, tokenAddress);
     const decimals = await erc20.decimals();
 
-    console.log(`Verifying ${tokenName} in whitelist on mainnet...`);
+    console.log(`Verifying ${token} in whitelist on mainnet...`);
     assert(await addressWhitelist.isOnWhitelist(tokenAddress));
     console.log("Verified!");
 
-    console.log(`Verifying ${tokenName} final fee on mainnet...`);
+    console.log(`Verifying ${token} final fee on mainnet...`);
     assert((await store.finalFees(tokenAddress)).eq(hre.ethers.utils.parseUnits(newFinalFee.toString(), decimals)));
     console.log("Verified!");
 

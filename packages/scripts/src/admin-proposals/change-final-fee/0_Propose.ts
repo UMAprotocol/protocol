@@ -76,11 +76,11 @@ async function main() {
   const proposer = await await getContractInstance<ProposerV2Ethers>("ProposerV2");
 
   // case mainnet
-  for (const token in tokensToUpdate) {
+  for (const [token, updateInfo] of Object.entries(tokensToUpdate)) {
     const provider = getRetryProvider(1) as Provider;
 
-    const tokenAddress = tokensToUpdate[token].mainnet;
-    const newFinalFee = tokensToUpdate[token].finalFee;
+    const tokenAddress = updateInfo.mainnet;
+    const newFinalFee = updateInfo.finalFee;
     if (!tokenAddress) continue;
 
     const erc20 = await getContractInstanceWithProvider<ERC20Ethers>("ERC20", provider, tokenAddress);
@@ -121,10 +121,9 @@ async function main() {
 
     const governanceMessages: { targetAddress: string; tx: PopulatedTransaction }[] = [];
     let fundArbitrumCount = 0;
-    for (const token in tokensToUpdate) {
-      const newFinalFee = tokensToUpdate[token].finalFee;
-      const tokenAddresses = tokensToUpdate[token];
-      const tokenAddress = tokenAddresses[networkName];
+    for (const [token, updateInfo] of Object.entries(tokensToUpdate)) {
+      const newFinalFee = updateInfo.finalFee;
+      const tokenAddress = updateInfo[networkName];
       if (!tokenAddress) continue;
 
       if (!l2NodeUrl) throw new Error(`Missing ${networkName} network config`);
