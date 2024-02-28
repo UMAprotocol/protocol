@@ -145,60 +145,67 @@ hub.post("/", async (req, res) => {
       // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
       const [botWeb3, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
 
-      const chainId = await _getChainId(botWeb3);
+      const singleChainId = await _getChainId(botWeb3);
 
       // Cache the chain id for this node url.
-      nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
-
-      // If STORE_MULTI_CHAIN_BLOCK_NUMBERS is set then this bot requires to know a number of last seen blocks across
-      // a set of chainIds. Construct a batch promise to evaluate the latest block number for each chainId.
-      if (configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS) {
-        const multiChainIds = configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS;
-        let promises = [];
-        for (const chainId of multiChainIds) {
-          promises.push(
-            _getLastQueriedBlockNumber(req.body.configFile, chainId, logger),
-            _getBlockNumberOnChainIdMultiChain(configObject[botName], chainId)
-          );
-        }
-        let results = await Promise.all(promises);
-        results.forEach((_, index) => {
-          if (index % 2 !== 0) return;
-          const chainId = multiChainIds[Math.floor(index / 2)];
-          blockNumbersForChain[chainId] = {
-            lastQueriedBlockNumber: results[index],
-            latestBlockNumber: results[index + 1],
-          };
-        });
-      }
-
-      // If we've seen this chain ID already we can skip it.
-      if (blockNumbersForChain[chainId]) continue;
+      nodeUrlToChainIdCache[spokeCustomNodeUrl] = singleChainId;
 
       // Fetch last seen block for this chain and get the head block for the chosen chain, which we'll use to override the last queried block number
-      // stored in GCP at the end of this hub execution.
-      let [lastQueriedBlockNumber, latestBlockNumber] = await Promise.all([
-        _getLastQueriedBlockNumber(req.body.configFile, chainId, logger),
-        _getLatestBlockNumber(botWeb3),
-      ]);
-
-      // If the last queried block number stored on GCP Data Store is undefined, then its possible that this is
-      // the first time that the hub is being run for this chain. Therefore, try setting it to the head block number
-      // for the chosen node.
-      if (!lastQueriedBlockNumber && latestBlockNumber) {
-        lastQueriedBlockNumber = latestBlockNumber;
-      }
-      // If the last queried number is still undefined at this point, then exit with an error.
-      else if (!lastQueriedBlockNumber)
-        throw new Error(
-          `No block number for chain ID stored on GCP and cannot read head block from node! chainID:${chainId} spokeCustomNodeUrl:${spokeCustomNodeUrl}`
+      // stored in GCP at the end of this hub execution. Fetch only if we haven't cached them already.
+      // Keep them as promises as we might still have multichain block numbers to fetch.
+      let blockNumberPromises = [];
+      if (!blockNumbersForChain[singleChainId]) {
+        blockNumberPromises.push(
+          _getLastQueriedBlockNumber(req.body.configFile, singleChainId, logger),
+          _getLatestBlockNumber(botWeb3),
+          new Promise((resolve) => {
+            resolve(singleChainId);
+          })
         );
+      }
 
-      // Store block number data for this chain ID which we'll use to update the GCP cache later.
-      blockNumbersForChain[chainId] = {
-        lastQueriedBlockNumber: Number(lastQueriedBlockNumber),
-        latestBlockNumber: Number(latestBlockNumber),
-      };
+      // If STORE_MULTI_CHAIN_BLOCK_NUMBERS is set then this bot requires to know a number of last seen blocks across
+      // a set of chainIds. Append a batch promise to evaluate the latest block number for each chainId.
+      if (configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS) {
+        const multiChainIds = configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS;
+        for (const chainId of multiChainIds) {
+          // If we've seen this chain ID or it is covered by the singleChainId we can skip it.
+          if (blockNumbersForChain[chainId] || chainId === singleChainId) continue;
+
+          blockNumberPromises.push(
+            _getLastQueriedBlockNumber(req.body.configFile, chainId, logger),
+            _getBlockNumberOnChainIdMultiChain(configObject[botName], chainId),
+            new Promise((resolve) => {
+              resolve(chainId);
+            })
+          );
+        }
+      }
+
+      const blockNumberResults = await Promise.all(blockNumberPromises);
+      blockNumberResults.forEach((_, index) => {
+        // This is flat array where each chain has 3 elements (lastQueriedBlockNumber, latestBlockNumber and chainId).
+        if (index % 3 !== 0) return;
+        let [lastQueriedBlockNumber, latestBlockNumber, chainId] = blockNumberResults.slice(index, index + 3);
+
+        // If the last queried block number stored on GCP Data Store is undefined, then its possible that this is
+        // the first time that the hub is being run for this chain. Therefore, try setting it to the head block number
+        // for the chosen node.
+        if (!lastQueriedBlockNumber && latestBlockNumber) {
+          lastQueriedBlockNumber = latestBlockNumber;
+        }
+        // If the last queried number is still undefined at this point, then exit with an error.
+        else if (!lastQueriedBlockNumber)
+          throw new Error(
+            `No block number for chain ID stored on GCP and cannot read head block from node! chainID:${chainId}`
+          );
+
+        // Store block number data for this chain ID which we'll use to update the GCP cache later.
+        blockNumbersForChain[chainId] = {
+          lastQueriedBlockNumber: Number(lastQueriedBlockNumber),
+          latestBlockNumber: Number(latestBlockNumber),
+        };
+      });
     }
     logger.debug({
       at: "ServerlessHub",
@@ -219,13 +226,13 @@ hub.post("/", async (req, res) => {
     let botConfigs = {};
     for (const botName in configObject) {
       const [, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
-      const chainId = nodeUrlToChainIdCache[spokeCustomNodeUrl];
+      const singleChainId = nodeUrlToChainIdCache[spokeCustomNodeUrl];
 
       // Execute the spoke's command:
       const botConfig = _appendEnvVars(
         configObject[botName],
         botName,
-        chainId,
+        singleChainId,
         blockNumbersForChain,
         configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS
       );
@@ -517,11 +524,11 @@ async function _getChainId(web3) {
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
-function _appendEnvVars(config, botName, chainId, blockNumbersForChain, multiChainBlocks) {
+function _appendEnvVars(config, botName, singleChainId, blockNumbersForChain, multiChainBlocks) {
   // The starting block number should be one block after the last queried block number to not double report that block.
   config.environmentVariables["STARTING_BLOCK_NUMBER"] =
-    Number(blockNumbersForChain[chainId].lastQueriedBlockNumber) + 1;
-  config.environmentVariables["ENDING_BLOCK_NUMBER"] = blockNumbersForChain[chainId].latestBlockNumber;
+    Number(blockNumbersForChain[singleChainId].lastQueriedBlockNumber) + 1;
+  config.environmentVariables["ENDING_BLOCK_NUMBER"] = blockNumbersForChain[singleChainId].latestBlockNumber;
   config.environmentVariables["BOT_IDENTIFIER"] = botName;
   if (multiChainBlocks)
     multiChainBlocks.forEach((chainId) => {

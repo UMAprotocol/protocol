@@ -726,9 +726,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessBot: {
         serverlessCommand: "echo single network bot started",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessBot2: {
         serverlessCommand: "echo multiple network bot started",
@@ -771,9 +769,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessBot: {
         serverlessCommand: "echo single network bot started",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessBot2: {
         serverlessCommand: "echo multiple network bot started",
@@ -798,7 +794,7 @@ describe("ServerlessHub.js", function () {
     // Logs should include correct starting and latest block numbers for the alternate network.
     const alternateBlockNumbers = {
       [alternateChainId]: {
-        lastQueriedBlockNumber: 0,
+        lastQueriedBlockNumber: latestAlternateBlockNumber, // Same as latest as this is first time bot is run.
         latestBlockNumber: latestAlternateBlockNumber,
       },
     };
