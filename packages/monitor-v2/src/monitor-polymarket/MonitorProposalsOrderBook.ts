@@ -65,6 +65,7 @@ export async function monitorTransactionsProposedOrderBook(
     market: PolymarketWithEventData | PolymarketMarketWithAncillaryData
   ) => {
     return (
+      market.resolvedBy &&
       event.requester.toLowerCase() === market.resolvedBy.toLowerCase() &&
       event.ancillaryData.toLowerCase() === market.ancillaryData?.toLowerCase() &&
       event.identifier === YES_OR_NO_QUERY
@@ -120,7 +121,7 @@ export async function monitorTransactionsProposedOrderBook(
     if (pastNotifiedProposal.notified) continue;
 
     await logUnknownMarketProposal(logger, {
-      adapterAddress: market.resolvedBy,
+      adapterAddress: market.resolvedBy || "",
       question: market.question,
       questionID: market.questionID,
       umaResolutionStatus: market.umaResolutionStatus,

@@ -52,7 +52,7 @@ export interface MonitoringParams {
 }
 
 interface PolymarketMarket {
-  resolvedBy: string;
+  resolvedBy?: string;
   questionID: string;
   negRiskRequestID: string | null;
   createdAt: string;
@@ -363,11 +363,12 @@ export const getMarketsAncillary = async (
     const adapter = adapterInfo.contract;
 
     const calls = markets
-      .filter((market) => sameAddress(market.resolvedBy, adapterInfo.address))
+      .filter((market) => market.resolvedBy && sameAddress(market.resolvedBy, adapterInfo.address))
       .map((market) => {
-        const questionId = sameAddress(market.resolvedBy, params.ctfAdapterAddressV2)
-          ? market.negRiskRequestID
-          : market.questionID;
+        const questionId =
+          market.resolvedBy && sameAddress(market.resolvedBy, params.ctfAdapterAddressV2)
+            ? market.negRiskRequestID
+            : market.questionID;
         return {
           target: adapter.address,
           callData: adapter.interface.encodeFunctionData("questions", [questionId]),
