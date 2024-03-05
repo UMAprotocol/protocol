@@ -5,7 +5,7 @@ const func = async function (hre) {
   const { deployer } = await getNamedAccounts();
 
   // baseSlashAmount: amount slashed for missing a vote or voting wrong.
-  const baseSlashAmount = web3.utils.toWei("0.0016", "ether");
+  const baseSlashAmount = web3.utils.toWei("0.001", "ether");
 
   // governanceSlashAmount: amount slashed for voting wrong in a governance vote.
   const governanceSlashAmount = web3.utils.toWei("0", "ether");

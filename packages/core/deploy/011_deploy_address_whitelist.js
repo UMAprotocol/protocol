@@ -7,4 +7,4 @@ const func = async function (hre) {
   await deploy("AddressWhitelist", { from: deployer, log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
-func.tags = ["AddressWhitelist", "dvm"];
+func.tags = ["AddressWhitelist", "dvm", "dvmv2"];

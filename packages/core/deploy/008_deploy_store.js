@@ -18,5 +18,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["Store", "dvm"];
+func.tags = ["Store", "dvm", "dvmv2"];
 func.dependencies = ["Timer"];

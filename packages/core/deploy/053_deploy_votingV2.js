@@ -1,31 +1,39 @@
 const { ZERO_ADDRESS } = require("@uma/common");
 
+// Custom settings for testnet networks.
+const TESTNET_PARAMETERS = {
+  11155111: { unstakeCooldown: 60, phaseLength: "600", maxRolls: 144 },
+};
+
 const func = async function (hre) {
-  const { deployments, getNamedAccounts, web3 } = hre;
+  const { deployments, getNamedAccounts, web3, getChainId } = hre;
   const { deploy, save } = deployments;
 
   const { deployer } = await getNamedAccounts();
+
+  const chainId = await getChainId();
+  const isTestnet = chainId in TESTNET_PARAMETERS;
 
   const Timer = (await deployments.getOrNull("Timer")) || { address: ZERO_ADDRESS };
   const VotingToken = await deployments.get("VotingToken");
   const Finder = await deployments.get("Finder");
   const SlashingLibrary = await deployments.get("FixedSlashSlashingLibrary");
 
-  // Set the GAT to 5.5 million tokens. This is the number of tokens that must participate to resolve a vote.
-  const gat = web3.utils.toBN(web3.utils.toWei("5500000", "ether"));
+  // Set the GAT to 5 million tokens. This is the number of tokens that must participate to resolve a vote.
+  const gat = web3.utils.toBN(web3.utils.toWei("5000000", "ether"));
 
-  // Set the SPAT to 25%. This is the percentage of staked tokens that must participate to resolve a vote.
-  const spat = web3.utils.toBN(web3.utils.toWei("0.25", "ether"));
+  // Set the SPAT to 50%. This is the percentage of staked tokens that must participate to resolve a vote.
+  const spat = web3.utils.toBN(web3.utils.toWei("0.5", "ether"));
 
-  const emissionRate = "640000000000000000"; // 0.64 UMA per second.
+  const emissionRate = "180000000000000000"; // 0.18 UMA per second.
 
-  const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
+  const unstakeCooldown = isTestnet ? TESTNET_PARAMETERS[chainId].unstakeCooldown : 60 * 60 * 24 * 7; // 7 days mainnet
 
-  // Set phase length to one day.
-  const phaseLength = "86400";
+  // Set phase length to one day on mainnet.
+  const phaseLength = isTestnet ? TESTNET_PARAMETERS[chainId].phaseLength : "86400";
 
-  // A price request can roll, at maximum, 2 times before it is auto deleted (i.e on the 3rd roll it is auto deleted).
-  const maxRolls = 2;
+  // A price request can roll, at maximum, 4 times before it is auto deleted on mainnet.
+  const maxRolls = isTestnet ? TESTNET_PARAMETERS[chainId].maxRolls : 4;
 
   // Bound how many requests can be made in a single round. After this maximum requests auto roll.
   const maxRequestsPerRound = 1000;
