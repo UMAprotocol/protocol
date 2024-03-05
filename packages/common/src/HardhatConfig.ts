@@ -111,6 +111,7 @@ export function getHardhatConfig(
       },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },
+      sepolia: { chainId: 11155111, url: getNodeUrl("sepolia", true, 11155111), accounts: { mnemonic } },
       "base-goerli": { chainId: 84531, url: getNodeUrl("base-goerli", true, 84531), accounts: { mnemonic } },
       "blast-sepolia": {
         chainId: 168587773,

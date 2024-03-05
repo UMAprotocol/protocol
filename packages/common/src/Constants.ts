@@ -2,6 +2,7 @@
 export const interfaceName = {
   FinancialContractsAdmin: "FinancialContractsAdmin",
   Oracle: "Oracle",
+  VotingV2: "Oracle",
   Registry: "Registry",
   Store: "Store",
   IdentifierWhitelist: "IdentifierWhitelist",
@@ -14,6 +15,7 @@ export const interfaceName = {
   MockOracleAncillary: "Oracle",
   SinkOracle: "Oracle",
   SkinnyOptimisticOracle: "SkinnyOptimisticOracle",
+  SkinnyOptimisticOracleV2: "SkinnyOptimisticOracleV2",
   ChildMessenger: "ChildMessenger",
   OracleSpoke: "OracleSpoke",
   OracleHub: "OracleHub",
