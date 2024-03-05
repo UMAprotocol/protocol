@@ -1,6 +1,7 @@
-// Custom settings for testnet networks.
-const TESTNET_PARAMETERS = {
-  11155111: { emergencyMinimumWaitTime: 60 * 60 * 24 },
+// Custom settings based on network.
+const CUSTOM_PARAMETERS = {
+  1: { emergencyMinimumWaitTime: 60 * 60 * 24 * 10 }, // 10 days
+  11155111: { emergencyMinimumWaitTime: 60 * 60 * 24 }, // 1 day
 };
 
 const func = async function (hre) {
@@ -10,15 +11,15 @@ const func = async function (hre) {
   const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
-  const isTestnet = chainId in TESTNET_PARAMETERS;
+  const customParameters = chainId in CUSTOM_PARAMETERS;
 
   const GovernorV2 = await deployments.get("GovernorV2");
   const VotingToken = await deployments.get("VotingToken");
 
   const emergencyQuorum = web3.utils.toBN(web3.utils.toWei("5000000", "ether"));
 
-  // 10 days on mainnet.
-  const emergencyMinimumWaitTime = isTestnet ? TESTNET_PARAMETERS[chainId].emergencyMinimumWaitTime : 60 * 60 * 24 * 10;
+  // 10 days.
+  const emergencyMinimumWaitTime = customParameters ? CUSTOM_PARAMETERS[chainId].emergencyMinimumWaitTime : 60 * 60 * 24 * 10;
 
   // Note: this is a bit hacky, but we must have _some_ tokens in existence to set a emergencyQuorum.
   const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
