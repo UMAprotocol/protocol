@@ -48,7 +48,7 @@ async function getContractsForFinder(hre_: CombinedHRE, mockOracle: boolean) {
 
 // Gets all contract deployments that can be added to the Registry.
 async function getContractsForRegistry(hre_: CombinedHRE) {
-  const { deployments, web3 } = hre_;
+  const { deployments } = hre_;
 
   const contractsForRegistry = new Map<string, string>();
 
@@ -72,7 +72,7 @@ task("setup-dvmv2-testnet", "Configures DVMv2 on L1 testnet")
     const { deployer } = await getNamedAccounts();
     const { mockoracle } = taskArguments;
 
-    /**************************************
+    /** ***********************************
      * Adding contracts to Finder
      *************************************/
 
@@ -98,7 +98,7 @@ task("setup-dvmv2-testnet", "Configures DVMv2 on L1 testnet")
       }
     }
 
-    /**************************************
+    /** ***********************************
      * Adding contracts to Registry
      *************************************/
 
@@ -108,7 +108,7 @@ task("setup-dvmv2-testnet", "Configures DVMv2 on L1 testnet")
       await hre.run("register-accounts", { account });
     }
 
-    /**************************************
+    /** ***********************************
      * Adding minter role for VotingV2
      *************************************/
 
@@ -126,7 +126,7 @@ task("setup-dvmv2-testnet", "Configures DVMv2 on L1 testnet")
       console.log(`VotingV2 @ ${VotingV2.address} already has token minter role`);
     }
 
-    /**************************************
+    /** ***********************************
      * Setting up roles for GovernorV2
      *************************************/
 
@@ -160,7 +160,7 @@ task("setup-dvmv2-testnet", "Configures DVMv2 on L1 testnet")
       console.log(`EmergencyProposer @ ${EmergencyProposer.address} already has emergency proposer role`);
     }
 
-    /**************************************
+    /** ***********************************
      * Sync OptimisticOracleV3
      *************************************/
 
