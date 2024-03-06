@@ -13,5 +13,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["DesignatedVotingV2Factory", "dvm"];
+func.tags = ["DesignatedVotingV2Factory", "dvm", "dvmv2"];
 func.dependencies = ["Finder"];

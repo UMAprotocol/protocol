@@ -69,6 +69,41 @@ const wrappedTokenBridgeAbi: AbiItem[] = [
   },
 ];
 
+task("whitelist-collateral", "Approve single currency to collateral whitelist and set its final fee")
+  .addParam("address", "Collateral address to whitelist", "", types.string)
+  .addParam("finalfee", "Raw amount of final fee to set in Store", "0", types.string)
+  .setAction(async function (taskArguments, hre_) {
+    const hre = hre_ as CombinedHRE;
+    const { deployments, getNamedAccounts, web3 } = hre;
+    const { deployer } = await getNamedAccounts();
+    const { address, finalfee } = taskArguments;
+
+    const CollateralWhitelist = await deployments.get("AddressWhitelist");
+    const collateralWhitelist = new web3.eth.Contract(CollateralWhitelist.abi, CollateralWhitelist.address);
+    console.log(`Using AddressWhitelist @ ${collateralWhitelist.options.address}`);
+
+    const isCollateralApproved = await collateralWhitelist.methods.isOnWhitelist(address).call();
+    if (!isCollateralApproved) {
+      const txn = await collateralWhitelist.methods.addToWhitelist(address).send({ from: deployer });
+      console.log(`Added ${address} to AddressWhitelist, tx: ${txn.transactionHash}`);
+    } else {
+      console.log(`${address} already is on AddressWhitelist`);
+    }
+
+    const Store = await deployments.get("Store");
+    const store = new web3.eth.Contract(Store.abi, Store.address);
+    console.log(`Using Store @ ${store.options.address}`);
+
+    const currentFinalFee = (await store.methods.computeFinalFee(address).call()).rawValue;
+    const matchingFinalFee = currentFinalFee == finalfee;
+    if (!matchingFinalFee) {
+      const txn = await store.methods.setFinalFee(address, { rawValue: finalfee }).send({ from: deployer });
+      console.log(`Set ${address} finalFee in Store to ${finalfee}, tx: ${txn.transactionHash}`);
+    } else {
+      console.log(`${address} already has its finalFee set to ${finalfee} in Store`);
+    }
+  });
+
 task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted from one EVM chain to another")
   .addParam("l1chainid", "Chain Id of the origin chain (normally 1 for L1 ethereum)", "1", types.string)
   .addParam("l2chainid", "Chain Id of the destination chain to write the new whitelist to", "", types.string)

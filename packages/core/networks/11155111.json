@@ -1,0 +1,78 @@
+[
+  {
+    "contractName": "Registry",
+    "address": "0x827C4fABBe65ee852D7Cd6Ddf042cFC9eb500ef8"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xfcb6f77112951e1995d37542b519Fe0a85a1AA77"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x39e7FFA77A4ac4D34021C6BbE4C8778d47F684F2"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0xE8DE4bcE27f6214dcE18D8a7629f233C66A97B84"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0xf4C48eDAd256326086AEfbd1A53e1896815F8f13"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x18Ca744fd1960d9Dda0Af5E22CC5C92aD75901E8"
+  },
+  {
+    "contractName": "MockOracleAncillary",
+    "address": "0x5FE28AEa36420414692b1C907F7d0114d304eb0C"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracle",
+    "address": "0xc0a072E45751Bb8a814bF1A357311c6963F9019A"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x9f1263B8f0355673619168b5B8c0248f1d03e88C"
+  },
+  {
+    "contractName": "VotingToken",
+    "address": "0xc00F1d7E535D83404587437738974A8762bE266a"
+  },
+  {
+    "contractName": "FixedSlashSlashingLibrary",
+    "address": "0x4500B1274617DD38aC619bAdcf4355D96ed46bB6"
+  },
+  {
+    "contractName": "VotingV2",
+    "address": "0xd6Fc66498aE366892BDa974Fd4eF903Ca7202F76"
+  },
+  {
+    "contractName": "DesignatedVotingV2Factory",
+    "address": "0x2acd1212F7df74B3688339bB2dBeD1B771270149"
+  },
+  {
+    "contractName": "GovernorV2",
+    "address": "0x561C834B1Ca5883460D2E605B1d7F3e61714C6d8"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracleV2",
+    "address": "0x255483434aba5a75dc60c1391bB162BCd9DE2882"
+  },
+  {
+    "contractName": "ProposerV2",
+    "address": "0xAd5AA9F37d5BBfceE45BD9f43CbE0018ceEc7A4e"
+  },
+  {
+    "contractName": "EmergencyProposer",
+    "address": "0x9C043C139486891D7a67e76E4c31Ac56bBfAF885"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
+  },
+  {
+    "contractName": "OptimisticGovernor",
+    "address": "0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461"
+  }
+]

@@ -45,3 +45,10 @@ export const InsuredBridgeRelayStateEnum = {
   PENDING: "1",
   FINALIZED: "2",
 };
+
+// Corresponds to GovernorV2.Roles.
+export const GovernorV2RolesEnum = {
+  OWNER: "0",
+  PROPOSER: "1",
+  EMERGENCY_PROPOSER: "2",
+};

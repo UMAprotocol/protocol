@@ -7,4 +7,4 @@ const func = async function (hre) {
   await deploy("Registry", { from: deployer, log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
-func.tags = ["Registry", "dvm"];
+func.tags = ["Registry", "dvm", "dvmv2"];

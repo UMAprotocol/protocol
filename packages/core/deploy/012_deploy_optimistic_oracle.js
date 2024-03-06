@@ -18,5 +18,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["OptimisticOracle", "dvm"];
+func.tags = ["OptimisticOracle", "dvm", "dvmv2"];
 func.dependencies = ["Finder"];
