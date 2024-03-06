@@ -19,7 +19,9 @@ const func = async function (hre) {
   const emergencyQuorum = web3.utils.toBN(web3.utils.toWei("5000000", "ether"));
 
   // 10 days.
-  const emergencyMinimumWaitTime = customParameters ? CUSTOM_PARAMETERS[chainId].emergencyMinimumWaitTime : 60 * 60 * 24 * 10;
+  const emergencyMinimumWaitTime = customParameters
+    ? CUSTOM_PARAMETERS[chainId].emergencyMinimumWaitTime
+    : 60 * 60 * 24 * 10;
 
   // Note: this is a bit hacky, but we must have _some_ tokens in existence to set a emergencyQuorum.
   const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
