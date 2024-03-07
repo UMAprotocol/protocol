@@ -12,7 +12,7 @@ import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
 import {
   MonitoringParams,
-  TradeInformation,
+  PolymarketTradeInformation,
   getMarketKeyToStore,
   getUnknownProposalKeyData,
 } from "../src/monitor-polymarket/common";
@@ -241,7 +241,7 @@ describe("PolymarketNotifier", function () {
           timestamp: 123,
           type: "sell",
         },
-      ] as TradeInformation[],
+      ] as PolymarketTradeInformation[],
       [],
     ];
 
@@ -298,7 +298,7 @@ describe("PolymarketNotifier", function () {
           timestamp: 123,
           type: "buy",
         },
-      ] as TradeInformation[],
+      ] as PolymarketTradeInformation[],
     ];
 
     const mockDataFunction = sandbox.stub();
@@ -342,7 +342,7 @@ describe("PolymarketNotifier", function () {
         asks: [],
       },
     ];
-    mockData[0].orderFilledEvents = [[], [] as TradeInformation[]];
+    mockData[0].orderFilledEvents = [[], [] as PolymarketTradeInformation[]];
 
     const mockDataFunction = sandbox.stub();
     mockDataFunction.returns([{ ...mockData[0], volumeNum: 2_000_000 }]);
@@ -449,7 +449,7 @@ describe("PolymarketNotifier", function () {
           timestamp: 123,
           type: "buy",
         },
-      ] as TradeInformation[],
+      ] as PolymarketTradeInformation[],
     ];
 
     const mockDataFunction = sandbox.stub();

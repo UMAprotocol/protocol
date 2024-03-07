@@ -1,7 +1,7 @@
 import { createEtherscanLinkMarkdown } from "@uma/common";
-import { Logger, TradeInformation } from "./common";
+import { Logger, PolymarketTradeInformation } from "./common";
 
-import type { MonitoringParams } from "./common";
+import type { MonitoringParams, SubgraphOptimisticPriceRequest } from "./common";
 
 function generateUILink(transactionHash: string, chainId: number, eventIndex: number) {
   return `<https://oracle.uma.xyz/request?transactionHash=${transactionHash}&chainId=${chainId}&oracleType=OptimisticV2&eventIndex=${eventIndex} | View in the Oracle UI.>`;
@@ -11,7 +11,7 @@ export async function logProposalOrderBook(
   logger: typeof Logger,
   market: {
     proposedPrice: string;
-    proposalTime: number;
+    proposalTime: string;
     proposedOutcome: string;
     question: string;
     tx: string;
@@ -27,11 +27,11 @@ export async function logProposalOrderBook(
           size: number;
         }
       | undefined;
-    soldWinnerSide: TradeInformation[];
-    boughtLoserSide: TradeInformation[];
+    soldWinnerSide: PolymarketTradeInformation[];
+    boughtLoserSide: PolymarketTradeInformation[];
     outcomes: [string, string];
-    expirationTimestamp: number;
-    eventIndex: number;
+    expirationTimestamp: string;
+    eventIndex: string;
   },
   params: MonitoringParams
 ): Promise<void> {
@@ -60,9 +60,9 @@ export async function logProposalOrderBook(
           )}.`
         : "") +
       " The proposal can be disputed until " +
-      new Date(market.expirationTimestamp * 1000).toUTCString() +
+      new Date(Number(market.expirationTimestamp) * 1000).toUTCString() +
       ". " +
-      generateUILink(market.tx, params.chainId, market.eventIndex) +
+      generateUILink(market.tx, params.chainId, Number(market.eventIndex)) +
       " Please check the market proposal and dispute if necessary.",
     notificationPath: "polymarket-notifier",
   });
@@ -72,14 +72,14 @@ export async function logProposalHighVolume(
   logger: typeof Logger,
   market: {
     proposedPrice: string;
-    proposalTime: number;
+    proposalTime: string;
     proposedOutcome: string;
     question: string;
     tx: string;
     volumeNum: number;
     outcomes: [string, string];
-    expirationTimestamp: number;
-    eventIndex: number;
+    expirationTimestamp: string;
+    eventIndex: string;
   },
   params: MonitoringParams
 ): Promise<void> {
@@ -92,9 +92,9 @@ export async function logProposalHighVolume(
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.tx, params.chainId) +
       +" The proposal can be disputed until " +
-      new Date(market.expirationTimestamp * 1000).toUTCString() +
+      new Date(Number(market.expirationTimestamp) * 1000).toUTCString() +
       ". " +
-      generateUILink(market.tx, params.chainId, market.eventIndex) +
+      generateUILink(market.tx, params.chainId, Number(market.eventIndex)) +
       " Please check the market proposal and dispute if necessary.",
     notificationPath: "polymarket-notifier",
   });
@@ -102,26 +102,22 @@ export async function logProposalHighVolume(
 
 export async function logUnknownMarketProposal(
   logger: typeof Logger,
-  market: {
-    adapterAddress: string;
-    question: string;
-    questionID: string;
-    umaResolutionStatus: string;
-    endDate: string;
-    volumeNum: number;
-  }
+  chainId: number,
+  market: SubgraphOptimisticPriceRequest
 ): Promise<void> {
   logger.error({
     at: "PolymarketMonitor",
     message: "Market proposal event not found for proposed market! 🚨",
     mrkdwn:
-      ` Proposal event not found for market: ${market.question}.` +
-      ` The question ID is ${market.questionID}.` +
-      ` The UMA resolution status is ${market.umaResolutionStatus}.` +
-      ` The end date is ${new Date(market.endDate).toUTCString()}.` +
-      ` The volume is ${market.volumeNum}.` +
-      ` The adapter address is ${market.adapterAddress}.` +
-      " The polymarket-notifier cannot check the market, please verify manually and dispute if necessary.",
+      ` Question ID not found for proposed price request:` +
+      ` Ancillary data: ${market.ancillaryData}.` +
+      ` Price request timestamp ${market.requestTimestamp}.` +
+      ` The proposal expiration date is ${new Date(market.proposalExpirationTimestamp).toUTCString()}.` +
+      " The proposal can be disputed until " +
+      new Date(Number(market.proposalExpirationTimestamp) * 1000).toUTCString() +
+      ". " +
+      generateUILink(market.requestHash, chainId, Number(market.requestLogIndex)) +
+      " Please check the market proposal and dispute if necessary.",
     notificationPath: "polymarket-notifier",
   });
 }

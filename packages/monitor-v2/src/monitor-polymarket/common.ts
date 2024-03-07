@@ -1,14 +1,13 @@
 import { getRetryProvider, paginatedEventQuery } from "@uma/common";
-import { aggregateTransactionsAndCall, NetworkerInterface, TransactionDataDecoder } from "@uma/financial-templates-lib";
-import { getContractInstanceWithProvider, sameAddress } from "../utils/contracts";
+import { NetworkerInterface } from "@uma/financial-templates-lib";
+import { tryHexToUtf8String } from "../utils/contracts";
 
 import type { Provider } from "@ethersproject/abstract-provider";
 import { GraphQLClient } from "graphql-request";
 
 import { Event, ethers } from "ethers";
 
-import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
-import Web3 from "web3";
+import axios from "axios";
 import { formatBytes32String } from "ethers/lib/utils";
 
 export { Logger } from "@uma/financial-templates-lib";
@@ -18,17 +17,6 @@ const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
 
 export const YES_OR_NO_QUERY = formatBytes32String("YES_OR_NO_QUERY");
-
-export interface BotModes {
-  transactionsProposedEnabled: boolean;
-}
-
-export interface TradeInformation {
-  price: number;
-  type: "buy" | "sell";
-  amount: number;
-  timestamp: number;
-}
 
 export interface MarketKeyStoreData {
   txHash: string;
@@ -50,62 +38,27 @@ export interface MonitoringParams {
   pollingDelay: number;
   unknownProposalNotificationInterval: number;
 }
-
-interface PolymarketMarket {
-  resolvedBy?: string;
-  questionID: string;
-  negRiskRequestID: string | null;
-  createdAt: string;
-  question: string;
-  outcomes: [string, string];
-  outcomePrices: [string, string];
-  liquidityNum: number;
-  volumeNum: number;
-  clobTokenIds: [string, string];
-  endDate: string;
-  umaResolutionStatus: string;
-}
-
 interface PolymarketMarketGraphql {
-  resolvedBy: string;
-  questionID: string;
-  negRiskRequestID: string | null;
-  createdAt: string;
   question: string;
   outcomes: string;
   outcomePrices: string;
-  liquidityNum: number;
   volumeNum: number;
   clobTokenIds: string;
-  endDate: string;
-  umaResolutionStatus: string;
 }
 
-export interface PolymarketMarketWithAncillaryData extends PolymarketMarket {
-  ancillaryData?: string;
-  requestTimestamp?: string;
-  resolved?: boolean;
+interface PolymarketMarketGraphqlProcessed {
+  volumeNum: number;
+  outcomes: [string, string];
+  outcomePrices: [string, string];
+  clobTokenIds: [string, string];
+  question: string;
 }
 
-export interface PolymarketWithEventData extends PolymarketMarketWithAncillaryData {
-  txHash: string;
-  requester: string;
-  proposer: string;
-  timestamp: string;
-  expirationTimestamp: number;
-  eventTimestamp: number;
-  eventBlockNumber: number;
-  eventIndex: number;
-  proposalTimestamp: number;
-  identifier: string;
-  ancillaryData: string;
-  proposedPrice: string;
-}
-
-export type PolymarketWithOrderbook = PolymarketWithEventData & MarketOrderbooks;
-
-export interface PolymarketWithOrderbookAndTradeInfo extends PolymarketWithOrderbook {
-  orderFilledEvents: [TradeInformation[], TradeInformation[]];
+export interface PolymarketTradeInformation {
+  price: number;
+  type: "buy" | "sell";
+  amount: number;
+  timestamp: number;
 }
 
 interface PolymarketOrderBook {
@@ -117,8 +70,10 @@ interface PolymarketOrderBook {
 }
 
 export type Order = { price: number; size: number }[];
-export interface MarketOrderbooks {
-  orderBooks: { bids: Order; asks: Order }[];
+
+export interface MarketOrderbook {
+  bids: Order;
+  asks: Order;
 }
 
 export interface StoredNotifiedProposal {
@@ -127,125 +82,134 @@ export interface StoredNotifiedProposal {
   proposedPrice: string;
   notificationTimestamp: number;
   requestTimestamp?: string;
-  notified?: boolean;
 }
 
-export interface FormattedProposePriceEvent {
-  txHash: string;
+export interface SubgraphOptimisticPriceRequest {
+  requestHash: string;
+  requestTimestamp: string;
+  requestLogIndex: string;
   requester: string;
-  proposer: string;
-  timestamp: string;
-  eventTimestamp: number;
-  eventBlockNumber: number;
-  expirationTimestamp: number;
-  proposalTimestamp: number;
-  identifier: string;
   ancillaryData: string;
+  requestBlockNumber: string;
   proposedPrice: string;
-  eventIndex: number;
-  oracleAddress: string;
+  proposalTimestamp: string;
+  proposalHash: string;
+  proposalExpirationTimestamp: string;
+  proposalLogIndex: string;
+}
+interface OptimisticOracleSubgraphPriceRequests {
+  data: {
+    optimisticPriceRequests: SubgraphOptimisticPriceRequest[];
+  };
 }
 
-export const formatPriceEvents = async (events: ProposePriceEvent[]): Promise<FormattedProposePriceEvent[]> => {
-  const ooDefaultLiveness = 7200;
-  return Promise.all(
-    events.map(async (event: ProposePriceEvent) => {
-      const block = await event.getBlock();
-      return {
-        txHash: event.transactionHash,
-        requester: event.args.requester,
-        proposer: event.args.proposer,
-        timestamp: event.args.timestamp.toString(),
-        eventTimestamp: block.timestamp,
-        eventBlockNumber: event.blockNumber,
-        expirationTimestamp: event.args.expirationTimestamp.toNumber(),
-        proposalTimestamp: event.args.expirationTimestamp.toNumber() - ooDefaultLiveness,
-        identifier: event.args.identifier,
-        ancillaryData: event.args.ancillaryData,
-        proposedPrice: ethers.utils.formatEther(event.args.proposedPrice),
-        eventIndex: event.logIndex,
-        oracleAddress: event.address,
-      };
-    })
-  );
-};
+interface ExtendedSubgraphOptimisticPriceRequest extends SubgraphOptimisticPriceRequest {
+  questionID: string;
+}
 
-export const getPolymarketMarkets = async (params: MonitoringParams): Promise<PolymarketMarket[]> => {
-  const markets = [];
-  const pagination = 100;
-  let offset = 0;
+export const getProposedPriceRequestsOO = async (version: "v1" | "v2"): Promise<SubgraphOptimisticPriceRequest[]> => {
+  let allResults: SubgraphOptimisticPriceRequest[] = [];
+  let skip = 0;
+  const first = 100; // Number of items to fetch per request
+  let hasMore = true;
 
-  const whereClause =
-    "uma_resolution_status!='settled'" +
-    " AND uma_resolution_status!='resolved'" +
-    " AND question_ID IS NOT NULL" +
-    " AND clob_Token_Ids IS NOT NULL";
-
-  let moreMarketsAvailable = true;
-  while (moreMarketsAvailable) {
-    const query = `
-      {
-        markets(where: "${whereClause}", limit: ${pagination}, offset: ${offset}) {
-          resolvedBy
-          questionID
-          negRiskRequestID
-          createdAt
-          question
-          outcomes
-          outcomePrices
-          liquidityNum
-          volumeNum
-          clobTokenIds
-          endDate
-          umaResolutionStatus
+  while (hasMore) {
+    const data = JSON.stringify({
+      query: `{
+        optimisticPriceRequests(skip: ${skip}, first: ${first}, where: {state: "Proposed"}) {
+          requestHash
+          requestLogIndex
+          requester
+          requestTimestamp
+          ancillaryData
+          requestBlockNumber
+          proposedPrice
+          proposalTimestamp
+          proposalHash
+          proposalExpirationTimestamp
+          proposalLogIndex
         }
-      }
-    `;
-
-    const graphQLClient = new GraphQLClient(params.graphqlEndpoint, {
-      headers: {
-        authorization: `Bearer ${params.polymarketApiKey}`,
-      },
+      }`,
+      variables: {},
     });
 
-    const { markets: polymarketContracts } = (await graphQLClient.request(query)) as {
-      markets: PolymarketMarketGraphql[];
+    const config = {
+      method: "post",
+      maxBodyLength: Infinity,
+      url: `https://api.thegraph.com/subgraphs/name/umaprotocol/polygon-optimistic-oracle${
+        version === "v2" ? "-v2" : ""
+      }`,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      data: data,
     };
 
-    // Remove markets with 1 week old endDate or more. So we only monitor markets that ended in the last week
-    // (or are still ongoing).
-    const now = Math.floor(Date.now() / 1000);
-    const oneWeek = 60 * 60 * 24 * 7;
-
-    const filtered = polymarketContracts.filter((contract) => {
-      const parsedDateTime = new Date(contract.endDate).getTime();
-      if (isNaN(parsedDateTime)) return true; // If endDate is not a valid date we keep the market.
-      const endDate = parsedDateTime / 1000;
-      return endDate > now - oneWeek;
-    });
-
-    // Add retrieved markets to the results array
-    markets.push(
-      ...filtered.map((contract) => ({
-        ...contract,
-        outcomes: JSON.parse(contract.outcomes),
-        outcomePrices: JSON.parse(contract.outcomePrices),
-        clobTokenIds: JSON.parse(contract.clobTokenIds),
-      }))
-    );
-
-    // Check if more markets are available
-    if (polymarketContracts.length < pagination) {
-      moreMarketsAvailable = false;
-    } else {
-      offset += pagination;
+    try {
+      const response = await axios.request<OptimisticOracleSubgraphPriceRequests>(config);
+      const { data } = response;
+      if (data && data.data && data.data.optimisticPriceRequests) {
+        allResults = allResults.concat(data.data.optimisticPriceRequests);
+        if (data.data.optimisticPriceRequests.length < first) {
+          hasMore = false;
+        } else {
+          skip += first;
+        }
+      } else {
+        hasMore = false;
+      }
+    } catch (error) {
+      console.error("Error fetching data: ", error);
+      throw error;
     }
   }
 
-  return markets;
+  return allResults.slice(0, 3);
 };
 
-const getTradeInfoFromOrderFilledEvent = async (provider: Provider, event: any): Promise<TradeInformation> => {
+export const getPolymarketMarketInformation = async (
+  params: MonitoringParams,
+  questionID: string
+): Promise<PolymarketMarketGraphqlProcessed> => {
+  const query = `
+    {
+      markets(where: "LOWER(question_ID) = LOWER('${questionID}')") {
+        clobTokenIds
+        volumeNum
+        outcomes
+        outcomePrices
+        question
+      }
+    }
+    `;
+
+  const graphQLClient = new GraphQLClient(params.graphqlEndpoint, {
+    headers: {
+      authorization: `Bearer ${params.polymarketApiKey}`,
+    },
+  });
+
+  const { markets } = (await graphQLClient.request(query)) as {
+    markets: PolymarketMarketGraphql[];
+  };
+
+  const market = markets[0];
+  if (!market) {
+    throw new Error(`No market found for question ID: ${questionID}`);
+  }
+
+  return {
+    ...market,
+    outcomes: JSON.parse(market.outcomes),
+    outcomePrices: JSON.parse(market.outcomePrices),
+    clobTokenIds: JSON.parse(market.clobTokenIds),
+  };
+};
+
+const getTradeInfoFromOrderFilledEvent = async (
+  provider: Provider,
+  event: any
+): Promise<PolymarketTradeInformation> => {
   const blockTimestamp = (await provider.getBlock(event.blockNumber)).timestamp;
   const isBuy = event.args.makerAssetId.toString() === "0";
   const numerator = (isBuy ? event.args.makerAmountFilled : event.args.takerAmountFilled).mul(1000);
@@ -262,10 +226,9 @@ const getTradeInfoFromOrderFilledEvent = async (provider: Provider, event: any):
 
 export const getOrderFilledEvents = async (
   params: MonitoringParams,
-  markets: PolymarketWithOrderbook[]
-): Promise<PolymarketWithOrderbookAndTradeInfo[]> => {
-  if (markets.length === 0) return [];
-
+  clobTokenIds: [string, string],
+  startBlockNumber: number
+): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
   const ctfExchange = new ethers.Contract(
     params.ctfExchangeAddress,
     require("./abi/ctfExchange.json"),
@@ -275,200 +238,167 @@ export const getOrderFilledEvents = async (
   const currentBlockNumber = await params.provider.getBlockNumber();
   const maxBlockLookBack = params.maxBlockLookBack;
 
-  return Promise.all(
-    markets.map(async (market) => {
-      const searchConfig = {
-        fromBlock: market.eventBlockNumber,
-        toBlock: currentBlockNumber,
-        maxBlockLookBack,
-      };
+  const searchConfig = {
+    fromBlock: startBlockNumber,
+    toBlock: currentBlockNumber,
+    maxBlockLookBack,
+  };
 
-      const events: Event[] = await paginatedEventQuery(
-        ctfExchange,
-        ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
-        searchConfig
-      );
-
-      const outcomeTokenOne = await Promise.all(
-        events
-          .filter((event) => {
-            return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(
-              market.clobTokenIds[0]
-            );
-          })
-          .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
-      );
-
-      const outcomeTokenTwo = await Promise.all(
-        events
-          .filter((event) => {
-            return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(
-              market.clobTokenIds[1]
-            );
-          })
-          .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
-      );
-
-      return {
-        ...market,
-        orderFilledEvents: [outcomeTokenOne, outcomeTokenTwo],
-      };
-    })
+  const events: Event[] = await paginatedEventQuery(
+    ctfExchange,
+    ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
+    searchConfig
   );
+
+  const outcomeTokenOne = await Promise.all(
+    events
+      .filter((event) => {
+        return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(clobTokenIds[0]);
+      })
+      .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
+  );
+
+  const outcomeTokenTwo = await Promise.all(
+    events
+      .filter((event) => {
+        return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(clobTokenIds[1]);
+      })
+      .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
+  );
+
+  return [outcomeTokenOne, outcomeTokenTwo];
 };
 
-const loadAbi = (filename: string): any => {
-  return require(`./abi/${filename}.json`);
-};
-
-export const getMarketsAncillary = async (
+export const findPolymarketQuestionIDs = async (
   params: MonitoringParams,
-  markets: PolymarketMarket[]
-): Promise<PolymarketMarketWithAncillaryData[]> => {
-  console.log(`Fetching ancillary data for ${markets.length} markets...`);
+  liveProposalRequests: SubgraphOptimisticPriceRequest[]
+): Promise<{
+  found: ExtendedSubgraphOptimisticPriceRequest[];
+  notFound: SubgraphOptimisticPriceRequest[];
+}> => {
+  const found: ExtendedSubgraphOptimisticPriceRequest[] = [];
+  const notFound = [];
+  for (const r of liveProposalRequests) {
+    const questionInitialisedTopic = "0xeee0897acd6893adcaf2ba5158191b3601098ab6bece35c5d57874340b64c5b7";
+    const receipt = await params.provider.getTransactionReceipt(r.requestHash);
+    const questionId = receipt?.logs?.find((log) => log.topics[0] === questionInitialisedTopic)?.topics[1];
 
-  const adapters = [
-    {
-      address: params.binaryAdapterAddress,
-      abi: loadAbi("binaryAdapter"),
-      contract: new ethers.Contract(params.binaryAdapterAddress, loadAbi("binaryAdapter"), params.provider),
-    },
-    {
-      address: params.ctfAdapterAddress,
-      abi: loadAbi("ctfAdapter"),
-      contract: new ethers.Contract(params.ctfAdapterAddress, loadAbi("ctfAdapter"), params.provider),
-    },
-    {
-      address: params.ctfAdapterAddressV2,
-      abi: loadAbi("ctfAdapterV2"),
-      contract: new ethers.Contract(params.ctfAdapterAddressV2, loadAbi("ctfAdapterV2"), params.provider),
-    },
-  ];
-
-  const rpcUrl =
-    process.env[`NODE_URL_${params.chainId}`] || JSON.parse(process.env[`NODE_URLS_${params.chainId}`] || "[]")[0];
-  if (!rpcUrl) {
-    throw new Error(`NODE_URL_${params.chainId} or NODE_URLS_${params.chainId} not found in environment variables`);
-  }
-
-  const web3Provider = new Web3.providers.HttpProvider(rpcUrl);
-  const web3 = new Web3(web3Provider);
-  const decoder = TransactionDataDecoder.getInstance();
-  const multicall = await getContractInstanceWithProvider("Multicall3", params.provider);
-
-  const ancillaryMap = new Map();
-
-  for (const adapterInfo of adapters) {
-    decoder.abiDecoder.addABI(adapterInfo.abi);
-    const adapter = adapterInfo.contract;
-
-    const calls = markets
-      .filter((market) => market.resolvedBy && sameAddress(market.resolvedBy, adapterInfo.address))
-      .map((market) => {
-        const questionId =
-          market.resolvedBy && sameAddress(market.resolvedBy, params.ctfAdapterAddressV2)
-            ? market.negRiskRequestID
-            : market.questionID;
-        return {
-          target: adapter.address,
-          callData: adapter.interface.encodeFunctionData("questions", [questionId]),
-          questionID: market.questionID,
-        };
+    if (questionId) {
+      found.push({
+        ...r,
+        ancillaryData: tryHexToUtf8String(r.ancillaryData),
+        questionID: questionId,
       });
-
-    const batchSize = 25;
-    for (let i = 0; i < calls.length; i += batchSize) {
-      const batch = calls.slice(i, i + batchSize);
-      try {
-        const batchResults = await aggregateTransactionsAndCall(multicall.address, web3, batch);
-        batchResults.forEach((result, index) => {
-          const market = calls[i + index];
-          ancillaryMap.set(market.questionID, {
-            ancillaryData: result.ancillaryData,
-            requestTimestamp: result.requestTimestamp.toString(),
-            resolved: result.resolved,
-          });
-        });
-      } catch (error) {
-        console.error(`Error processing batch starting at index ${i}:`, error);
-        for (const call of batch) {
-          try {
-            const result = await adapter.callStatic.questions(call.questionID);
-            ancillaryMap.set(call.questionID, {
-              ancillaryData: result.ancillaryData,
-              requestTimestamp: result.requestTimestamp.toString(),
-              resolved: result.resolved,
-            });
-          } catch {
-            console.error(`Failed to get ancillary data for market ${call.questionID}`);
-          }
-        }
-      }
+    } else if (
+      r.requester.toLowerCase() in
+      [
+        params.ctfAdapterAddress.toLowerCase(),
+        params.ctfAdapterAddressV2.toLowerCase(),
+        params.binaryAdapterAddress.toLowerCase(),
+      ]
+    ) {
+      notFound.push({ ...r, ancillaryData: tryHexToUtf8String(r.ancillaryData) });
     }
   }
-
-  console.log("Finished fetching ancillary data for markets...");
-  return markets.map((market) => ({
-    ...market,
-    ancillaryData: ancillaryMap.get(market.questionID)?.ancillaryData,
-    requestTimestamp: ancillaryMap.get(market.questionID)?.requestTimestamp,
-    resolved: ancillaryMap.get(market.questionID)?.resolved,
-  }));
+  return { found, notFound };
 };
 
-export const getPolymarketOrderBooks = async (
+export const getPolymarketOrderBook = async (
   params: MonitoringParams,
-  markets: PolymarketWithEventData[],
+  clobTokenIds: [string, string],
   networker: NetworkerInterface
-): Promise<PolymarketWithOrderbook[]> => {
-  return await Promise.all(
-    markets.map(async (market) => {
-      const [marketOne, marketTwo] = market.clobTokenIds;
-      const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
-      const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
+): Promise<MarketOrderbook[]> => {
+  const [marketOne, marketTwo] = clobTokenIds;
+  const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
+  const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
 
-      // TODO: defaulting to [] is a temporary fix to handle the case where the API returns an error.
-      // This means we just assume there are no orders on that side. We don't expect this to happen, but it
-      // does occasionally. We should get to the bottom of this.
-      const { bids: outcome1Bids = [], asks: outcome1Asks = [] } = (await networker.getJson(apiUrlOne, {
-        method: "get",
-      })) as PolymarketOrderBook;
+  // TODO: defaulting to [] is a temporary fix to handle the case where the API returns an error.
+  // This means we just assume there are no orders on that side. We don't expect this to happen, but it
+  // does occasionally. We should get to the bottom of this.
+  const { bids: outcome1Bids = [], asks: outcome1Asks = [] } = (await networker.getJson(apiUrlOne, {
+    method: "get",
+  })) as PolymarketOrderBook;
 
-      const { bids: outcome2Bids = [], asks: outcome2Asks = [] } = (await networker.getJson(apiUrlTwo, {
-        method: "get",
-      })) as PolymarketOrderBook;
+  const { bids: outcome2Bids = [], asks: outcome2Asks = [] } = (await networker.getJson(apiUrlTwo, {
+    method: "get",
+  })) as PolymarketOrderBook;
 
-      const stringToNumber = (
-        orders: {
-          price: string;
-          size: string;
-        }[]
-      ) => {
-        return orders.map((order) => {
-          return {
-            price: Number(order.price),
-            size: Number(order.size),
-          };
-        });
-      };
-
+  const stringToNumber = (
+    orders: {
+      price: string;
+      size: string;
+    }[]
+  ) => {
+    return orders.map((order) => {
       return {
-        ...market,
-        ...{
-          orderBooks: [
-            {
-              bids: stringToNumber(outcome1Bids),
-              asks: stringToNumber(outcome1Asks),
-            },
-            {
-              bids: stringToNumber(outcome2Bids),
-              asks: stringToNumber(outcome2Asks),
-            },
-          ],
-        },
+        price: Number(order.price),
+        size: Number(order.size),
       };
-    })
-  );
+    });
+  };
+
+  return [
+    {
+      bids: stringToNumber(outcome1Bids),
+      asks: stringToNumber(outcome1Asks),
+    },
+    {
+      bids: stringToNumber(outcome2Bids),
+      asks: stringToNumber(outcome2Asks),
+    },
+  ];
+};
+
+export const getUnknownProposalKeyData = (question: string): MarketKeyStoreData & { requestTimestamp?: string } => ({
+  txHash: "unknown",
+  question: question,
+  proposedPrice: "unknown",
+  requestTimestamp: "unknown",
+});
+
+export const getMarketKeyToStore = (market: MarketKeyStoreData & { requestTimestamp?: string }): string => {
+  return market.txHash + "_" + market.question + "_" + market.proposedPrice + "_" + (market.requestTimestamp || "");
+};
+
+export const storeNotifiedProposals = async (
+  notifiedContracts: {
+    txHash: string;
+    question: string;
+    proposedPrice: string;
+    requestTimestamp: string;
+  }[]
+): Promise<void> => {
+  const currentTime = new Date().getTime() / 1000; // Current time in seconds
+  const promises = notifiedContracts.map((contract) => {
+    const key = datastore.key(["NotifiedProposals", getMarketKeyToStore(contract)]);
+    const data = {
+      txHash: contract.txHash,
+      question: contract.question,
+      proposedPrice: contract.proposedPrice,
+      notificationTimestamp: currentTime,
+      requestTimestamp: contract.requestTimestamp,
+    } as StoredNotifiedProposal;
+    datastore.save({ key: key, data: data });
+  });
+  await Promise.all(promises);
+};
+
+export const getNotifiedProposals = async (): Promise<{
+  [key: string]: StoredNotifiedProposal;
+}> => {
+  const notifiedProposals = (await datastore.runQuery(datastore.createQuery("NotifiedProposals")))[0];
+  return notifiedProposals.reduce((contracts: StoredNotifiedProposal[], contract: StoredNotifiedProposal) => {
+    return {
+      ...contracts,
+      [getMarketKeyToStore(contract)]: {
+        txHash: contract.txHash,
+        question: contract.question,
+        proposedPrice: contract.proposedPrice,
+        notificationTimestamp: contract.notificationTimestamp,
+        requestTimestamp: contract.requestTimestamp,
+      } as StoredNotifiedProposal,
+    };
+  }, {});
 };
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -512,58 +442,4 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     pollingDelay,
     unknownProposalNotificationInterval,
   };
-};
-
-export const getUnknownProposalKeyData = (question: string): MarketKeyStoreData & { requestTimestamp?: string } => ({
-  txHash: "unknown",
-  question: question,
-  proposedPrice: "unknown",
-  requestTimestamp: "unknown",
-});
-
-export const getMarketKeyToStore = (market: MarketKeyStoreData & { requestTimestamp?: string }): string => {
-  return market.txHash + "_" + market.question + "_" + market.proposedPrice + "_" + (market.requestTimestamp || "");
-};
-
-export const storeNotifiedProposals = async (
-  notifiedContracts: {
-    txHash: string;
-    question: string;
-    proposedPrice: string;
-    requestTimestamp?: string;
-    notified?: boolean;
-  }[]
-): Promise<void> => {
-  const currentTime = new Date().getTime() / 1000; // Current time in seconds
-  const promises = notifiedContracts.map((contract) => {
-    const key = datastore.key(["NotifiedProposals", getMarketKeyToStore(contract)]);
-    const data = {
-      txHash: contract.txHash,
-      question: contract.question,
-      proposedPrice: contract.proposedPrice,
-      notificationTimestamp: currentTime,
-      requestTimestamp: contract.requestTimestamp,
-      notified: typeof contract.notified === "boolean" ? contract.notified : true,
-    } as StoredNotifiedProposal;
-    datastore.save({ key: key, data: data });
-  });
-  await Promise.all(promises);
-};
-
-export const getNotifiedProposals = async (): Promise<{
-  [key: string]: StoredNotifiedProposal;
-}> => {
-  const notifiedProposals = (await datastore.runQuery(datastore.createQuery("NotifiedProposals")))[0];
-  return notifiedProposals.reduce((contracts: StoredNotifiedProposal[], contract: StoredNotifiedProposal) => {
-    return {
-      ...contracts,
-      [getMarketKeyToStore(contract)]: {
-        txHash: contract.txHash,
-        question: contract.question,
-        proposedPrice: contract.proposedPrice,
-        notificationTimestamp: contract.notificationTimestamp,
-        requestTimestamp: contract.requestTimestamp,
-      } as StoredNotifiedProposal,
-    };
-  }, {});
 };

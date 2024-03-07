@@ -1,180 +1,114 @@
-import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
-import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { Networker } from "@uma/financial-templates-lib";
-import { paginatedEventQuery } from "@uma/common";
+import { ethers } from "ethers";
+import { logProposalHighVolume, logProposalOrderBook, logUnknownMarketProposal } from "./MonitorLogger";
 import {
   Logger,
   MonitoringParams,
-  PolymarketWithEventData,
-  YES_OR_NO_QUERY,
-  formatPriceEvents,
-  getContractInstanceWithProvider,
-  getMarketKeyToStore,
-  getMarketsAncillary,
-  getNotifiedProposals,
+  findPolymarketQuestionIDs,
   getOrderFilledEvents,
-  getPolymarketMarkets,
-  getPolymarketOrderBooks,
-  getUnknownProposalKeyData,
+  getPolymarketMarketInformation,
+  getPolymarketOrderBook,
+  getProposedPriceRequestsOO,
   storeNotifiedProposals,
-  PolymarketMarketWithAncillaryData,
-  FormattedProposePriceEvent,
 } from "./common";
-import { logProposalHighVolume, logProposalOrderBook, logUnknownMarketProposal } from "./MonitorLogger";
+
+export const tryHexToUtf8String = (ancillaryData: string): string => {
+  try {
+    return ethers.utils.toUtf8String(ancillaryData);
+  } catch (err) {
+    return ancillaryData;
+  }
+};
 
 export async function monitorTransactionsProposedOrderBook(
   logger: typeof Logger,
   params: MonitoringParams
 ): Promise<void> {
   const networker = new Networker(logger);
-  const currentBlockNumber = await params.provider.getBlockNumber();
 
-  const pastNotifiedProposals = await getNotifiedProposals();
+  const proposedPriceRequestsOOv2 = await getProposedPriceRequestsOO("v2");
+  const proposedPriceRequestsOOv1 = await getProposedPriceRequestsOO("v1");
 
-  const daysToLookup = 30; // This bot only looks back 1 day for proposals.
-
-  // These values are hardcoded for the Polygon network as this bot is only intended to run on Polygon.
-  const maxBlockLookBack = params.maxBlockLookBack;
-  const blockLookup = 43200 * daysToLookup; // 1 day in blocks on Polygon is 43200 blocks.
-
-  const searchConfig = {
-    fromBlock: currentBlockNumber - blockLookup < 0 ? 0 : currentBlockNumber - blockLookup,
-    toBlock: currentBlockNumber,
-    maxBlockLookBack,
-  };
-
-  const oo = await getContractInstanceWithProvider<OptimisticOracleEthers>("OptimisticOracle", params.provider);
-  const oov2 = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>("OptimisticOracleV2", params.provider);
-
-  const eventsOo = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
-  const eventsOov2 = await paginatedEventQuery<ProposePriceEvent>(oov2, oov2.filters.ProposePrice(), searchConfig);
-  // Merge the events from both OO versions.
-  const proposalEvents = await formatPriceEvents([...eventsOo, ...eventsOov2]);
-
-  // Sort the proposalEvents array by event.timestamp in descending order so that the most recent events are first.
-  proposalEvents.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
-
-  const markets = await getPolymarketMarkets(params);
-
-  const marketsWithAncillary = await getMarketsAncillary(params, markets);
-
-  const proposedMarketsWithoutProposal: PolymarketMarketWithAncillaryData[] = [];
-
-  const isMatchingMarketAndProposalEvent = (
-    event: FormattedProposePriceEvent,
-    market: PolymarketWithEventData | PolymarketMarketWithAncillaryData
-  ) => {
-    return (
-      market.resolvedBy &&
-      event.requester.toLowerCase() === market.resolvedBy.toLowerCase() &&
-      event.ancillaryData.toLowerCase() === market.ancillaryData?.toLowerCase() &&
-      event.identifier === YES_OR_NO_QUERY
-    );
-  };
-
-  // Filter out markets that do not have a proposal event.
-  const marketsWithEventData: PolymarketWithEventData[] = marketsWithAncillary
-    .filter((market) => {
-      // If the market is resolved we don't need to check it.
-      if (market.resolved) return false;
-
-      // Events are sorted in descending order so we can stop searching once we find a proposal event for a market.
-      const found = proposalEvents.find((event) => isMatchingMarketAndProposalEvent(event, market));
-
-      // If we don't find a proposal event and the market is "proposed" then we need to log it as an unknown proposal.
-      if (!found && market.umaResolutionStatus && market.umaResolutionStatus.toLowerCase().includes("proposed")) {
-        proposedMarketsWithoutProposal.push(market);
-      }
-
-      return found;
-    })
-    .map((market) => {
-      const event = proposalEvents.find((event) => isMatchingMarketAndProposalEvent(event, market));
-      if (!event) throw new Error("Could not find event for market");
-      return {
-        ...market,
-        ...event,
-      };
-    })
-    .filter((market) => market.expirationTimestamp > Date.now() / 1000)
-    .filter((market) => !Object.keys(pastNotifiedProposals).includes(getMarketKeyToStore(market)));
-
-  // Log the markets that have been proposed but do not have a proposal event.
-  for (const market of proposedMarketsWithoutProposal) {
-    const unknownProposalData = getUnknownProposalKeyData(market.question);
-    const marketKey = getMarketKeyToStore(unknownProposalData);
-
-    // The first time we see a market proposal event missig we store it as not notified.
-    if (!Object.keys(pastNotifiedProposals).includes(marketKey)) {
-      await storeNotifiedProposals([{ ...unknownProposalData, notified: false }]);
-      continue;
-    }
-
-    const pastNotifiedProposal = pastNotifiedProposals[marketKey];
-    const now = Date.now() / 1000;
-    const timeSinceLastNotification = now - pastNotifiedProposal.notificationTimestamp;
-
-    // By default we only log unknown proposals if we don't find the proposal event after some time.
-    if (timeSinceLastNotification < params.unknownProposalNotificationInterval) continue;
-
-    // If we have already notified this market then we skip it.
-    if (pastNotifiedProposal.notified) continue;
-
-    await logUnknownMarketProposal(logger, {
-      adapterAddress: market.resolvedBy || "",
-      question: market.question,
-      questionID: market.questionID,
-      umaResolutionStatus: market.umaResolutionStatus,
-      endDate: market.endDate,
-      volumeNum: market.volumeNum,
-    });
-    await storeNotifiedProposals([{ ...unknownProposalData, notified: true }]);
-  }
-
-  // Get live order books for markets that have a proposal event.
-  const marketsWithOrderBooks = await getPolymarketOrderBooks(params, marketsWithEventData, networker);
-
-  // Get trades that have occurred since the proposal event
-  const marketsWithOrderBooksAndTrades = await getOrderFilledEvents(params, marketsWithOrderBooks);
+  const liveProposalRequests = [...proposedPriceRequestsOOv1, ...proposedPriceRequestsOOv2];
 
   const notifiedProposals = [];
-  console.log(`Checking proposal price for ${marketsWithOrderBooks.length} markets...`);
-  for (const market of marketsWithOrderBooksAndTrades) {
+
+  // Find the polymarket question IDs for the proposal events
+  const { found: polymarketMarketsProposals, notFound } = await findPolymarketQuestionIDs(params, liveProposalRequests);
+
+  if (notFound.length > 0) {
+    for (const market of notFound) {
+      logUnknownMarketProposal(logger, params.chainId, market);
+      notifiedProposals.push({
+        txHash: market.proposalHash,
+        question: "Unknown",
+        proposedPrice: market.proposedPrice,
+        requestTimestamp: market.requestTimestamp,
+      });
+    }
+  }
+
+  // Get Polymarket info for each market
+  const pm = await Promise.all(
+    polymarketMarketsProposals.map((market) => getPolymarketMarketInformation(params, market.questionID))
+  );
+
+  // Get live order books for markets that have a proposal event.
+  const marketsOrderbooks = await Promise.all(pm.map((p) => getPolymarketOrderBook(params, p.clobTokenIds, networker)));
+
+  // Get trades that have occurred since the proposal event
+  const marketsOrderFilledEvents = await Promise.all(
+    polymarketMarketsProposals.map((market, i) =>
+      getOrderFilledEvents(params, pm[i].clobTokenIds, Number(market.requestBlockNumber))
+    )
+  );
+
+  console.log(`Checking proposal price for ${polymarketMarketsProposals.length} markets...`);
+  for (let i = 0; i < polymarketMarketsProposals.length; i++) {
+    const market = polymarketMarketsProposals[i];
+    const polymarketInfo = pm[i];
+    const orderBook = marketsOrderbooks[i];
+    const orderFilledEvents = marketsOrderFilledEvents[i];
     const proposedOutcome = market.proposedPrice === "1.0" ? 0 : 1;
     const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
     const thresholdAsks = Number(process.env["THRESHOLD_ASKS"]) || 1;
     const thresholdBids = Number(process.env["THRESHOLD_BIDS"]) || 0;
     const thresholdVolume = Number(process.env["THRESHOLD_VOLUME"]) || 500000;
 
-    const sellingWinnerSide = market.orderBooks[proposedOutcome].asks.find((ask) => ask.price < thresholdAsks);
-    const buyingLoserSide = market.orderBooks[complementaryOutcome].bids.find((bid) => bid.price > thresholdBids);
+    const sellingWinnerSide = orderBook[proposedOutcome].asks.find((ask) => ask.price < thresholdAsks);
+    const buyingLoserSide = orderBook[complementaryOutcome].bids.find((bid) => bid.price > thresholdBids);
 
-    const soldWinnerSide = market.orderFilledEvents[proposedOutcome].filter(
+    const soldWinnerSide = orderFilledEvents[proposedOutcome].filter(
       (event) => event.type == "sell" && event.price < thresholdAsks
     );
-    const boughtLoserSide = market.orderFilledEvents[complementaryOutcome].filter(
+    const boughtLoserSide = orderFilledEvents[complementaryOutcome].filter(
       (event) => event.type == "buy" && event.price > thresholdBids
     );
     let notified = false;
-    if (market.volumeNum > thresholdVolume) {
+    if (polymarketInfo.volumeNum > thresholdVolume) {
       await logProposalHighVolume(
         logger,
         {
           proposedPrice: market.proposedPrice,
-          proposedOutcome: market.outcomes[proposedOutcome],
+          proposedOutcome: polymarketInfo.outcomes[proposedOutcome],
           proposalTime: market.proposalTimestamp,
-          question: market.question,
-          tx: market.txHash,
-          volumeNum: market.volumeNum,
-          outcomes: market.outcomes,
-          expirationTimestamp: market.expirationTimestamp,
-          eventIndex: market.eventIndex,
+          question: polymarketInfo.question,
+          tx: market.proposalHash,
+          volumeNum: polymarketInfo.volumeNum,
+          outcomes: polymarketInfo.outcomes,
+          expirationTimestamp: market.proposalExpirationTimestamp,
+          eventIndex: market.proposalLogIndex,
         },
         params
       );
       if (!notified) {
         notified = true;
-        notifiedProposals.push(market);
+        notifiedProposals.push({
+          txHash: market.proposalHash,
+          question: polymarketInfo.question,
+          proposedPrice: market.proposedPrice,
+          requestTimestamp: market.requestTimestamp,
+        });
       }
     }
 
@@ -183,23 +117,28 @@ export async function monitorTransactionsProposedOrderBook(
         logger,
         {
           proposedPrice: market.proposedPrice,
-          proposedOutcome: market.outcomes[proposedOutcome],
+          proposedOutcome: polymarketInfo.outcomes[proposedOutcome],
           proposalTime: market.proposalTimestamp,
-          question: market.question,
-          tx: market.txHash,
+          question: polymarketInfo.question,
+          tx: market.proposalHash,
           sellingWinnerSide,
           buyingLoserSide,
           soldWinnerSide,
           boughtLoserSide,
-          outcomes: market.outcomes,
-          expirationTimestamp: market.expirationTimestamp,
-          eventIndex: market.eventIndex,
+          outcomes: polymarketInfo.outcomes,
+          expirationTimestamp: market.proposalExpirationTimestamp,
+          eventIndex: market.proposalLogIndex,
         },
         params
       );
       if (!notified) {
         notified = true;
-        notifiedProposals.push(market);
+        notifiedProposals.push({
+          txHash: market.proposalHash,
+          question: polymarketInfo.question,
+          proposedPrice: market.proposedPrice,
+          requestTimestamp: market.requestTimestamp,
+        });
       }
     }
   }
