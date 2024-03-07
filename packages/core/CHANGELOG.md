@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.57.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.56.2...@uma/core@2.57.0) (2024-03-07)
+
+### Bug Fixes
+
+- add core network gas estimation settings ([#4696](https://github.com/UMAprotocol/protocol/issues/4696)) ([3b0f46e](https://github.com/UMAprotocol/protocol/commit/3b0f46e13f1415cb4c66c7ecfb27d5abc5d142f0))
+- fix foundry scripts in ci ([#4679](https://github.com/UMAprotocol/protocol/issues/4679)) ([ad06938](https://github.com/UMAprotocol/protocol/commit/ad06938135de61f0a3fa682a912f913c01c06167))
+
+### Features
+
+- add core network deployments ([#4702](https://github.com/UMAprotocol/protocol/issues/4702)) ([ef13bb4](https://github.com/UMAprotocol/protocol/commit/ef13bb4be3e0cadf826c7357d878a930b57ecc94))
+- add core-testnet deployments ([#4701](https://github.com/UMAprotocol/protocol/issues/4701)) ([f93eaa6](https://github.com/UMAprotocol/protocol/commit/f93eaa6acfc4dbb9c3c5d4cf6bb3904ab98eb9ae))
+- core deployment tasks ([#4695](https://github.com/UMAprotocol/protocol/issues/4695)) ([66be280](https://github.com/UMAprotocol/protocol/commit/66be280155423442388ebf28e2d1b706a6f57a17))
+- deploy to Blast Sepolia ([#4698](https://github.com/UMAprotocol/protocol/issues/4698)) ([eabea44](https://github.com/UMAprotocol/protocol/commit/eabea447ac1b7da4dced8c122f909dc0df82ff74))
+- old dvm contracts for sepolia ([#4722](https://github.com/UMAprotocol/protocol/issues/4722)) ([e2224e9](https://github.com/UMAprotocol/protocol/commit/e2224e92675092a2caf4838e89aed18bc5a5f249))
+- Relax OOv3 Interfaces Solidity Version Requirement to ^0.8.16 ([#4711](https://github.com/UMAprotocol/protocol/issues/4711)) ([0eac91f](https://github.com/UMAprotocol/protocol/commit/0eac91f2b9867a8f88897a248f7ccec1a91a28e1))
+- sepolia deployments ([#4717](https://github.com/UMAprotocol/protocol/issues/4717)) ([f3f5f16](https://github.com/UMAprotocol/protocol/commit/f3f5f1689e4f07c15bc12033ada7cb5dcfcbbbdf))
+
 ## [2.56.2](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.56.1...@uma/core@2.56.2) (2023-11-13)
 
 **Note:** Version bump only for package @uma/core

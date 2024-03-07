@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.12.0...@uma/api@0.13.0) (2024-03-07)
+
+### Features
+
+- **api:** api simulates osnap execution ([#4689](https://github.com/UMAprotocol/protocol/issues/4689)) ([8479f5d](https://github.com/UMAprotocol/protocol/commit/8479f5d534369db03f25b3d1e9fb37aa71407f19))
+- add tenderly types and api call ([#4684](https://github.com/UMAprotocol/protocol/issues/4684)) ([9d23652](https://github.com/UMAprotocol/protocol/commit/9d236526a8e582fd12802030f0500cdd36bf628b))
+- **api:** add boilerplate for osnap tenderly sim ([#4680](https://github.com/UMAprotocol/protocol/issues/4680)) ([e8a1911](https://github.com/UMAprotocol/protocol/commit/e8a19110a83703070b10a021c46da0bf355f826d))
+
 # [0.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.11.25...@uma/api@0.12.0) (2023-11-13)
 
 ### Features

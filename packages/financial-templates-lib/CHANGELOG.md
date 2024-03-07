@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.35.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.35.0...@uma/financial-templates-lib@2.35.1) (2024-03-07)
+
+### Bug Fixes
+
+- add core network gas estimation settings ([#4696](https://github.com/UMAprotocol/protocol/issues/4696)) ([3b0f46e](https://github.com/UMAprotocol/protocol/commit/3b0f46e13f1415cb4c66c7ecfb27d5abc5d142f0))
+- maxFeePerGas cannot be less than maxPriorityFeePerGas ([#4667](https://github.com/UMAprotocol/protocol/issues/4667)) ([d459c84](https://github.com/UMAprotocol/protocol/commit/d459c8423349a4409d48637c8aa5625e6729a25f))
+
 # [2.35.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.34.1...@uma/financial-templates-lib@2.35.0) (2023-11-13)
 
 ### Features
