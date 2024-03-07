@@ -29,7 +29,7 @@ WORKDIR /across-relayer
 RUN git clone https://github.com/across-protocol/relayer-v2.git .
 
 # Install depdencies.
-RUN yarn install --frozen-lockfile && yarn build
+RUN npx -y only-allow npm && yarn install --frozen-lockfile && yarn build
 
 # Set back the working directory to the protocol directory to default to that package.
 WORKDIR /protocol
