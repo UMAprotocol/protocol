@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.35.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.34.1...@uma/common@2.35.0) (2024-03-07)
+
+### Bug Fixes
+
+- tenderly simulation response interface ([#4674](https://github.com/UMAprotocol/protocol/issues/4674)) ([f7805af](https://github.com/UMAprotocol/protocol/commit/f7805aff7cb08b300d0672ea341a87bc503674b5))
+
+### Features
+
+- add tenderly fork management ([#4673](https://github.com/UMAprotocol/protocol/issues/4673)) ([f89720f](https://github.com/UMAprotocol/protocol/commit/f89720f02ea75e3666473e163d7ec920b19492b1))
+- core deployment tasks ([#4695](https://github.com/UMAprotocol/protocol/issues/4695)) ([66be280](https://github.com/UMAprotocol/protocol/commit/66be280155423442388ebf28e2d1b706a6f57a17))
+- deploy to Blast Sepolia ([#4698](https://github.com/UMAprotocol/protocol/issues/4698)) ([eabea44](https://github.com/UMAprotocol/protocol/commit/eabea447ac1b7da4dced8c122f909dc0df82ff74))
+- sepolia deployments ([#4717](https://github.com/UMAprotocol/protocol/issues/4717)) ([f3f5f16](https://github.com/UMAprotocol/protocol/commit/f3f5f1689e4f07c15bc12033ada7cb5dcfcbbbdf))
+- **common:** state override support in tenderly simulation ([#4688](https://github.com/UMAprotocol/protocol/issues/4688)) ([d14cd17](https://github.com/UMAprotocol/protocol/commit/d14cd17f16087a69cf829d2a6744ac2618197017))
+- generic balance monitor ([#4670](https://github.com/UMAprotocol/protocol/issues/4670)) ([1496075](https://github.com/UMAprotocol/protocol/commit/1496075c840b18690c6c9bd409d168f62ff09a2e))
+
 ## [2.34.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.34.0...@uma/common@2.34.1) (2023-11-13)
 
 ### Bug Fixes

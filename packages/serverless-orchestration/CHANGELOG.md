@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.15.6](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.15.5...@uma/serverless-orchestration@2.15.6) (2024-03-07)
+
+### Bug Fixes
+
+- correctly store block numbers in serverless hub ([#4700](https://github.com/UMAprotocol/protocol/issues/4700)) ([5b2d4c6](https://github.com/UMAprotocol/protocol/commit/5b2d4c6865230fb107787b3e908e662b315df49c))
+- multichain blocks in serverless hub ([#4706](https://github.com/UMAprotocol/protocol/issues/4706)) ([57b7f02](https://github.com/UMAprotocol/protocol/commit/57b7f026e4f8bce6aa9cf419f03df066937f72f9))
+
 ## [2.15.5](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.15.4...@uma/serverless-orchestration@2.15.5) (2023-11-13)
 
 **Note:** Version bump only for package @uma/serverless-orchestration

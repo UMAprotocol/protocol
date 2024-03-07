@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.5.1...@uma/monitor-v2@1.6.0) (2024-03-07)
+
+### Bug Fixes
+
+- oSnap automation polygon gas price estimation ([#4699](https://github.com/UMAprotocol/protocol/issues/4699)) ([0439ac4](https://github.com/UMAprotocol/protocol/commit/0439ac4dfeb26b48b51a48fc5c13ddba38c93f36))
+- polymarket api resolvedBy can be null ([#4716](https://github.com/UMAprotocol/protocol/issues/4716)) ([62841b8](https://github.com/UMAprotocol/protocol/commit/62841b8c74e344013ed6a6159bf279d3bae72b35))
+- remove vote periods from osnap ipfs verification ([#4704](https://github.com/UMAprotocol/protocol/issues/4704)) ([bc7aef9](https://github.com/UMAprotocol/protocol/commit/bc7aef9dc60190909036e1418647f429f3702096))
+
+### Features
+
+- add new polymarket adapter to notifier ([#4675](https://github.com/UMAprotocol/protocol/issues/4675)) ([fb3e604](https://github.com/UMAprotocol/protocol/commit/fb3e604cae657a9851f33016f90b1e1e8bb56f92))
+- add polymarket api key to notifier ([#4690](https://github.com/UMAprotocol/protocol/issues/4690)) ([565f238](https://github.com/UMAprotocol/protocol/commit/565f23855b6af5461611e09a71a7cace02023e66))
+- find markets ancillary data by adapter ([#4692](https://github.com/UMAprotocol/protocol/issues/4692)) ([1255d2c](https://github.com/UMAprotocol/protocol/commit/1255d2cd9967588f61ba7b48ef70c8ab5c96a81c))
+- fix polymarket notifier ancillary data fetching ([#4693](https://github.com/UMAprotocol/protocol/issues/4693)) ([b7ab330](https://github.com/UMAprotocol/protocol/commit/b7ab330c786521c1569f89ce8f00674f35018f7b))
+- generic balance monitor ([#4670](https://github.com/UMAprotocol/protocol/issues/4670)) ([1496075](https://github.com/UMAprotocol/protocol/commit/1496075c840b18690c6c9bd409d168f62ff09a2e))
+- impose gas usage limit for automated osnap execution ([#4677](https://github.com/UMAprotocol/protocol/issues/4677)) ([d71f315](https://github.com/UMAprotocol/protocol/commit/d71f315f671fbf9ee0cad1cbad6ce569a29455b6))
+- new snapshot proposal notifier ([#4671](https://github.com/UMAprotocol/protocol/issues/4671)) ([96cf5be](https://github.com/UMAprotocol/protocol/commit/96cf5be32a3f57ac761f004890dd3466c63e1fa5))
+- polymarket event not found tracking ([#4691](https://github.com/UMAprotocol/protocol/issues/4691)) ([71da258](https://github.com/UMAprotocol/protocol/commit/71da2587b97bb5bf928019ac39a07bd13225fa22))
+- skip disputes and execution for blacklisted assertions ([#4666](https://github.com/UMAprotocol/protocol/issues/4666)) ([ae65ded](https://github.com/UMAprotocol/protocol/commit/ae65deda00cbfbe466fe666c93ac236e8a552ee7))
+
 ## [1.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.5.0...@uma/monitor-v2@1.5.1) (2023-11-13)
 
 ### Bug Fixes

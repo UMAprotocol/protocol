@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.29.2...@uma/scripts@1.30.0) (2024-03-07)
+
+### Features
+
+- **script:** update change final fee script ([#4708](https://github.com/UMAprotocol/protocol/issues/4708)) ([8a67a9b](https://github.com/UMAprotocol/protocol/commit/8a67a9bed38360bdcba2abc1b74fd32a73a98c6a))
+
 ## [1.29.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.29.1...@uma/scripts@1.29.2) (2023-11-13)
 
 **Note:** Version bump only for package @uma/scripts
