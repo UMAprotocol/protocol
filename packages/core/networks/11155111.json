@@ -74,5 +74,25 @@
   {
     "contractName": "OptimisticGovernor",
     "address": "0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461"
+  },
+  {
+    "contractName": "Voting",
+    "address": "0x3380C312Eb515349c726e40bDAF300e84Cf17169"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0x9a77F8e235D48CFaFD6B62820B5e69C49e427E83"
+  },
+  {
+    "contractName": "Governor",
+    "address": "0x2664447836a0d94Ed610cB76D85784Db291BFB5f"
+  },
+  {
+    "contractName": "DesignatedVotingFactory",
+    "address": "0x140D4AE14f52c793631071800dF57F2C22397e51"
+  },
+  {
+    "contractName": "Proposer",
+    "address": "0x5ecfD9c2F7bca8a9aD4a70378434df4fb7a282F2"
   }
 ]
