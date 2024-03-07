@@ -127,10 +127,26 @@ task("setup-dvmv2-testnet", "Configures DVMv2 on L1 testnet")
     }
 
     /** ***********************************
+     * Transferring VotingV2 ownership to GovernorV2
+     *************************************/
+
+    const votingV2 = new web3.eth.Contract(VotingV2.abi, VotingV2.address);
+    console.log(`Using VotingV2 @ ${votingV2.options.address}`);
+
+    const GovernorV2 = await deployments.get("GovernorV2");
+
+    const currentOwner = await votingV2.methods.owner().call();
+    if (currentOwner !== GovernorV2.address) {
+      const txn = await votingV2.methods.transferOwnership(GovernorV2.address).send({ from: deployer });
+      console.log(`Set VotingV2 owner to GovernorV2 @ ${GovernorV2.address}, tx: ${txn.transactionHash}`);
+    } else {
+      console.log(`VotingV2 @ ${VotingV2.address} already owned by GovernorV2`);
+    }
+
+    /** ***********************************
      * Setting up roles for GovernorV2
      *************************************/
 
-    const GovernorV2 = await deployments.get("GovernorV2");
     const governorV2 = new web3.eth.Contract(GovernorV2.abi, GovernorV2.address);
     console.log(`Using GovernorV2 @ ${governorV2.options.address}`);
 
