@@ -3,6 +3,7 @@ import { Logger, ONE_SCALED, PolymarketTradeInformation } from "./common";
 
 import type { MonitoringParams, OptimisticPriceRequest, PolymarketMarketGraphqlProcessed } from "./common";
 import { tryHexToUtf8String } from "../utils/contracts";
+import { ethers } from "ethers";
 
 function generateUILink(transactionHash: string, chainId: number, eventIndex: number) {
   return `<https://oracle.uma.xyz/request?transactionHash=${transactionHash}&chainId=${chainId}&oracleType=OptimisticV2&eventIndex=${eventIndex} | View in the Oracle UI.>`;
@@ -34,9 +35,9 @@ export async function logMarketSentimentDiscrepancy(
     at: "PolymarketMonitor",
     message: "Difference between proposed price and market signal! 🚨",
     mrkdwn:
-      ` A price of ${market.proposedPrice} corresponding to outcome ${
+      ` A price of ${ethers.utils.formatEther(market.proposedPrice)} corresponding to outcome ${
         market.proposedPrice.eq(ONE_SCALED) ? 0 : 1
-      } was proposed at ${market.proposalTimestamp} for the following question:` +
+      } was proposed at ${market.proposalTimestamp.toString()} for the following question:` +
       ` ${market.question}.` +
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
@@ -74,13 +75,13 @@ export async function logProposalHighVolume(
     at: "PolymarketMonitor",
     message: "A market with high volume has been proposed and needs to be checked! 🚨",
     mrkdwn:
-      ` A price of ${market.proposedPrice} corresponding to outcome ${
+      ` A price of ${ethers.utils.formatEther(market.proposedPrice)} corresponding to outcome ${
         market.proposedPrice.eq(ONE_SCALED) ? 0 : 1
-      } was proposed at ${market.proposalTimestamp} for the following question:` +
+      } was proposed at ${market.proposalTimestamp.toString()} for the following question:` +
       ` ${market.question}.` +
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
-      +" The proposal can be disputed until " +
+      " The proposal can be disputed until " +
       new Date(Number(market.proposalExpirationTimestamp) * 1000).toUTCString() +
       ". " +
       generateUILink(market.requestHash, params.chainId, Number(market.requestLogIndex)) +
@@ -101,8 +102,7 @@ export async function logFailedMarketProposalVerification(
     mrkdwn:
       ` Failed to verify market:` +
       ` Ancillary data: ${tryHexToUtf8String(market.ancillaryData)}.` +
-      ` Price request timestamp ${market.requestTimestamp}.` +
-      ` The proposal expiration date is ${new Date(market.proposalExpirationTimestamp.toNumber()).toUTCString()}.` +
+      ` Price request timestamp ${market.requestTimestamp.toString()}.` +
       " The proposal can be disputed until " +
       new Date(Number(market.proposalExpirationTimestamp) * 1000).toUTCString() +
       ". " +
