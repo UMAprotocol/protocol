@@ -1,5 +1,5 @@
 import { createEtherscanLinkMarkdown } from "@uma/common";
-import { Logger, PolymarketTradeInformation } from "./common";
+import { Logger, ONE_SCALED, PolymarketTradeInformation } from "./common";
 
 import type { MonitoringParams, OptimisticPriceRequest, PolymarketMarketGraphqlProcessed } from "./common";
 import { tryHexToUtf8String } from "../utils/contracts";
@@ -35,7 +35,7 @@ export async function logMarketSentimentDiscrepancy(
     message: "Difference between proposed price and market signal! 🚨",
     mrkdwn:
       ` A price of ${market.proposedPrice} corresponding to outcome ${
-        market.proposedPrice === "1.0" ? 0 : 1
+        market.proposedPrice.eq(ONE_SCALED) ? 0 : 1
       } was proposed at ${market.proposalTimestamp} for the following question:` +
       ` ${market.question}.` +
       ` In the following transaction: ` +
@@ -75,7 +75,7 @@ export async function logProposalHighVolume(
     message: "A market with high volume has been proposed and needs to be checked! 🚨",
     mrkdwn:
       ` A price of ${market.proposedPrice} corresponding to outcome ${
-        market.proposedPrice === "1.0" ? 0 : 1
+        market.proposedPrice.eq(ONE_SCALED) ? 0 : 1
       } was proposed at ${market.proposalTimestamp} for the following question:` +
       ` ${market.question}.` +
       ` In the following transaction: ` +
@@ -92,7 +92,8 @@ export async function logProposalHighVolume(
 export async function logFailedMarketProposalVerification(
   logger: typeof Logger,
   chainId: number,
-  market: OptimisticPriceRequest
+  market: OptimisticPriceRequest,
+  error: Error
 ): Promise<void> {
   logger.error({
     at: "PolymarketMonitor",
@@ -101,12 +102,13 @@ export async function logFailedMarketProposalVerification(
       ` Failed to verify market:` +
       ` Ancillary data: ${tryHexToUtf8String(market.ancillaryData)}.` +
       ` Price request timestamp ${market.requestTimestamp}.` +
-      ` The proposal expiration date is ${new Date(market.proposalExpirationTimestamp).toUTCString()}.` +
+      ` The proposal expiration date is ${new Date(market.proposalExpirationTimestamp.toNumber()).toUTCString()}.` +
       " The proposal can be disputed until " +
       new Date(Number(market.proposalExpirationTimestamp) * 1000).toUTCString() +
       ". " +
       generateUILink(market.requestHash, chainId, Number(market.requestLogIndex)) +
       " Please check the market proposal and dispute if necessary.",
+    error,
     notificationPath: "polymarket-notifier",
   });
 }

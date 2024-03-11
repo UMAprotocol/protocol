@@ -8,7 +8,6 @@ import { BigNumber, Event, ethers } from "ethers";
 
 import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
-import { blockDefaults } from "../utils/constants";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 
 export { Logger } from "@uma/financial-templates-lib";
@@ -16,6 +15,10 @@ export { getContractInstanceWithProvider } from "../utils/contracts";
 
 const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
+
+export const ONE_SCALED = ethers.utils.parseUnits("1", 18);
+
+const POLYGON_BLOCKS_PER_HOUR = 1800;
 
 export interface MonitoringParams {
   binaryAdapterAddress: string;
@@ -71,16 +74,20 @@ export interface MarketOrderbook {
 
 export interface OptimisticPriceRequest {
   requestHash: string;
-  requestTimestamp: string;
-  requestLogIndex: string;
+  requestTimestamp: BigNumber;
+  requestLogIndex: number;
   requester: string;
   ancillaryData: string;
-  requestBlockNumber: string;
-  proposedPrice: string;
-  proposalTimestamp: string;
+  requestBlockNumber: number;
+  proposedPrice: BigNumber;
+  proposalTimestamp: BigNumber;
   proposalHash: string;
-  proposalExpirationTimestamp: string;
-  proposalLogIndex: string;
+  proposalExpirationTimestamp: BigNumber;
+  proposalLogIndex: number;
+}
+
+interface StoredNotifiedProposal {
+  proposalHash: string;
 }
 
 export const getPolymarketProposedPriceRequestsOO = async (
@@ -89,8 +96,8 @@ export const getPolymarketProposedPriceRequestsOO = async (
   requesterAddresses: string[]
 ): Promise<OptimisticPriceRequest[]> => {
   const currentBlockNumber = await params.provider.getBlockNumber();
-  const oneDay = blockDefaults[params.chainId].oneHour * 24 * 3;
-  const startBlockNumber = currentBlockNumber - oneDay;
+  const oneDayInBlocks = POLYGON_BLOCKS_PER_HOUR * 24;
+  const startBlockNumber = currentBlockNumber - oneDayInBlocks;
   const maxBlockLookBack = params.maxBlockLookBack;
 
   const searchConfig = {
@@ -101,7 +108,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
 
   const oo = await getContractInstanceWithProvider<OptimisticOracleEthers | OptimisticOracleV2Ethers>(
     version == "v1" ? "OptimisticOracle" : "OptimisticOracleV2",
-    getRetryProvider(params.chainId)
+    params.provider
   );
 
   const events = await paginatedEventQuery<ProposePriceEvent>(
@@ -116,16 +123,16 @@ export const getPolymarketProposedPriceRequestsOO = async (
     .map((event) => {
       return {
         requestHash: event.transactionHash,
-        requestLogIndex: event.logIndex.toString(),
+        requestLogIndex: event.logIndex,
         requester: event.args.requester,
-        requestTimestamp: event.args.timestamp.toString(),
+        requestTimestamp: event.args.timestamp,
         ancillaryData: event.args.ancillaryData,
-        requestBlockNumber: event.blockNumber.toString(),
-        proposedPrice: event.args.proposedPrice.toString(),
-        proposalTimestamp: event.args.timestamp.toString(),
+        requestBlockNumber: event.blockNumber,
+        proposedPrice: event.args.proposedPrice,
+        proposalTimestamp: event.args.timestamp,
         proposalHash: event.transactionHash,
-        proposalExpirationTimestamp: event.args.expirationTimestamp.toString(),
-        proposalLogIndex: event.logIndex.toString(),
+        proposalExpirationTimestamp: event.args.expirationTimestamp,
+        proposalLogIndex: event.logIndex,
       };
     });
 };
@@ -136,7 +143,7 @@ export const getPolymarketMarketInformation = async (
 ): Promise<PolymarketMarketGraphqlProcessed> => {
   const query = `
     {
-      markets(where: "LOWER(question_ID) = LOWER('${questionID}')") {
+      markets(where: "LOWER(question_id) = LOWER('${questionID}') or LOWER(neg_risk_request_id) = LOWER('${questionID}')") {
         clobTokenIds
         volumeNum
         outcomes
@@ -240,7 +247,7 @@ export const getPolymarketOrderBook = async (
   params: MonitoringParams,
   clobTokenIds: [string, string],
   networker: NetworkerInterface
-): Promise<MarketOrderbook[]> => {
+): Promise<[MarketOrderbook, MarketOrderbook]> => {
   const [marketOne, marketTwo] = clobTokenIds;
   const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
   const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
@@ -282,23 +289,28 @@ export const getPolymarketOrderBook = async (
   ];
 };
 
-export const getMarketKeyToStore = (market: OptimisticPriceRequest): string => {
+export const getMarketKeyToStore = (market: StoredNotifiedProposal | OptimisticPriceRequest): string => {
   return market.proposalHash;
 };
 
 export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceRequest[]): Promise<void> => {
   const promises = notifiedContracts.map((contract) => {
     const key = datastore.key(["NotifiedProposals", getMarketKeyToStore(contract)]);
-    datastore.save({ key: key, data: contract });
+    datastore.save({
+      key: key,
+      data: {
+        proposalHash: contract.proposalHash,
+      },
+    });
   });
   await Promise.all(promises);
 };
 
 export const getNotifiedProposals = async (): Promise<{
-  [key: string]: OptimisticPriceRequest;
+  [key: string]: StoredNotifiedProposal;
 }> => {
   const notifiedProposals = (await datastore.runQuery(datastore.createQuery("NotifiedProposals")))[0];
-  return notifiedProposals.reduce((contracts: OptimisticPriceRequest[], contract: OptimisticPriceRequest) => {
+  return notifiedProposals.reduce((contracts: StoredNotifiedProposal[], contract: StoredNotifiedProposal) => {
     return {
       ...contracts,
       [getMarketKeyToStore(contract)]: contract,

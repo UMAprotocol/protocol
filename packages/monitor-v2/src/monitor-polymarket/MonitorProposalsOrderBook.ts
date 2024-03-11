@@ -7,6 +7,7 @@ import {
 import {
   Logger,
   MonitoringParams,
+  ONE_SCALED,
   OptimisticPriceRequest,
   calculatePolymarketQuestionID,
   getMarketKeyToStore,
@@ -29,22 +30,16 @@ export async function monitorTransactionsProposedOrderBook(
   const livePolymarketProposalRequests = [...proposedPriceRequestsOOv2, ...proposedPriceRequestsOOv1];
 
   console.log(`Checking proposal price for ${livePolymarketProposalRequests.length} markets...`);
-  const notifiedProposals = [];
 
+  const notifiedProposals = [];
   for (const market of livePolymarketProposalRequests) {
     if (Object.keys(pastNotifiedProposals).includes(getMarketKeyToStore(market))) continue;
     try {
       const processingResult = await processMarketProposal(market, params, logger);
       if (processingResult.notified) notifiedProposals.push(market);
     } catch (error) {
-      await logFailedMarketProposalVerification(logger, params.chainId, market);
+      await logFailedMarketProposalVerification(logger, params.chainId, market, error as Error);
       notifiedProposals.push(market);
-      logger.error({
-        at: "PolymarketMonitor",
-        message: `Error processing proposal ${market.proposalHash}`,
-        error: error,
-        notificationPath: "polymarket-notifier",
-      });
     }
   }
 
@@ -63,7 +58,7 @@ async function processMarketProposal(market: OptimisticPriceRequest, params: Mon
     Number(market.requestBlockNumber)
   );
 
-  const proposedOutcome = market.proposedPrice === "1.0" ? 0 : 1;
+  const proposedOutcome = market.proposedPrice.eq(ONE_SCALED) ? 0 : 1;
   const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
 
   const thresholds = {
