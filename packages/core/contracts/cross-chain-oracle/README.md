@@ -26,7 +26,7 @@ Note: in the commands below, you'll need to set the relevant `NODE_URL_X` enviro
 
 If you're having trouble redeploying contracts because `hardhat` wants to "reuse" contracts, then run `yarn clean && yarn` in the `core` package to reset `deployments`.
 
-## Step-by-step guide to deployments on rollups: Arbitrum, Boba and Optimism
+## Step-by-step guide to deployments on rollups: Arbitrum, Boba, Optimism and Base
 
 The steps below explain how to deploy the cross-chain oracle onto supported rollups.
 
@@ -39,21 +39,22 @@ export NODE_URL_1=<MAINNET_URL>
 export NODE_URL_42161=<ARBITRUM_URL>
 export NODE_URL_288=<BOBA_URL>
 export NODE_URL_10=<OPTIMISM_URL>
+export NODE_URL_8453=<BASE_URL>
 export MNEMONIC="Your 12-word mnemonic here"
 ```
 
 2. Deploy mainnet contracts. Note that the following commands are slightly different based on which L2 you're deploying to.
 
 ```sh
-yarn hardhat deploy --network mainnet --tags [l1-arbitrum-xchain/l1-boba-xchain/l1-optimism-xchain]
+yarn hardhat deploy --network mainnet --tags [l1-arbitrum-xchain/l1-boba-xchain/l1-optimism-xchain/l1-base-xchain]
 ```
 
-Add the deployed [Arbitrum/Boba/Optimism]\_ParentMessenger contract to the associated networks file.
+Add the deployed [Arbitrum/Boba/Optimism/Base]\_ParentMessenger contract to the associated networks file.
 
 3. Deploy l2 contracts:
 
 ```sh
-yarn hardhat deploy --network [arbitrum/boba/optimism] --tags [l2-arbitrum-xchain/l2-boba-xchain/l2-optimism-xchain],Registry
+yarn hardhat deploy --network [arbitrum/boba/optimism/base] --tags [l2-arbitrum-xchain/l2-boba-xchain/l2-optimism-xchain/l2-base-xchain],Registry
 
 ```
 
@@ -70,24 +71,26 @@ yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --lic
 yarn hardhat --network boba sourcify
 # Optimism (etherscan-verify does not work on Optimism so we use hardhat verify)
 yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 3> <ASSOCIATED CONSTRUCTOR PARAMS FROM 3>
+# Base
+yarn hardhat --network base verify <EACH-DEPLOYED ADDRESS IN STEP 3> <ASSOCIATED CONSTRUCTOR PARAMS FROM 3>
 ```
 
 5. Setup mainnet contracts
 
 ```sh
-yarn hardhat [setup-l1-arbitrum-xchain/setup-l1-boba-xchain/setup-l1-optimism-xchain] --network mainnet
+yarn hardhat [setup-l1-arbitrum-xchain/setup-l1-boba-xchain/setup-l1-optimism-xchain/setup-l1-base-xchain] --network mainnet
 ```
 
 6. Setup l2 contracts
 
 ```sh
-yarn hardhat setup-l2-xchain --network [arbitrum/boba/optimism]
+yarn hardhat setup-l2-xchain --network [arbitrum/boba/optimism/base]
 ```
 
-7. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle` and required contracts to the L2.
+7. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle,OptimisticOracleV2,OptimisticOracleV3` and required contracts to the L2.
 
 ```sh
-yarn hardhat deploy --network [arbitrum/boba/optimism] --tags OptimisticOracle,IdentifierWhitelist,AddressWhitelist,Store
+yarn hardhat deploy --network [arbitrum/boba/optimism/base] --tags OptimisticOracle,OptimisticOracleV2,OptimisticOracleV3,IdentifierWhitelist,AddressWhitelist,Store
 ```
 
 8. Verify contracts:
@@ -99,27 +102,31 @@ yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --lic
 yarn hardhat --network boba sourcify
 # Optimism (etherscan-verify does not work on Optimism so we use hardhat verify)
 yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 7> <ASSOCIATED CONSTRUCTOR PARAMS FROM 7>
+# Base
+yarn hardhat --network base verify <EACH-DEPLOYED ADDRESS IN STEP 7> <ASSOCIATED CONSTRUCTOR PARAMS FROM 7>
 ```
 
 9. Setup l2 optimistic oracle:
 
 ```sh
 # Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
-CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba/optimism] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
+CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba/optimism/base] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
 
 # Seed Collateral whitelist with all collaterals already approved on Mainnet. This will also pull the final fee from the L1 store and set it in the L2 Store.
-yarn hardhat --network [arbitrum/boba/optimism]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [42161/288/10]
+yarn hardhat --network [arbitrum/boba/optimism/base]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [42161/288/10/8453]
 
 # Point L2 Finder to remaining Optimistic Oracle system contracts.
-yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [arbitrum/boba/optimism]
-# Register OptimisticOracle as registered contract.
-yarn hardhat register-accounts --network [arbitrum/boba/optimism] --account <OPTIMISTIC_ORACLE_ADDRESS>
+yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --optimisticoraclev2 --optimisticoraclev3 --store --network [arbitrum/boba/optimism/base]
+# Register OptimisticOracles as registered contract.
+yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLE_ADDRESS>
+yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLEV2_ADDRESS>
+yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLEV3_ADDRESS>
 ```
 
 10. Perform other set up when appropriate such as transferring ownership to the Governor and Governor spokes. Run the following script to check all required steps:
 
 ```sh
-yarn hardhat verify-xchain --network mainnet --l2 [arbitrum/boba/optimism]
+yarn hardhat verify-xchain --network mainnet --l2 [arbitrum/boba/optimism/base]
 ```
 
 ## L2->L1 Message passing and finalization
@@ -128,7 +135,9 @@ The cross-chain-oracle contracts send messages from L1<->L2 under different situ
 
 To finalize **Arbitrum** transactions see the docs [here](https://github.com/OffchainLabs/arbitrum-tutorials/tree/master/packages/outbox-execute) on how to do this. Alternatively, Arbiscan provides a list of L2->L1 transactions and a UI for finalizing those that have passed liveness. This can also be used if you don't want to run the `outbox-execute` script. The relevant page can be found [here](https://arbiscan.io/txsExit).
 
-To finalize **Optimism** transactions see the equivalent script [here](https://github.com/ethereum-optimism/optimism/blob/develop/packages/message-relayer/src/exec/withdraw.ts). Optimism's Etherscan also provides a UI, similar to Arbitrum, which can be found [here](https://optimistic.etherscan.io/txsExit).
+To finalize **Optimism** transactions see the equivalent script [here](https://github.com/ethereum-optimism/optimism/blob/34e7450873548f65bf3160ca58eed2328907310a/packages/sdk/tasks/finalize-withdrawal.ts#L14). Optimism's Etherscan also provides a UI, similar to Arbitrum, which can be found [here](https://optimistic.etherscan.io/txsExit).
+
+To finalize **Base** transactions see the equivalent script [here](https://github.com/ethereum-optimism/optimism/blob/develop/packages/message-relayer/src/exec/withdraw.ts). Base's Etherscan also provides a UI, similar to Optimism, which can be found [here](https://basescan.org/txsExit).
 
 **Boba** at present auto-finalizes all L2->L1 transactions without any required user intervention.
 

@@ -8,7 +8,7 @@ import Web3 from "web3";
 const { utf8ToHex, toBN } = Web3.utils;
 const assert = require("assert");
 
-const L2_CHAIN_NAMES = ["arbitrum", "optimism", "boba"];
+const L2_CHAIN_NAMES = ["arbitrum", "optimism", "boba", "base"];
 L2_CHAIN_NAMES.forEach((chainName) =>
   assert(isPublicNetwork(chainName), "L2_CHAIN_NAMES contains invalid public network name")
 );
@@ -156,9 +156,11 @@ async function setupOvmBasedL1Chain(hre_: any, chainId: number) {
   console.log(`Found OracleHub @ ${oracleHub.options.address}`);
   console.log(`Found GovernorHub @ ${governorHub.options.address}`);
 
-  const OracleSpoke = await companionNetworks.optimism.deployments.get("OracleSpoke");
-  const ChildMessenger = await companionNetworks.optimism.deployments.get(`${chainName}_ChildMessenger`);
-  const GovernorSpoke = await companionNetworks.optimism.deployments.get("GovernorSpoke");
+  const OracleSpoke = await companionNetworks[chainName.toLowerCase()].deployments.get("OracleSpoke");
+  const ChildMessenger = await companionNetworks[chainName.toLowerCase()].deployments.get(
+    `${chainName}_ChildMessenger`
+  );
+  const GovernorSpoke = await companionNetworks[chainName.toLowerCase()].deployments.get("GovernorSpoke");
 
   await setupParentMessenger(messenger, deployer, ChildMessenger, OracleHub, GovernorHub, OracleSpoke, GovernorSpoke);
 
@@ -277,6 +279,13 @@ task("setup-l1-boba-xchain", "Configures L1 cross chain smart contracts for Boba
   await setupOvmBasedL1Chain(hre_, 288);
 });
 
+task("setup-l1-base-xchain", "Configures L1 cross chain smart contracts for Base bridge").setAction(async function (
+  _,
+  hre_
+) {
+  await setupOvmBasedL1Chain(hre_, 8453);
+});
+
 task("setup-l1-optimism-xchain", "Configures L1 cross chain smart contracts for Optimism bridge").setAction(
   async function (_, hre_) {
     await setupOvmBasedL1Chain(hre_, 10);
@@ -353,11 +362,13 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
       l2IdentifierWhitelist,
       l2AddressWhitelist,
       l2OptimisticOracle,
+      l2OptimisticOracleV2,
+      l2OptimisticOracleV3,
       l2Finder,
     ] = await Promise.all([
       deployments.get("GovernorHub"),
       deployments.get("OracleHub"),
-      deployments.get("Governor"),
+      deployments.get("GovernorV2"),
       deployments.get(`${l2ChainName}_ParentMessenger`),
       companionNetworkGet(`${l2ChainName}_ChildMessenger`),
       companionNetworkGet(`OracleSpoke`),
@@ -368,6 +379,8 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
       companionNetworkGet(`IdentifierWhitelist`),
       companionNetworkGet(`AddressWhitelist`),
       companionNetworkGet(`OptimisticOracle`),
+      companionNetworkGet(`OptimisticOracleV2`),
+      companionNetworkGet(`OptimisticOracleV3`),
       companionNetworkGet(`Finder`),
     ]);
 
@@ -456,11 +469,20 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
 
     console.group("Registry");
     const l2RegistryContract = new l2Web3.eth.Contract(l2Registry.abi, l2Registry.address);
-    const [optimisticOracleRegistered, l2RegistryOwner] = await Promise.all([
+    const [
+      optimisticOracleRegistered,
+      optimisticOracleV2Registered,
+      optimisticOracleV3Registered,
+      l2RegistryOwner,
+    ] = await Promise.all([
       l2RegistryContract.methods.isContractRegistered(l2OptimisticOracle.address).call(),
+      l2RegistryContract.methods.isContractRegistered(l2OptimisticOracleV2.address).call(),
+      l2RegistryContract.methods.isContractRegistered(l2OptimisticOracleV3.address).call(),
       l2RegistryContract.methods.getMember(0).call(),
     ]);
     console.log(`- OptimisticOracle registered: ${optimisticOracleRegistered ? "✅" : "❌"}`);
+    console.log(`- OptimisticOracleV2 registered: ${optimisticOracleV2Registered ? "✅" : "❌"}`);
+    console.log(`- OptimisticOracleV3 registered: ${optimisticOracleV3Registered ? "✅" : "❌"}`);
     console.log(`- Owned by GovernorSpoke: ${l2RegistryOwner === governorSpoke.address ? "✅" : "❌"}`);
     console.groupEnd();
 
@@ -477,6 +499,15 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
     );
     const [l2IdentifierWhitelistOwner] = await Promise.all([l2IdentifierWhitelistContract.methods.owner().call()]);
     console.log(`- Owned by GovernorSpoke: ${l2IdentifierWhitelistOwner === governorSpoke.address ? "✅" : "❌"}`);
+    console.groupEnd();
+
+    console.group("OptimisticOracleV3");
+    const l2OptimisticOracleV3Contract = new l2Web3.eth.Contract(
+      l2OptimisticOracleV3.abi,
+      l2OptimisticOracleV3.address
+    );
+    const [l2OptimisticOracleV3Owner] = await Promise.all([l2OptimisticOracleV3Contract.methods.owner().call()]);
+    console.log(`- Owned by GovernorSpoke: ${l2OptimisticOracleV3Owner === governorSpoke.address ? "✅" : "❌"}`);
     console.groupEnd();
 
     console.group("AddressWhitelist");
@@ -504,6 +535,8 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
       l2FinderAddressWhitelist,
       l2FinderOracle,
       l2FinderOptimisticOracle,
+      l2FinderOptimisticOracleV2,
+      l2FinderOptimisticOracleV3,
       l2FinderChildMessenger,
     ] = await Promise.all([
       l2FinderContract.methods.owner().call(),
@@ -512,6 +545,8 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
       l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.CollateralWhitelist)).call(),
       l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.Oracle)).call(),
       l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.OptimisticOracle)).call(),
+      l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.OptimisticOracleV2)).call(),
+      l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.OptimisticOracleV3)).call(),
       l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.ChildMessenger)).call(),
     ]);
     console.log(`- Owned by GovernorSpoke: ${l2FinderOwner === governorSpoke.address ? "✅" : "❌"}`);
@@ -534,6 +569,16 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
     console.log(
       `- Set "${interfaceName.OptimisticOracle}" in Finder: ${
         l2FinderOptimisticOracle === l2OptimisticOracle.address ? "✅" : "❌"
+      }`
+    );
+    console.log(
+      `- Set "${interfaceName.OptimisticOracleV2}" in Finder: ${
+        l2FinderOptimisticOracleV2 === l2OptimisticOracleV2.address ? "✅" : "❌"
+      }`
+    );
+    console.log(
+      `- Set "${interfaceName.OptimisticOracleV3}" in Finder: ${
+        l2FinderOptimisticOracleV3 === l2OptimisticOracleV3.address ? "✅" : "❌"
       }`
     );
     console.log(

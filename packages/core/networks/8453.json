@@ -1,0 +1,47 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0x7E6d9618Ba8a87421609352d6e711958A97e2512"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0x689FF0D2c17ECbB01477420aB18482A8DAd45186"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0xd0Ce2F132d606A19B01C03f6c327F324aDD8FCd3"
+  },
+  {
+    "contractName": "Optimism_ChildMessenger",
+    "deploymentName": "Base_ChildMessenger",
+    "address": "0x981A64547d2979510de5b409C7D107938Cc0885e"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x10be62b7d5c02e122a0c32e3dff7e8bf5f9f7f20"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x880d041D67aaB3B062995d11d4aD9c1018A3b02f"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xAd517D72B9Cd31F578197D5e903d041B88c69795"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x0F7fC5E6482f096380db6158f978167b57388deE"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8"
+  },
+  {
+    "contractName": "Store",
+    "address": "0xa799650614f84e0B7E7E99e12d5DFc241907cd85"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0x2aBf1Bd76655de80eDB3086114315Eec75AF500c"
+  }
+]
