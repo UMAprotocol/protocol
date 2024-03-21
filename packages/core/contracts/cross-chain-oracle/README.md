@@ -58,7 +58,7 @@ yarn hardhat deploy --network [arbitrum/boba/optimism/base] --tags [l2-arbitrum-
 
 ```
 
-Add the deployed [Arbitrum/Boba/Optimism] Registry, finder, OracleSpoke, GovernorSpoke and x_ChildMessenger contracts to the associated networks file.
+Add the deployed [Arbitrum/Boba/Optimism/Base] Registry, finder, OracleSpoke, GovernorSpoke and x_ChildMessenger contracts to the associated networks file.
 
 4. Verify contracts:
 
@@ -87,7 +87,7 @@ yarn hardhat [setup-l1-arbitrum-xchain/setup-l1-boba-xchain/setup-l1-optimism-xc
 yarn hardhat setup-l2-xchain --network [arbitrum/boba/optimism/base]
 ```
 
-7. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle,OptimisticOracleV2,OptimisticOracleV3` and required contracts to the L2.
+7. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle,OptimisticOracleV2` and required contracts to the L2, the `OptimisticOracleV3` contract is deployed in a later step.
 
 ```sh
 yarn hardhat deploy --network [arbitrum/boba/optimism/base] --tags OptimisticOracle,OptimisticOracleV2,OptimisticOracleV3,IdentifierWhitelist,AddressWhitelist,Store
@@ -116,14 +116,22 @@ CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [a
 yarn hardhat --network [arbitrum/boba/optimism/base]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [42161/288/10/8453]
 
 # Point L2 Finder to remaining Optimistic Oracle system contracts.
-yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --optimisticoraclev2 --optimisticoraclev3 --store --network [arbitrum/boba/optimism/base]
+yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --optimisticoraclev2 --store --network [arbitrum/boba/optimism/base]
 # Register OptimisticOracles as registered contract.
 yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLE_ADDRESS>
 yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLEV2_ADDRESS>
 yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLEV3_ADDRESS>
 ```
 
-10. Perform other set up when appropriate such as transferring ownership to the Governor and Governor spokes. Run the following script to check all required steps:
+10. At this point we can deploy the `OptimisticOracleV3` contract to the L2:
+
+- First deploy the `OptimisticOracleV3` contract with the required constructor arguments.
+- Then run again the `setup-finder` script to point the L2 Finder to the `OptimisticOracleV3` contract.
+  - Run: `yarn hardhat setup-finder --optimisticoraclev3 --network [arbitrum/boba/optimism/base]`
+- Finally, register the `OptimisticOracleV3` contract as a registered contract.
+  - Run: `yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLE_V3_ADDRESS>`
+
+11. Perform other set up when appropriate such as transferring ownership to the Governor and Governor spokes. Run the following script to check all required steps:
 
 ```sh
 yarn hardhat verify-xchain --network mainnet --l2 [arbitrum/boba/optimism/base]
