@@ -11,14 +11,16 @@ import { assert } from "chai";
 import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
 import {
-  MonitoringParams,
-  TradeInformation,
   getMarketKeyToStore,
-  getUnknownProposalKeyData,
+  MarketOrderbook,
+  MonitoringParams,
+  PolymarketMarketGraphqlProcessed,
+  PolymarketTradeInformation,
 } from "../src/monitor-polymarket/common";
 import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
+import { tryHexToUtf8String } from "../src/utils/contracts";
 
 const ethers = hre.ethers;
 
@@ -31,50 +33,33 @@ describe("PolymarketNotifier", function () {
   const identifier = formatBytes32String("TEST_IDENTIFIER");
   const ancillaryData = toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
 
-  const mockData: any[] = [
+  const ONE = ethers.utils.parseEther("1");
+
+  const marketInfo: PolymarketMarketGraphqlProcessed = {
+    clobTokenIds: ["0x1234", "0x1234"],
+    volumeNum: 200_000,
+    outcomes: ["Yes", "No"],
+    outcomePrices: ["1", "0"],
+    question: "Will NATO expand by June 30?",
+  };
+
+  const emptyOrders: [MarketOrderbook, MarketOrderbook] = [
     {
-      resolvedBy: "0x1234",
-      questionID: "0x123456789",
-      createdAt: "2023-01-30 19:06:23.106+00",
-      question: "Will NATO expand by June 30?",
-      outcomes: ["Yes", "No"],
-      outcomePrices: ["1", "0"],
-      liquidityNum: 2499.29,
-      volumeNum: 29198.55,
-      clobTokenIds: [
-        "41909194383884489857051533149267887932706513238474711698327450766299364965897",
-        "46296129944740145134028887886488800558338482961897658822042889421944724008114",
-      ],
-      orderFilledEvents: [[], []],
-      ancillaryData,
-      txHash: "0xffc94945ccdfced83fb9c4ea3aaecd145130f7d4065f78656b05f4afc33d6e06",
-      requester: "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74",
-      proposer: "0xdebA18a1CD3fd1c8FE74640d3959bA03AC7DB5f3",
-      timestamp: 1675106721,
-      eventTimestamp: 1680615675,
-      eventBlockNumber: 41135219,
-      expirationTimestamp: 1680622875,
-      proposalTimestamp: 1680615675,
-      identifier,
-      eventIndex: 366,
-      umaResolutionStatus: "requested",
-      orderBooks: [
-        {
-          bids: [],
-          asks: [],
-        },
-        {
-          bids: [],
-          asks: [],
-        },
-      ],
+      bids: [],
+      asks: [],
+    },
+    {
+      bids: [],
+      asks: [],
     },
   ];
+
+  const emptyTradeInformation: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [[], []];
 
   // Create monitoring params for single block to pass to monitor modules.
   const createMonitoringParams = async (): Promise<MonitoringParams> => {
     const binaryAdapterAddress = "0x1234";
-    const ctfAdapterAddress = "0x1234";
+    const ctfAdapterAddress = await deployer.getAddress();
     const ctfAdapterAddressV2 = "0x1234";
     const ctfExchangeAddress = "0x1234";
     const graphqlEndpoint = "endpoint";
@@ -151,12 +136,20 @@ describe("PolymarketNotifier", function () {
     sandbox.restore();
   });
 
+  function mockFunctionWithReturnValue(functionName, mockValue) {
+    const mockDataFunction = sandbox.stub();
+    mockDataFunction.returns(mockValue);
+    sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
+  }
+
+  function mockFunctionThrowsError(functionName, errorMessage = "Mock error") {
+    const mockDataFunction = sandbox.stub();
+    mockDataFunction.throws(new Error(errorMessage));
+    sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
+  }
+
   it("It should notify if there are orders over the threshold", async function () {
-    mockData[0].orderBooks = [
-      {
-        bids: [],
-        asks: [],
-      },
+    const orders: [MarketOrderbook, MarketOrderbook] = [
       {
         bids: [],
         asks: [
@@ -166,17 +159,18 @@ describe("PolymarketNotifier", function () {
           },
         ],
       },
+      {
+        bids: [],
+        asks: [],
+      },
     ];
 
-    const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns(mockData);
-    sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+    mockFunctionWithReturnValue("getPolymarketOrderBook", orders);
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
-    await oov2.requestPrice(identifier, 1, mockData[0].ancillaryData, votingToken.address, 0);
-    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, mockData[0].ancillaryData, 1);
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -194,24 +188,9 @@ describe("PolymarketNotifier", function () {
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
   it("It should not notify if order book is empty", async function () {
-    mockData[0].proposedPrice = "1.0";
-    mockData[0].orderBooks = [
-      {
-        bids: [],
-        asks: [],
-      },
-      {
-        bids: [],
-        asks: [],
-      },
-    ];
-
-    const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns(mockData);
-    sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -222,38 +201,23 @@ describe("PolymarketNotifier", function () {
     assert.equal(spy.callCount, 0);
   });
   it("It should notify if there are sell trades over the threshold", async function () {
-    mockData[0].proposedPrice = "1.0";
-    mockData[0].orderBooks = [
-      {
-        bids: [],
-        asks: [],
-      },
-      {
-        bids: [],
-        asks: [],
-      },
-    ];
-    mockData[0].orderFilledEvents = [
+    const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
         {
           price: 0.9,
+          type: "sell",
           amount: 100,
           timestamp: 123,
-          type: "sell",
         },
-      ] as TradeInformation[],
+      ],
       [],
     ];
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+    mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
-    const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns(mockData);
-    sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
-
-    await oov2.requestPrice(identifier, 1, mockData[0].ancillaryData, votingToken.address, 0);
-    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, mockData[0].ancillaryData, 1);
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -271,42 +235,30 @@ describe("PolymarketNotifier", function () {
         .toString()
         .includes(
           ` Someone sold winner outcome tokens at a price below the threshold. These are the trades: ${JSON.stringify(
-            mockData[0].orderFilledEvents[0]
+            orderFilledEvents[0]
           )}`
         )
     ); // price
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
   it("It should notify if there are buy trades over the threshold", async function () {
-    mockData[0].proposedPrice = "1.0";
-    mockData[0].orderBooks = [
-      {
-        bids: [],
-        asks: [],
-      },
-      {
-        bids: [],
-        asks: [],
-      },
-    ];
-    mockData[0].orderFilledEvents = [
+    const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
       [
         {
-          price: 0.9,
+          price: 0.1,
+          type: "buy",
           amount: 100,
           timestamp: 123,
-          type: "buy",
         },
-      ] as TradeInformation[],
+      ],
     ];
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+    mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
-    const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns(mockData);
-    sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -324,35 +276,19 @@ describe("PolymarketNotifier", function () {
         .toString()
         .includes(
           ` Someone bought loser outcome tokens at a price above the threshold. These are the trades: ${JSON.stringify(
-            mockData[0].orderFilledEvents[1]
+            orderFilledEvents[1]
           )}`
         )
     ); // price
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
   it("It should notify if there are proposals with high volume", async function () {
-    mockData[0].proposedPrice = "1.0";
-    mockData[0].orderBooks = [
-      {
-        bids: [],
-        asks: [],
-      },
-      {
-        bids: [],
-        asks: [],
-      },
-    ];
-    mockData[0].orderFilledEvents = [[], [] as TradeInformation[]];
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", { ...marketInfo, volumeNum: 2_000_000 });
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
-    const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns([{ ...mockData[0], volumeNum: 2_000_000 }]);
-    sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
-
-    await oov2.requestPrice(identifier, 1, mockData[0].ancillaryData, votingToken.address, 0);
-    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, mockData[0].ancillaryData, 1);
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -367,25 +303,15 @@ describe("PolymarketNotifier", function () {
       "A market with high volume has been proposed and needs to be checked! 🚨"
     );
     assert.equal(spyLogLevel(spy, 0), "error");
-    assert.isTrue(spy.getCall(0).toString().includes(mockData[0].question));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
-  it("It should notify if market adapter is unknown and already seen", async function () {
-    const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns([{ ...mockData[0], resolvedBy: "unknown", umaResolutionStatus: "proposed" }]);
-    sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+  it("It should notify if market polymarket information is not found", async function () {
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockFunctionThrowsError("getPolymarketMarketInformation");
 
-    getNotifiedProposalsStub.restore();
-    const getNotifiedProposalsMock = sandbox.stub();
-    getNotifiedProposalsMock.returns({
-      [getMarketKeyToStore(getUnknownProposalKeyData(mockData[0].question))]: {
-        notificationTimestamp: Date.now() / 1000 - 3600,
-      },
-    });
-    sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
@@ -395,28 +321,41 @@ describe("PolymarketNotifier", function () {
     // The spy should have been called as the market adapter is unknown.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
-    assert.equal(spy.getCall(0).lastArg.message, "Market proposal event not found for proposed market! 🚨");
+    assert.equal(spy.getCall(0).lastArg.message, "Failed to verify proposed market, please verify manually! 🚨");
     assert.equal(spyLogLevel(spy, 0), "error");
-    assert.isTrue(spy.getCall(0).toString().includes(`Proposal event not found for market: ${mockData[0].question}`));
+    assert.isTrue(spy.getCall(0).toString().includes(`Failed to verify market:`));
+    assert.isTrue(
+      spy
+        .getCall(0)
+        .toString()
+        .includes(` Ancillary data: ${tryHexToUtf8String(ethers.utils.hexlify(ancillaryData))}.`)
+    );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
-  it("It should not notify if unknown market adapter was already notified", async function () {
+  it("It should not notify if already notified", async function () {
     sandbox.restore();
-    const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns([{ ...mockData[0], resolvedBy: "unknown", umaResolutionStatus: "proposed" }]);
-    sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+    const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
+      [],
+      [
+        {
+          price: 0.1,
+          type: "buy",
+          amount: 100,
+          timestamp: 123,
+        },
+      ],
+    ];
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+    mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
-    const storeNotifiedProposalsMock = sandbox.stub();
-    storeNotifiedProposalsMock.returns({});
-    sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    const tx = await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     getNotifiedProposalsStub.restore();
     const getNotifiedProposalsMock = sandbox.stub();
     getNotifiedProposalsMock.returns({
-      [getMarketKeyToStore(getUnknownProposalKeyData(mockData[0].question))]: { notified: true },
+      [getMarketKeyToStore({ proposalHash: tx.hash })]: { proposalHash: tx.hash },
     });
     sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
@@ -429,50 +368,31 @@ describe("PolymarketNotifier", function () {
     assert.equal(spy.callCount, 0);
   });
   it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
-    mockData[0].proposedPrice = "1.0";
-    mockData[0].orderBooks = [
-      {
-        bids: [],
-        asks: [],
-      },
-      {
-        bids: [],
-        asks: [],
-      },
-    ];
-    mockData[0].orderFilledEvents = [
-      [],
+    const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
         {
           price: 0.9,
+          type: "sell",
           amount: 100,
           timestamp: 123,
-          type: "buy",
         },
-      ] as TradeInformation[],
+      ],
+      [],
     ];
 
-    const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns([{ ...mockData[0], volumeNum: 2_000_000 }]);
-    sandbox.stub(commonModule, "getPolymarketMarkets").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getMarketsAncillary").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(mockDataFunction);
-    sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(mockDataFunction);
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", { ...marketInfo, volumeNum: 2_000_000 });
+    mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
-    // unwrap the storeNotifiedProposals function to check the arguments
-    const storeNotifiedProposalsMock = sandbox.stub();
-    storeNotifiedProposalsMock.returns({});
-    sandbox.replace(commonModule, "storeNotifiedProposals", storeNotifiedProposalsMock);
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // Two notifications should have been sent
+    // The spy should have been called 2 times
     assert.equal(spy.callCount, 2);
-
-    // Only store once
-    assert.equal(storeNotifiedProposalsMock.callCount, 1);
   });
 });
