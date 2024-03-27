@@ -327,40 +327,93 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
       closePrice: BN;
     }[]
   > {
-    // See https://docs.cryptowat.ch/rest-api/markets/ohlc for how this url is constructed.
-    const ohlcUrl = [
-      `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc`,
-      `?before=${toTimestamp}`,
-      `&after=${fromTimestamp}`,
-      `&periods=${this.ohlcPeriod}`,
-      this.apiKey ? `&apikey=${this.apiKey}` : "",
-    ].join("");
+    let ohlcUrl;
+    let ohlcResponse;
+    if (this.exchange === "coinbase-pro") {
+      const pairMappings = {
+        ethusd: "ETH-USD",
+      };
+      const pair = pairMappings[this.pair as keyof typeof pairMappings];
+      if (!pair) throw new Error(`🚨Could not find pair for ${this.pair}`);
 
-    const ohlcResponse = await this.networker.getJson(ohlcUrl);
+      ohlcUrl = `https://api.pro.coinbase.com/products/${pair}/candles?start=${fromTimestamp}&end=${toTimestamp}&granularity=${this.ohlcPeriod}`;
+
+      ohlcResponse = await this.networker.getJson(ohlcUrl);
+      // https://docs.cloud.coinbase.com/exchange/reference/exchangerestapi_getproductcandles
+      ohlcResponse = {
+        result: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          [this.ohlcPeriod]: ohlcResponse.map((ohlc: any) => {
+            return [ohlc[0], ohlc[3], ohlc[2], ohlc[1], ohlc[4], ohlc[5], undefined];
+          }),
+        },
+      };
+    } else if (this.exchange === "binance") {
+      const pairMappings = {
+        ethusdt: "ETHUSDT",
+      };
+      const granularityMappings = {
+        "60": "1h",
+      };
+
+      if (!pairMappings[this.pair as keyof typeof pairMappings])
+        throw new Error(`🚨Could not find pair for ${this.pair}`);
+      if (!granularityMappings[this.ohlcPeriod.toString() as keyof typeof granularityMappings])
+        throw new Error(`🚨Could not find granularity for ${this.ohlcPeriod}`);
+
+      const granularity = granularityMappings[this.ohlcPeriod.toString() as keyof typeof granularityMappings];
+      const pair = pairMappings[this.pair as keyof typeof pairMappings];
+
+      ohlcUrl = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${granularity}&startTime=${
+        fromTimestamp * 1000
+      }&endTime=${toTimestamp * 1000}`;
+
+      // https://binance-docs.github.io/apidocs/spot/en/#kline-candlestick-data
+      ohlcResponse = await this.networker.getJson(ohlcUrl);
+
+      ohlcResponse = {
+        result: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          [this.ohlcPeriod]: ohlcResponse.map((ohlc: any) => {
+            return [ohlc[0] / 1000, ohlc[1], ohlc[2], ohlc[3], ohlc[4], ohlc[5], ohlc[7]];
+          }),
+        },
+      };
+    } else if (this.exchange === "kraken") {
+      const pairMappings = {
+        ethusd: "ETHUSD",
+      };
+      const pairResultMappings = {
+        ethusd: "XETHZUSD",
+      };
+      const pair = pairMappings[this.pair as keyof typeof pairMappings];
+      const pairResultName = pairResultMappings[this.pair as keyof typeof pairResultMappings];
+      if (!pair) throw new Error(`🚨Could not find pair for ${this.pair}`);
+      if (!pairResultName) throw new Error(`🚨Could not find pairResultName for ${this.pair}`);
+
+      ohlcUrl = `https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=${this.ohlcPeriod}&since=${fromTimestamp}`;
+
+      ohlcResponse = await this.networker.getJson(ohlcUrl);
+      // https://docs.kraken.com/rest/#tag/Market-Data/operation/getOHLCData
+      ohlcResponse = {
+        result: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          [this.ohlcPeriod]: ohlcResponse.result[pairResultName].map((ohlc: any) => {
+            return [ohlc[0], ohlc[1], ohlc[2], ohlc[3], ohlc[4], ohlc[6], undefined];
+          }),
+        },
+      };
+    } else {
+      throw new Error(`🚨Could not find exchange for ${this.exchange}`);
+    }
 
     if (!ohlcResponse || !ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
       throw new Error(`🚨Could not parse ohlc result from url ${ohlcUrl}: ${JSON.stringify(ohlcResponse)}`);
     }
 
-    // Return data structure:
-    // {
-    //   "result": {
-    //     "OhlcInterval": [
-    //     [
-    //       CloseTime,
-    //       OpenPrice,
-    //       HighPrice,
-    //       LowPrice,
-    //       ClosePrice,
-    //       Volume,
-    //       QuoteVolume
-    //     ],
-    //     ...
-    //     ]
-    //   }
-    // }
     // For more info, see: https://docs.cryptowat.ch/rest-api/markets/ohlc
-    return (ohlcResponse.result[this.ohlcPeriod.toString()] as number[][])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((ohlcResponse.result[this.ohlcPeriod.toString()] as any) as number[][])
       .map((ohlc: number[]) => ({
         // Output data should be a list of objects with only the open and close times and prices.
         openTime: ohlc[0] - this.ohlcPeriod,
