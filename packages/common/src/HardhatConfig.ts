@@ -107,7 +107,7 @@ export function getHardhatConfig(
         chainId: 1,
         url: getNodeUrl("mainnet", true, 1),
         accounts: { mnemonic },
-        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba", xdai: "xdai" },
+        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba", xdai: "xdai", base: "base" },
       },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },
@@ -117,6 +117,12 @@ export function getHardhatConfig(
         chainId: 168587773,
         url: getNodeUrl("blast-sepolia", true, 168587773),
         accounts: { mnemonic },
+      },
+      base: {
+        chainId: 8453,
+        url: getNodeUrl("base", true, 8453),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
       },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true, 42), accounts: { mnemonic } },
       optimism: {
@@ -211,6 +217,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://api-goerli.basescan.org/api",
             browserURL: "https://goerli.basescan.org",
+          },
+        },
+        {
+          network: "base",
+          chainId: 8453,
+          urls: {
+            apiURL: "https://api.basescan.org/api",
+            browserURL: "https://basescan.org",
           },
         },
         {

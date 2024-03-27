@@ -260,6 +260,12 @@ async function findL2TokenForL1Token(l1Web3: Web3, l2Web3: Web3, l2chainid: numb
     return await _findL2TokenForOvmChain(l2Web3, l1TokenAddress);
   }
 
+  if (l2chainid == 8453) {
+    const foundOnChain = await _findL2TokenForOvmChain(l2Web3, l1TokenAddress);
+    if (foundOnChain != ZERO_ADDRESS) return foundOnChain;
+    else return await _findL2TokenFromTokenList(l1Web3, l2chainid, l1TokenAddress);
+  }
+
   if (l2chainid == 42161) {
     return await _findL2TokenFromTokenList(l1Web3, l2chainid, l1TokenAddress);
   }
@@ -282,6 +288,18 @@ async function _findL2TokenFromTokenList(l1Web3: Web3, l2chainid: number, l1Toke
       ?.symbol;
     if (!searchSymbol) return ZERO_ADDRESS;
     return tokenList.find((element: any) => element.chainId == 10 && element.symbol == searchSymbol).address;
+  }
+  if (l2chainid == 8453) {
+    // See https://docs.base.org/tokens/list/ for more information
+    const response = await fetch("https://static.optimism.io/optimism.tokenlist.json");
+    const body = await response.text();
+    const tokenList = JSON.parse(body).tokens;
+    const searchSymbol = tokenList.find(
+      (element: any) => element.chainId == 1 && element.address.toLowerCase() == l1TokenAddress.toLowerCase()
+    )?.symbol;
+    if (!searchSymbol) return ZERO_ADDRESS;
+    const found = tokenList.find((element: any) => element.chainId == 8453 && element.symbol == searchSymbol);
+    return found?.address ?? ZERO_ADDRESS;
   }
   if (l2chainid == 42161) {
     const response = await fetch("https://bridge.arbitrum.io/token-list-42161.json");
