@@ -29,7 +29,7 @@
     "winston-transport": "^4.3.0"
   },
   "devDependencies": {
-    "@openzeppelin/contracts": "4.9.6",
+    "@openzeppelin/contracts": "5.0.2",
     "@tsconfig/node14": "^1.0.0",
     "@types/bn.js": "^5.1.0",
     "@types/sinon": "^10.0.0",
