@@ -1,0 +1,2 @@
+export const BASE_CHAIN_ID = 8453;
+export const PARENT_MESSENGER_DEFAULT_GAS_LIMIT = 500_000;
