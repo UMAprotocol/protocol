@@ -37,6 +37,7 @@ import { delay } from "../helpers/delay";
 
 import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
+import { DatastoreTransport } from "./DatastoreTransport";
 
 // Custom interface for transports that have the isFlushed getter.
 interface FlushableTransport extends Transport {
@@ -58,6 +59,8 @@ function isLoggerFlushed(logger: AugmentedLogger): boolean {
 // not, it will block until such time that all these transports have been flushed. This still can exit before all
 // transports are flushed if the logger flush timeout is reached.
 export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
+  pauseLogQueueProcessing(logger.transports); // Signal to pause log queue processing.
+
   const waitForFlushed = async (): Promise<void> => {
     while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
   };
@@ -100,6 +103,23 @@ function filterLogErrorTransports(transports: Transport[]): Transport[] {
   );
 }
 
+// Signal pause queue processing from persistent storage on all transports that support it.
+// This is intended to be used only when flushing logger before termination.
+function pauseLogQueueProcessing(transports: Transport[]): void {
+  for (const transport of transports) {
+    if (transport instanceof DatastoreTransport) transport.pauseProcessing();
+  }
+}
+
+// Initiate log queue processing from persistent storage on all transports that support it.
+function resumeLogQueueProcessing(transports: Transport[]): void {
+  for (const transport of transports) {
+    // Initiate log que processing. We don't await it as this should run in background and it is controlled externally
+    // via pauseProcessing method.
+    if (transport instanceof DatastoreTransport) transport.processLogQueue();
+  }
+}
+
 export function createNewLogger(
   injectedTransports: Transport[] = [],
   transportsConfig = {},
@@ -130,6 +150,9 @@ export function createNewLogger(
       });
     }
   });
+
+  // Resume log queue processing from persistent storage. Any errors should be handled by above error event listener.
+  resumeLogQueueProcessing(logger.transports);
 
   return logger;
 }
