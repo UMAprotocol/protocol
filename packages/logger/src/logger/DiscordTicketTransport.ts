@@ -79,10 +79,6 @@ export class DiscordTicketTransport extends DatastoreTransport {
     if (isDiscordTicketInfo(info)) {
       // Callback and errors are handled within base class.
       await super.log(info, callback);
-
-      // Initiate log que processing. We don't await it as this should run in background and it is controlled externally
-      // via pauseProcessing method.
-      this.processLogQueue();
     } else {
       // Signal we're done here.
       callback();

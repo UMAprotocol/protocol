@@ -78,6 +78,9 @@ export abstract class DatastoreTransport extends Transport {
       } catch (error) {
         return callback(new TransportError(this.transport, error, info));
       }
+      // Initiate log que processing. We don't await it as this should run in background and it is controlled externally
+      // via pauseProcessing method.
+      this.processLogQueue();
     }
 
     callback();
