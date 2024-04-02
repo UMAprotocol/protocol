@@ -1,5 +1,5 @@
 import { paginatedEventQuery } from "@uma/common";
-import { OracleHubEthers, OracleRootTunnelEthers, VotingV2Ethers } from "@uma/contracts-node";
+import { OracleHubEthers, OracleRootTunnelEthers, VotingV2Ethers, getAddress } from "@uma/contracts-node";
 import {
   ArbitrumParentMessenger,
   OptimismParentMessenger,
@@ -9,6 +9,7 @@ import { BigNumber, utils } from "ethers";
 import { logPricePublished } from "./BotLogger";
 import {
   ARBITRUM_CHAIN_ID,
+  BASE_CHAIN_ID,
   BLOCKS_WEEK_MAINNET,
   Logger,
   MonitoringParams,
@@ -109,8 +110,15 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     params.provider
   );
 
+  const baseParentMessenger = await getContractInstanceWithProvider<OptimismParentMessenger>(
+    "Optimism_ParentMessenger",
+    params.provider,
+    await getAddress("Base_ParentMessenger", params.chainId)
+  );
+
   const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
   const optimismL1CallValue = await optimismParentMessenger.getL1CallValue();
+  const baseL1CallValue = await baseParentMessenger.getL1CallValue();
   const currentBlockNumber = await params.provider.getBlockNumber();
 
   const lookBack = params.blockLookback || BLOCKS_WEEK_MAINNET;
@@ -132,18 +140,27 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     const isPolygon = decodedAncillary.endsWith(`,childChainId:${POLYGON_CHAIN_ID}`);
     const isArbitrum = decodedAncillary.endsWith(`,childChainId:${ARBITRUM_CHAIN_ID}`);
     const isOptimism = decodedAncillary.endsWith(`,childChainId:${OPTIMISM_CHAIN_ID}`);
+    const isBase = decodedAncillary.endsWith(`,childChainId:${BASE_CHAIN_ID}`);
 
     if (isPolygon) {
       await processOracleRoot(logger, params, oracleRootTunnel, event);
-    } else if (isOptimism || isArbitrum) {
-      await processOracleHub(
-        logger,
-        params,
-        oracleHub,
-        event,
-        isArbitrum ? ARBITRUM_CHAIN_ID : OPTIMISM_CHAIN_ID,
-        isArbitrum ? arbitrumL1CallValue : optimismL1CallValue
-      );
+    } else if (isOptimism || isArbitrum || isBase) {
+      let chainId, callValue;
+
+      if (isArbitrum) {
+        chainId = ARBITRUM_CHAIN_ID;
+        callValue = arbitrumL1CallValue;
+      } else if (isOptimism) {
+        chainId = OPTIMISM_CHAIN_ID;
+        callValue = optimismL1CallValue;
+      } else if (isBase) {
+        chainId = BASE_CHAIN_ID;
+        callValue = baseL1CallValue;
+      } else {
+        throw new Error("Invalid chainId");
+      }
+
+      await processOracleHub(logger, params, oracleHub, event, chainId, callValue);
     }
   }
   console.log("Done publishing prices.");
