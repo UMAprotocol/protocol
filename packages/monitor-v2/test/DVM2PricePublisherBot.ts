@@ -20,7 +20,13 @@ import { BigNumber, BytesLike, utils } from "ethers";
 import hre from "hardhat";
 import sinon from "sinon";
 import { publishPrices } from "../src/price-publisher/PublishPrices";
-import { BotModes, MonitoringParams, OPTIMISM_CHAIN_ID, POLYGON_CHAIN_ID } from "../src/price-publisher/common";
+import {
+  BASE_CHAIN_ID,
+  BotModes,
+  MonitoringParams,
+  OPTIMISM_CHAIN_ID,
+  POLYGON_CHAIN_ID,
+} from "../src/price-publisher/common";
 import { dvm2Fixture } from "./fixtures/DVM2.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { Signer, formatBytes32String, getContractFactory, moveToNextPhase, moveToNextRound } from "./utils";
@@ -64,6 +70,7 @@ describe("DVM2 Price Publisher", function () {
   let oracleRootTunnel: OracleRootTunnelMockEthers;
   let arbitrumParentMessenger: ArbitrumParentMessenger;
   let optimismParentMessenger: OptimismParentMessenger;
+  let baseParentMessenger: OptimismParentMessenger;
   let registry: RegistryEthers;
   let identifierWhitelist: IdentifierWhitelistEthers;
   let deployer: Signer;
@@ -198,14 +205,23 @@ describe("DVM2 Price Publisher", function () {
       OVM_L1CrossDomainMessengerMock.address,
       OPTIMISM_CHAIN_ID
     )) as OptimismParentMessenger;
+    baseParentMessenger = (await (await getContractFactory("Optimism_ParentMessenger", deployer)).deploy(
+      OVM_L1CrossDomainMessengerMock.address,
+      BASE_CHAIN_ID
+    )) as OptimismParentMessenger;
 
     await optimismParentMessenger.setChildMessenger(randomAddress);
     await optimismParentMessenger.setOracleHub(oracleHub.address);
 
+    await baseParentMessenger.setChildMessenger(randomAddress);
+    await baseParentMessenger.setOracleHub(oracleHub.address);
+
     await (await oracleHub.setMessenger(OPTIMISM_CHAIN_ID, optimismParentMessenger.address)).wait();
+    await (await oracleHub.setMessenger(BASE_CHAIN_ID, baseParentMessenger.address)).wait();
 
     addGlobalHardhatTestingAddress("Arbitrum_ParentMessenger", arbitrumParentMessenger.address);
     addGlobalHardhatTestingAddress("Optimism_ParentMessenger", optimismParentMessenger.address);
+    addGlobalHardhatTestingAddress("Base_ParentMessenger", baseParentMessenger.address);
     addGlobalHardhatTestingAddress("OracleHub", oracleHub.address);
     addGlobalHardhatTestingAddress("OracleRootTunnel", oracleRootTunnel.address);
 
@@ -426,6 +442,77 @@ describe("DVM2 Price Publisher", function () {
     const bridgeSigner = (await ethers.getImpersonatedSigner(OVM_L1CrossDomainMessengerMock.address)) as Signer;
 
     await optimismParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
+
+    await requestVoteAndResolve(
+      staker,
+      ethers.utils.parseEther("1"),
+      testRequestTime,
+      testIdentifier,
+      ancillaryDataStamp
+    );
+
+    const optimismL1CallValue = await optimismParentMessenger.getL1CallValue();
+
+    await (
+      await oracleHub.publishPrice(OPTIMISM_CHAIN_ID, testIdentifier, testRequestTime, ancillaryDataStamp, {
+        value: optimismL1CallValue,
+      })
+    ).wait();
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+
+    await publishPrices(spyLogger, await createMonitoringParams());
+
+    // There should be no logs as there are no prices to publish.
+    assert.isNull(spy.getCall(0));
+  });
+
+  it("Message received from Base", async function () {
+    const ancillaryDataStamp = stampAncillaryData(testAncillaryData, BASE_CHAIN_ID);
+
+    const encodedData = defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bytes"],
+      [testIdentifier, testRequestTime, ancillaryDataStamp]
+    );
+
+    const bridgeSigner = (await ethers.getImpersonatedSigner(OVM_L1CrossDomainMessengerMock.address)) as Signer;
+
+    await baseParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
+
+    await requestVoteAndResolve(
+      staker,
+      ethers.utils.parseEther("1"),
+      testRequestTime,
+      testIdentifier,
+      ancillaryDataStamp
+    );
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+
+    await publishPrices(spyLogger, await createMonitoringParams());
+
+    assert.equal(spy.getCall(0).lastArg.at, "PricePublisher");
+    assert.equal(spy.getCall(0).lastArg.message, "Price Published ✅");
+    assert.equal(spyLogLevel(spy, 0), "warn");
+    assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
+    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(ethers.utils.toUtf8String(ancillaryDataStamp)));
+    assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "price-publisher");
+  });
+
+  it("Message received from Base already published", async function () {
+    const ancillaryDataStamp = stampAncillaryData(testAncillaryData, BASE_CHAIN_ID);
+
+    const encodedData = defaultAbiCoder.encode(
+      ["bytes32", "uint256", "bytes"],
+      [testIdentifier, testRequestTime, ancillaryDataStamp]
+    );
+
+    const bridgeSigner = (await ethers.getImpersonatedSigner(OVM_L1CrossDomainMessengerMock.address)) as Signer;
+
+    await baseParentMessenger.connect(bridgeSigner).processMessageFromCrossChainChild(encodedData);
 
     await requestVoteAndResolve(
       staker,
