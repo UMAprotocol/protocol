@@ -73,11 +73,6 @@ export interface AugmentedLogger extends _Logger {
   transportErrorLogger: _Logger; // Dedicated logger for logging transport execution errors.
 }
 
-// Helper type guard for dictionary objects. Useful when dealing with any info type passed to log method.
-export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
-  return typeof arg === "object" && arg !== null && !Array.isArray(arg);
-};
-
 function createBaseLogger(level: string, transports: Transport[], botIdentifier: string): _Logger {
   return winston.createLogger({
     level,

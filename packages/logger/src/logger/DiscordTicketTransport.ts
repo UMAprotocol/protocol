@@ -10,9 +10,9 @@ import { Client, GatewayIntentBits, TextBasedChannel } from "discord.js";
 import * as ss from "superstruct";
 import Transport from "winston-transport";
 
+import { isDictionary } from "../helpers/typeGuards";
 import { DatastoreTransport } from "./DatastoreTransport";
 import { removeAnchorTextFromLinks } from "./Formatters";
-import { isDictionary } from "./Logger";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 

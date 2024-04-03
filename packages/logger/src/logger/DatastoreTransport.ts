@@ -5,7 +5,7 @@ import { Datastore, Key, PropertyFilter, and } from "@google-cloud/datastore";
 import Transport from "winston-transport";
 
 import { delay } from "../helpers/delay";
-import { isDictionary } from "./Logger";
+import { isDictionary } from "../helpers/typeGuards";
 import { TransportError } from "./TransportError";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
