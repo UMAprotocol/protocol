@@ -61,28 +61,28 @@ export abstract class DatastoreTransport extends Transport {
 
   // Note: info must be any because that's what the base class uses.
   async log(info: any, callback: (error?: unknown) => void): Promise<void> {
-    // We only support persisting dictionary object logs.
-    if (isDictionary(info)) {
-      try {
-        const logId = await this.getLogId();
-        const key = this.datastore.key([this.kind, logId]);
-        await this.datastore.save({
-          key,
-          data: {
-            logId,
-            botIdentifier: this.botIdentifier,
-            transport: this.transport,
-            info,
-          },
-          excludeFromIndexes: ["info"],
-        });
-      } catch (error) {
-        return callback(new TransportError(this.transport, error, info));
-      }
-      // Initiate log que processing. We don't await it as this should run in background and it is controlled externally
-      // via pauseProcessing method.
-      this.processLogQueue();
+    try {
+      // We only support persisting dictionary object logs.
+      if (!isDictionary(info)) throw new Error("Unsupported info type!");
+
+      const logId = await this.getLogId();
+      const key = this.datastore.key([this.kind, logId]);
+      await this.datastore.save({
+        key,
+        data: {
+          logId,
+          botIdentifier: this.botIdentifier,
+          transport: this.transport,
+          info,
+        },
+        excludeFromIndexes: ["info"],
+      });
+    } catch (error) {
+      return callback(new TransportError(this.transport, error, info));
     }
+    // Initiate log que processing. We don't await it as this should run in background and it is controlled externally
+    // via pauseProcessing method.
+    this.processLogQueue();
 
     callback();
   }
