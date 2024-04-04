@@ -33,6 +33,7 @@ import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
 import { TransportError } from "./TransportError";
 import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
+import { noBotId } from "../constants";
 import { delay } from "../helpers/delay";
 
 import type { Logger as _Logger } from "winston";
@@ -118,7 +119,7 @@ function resumeLogQueueProcessing(transports: Transport[]): void {
 export function createNewLogger(
   injectedTransports: Transport[] = [],
   transportsConfig = {},
-  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
+  botIdentifier = process.env.BOT_IDENTIFIER || noBotId
 ): AugmentedLogger {
   const transports = [...createTransports(transportsConfig), ...injectedTransports];
   const logger = createBaseLogger("debug", transports, botIdentifier) as AugmentedLogger;

@@ -4,6 +4,7 @@
 import { Datastore, Key, PropertyFilter, and } from "@google-cloud/datastore";
 import Transport from "winston-transport";
 
+import { noBotId } from "../constants";
 import { delay } from "../helpers/delay";
 import { isDictionary } from "../helpers/typeGuards";
 import { TransportError } from "./TransportError";
@@ -48,7 +49,7 @@ export abstract class DatastoreTransport extends Transport {
     super(winstonOpts);
 
     this.datastore = new Datastore();
-    this.botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID";
+    this.botIdentifier = process.env.BOT_IDENTIFIER || noBotId;
   }
 
   abstract get transport(): string; // Derived transport should return its name for any TransportError logs.
