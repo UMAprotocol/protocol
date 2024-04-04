@@ -2,6 +2,7 @@
 // transports to manage their log queue. Persistent queue management is required when transport is rate limiting and
 // otherwise would not be able to process all memory queue messages within its run cycle (e.g. Discord Ticketing).
 import { Datastore, Key, PropertyFilter, and } from "@google-cloud/datastore";
+import { uniqueId } from "lodash";
 import Transport from "winston-transport";
 
 import { noBotId } from "../constants";
@@ -12,7 +13,7 @@ import { TransportError } from "./TransportError";
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
 export type LogEntity = {
-  logId: number;
+  logId: string;
   botIdentifier: string;
   transport: string;
   info: Record<string, unknown>;
@@ -27,7 +28,7 @@ type LogEntityAndKey = {
 export function isLogEntity(data: unknown): data is LogEntity {
   if (!isDictionary(data)) return false;
   return (
-    typeof data.logId === "number" &&
+    typeof data.logId === "string" &&
     typeof data.botIdentifier === "string" &&
     typeof data.transport === "string" &&
     isDictionary(data.info)
@@ -40,8 +41,6 @@ export abstract class DatastoreTransport extends Transport {
   protected readonly botIdentifier: string;
   protected readonly rateLimit: number = 0; // Derived implementation would override rate limits if required.
 
-  private idSuffixCounter = 0;
-  private lastTimestamp = 0;
   private isQueueBeingExecuted = false;
   private canProcess = true;
 
@@ -65,7 +64,7 @@ export abstract class DatastoreTransport extends Transport {
       // We only support persisting dictionary object logs.
       if (!isDictionary(info)) throw new Error("Unsupported info type!");
 
-      const logId = await this.getLogId();
+      const logId = uniqueId(`${Date.now()}_`); // Gets unique ascending log id.
       const key = this.datastore.key([this.kind, logId]);
       await this.datastore.save({
         key,
@@ -85,24 +84,6 @@ export abstract class DatastoreTransport extends Transport {
     this.processLogQueue();
 
     callback();
-  }
-
-  // Gets unique ascending log id.
-  private async getLogId(): Promise<number> {
-    const timestamp = Number(new Date());
-    if (timestamp !== this.lastTimestamp) {
-      this.idSuffixCounter = 0;
-      this.lastTimestamp = timestamp;
-    }
-    // Its unlikely to have more than 1000 messages per millisecond, but anyways we handle this by recursing the call
-    // in the next millisecond.
-    if (this.idSuffixCounter >= 1000) {
-      await new Promise((resolve) => setTimeout(resolve, 1));
-      return await this.getLogId();
-    }
-    const logId = timestamp * 1000 + this.idSuffixCounter;
-    ++this.idSuffixCounter;
-    return logId;
   }
 
   // Signal to pause processing messages from persistent storage.
