@@ -147,6 +147,12 @@ export function getHardhatConfig(
         gasPrice: 30000000000,
       },
       mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true, 80001), accounts: { mnemonic } },
+      amoy: {
+        chainId: 80002,
+        url: getNodeUrl("polygon-amoy", true, 80002),
+        accounts: { mnemonic },
+        gasPrice: 10000000000,
+      },
       boba: {
         chainId: 288,
         url: getNodeUrl("boba", true, 288),
@@ -249,6 +255,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://openapi.coredao.org/api",
             browserURL: "https://scan.coredao.org/",
+          },
+        },
+        {
+          network: "polygon-amoy",
+          chainId: 80002,
+          urls: {
+            apiURL: "https://www.oklink.com/api/explorer/v1/contract/verify/async/api/polygonAmoy",
+            browserURL: "https://www.oklink.com/amoy",
           },
         },
       ],
