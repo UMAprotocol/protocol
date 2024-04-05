@@ -1,5 +1,5 @@
 import { delay } from "../helpers/delay";
-import { isDictionary } from "../helpers/typeGuards";
+import { isDictionary } from "./Logger";
 import { TransportError } from "./TransportError";
 
 import Transport from "winston-transport";
