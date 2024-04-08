@@ -85,6 +85,11 @@ export const PublicNetworks: PublicNetworksType = {
     etherscan: "https://mumbai.polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
+  80002: {
+    name: "polygon-amoy",
+    nativeToken: "MATIC",
+    etherscan: "https://www.oklink.com/amoy/",
+  },
   42161: { name: "arbitrum", nativeToken: "ETH", etherscan: "https://arbiscan.io/" },
   43114: { name: "avalanche", nativeToken: "AVAX", etherscan: "https://snowtrace.io/" },
   8453: { name: "base", nativeToken: "ETH", etherscan: "https://basescan.org/" },

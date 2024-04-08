@@ -1,0 +1,42 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0x28077B47Cd03326De7838926A63699849DD4fa87"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x38fAc33bD20D4c4Cce085C0f347153C06CbA2968"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracle",
+    "address": "0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracleV2",
+    "address": "0xD29C85F15DF544bA632C9E25829fd29d767d7978"
+  },
+  {
+    "contractName": "MockOracleAncillary",
+    "address": "0x2271a5E74eA8A29764ab10523575b41AA52455f0"
+  },
+  {
+    "contractName": "OptimisticOracleV3",
+    "address": "0xd8866E76441df243fc98B892362Fc6264dC3ca80"
+  }
+]
