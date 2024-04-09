@@ -77,7 +77,7 @@ async function getAndVerifyFundingAmount(
   // Get amount scaled by decimals.
   const token = await getContractInstance<ERC20Ethers>("ERC20", params.tokenAddress);
   const decimals = await token.decimals();
-  const fundingAmount = BigNumber.from(params.amount).mul(BigNumber.from(10).pow(decimals));
+  const fundingAmount = BigNumber.from(params.amount * 1000).mul(BigNumber.from(10).pow(decimals - 3));
 
   // Verify that GovernorV2 has sufficient balance.
   const governorV2Address = await getAddress("GovernorV2", 1);

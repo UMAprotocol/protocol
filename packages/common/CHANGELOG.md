@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.36.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.35.0...@uma/common@2.36.0) (2024-04-09)
+
+### Bug Fixes
+
+- transfer voting v2 owner to governor in testnet task ([#4723](https://github.com/UMAprotocol/protocol/issues/4723)) ([2f300fd](https://github.com/UMAprotocol/protocol/commit/2f300fd7f24367aed758baa0367241d7fed2d599))
+
+### Features
+
+- add base deployments ([#4729](https://github.com/UMAprotocol/protocol/issues/4729)) ([36e740d](https://github.com/UMAprotocol/protocol/commit/36e740dcb6173b9606b0c928638131628045aa28))
+- amoy testnet deployments ([#4740](https://github.com/UMAprotocol/protocol/issues/4740)) ([c7c40db](https://github.com/UMAprotocol/protocol/commit/c7c40db967834d03058b0efb86e9deab2fb05506))
+
 # [2.35.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.34.1...@uma/common@2.35.0) (2024-03-07)
 
 ### Bug Fixes
