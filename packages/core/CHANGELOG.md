@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.58.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.57.0...@uma/core@2.58.0) (2024-04-09)
+
+### Features
+
+- add base deployments ([#4729](https://github.com/UMAprotocol/protocol/issues/4729)) ([36e740d](https://github.com/UMAprotocol/protocol/commit/36e740dcb6173b9606b0c928638131628045aa28))
+- amoy testnet deployments ([#4740](https://github.com/UMAprotocol/protocol/issues/4740)) ([c7c40db](https://github.com/UMAprotocol/protocol/commit/c7c40db967834d03058b0efb86e9deab2fb05506))
+
 # [2.57.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.56.2...@uma/core@2.57.0) (2024-03-07)
 
 ### Bug Fixes
