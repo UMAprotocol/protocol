@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.6.0...@uma/monitor-v2@1.7.0) (2024-04-09)
+
+### Features
+
+- support base in dvm price publisher ([#4735](https://github.com/UMAprotocol/protocol/issues/4735)) ([0684a59](https://github.com/UMAprotocol/protocol/commit/0684a59d2abbc5f64d7b1ce475ea2b82c6261e0d))
+- update polymarket notifier logic ([#4721](https://github.com/UMAprotocol/protocol/issues/4721)) ([4ca19ec](https://github.com/UMAprotocol/protocol/commit/4ca19ec10e798ac6b205e96304be4d35553ea9dc))
+
 # [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.5.1...@uma/monitor-v2@1.6.0) (2024-03-07)
 
 ### Bug Fixes

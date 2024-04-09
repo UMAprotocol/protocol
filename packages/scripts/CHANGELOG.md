@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.30.0...@uma/scripts@1.31.0) (2024-04-09)
+
+### Features
+
+- register parent messenger proposal ([#4731](https://github.com/UMAprotocol/protocol/issues/4731)) ([9dfac0c](https://github.com/UMAprotocol/protocol/commit/9dfac0cb10280ef5ea7fc81e4b73902b368dfa5f))
+- update testnet request sender to support sepolia ([#4733](https://github.com/UMAprotocol/protocol/issues/4733)) ([99b8d0c](https://github.com/UMAprotocol/protocol/commit/99b8d0c8602a30000bded98c4e92bfc9191edecc))
+
 # [1.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.29.2...@uma/scripts@1.30.0) (2024-03-07)
 
 ### Features
