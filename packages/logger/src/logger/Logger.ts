@@ -75,9 +75,15 @@ export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
   return typeof arg === "object" && arg !== null && !Array.isArray(arg);
 };
 
-function createBaseLogger(level: string, transports: Transport[], botIdentifier: string): _Logger {
+function createBaseLogger(
+  level: string,
+  transports: Transport[],
+  botIdentifier: string,
+  defaultMeta: Record<string, number | string>
+): _Logger {
   return winston.createLogger({
     level,
+    defaultMeta,
     format: winston.format.combine(
       winston.format(botIdentifyFormatter(botIdentifier))(),
       winston.format((logEntry) => logEntry)(),
@@ -103,10 +109,11 @@ function filterLogErrorTransports(transports: Transport[]): Transport[] {
 export function createNewLogger(
   injectedTransports: Transport[] = [],
   transportsConfig = {},
-  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
+  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID",
+  metadata: Record<string, number | string>
 ): AugmentedLogger {
   const transports = [...createTransports(transportsConfig), ...injectedTransports];
-  const logger = createBaseLogger("debug", transports, botIdentifier) as AugmentedLogger;
+  const logger = createBaseLogger("debug", transports, botIdentifier, metadata) as AugmentedLogger;
 
   logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 30;
 
