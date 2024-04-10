@@ -85,10 +85,8 @@ export class DiscordTicketTransport extends PersistentTransport {
     if (cachedChannel !== undefined) return cachedChannel;
 
     const channel = await this.client.channels.fetch(channelId);
-    if (channel === null)
-      throw new Error(`Discord channel ${channelId} not available!`);
-    if (!channel.isTextBased())
-      throw new Error(`Invalid type for Discord channel ${channelId}!`);
+    if (channel === null) throw new Error(`Discord channel ${channelId} not available!`);
+    if (!channel.isTextBased()) throw new Error(`Invalid type for Discord channel ${channelId}!`);
 
     this.channels.set(channelId, channel);
     return channel;
@@ -100,9 +98,7 @@ export class DiscordTicketTransport extends PersistentTransport {
 
     // Check if the channel ID is configured.
     if (!(info.discordTicketChannel in this.channelIds))
-      throw new Error(
-        `Missing channel ID for ${info.discordTicketChannel}!`
-      );
+      throw new Error(`Missing channel ID for ${info.discordTicketChannel}!`);
 
     if (!this.client.isReady()) await this.login(); // Log in if not yet established the connection.
 
