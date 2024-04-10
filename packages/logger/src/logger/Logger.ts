@@ -75,11 +75,16 @@ export const isDictionary = (arg: unknown): arg is Record<string, unknown> => {
   return typeof arg === "object" && arg !== null && !Array.isArray(arg);
 };
 
-function createBaseLogger(level: string, transports: Transport[], botIdentifier: string): _Logger {
+function createBaseLogger(
+  level: string,
+  transports: Transport[],
+  botIdentifier: string,
+  runIdentifier: string
+): _Logger {
   return winston.createLogger({
     level,
     format: winston.format.combine(
-      winston.format(botIdentifyFormatter(botIdentifier))(),
+      winston.format(botIdentifyFormatter(botIdentifier, runIdentifier))(),
       winston.format((logEntry) => logEntry)(),
       winston.format(errorStackTracerFormatter)(),
       winston.format(bigNumberFormatter)(),
@@ -100,18 +105,28 @@ function filterLogErrorTransports(transports: Transport[]): Transport[] {
   );
 }
 
+export function generateRandomRunId() {
+  return Math.round(Math.random() * Number.MAX_SAFE_INTEGER).toString();
+}
+
 export function createNewLogger(
   injectedTransports: Transport[] = [],
   transportsConfig = {},
-  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
+  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID",
+  runIdentifier = process.env.RUN_IDENTIFIER || generateRandomRunId()
 ): AugmentedLogger {
   const transports = [...createTransports(transportsConfig), ...injectedTransports];
-  const logger = createBaseLogger("debug", transports, botIdentifier) as AugmentedLogger;
+  const logger = createBaseLogger("debug", transports, botIdentifier, runIdentifier) as AugmentedLogger;
 
   logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 30;
 
   // Attach dedicated logger for handling and logging transport execution errors.
-  logger.transportErrorLogger = createBaseLogger("error", filterLogErrorTransports(logger.transports), botIdentifier);
+  logger.transportErrorLogger = createBaseLogger(
+    "error",
+    filterLogErrorTransports(logger.transports),
+    botIdentifier,
+    runIdentifier
+  );
   logger.on("error", (error) => {
     if (error instanceof TransportError) {
       // We can detect transport source and failed log info from the error object if it is a TransportError.

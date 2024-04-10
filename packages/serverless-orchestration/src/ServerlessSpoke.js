@@ -27,9 +27,10 @@ const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
 const maxBuffer = 8388608;
 
 spoke.post("/", async (req, res) => {
-  // Use a custom logger if provided. Otherwise, initialize a local logger.
+  // Use a custom logger if provided. Otherwise, initialize a local logger with a run identifier if passed from the Hub.
   // Note: no reason to put this into the try-catch since a logger is required to throw the error.
-  const logger = customLogger || createNewLogger();
+  const logger =
+    customLogger || createNewLogger(undefined, undefined, undefined, req.body?.environmentVariables?.RUN_IDENTIFIER);
   try {
     logger.debug({
       at: "ServerlessSpoke",

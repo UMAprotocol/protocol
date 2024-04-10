@@ -40,6 +40,9 @@ const { WAIT_FOR_LOGGER_DELAY, GCP_STORAGE_CONFIG } = process.env;
 // Enabling retry in case of transient timeout issues.
 const DEFAULT_RETRIES = 1;
 
+// Assign key name to variable since it's referenced multiple times.
+const RUN_IDENTIFIER_KEY = "RUN_IDENTIFIER";
+
 // Allows the environment to customize the config that's used to interact with google cloud storage.
 // Relevant options can be found here: https://googleapis.dev/nodejs/storage/latest/global.html#StorageOptions.
 // Specific fields of interest:
@@ -57,7 +60,7 @@ const { createBasicProvider } = require("@uma/common");
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { delay, createNewLogger } = require("@uma/financial-templates-lib");
+const { delay, createNewLogger, generateRandomRunId } = require("@uma/financial-templates-lib");
 let customLogger;
 let spokeUrl;
 // spokeUrlTable is an optional table populated through the env var SPOKE_URLS. SPOKE_URLS is expected to be a
@@ -279,10 +282,16 @@ hub.post("/", async (req, res) => {
       let rejectedRetryPromiseArray = [];
       retriedOutputs.forEach((botName) => {
         const spokeUrl = getSpokeUrl(botConfigs[botName].spokeUrlName);
+
+        // Swap out the run identifer for one with an `r` appended to signify a retry.
+        const runId = botConfigs[botName].environmentVariables[RUN_IDENTIFIER_KEY];
+        const retryRunId = `${runId}r`;
+        botConfigs[botName].environmentVariables[RUN_IDENTIFIER_KEY] = retryRunId;
+
         rejectedRetryPromiseArray.push(
           Promise.race([
             _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
-            _rejectAfterDelay(spokeRejectionTimeout, botName),
+            _rejectAfterDelay(spokeRejectionTimeout, botName, [runId, retryRunId]),
           ])
         );
       });
@@ -530,6 +539,7 @@ function _appendEnvVars(config, botName, singleChainId, blockNumbersForChain, mu
     Number(blockNumbersForChain[singleChainId].lastQueriedBlockNumber) + 1;
   config.environmentVariables["ENDING_BLOCK_NUMBER"] = blockNumbersForChain[singleChainId].latestBlockNumber;
   config.environmentVariables["BOT_IDENTIFIER"] = botName;
+  config.environmentVariables[RUN_IDENTIFIER_KEY] = generateRandomRunId();
   if (multiChainBlocks)
     multiChainBlocks.forEach((chainId) => {
       config.environmentVariables[`STARTING_BLOCK_NUMBER_${chainId}`] =
@@ -598,12 +608,13 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
 }
 
 // Returns a promise that is rejected after seconds delay. Used to limit how long a spoke can run for.
-const _rejectAfterDelay = (seconds, childProcessIdentifier) =>
+const _rejectAfterDelay = (seconds, childProcessIdentifier, runIdentifiers) =>
   new Promise((_, reject) => {
     setTimeout(reject, seconds * 1000, {
       status: "timeout",
       message: `The spoke call took longer than ${seconds} seconds to reply`,
       childProcessIdentifier,
+      runIdentifiers,
     });
   });
 
