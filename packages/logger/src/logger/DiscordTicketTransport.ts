@@ -5,13 +5,12 @@
 // This transport should be used with Ticket Tool (https://tickettool.xyz/) configured to trigger ticket commands on
 // the resolved channel ID and whitelisting of bot ID. Also the Discord server should be configured to allow the bot
 // to post messages on the ticket opening channel.
-import { Key } from "@google-cloud/datastore";
 import { Client, GatewayIntentBits, TextBasedChannel } from "discord.js";
 import * as ss from "superstruct";
 import Transport from "winston-transport";
 
 import { isDictionary } from "../helpers/typeGuards";
-import { DatastoreTransport } from "./DatastoreTransport";
+import { PersistentTransport } from "./PersistentTransport";
 import { removeAnchorTextFromLinks } from "./Formatters";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
@@ -50,7 +49,7 @@ export const isDiscordTicketInfo = (info: unknown): info is DiscordTicketInfo =>
   );
 };
 
-export class DiscordTicketTransport extends DatastoreTransport {
+export class DiscordTicketTransport extends PersistentTransport {
   private readonly botToken: string;
   private readonly channelIds: { [key: string]: string };
 
@@ -62,15 +61,10 @@ export class DiscordTicketTransport extends DatastoreTransport {
   protected readonly rateLimit: number = 15;
 
   constructor(winstonOpts: TransportOptions, { botToken, channelIds = {} }: Config) {
-    super(winstonOpts);
+    super(winstonOpts, "Discord Ticket");
 
     this.botToken = botToken;
     this.channelIds = channelIds;
-  }
-
-  // Transport name to use for any TransportError logs.
-  get transport(): string {
-    return "Discord Ticket";
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -86,35 +80,35 @@ export class DiscordTicketTransport extends DatastoreTransport {
   }
 
   // Get Discord channel by its id and cache fetched ids.
-  private async getChannel(channelId: string, logEntityKey: Key): Promise<TextBasedChannel> {
+  private async getChannel(channelId: string): Promise<TextBasedChannel> {
     const cachedChannel = this.channels.get(channelId);
     if (cachedChannel !== undefined) return cachedChannel;
 
     const channel = await this.client.channels.fetch(channelId);
     if (channel === null)
-      throw new Error(`Discord channel ${channelId} not available, ${this.kind} entity, id=${logEntityKey.id}`);
+      throw new Error(`Discord channel ${channelId} not available!`);
     if (!channel.isTextBased())
-      throw new Error(`Invalid type for Discord channel ${channelId}, ${this.kind} entity, id=${logEntityKey.id}`);
+      throw new Error(`Invalid type for Discord channel ${channelId}!`);
 
     this.channels.set(channelId, channel);
     return channel;
   }
 
   // Logs queue element when processing persistent storage.
-  async logQueueElement(info: Record<string, unknown>, logEntityKey: Key): Promise<void> {
-    if (!isDiscordTicketInfo(info)) throw new Error(`Invalid info in ${this.kind} entity, id=${logEntityKey.id}`);
+  async logQueueElement(info: Record<string, unknown>): Promise<void> {
+    if (!isDiscordTicketInfo(info)) throw new Error(`Invalid info`);
 
     // Check if the channel ID is configured.
     if (!(info.discordTicketChannel in this.channelIds))
       throw new Error(
-        `Missing channel ID for ${info.discordTicketChannel}, ${this.kind} entity, id=${logEntityKey.id}`
+        `Missing channel ID for ${info.discordTicketChannel}!`
       );
 
     if (!this.client.isReady()) await this.login(); // Log in if not yet established the connection.
 
     // Get and verify requested Discord channel to post.
     const channelId = this.channelIds[info.discordTicketChannel];
-    const channel = await this.getChannel(channelId, logEntityKey);
+    const channel = await this.getChannel(channelId);
 
     // Prepend the $ticket command and concatenate message title and content separated by newline.
     // Also remove anchor text from links and truncate the message to Discord's max character limit.

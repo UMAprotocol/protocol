@@ -38,7 +38,7 @@ import { delay } from "../helpers/delay";
 
 import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
-import { DatastoreTransport } from "./DatastoreTransport";
+import { PersistentTransport } from "./PersistentTransport";
 
 // Custom interface for transports that have the isFlushed getter.
 interface FlushableTransport extends Transport {
@@ -103,7 +103,7 @@ function filterLogErrorTransports(transports: Transport[]): Transport[] {
 // This is intended to be used only when flushing logger before termination.
 function pauseLogQueueProcessing(transports: Transport[]): void {
   for (const transport of transports) {
-    if (transport instanceof DatastoreTransport) transport.pauseProcessing();
+    if (transport instanceof PersistentTransport) transport.pauseProcessing();
   }
 }
 
@@ -112,7 +112,7 @@ function resumeLogQueueProcessing(transports: Transport[]): void {
   for (const transport of transports) {
     // Initiate log que processing. We don't await it as this should run in background and it is controlled externally
     // via pauseProcessing method.
-    if (transport instanceof DatastoreTransport) transport.processLogQueue();
+    if (transport instanceof PersistentTransport) transport.processLogQueue();
   }
 }
 
