@@ -3,7 +3,6 @@
   "version": "1.1.0",
   "description": "Logger library",
   "dependencies": {
-    "@google-cloud/datastore": "^8.6.0",
     "@google-cloud/logging-winston": "^4.1.1",
     "@google-cloud/trace-agent": "^5.1.6",
     "@pagerduty/pdjs": "^2.2.4",
