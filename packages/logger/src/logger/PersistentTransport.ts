@@ -49,7 +49,7 @@ export abstract class PersistentTransport extends Transport {
     } catch (error) {
       return callback(new TransportError(this.derivedTransport, error, info));
     }
-    // Initiate log que processing. We don't await it as this should run in background and it is controlled externally
+    // Initiate log queue processing. We don't await it as this should run in background and it is controlled externally
     // via pauseProcessing method.
     this.processLogQueue();
 
