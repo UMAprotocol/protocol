@@ -18,11 +18,13 @@ type TransportOptions = ConstructorParameters<typeof Transport>[0];
 const Config = ss.object({
   botToken: ss.string(),
   channelIds: ss.optional(ss.record(ss.string(), ss.string())),
+  rateLimit: ss.optional(ss.number()),
 });
 // Config object becomes a type
 // {
 //   botToken: string;
 //   channelIds?: Record<string,string>;
+//   rateLimit?: number;
 // }
 export type Config = ss.Infer<typeof Config>;
 
@@ -56,15 +58,17 @@ export class DiscordTicketTransport extends PersistentTransport {
   private client: Client = new Client({ intents: [GatewayIntentBits.Guilds] });
   private channels: Map<string, TextBasedChannel> = new Map();
 
-  // Ticket tool does not allow more than 1 ticket to be opened per 10 seconds. We are conservative and wait 15
-  // seconds before processing the next ticket.
-  protected readonly rateLimit: number = 15;
+  protected readonly rateLimit: number;
 
-  constructor(winstonOpts: TransportOptions, { botToken, channelIds = {} }: Config) {
+  // Ticket tool does not allow more than 1 ticket to be opened per 10 seconds. By default we conservatively use
+  // rateLimit of 15 seconds.
+  constructor(winstonOpts: TransportOptions, { botToken, channelIds = {}, rateLimit = 15 }: Config) {
     super(winstonOpts, "Discord Ticket");
 
     this.botToken = botToken;
     this.channelIds = channelIds;
+
+    this.rateLimit = rateLimit;
   }
 
   // Note: info must be any because that's what the base class uses.
