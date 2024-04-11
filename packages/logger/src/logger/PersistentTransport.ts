@@ -29,7 +29,7 @@ export abstract class PersistentTransport extends Transport {
     this.redis = createClient({ url }).on("error", (err) => this.emit("error", err)); // Pass redis errors to logger.
 
     const botIdentifier = process.env.BOT_IDENTIFIER || noBotId;
-    this.logListKey = `persistentLogQueue:${botIdentifier}:${derivedTransport}`;
+    this.logListKey = `uma-persistent-log-queue:${botIdentifier}:${derivedTransport}`;
   }
 
   // Getter for checking if the transport is flushed.
