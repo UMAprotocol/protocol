@@ -4,17 +4,37 @@
 // GCKMS_WALLET=<OPTIONAL-GCKMS-WALLET> \
 // IDENTIFIER=<IDENTIFIER-TO-ADD> \
 // UMIP_NUMBER=<UMIP-NUMBER> \
-// yarn hardhat run ./src/upgrade-tests/add-identifier/0_Propose.ts --network <network>
+// NODE_URL_1=<MAINNET-NODE-URL> \
+// NODE_URL_10=<OPTIMISM-NODE-URL> \
+// NODE_URL_137=<POLYGON-NODE-URL> \
+// NODE_URL_8453=<BASE-NODE-URL> \
+// NODE_URL_42161=<ARBITRUM-NODE-URL> \
+// yarn hardhat run packages/scripts/src/admin-proposals/add-identifier/0_Propose.ts --network <network>
 
 const hre = require("hardhat");
 
-import { IdentifierWhitelistEthers, ProposerV2Ethers, VotingTokenEthers } from "@uma/contracts-node";
+import {
+  GovernorHubEthers,
+  GovernorRootTunnelEthers,
+  IdentifierWhitelistEthers,
+  ParentMessengerBaseEthers,
+  ProposerV2Ethers,
+  VotingTokenEthers,
+} from "@uma/contracts-node";
 
 import { Provider } from "@ethersproject/abstract-provider";
 import { getGckmsSigner } from "@uma/common";
-import { BigNumberish, Signer, Wallet } from "ethers";
+import { BigNumberish, PopulatedTransaction, Signer, Wallet } from "ethers";
 import { BytesLike, formatBytes32String } from "ethers/lib/utils";
 import { getContractInstance } from "../../utils/contracts";
+import {
+  fundArbitrumParentMessengerForRelays,
+  getConnectedIdentifierWhitelist,
+  isSupportedNetwork,
+  networksNumber,
+  relayGovernanceMessages,
+  supportedNetworks,
+} from "./common";
 
 interface AdminProposalTransaction {
   to: string;
@@ -35,6 +55,11 @@ async function main() {
   if (!process.env.UMIP_NUMBER) throw new Error("UMIP_NUMBER is not set");
   const umipNumber = process.env.UMIP_NUMBER;
 
+  const arbitrumParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Arbitrum_ParentMessenger");
+
+  const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnel"); // for polygon
+  const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHub"); // rest of l2
+
   if (process.env.GCKMS_WALLET) {
     proposerSigner = ((await getGckmsSigner()) as Wallet).connect(hre.ethers.provider as Provider);
     if (proposerWallet.toLowerCase() != (await proposerSigner.getAddress()).toLowerCase())
@@ -54,6 +79,30 @@ async function main() {
   const addIdentifierTx = await identifierWhitelist.populateTransaction.addSupportedIdentifier(newIdentifier);
   if (!addIdentifierTx.data) throw "addIdentifierTx.data is null";
   adminProposalTransactions.push({ to: identifierWhitelist.address, value: 0, data: addIdentifierTx.data });
+
+  for (const networkName of supportedNetworks.filter((network) => network !== "mainnet")) {
+    if (!isSupportedNetwork(networkName)) throw new Error(`Unsupported network: ${networkName}`);
+    const l2ChainId = networksNumber[networkName];
+    const isPolygon = l2ChainId === 137;
+    const isArbitrum = l2ChainId === 42161;
+
+    const governanceMessages: { targetAddress: string; tx: PopulatedTransaction }[] = [];
+
+    const l2IdentifierWhitelist = await getConnectedIdentifierWhitelist(l2ChainId);
+
+    const addIdentifierL2Tx = await l2IdentifierWhitelist.populateTransaction.addSupportedIdentifier(newIdentifier);
+    governanceMessages.push({ targetAddress: l2IdentifierWhitelist.address, tx: addIdentifierL2Tx });
+
+    if (isArbitrum) await fundArbitrumParentMessengerForRelays(arbitrumParentMessenger, proposerSigner, 1);
+
+    const relayedMessages = await relayGovernanceMessages(
+      governanceMessages,
+      isPolygon ? governorRootTunnel : governorHub,
+      l2ChainId
+    );
+
+    adminProposalTransactions.push(...relayedMessages);
+  }
 
   const defaultBond = await proposer.bond();
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);

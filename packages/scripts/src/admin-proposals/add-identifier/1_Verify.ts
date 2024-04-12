@@ -1,6 +1,6 @@
-// This script verify that the upgrade was executed correctly.
+// This script verify that the indentifier has been whitelisted in the IdentifierWhitelist contract in mainnet.
 // IDENTIFIER=<IDENTIFIER-TO-ADD> \
-// yarn hardhat run ./src/upgrade-tests/add-identifier/1_Verify.ts --network localhost
+// yarn hardhat run packages/scripts/src/admin-proposals/add-identifier/1_Verify.ts --network localhost
 
 import { strict as assert } from "assert";
 
