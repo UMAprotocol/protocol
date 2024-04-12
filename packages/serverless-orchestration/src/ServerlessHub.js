@@ -291,8 +291,10 @@ hub.post("/", async (req, res) => {
         rejectedRetryPromiseArray.push(
           Promise.race([
             _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
-            _rejectAfterDelay(spokeRejectionTimeout, botName, [runId, retryRunId]),
-          ])
+            _rejectAfterDelay(spokeRejectionTimeout, botName),
+          ]).catch((err) =>
+            Promise.reject(new Error(`${runId} and ${retryRunId} failed. Retry failed with err: ${err.toString()}`))
+          )
         );
       });
       const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
