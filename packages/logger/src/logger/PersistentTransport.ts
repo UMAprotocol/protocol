@@ -26,7 +26,9 @@ export abstract class PersistentTransport extends Transport {
     super(winstonOpts);
 
     const url = process.env.REDIS_URL || redisDefaultUrl;
-    this.redis = createClient({ url }).on("error", (err) => this.emit("error", err)); // Pass redis errors to logger.
+    // Pass redis errors to console. We don't want this to emit an error log, since these are normally connection
+    // errors unrelated to a particular request.
+    this.redis = createClient({ url }).on("error", (err) => console.error("Redis error", err));
 
     const botIdentifier = process.env.BOT_IDENTIFIER || noBotId;
     this.logListKey = `uma-persistent-log-queue:${botIdentifier}:${derivedTransport}`;
