@@ -53,6 +53,7 @@ export function getNodeUrl(networkName: string, useHttps = false, chainId: numbe
     if (name === "core") return overrideUrl || "https://rpc.coredao.org/";
     if (name === "base-goerli") return overrideUrl || "https://goerli.base.org";
     if (name === "base") return overrideUrl || "https://mainnet.base.org";
+    if (name === "blast") return overrideUrl || "https://rpc.blast.io/";
     return (
       overrideUrl ||
       (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
