@@ -8,7 +8,13 @@ export const ChainsEnabled: Network[] = [
   Network.SEPOLIA,
   Network.POLYGON,
   Network.OPTIMISTIC,
+  Network.OPTIMISTIC_SEPOLIA,
   Network.ARBITRUM_ONE,
+  Network.ARBITRUM_SEPOLIA,
+  Network.BASE,
+  Network.BASE_SEPOLIA,
+  Network.GNOSIS_CHAIN,
+  Network.BLAST,
 ];
 type BasicTenderlyConfig = Omit<ConstructorParameters<typeof Tenderly>[0], "network">;
 
