@@ -93,6 +93,7 @@ export const PublicNetworks: PublicNetworksType = {
   42161: { name: "arbitrum", nativeToken: "ETH", etherscan: "https://arbiscan.io/" },
   43114: { name: "avalanche", nativeToken: "AVAX", etherscan: "https://snowtrace.io/" },
   8453: { name: "base", nativeToken: "ETH", etherscan: "https://basescan.org/" },
+  81457: { name: "blast", nativeToken: "ETH", etherscan: "https://blastscan.io/" },
   84531: { name: "base-goerli", nativeToken: "ETH", etherscan: "https://goerli.basescan.org/" },
   421611: { name: "arbitrum-rinkeby", nativeToken: "ETH", etherscan: "https://testnet.arbiscan.io/" },
   421613: { name: "arbitrum-goerli", nativeToken: "ETH", etherscan: "https://goerli.arbiscan.io/" },

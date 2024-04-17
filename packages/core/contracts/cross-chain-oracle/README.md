@@ -26,7 +26,7 @@ Note: in the commands below, you'll need to set the relevant `NODE_URL_X` enviro
 
 If you're having trouble redeploying contracts because `hardhat` wants to "reuse" contracts, then run `yarn clean && yarn` in the `core` package to reset `deployments`.
 
-## Step-by-step guide to deployments on rollups: Arbitrum, Boba, Optimism and Base
+## Step-by-step guide to deployments on rollups (Arbitrum, Boba, Optimism, Base and Blast)
 
 The steps below explain how to deploy the cross-chain oracle onto supported rollups.
 
@@ -40,27 +40,134 @@ export NODE_URL_42161=<ARBITRUM_URL>
 export NODE_URL_288=<BOBA_URL>
 export NODE_URL_10=<OPTIMISM_URL>
 export NODE_URL_8453=<BASE_URL>
+export NODE_URL_81457=<BLAST_URL>
 export MNEMONIC="Your 12-word mnemonic here"
+export ETHERSCAN_API_KEY="Your L2 Etherscan API key"
 ```
 
-2. Deploy mainnet contracts. Note that the following commands are slightly different based on which L2 you're deploying to.
+2. Add new network variables in `@uma/common` and `@uma/financial-templates-lib` packages:
+
+- Hardhat `defaultConfig.networks` configuration in [packages/common/src/HardhatConfig.ts](/packages/common/src/HardhatConfig.ts). Adding `companionNetworks` parameter pointing to L1 mainnet is required for approved collateral migration task.
+- `etherscan.customChains` configuration in [packages/common/src/HardhatConfig.ts](/packages/common/src/HardhatConfig.ts) if the L2 is not supported by `@nomicfoundation/hardhat-verify` library.
+- `PublicNetworks` configuration in [packages/common/src/PublicNetworks.ts](/packages/common/src/PublicNetworks.ts)
+- `averageBlockTimeSeconds` in [packages/common/src/TimeUtils.ts](/packages/common/src/TimeUtils.ts)
+- Default RPC to `getNodeUrl` in [packages/common/src/ProviderUtils.ts](/packages/common/src/ProviderUtils.ts)
+- Add L2 network specific task in the form `setup-l1-<L2_NAME>-xchain` in [packages/common/src/hardhat/tasks/xchainSetup.ts](/packages/common/src/hardhat/tasks/xchainSetup.ts)
+- Update `migrate-collateral-whitelist` task in [packages/common/src/hardhat/tasks/collateralWhitelist.ts](/packages/common/src/hardhat/tasks/collateralWhitelist.ts) to support target L2 network
+- Gas estimator settings to `MAPPING_BY_NETWORK` in [packages/financial-templates-lib/src/helpers/GasEstimator.ts](/packages/financial-templates-lib/src/helpers/GasEstimator.ts)
+- Rebuild `@uma/common` package:
+
+  ```sh
+  cd packages/common
+  yarn build
+  ```
+
+3. Update L1 contract deploy scripts under [packages/core/deploy](/packages/core/deploy):
+
+- Create `<L2_NAME>_ParentMessenger` deploy script and make sure to add L2 network specific tag in the form `l1-<L2_NAME>-xchain`.
+- Add L2 network specific tag in the form `l1-<L2_NAME>-xchain` to [Oracle Hub deploy script](/packages/core/deploy/039_deploy_oracle_hub.js)
+- Add L2 network specific tag in the form `l1-<L2_NAME>-xchain` to [Governor Hub deploy script](/packages/core/deploy/041_deploy_governor_hub.js)
+
+4. Deploy L1 contracts. Use L2 network specific tag in the form `l1-<L2_NAME>-xchain` as added in the step 3 above.
 
 ```sh
-yarn hardhat deploy --network mainnet --tags [l1-arbitrum-xchain/l1-boba-xchain/l1-optimism-xchain/l1-base-xchain]
+yarn hardhat deploy --network mainnet --tags l1-<L2_NAME>-xchain
 ```
 
-Add the deployed [Arbitrum/Boba/Optimism/Base]\_ParentMessenger contract to the associated networks file.
+Add the deployed `<L2_NAME>_ParentMessenger` contract to the associated networks file.
 
-3. Deploy l2 contracts:
+5. Update L2 contract deploy scripts under [packages/core/deploy](/packages/core/deploy):
+
+- Create `<L2_NAME>_ChildMessenger` deploy script and make sure to add L2 network specific tag in the form `l2-<L2_NAME>-xchain`.
+- Add L2 network specific tag in the form `l2-<L2_NAME>-xchain` to [Oracle Spoke deploy script](/packages/core/deploy/038_deploy_oracle_spoke.js)
+- Add L2 network specific tag in the form `l2-<L2_NAME>-xchain` to [Governor Spoke deploy script](/packages/core/deploy/040_deploy_governor_spoke.js)
+
+6. Deploy L2 contracts. Use L2 name specific tag in the form `l2-<L2_NAME>-xchain` as added in the step 5 above.
 
 ```sh
-yarn hardhat deploy --network [arbitrum/boba/optimism/base] --tags [l2-arbitrum-xchain/l2-boba-xchain/l2-optimism-xchain/l2-base-xchain],Registry
+yarn hardhat deploy --network <L2_NAME> --tags l2-<L2_NAME>-xchain,Registry
 
 ```
 
-Add the deployed [Arbitrum/Boba/Optimism/Base] Registry, finder, OracleSpoke, GovernorSpoke and x_ChildMessenger contracts to the associated networks file.
+Add the deployed L2 `Registry`, `Finder`, `OracleSpoke`, `GovernorSpoke` and `<L2_NAME>_ChildMessenger` contracts to the associated networks file.
 
-4. Verify contracts:
+7. Setup mainnet contracts
+
+```sh
+yarn hardhat setup-l1-<L2_NAME>-xchain --network mainnet
+```
+
+8. Setup L2 contracts
+
+```sh
+yarn hardhat setup-l2-xchain --network <L2_NAME>
+```
+
+9. We will now deploy the `OptimisticOracle`, `OptimisticOracleV2` and required contracts to the L2. `OptimisticOracleV3` contract is deployed in a later step.
+
+```sh
+yarn hardhat deploy --network <L2_NAME> --tags OptimisticOracle,OptimisticOracleV2,IdentifierWhitelist,AddressWhitelist,Store
+```
+
+Add the deployed `OptimisticOracle`, `OptimisticOracleV2`, `IdentifierWhitelist`, `AddressWhitelist` and `Store` contracts to the associated networks file under [packages/core/networks](/packages/core/networks).
+
+10. Setup L2 `OptimisticOracle` and `OptimisticOracleV2`:
+
+```sh
+# Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
+CROSS_CHAIN_NODE_URL=$NODE_URL_1 yarn hardhat migrate-identifiers --network <L2_NAME> --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
+
+# Seed Collateral whitelist with all collaterals already approved on mainnet. This will also pull the final fee from the L1 store and set it in the L2 Store.
+# Replace <L2_CHAIN_ID> with L2 chainId value.
+yarn hardhat --network <L2_NAME>  migrate-collateral-whitelist --l1chainid 1 --l2chainid <L2_CHAIN_ID>
+
+# Alternatively, add individual tokens to L2 collateral whitelist:
+yarn hardhat --network <L2_NAME> whitelist-collateral --address <L2_TOKEN> --finalfee <RAW_FINAL_FEE>
+
+# Point L2 Finder to remaining Optimistic Oracle system contracts.
+yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --optimisticoraclev2 --store --network <L2_NAME>
+
+# Register OptimisticOracle as registered contract (repeat for OptimisticOracleV2).
+yarn hardhat register-accounts --network <L2_NAME> --account <OPTIMISTIC_ORACLE_ADDRESS>
+```
+
+11. Deploy `OptimisticOracleV3` to the L2.
+
+First, update `ADDRESSES_FOR_NETWORK` variable in `OptimisticOracleV3` deploy script [057_deploy_optimistic_oracle_V3.js](/packages/core/deploy/057_deploy_optimistic_oracle_V3.js) with `defaultCurrency` (e.g. USDC) for selected network.
+
+Deploy `OptimisticOracleV3` instance:
+
+```sh
+yarn hardhat deploy --network <L2_NAME> --tags OptimisticOracleV3
+```
+
+Add the deployed `OptimisticOracleV3` contract to the associated networks file under [packages/core/networks](/packages/core/networks).
+
+12. Setup L2 `OptimisticOracleV3`:
+
+```sh
+# Point L2 Finder to remaining OptimisticOracleV3 contract.
+yarn hardhat setup-finder --optimisticoraclev3 --network <L2_NAME>
+
+# Register OptimisticOracleV3 as registered contract.
+yarn hardhat register-accounts --network <L2_NAME> --account <OPTIMISTIC_ORACLE_V3_ADDRESS>
+```
+
+13. Transfer ownership:
+
+Transfer deployed contract ownership for each of `Registry`, `Store`, `IdentifierWhitelist`, `AddressWhitelist`, `Finder` and `OptimisticOracleV3` instances to `GovernorSpoke` on L2:
+
+```sh
+yarn hardhat transfer-owner --network <L2_NAME> --contract <CONTRACT_ADDRESS> --owner <GOVERNOR_SPOKE_ADDRESS>
+```
+
+Also transfer the ownership of `<L2_NAME>_ParentMessenger` on mainnet to `GovernorV2`:
+
+```sh
+yarn hardhat transfer-owner --network mainnet --contract <CONTRACT_ADDRESS> --owner <GOVERNOR_V2_ADDRESS>
+```
+
+14. Verify contracts:
 
 ```sh
 # mainnet
@@ -69,72 +176,20 @@ yarn hardhat --network mainnet etherscan-verify --api-key <ETHERSCAN_KEY> --lice
 yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
 # boba
 yarn hardhat --network boba sourcify
-# Optimism (etherscan-verify does not work on Optimism so we use hardhat verify)
-yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 3> <ASSOCIATED CONSTRUCTOR PARAMS FROM 3>
-# Base
-yarn hardhat --network base verify <EACH-DEPLOYED ADDRESS IN STEP 3> <ASSOCIATED CONSTRUCTOR PARAMS FROM 3>
 ```
 
-5. Setup mainnet contracts
+For networks that don't have `etherscan-verify` support, use `hardhat verify`:
 
 ```sh
-yarn hardhat [setup-l1-arbitrum-xchain/setup-l1-boba-xchain/setup-l1-optimism-xchain/setup-l1-base-xchain] --network mainnet
+yarn hardhat --network <L2_NAME> verify --contract <CONTRACT_FILE_PATH:CONTRACT_NAME> <EACH_DEPLOYED_ADDRESS> <ASSOCIATED_CONSTRUCTOR_PARAMS>
 ```
 
-6. Setup l2 contracts
+In case of more complex constructor arguments, pass them from file `--constructor-args arguments.js` as discussed in [hardhat-verify docs](https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify#complex-arguments). In order to get constructor argument values, check them in `args` property from respective contract deployment json file (appropriate network directory under `packages/core/deployments`).
+
+15. Run the following script to check all required steps:
 
 ```sh
-yarn hardhat setup-l2-xchain --network [arbitrum/boba/optimism/base]
-```
-
-7. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle,OptimisticOracleV2` and required contracts to the L2, the `OptimisticOracleV3` contract is deployed in a later step.
-
-```sh
-yarn hardhat deploy --network [arbitrum/boba/optimism/base] --tags OptimisticOracle,OptimisticOracleV2,OptimisticOracleV3,IdentifierWhitelist,AddressWhitelist,Store
-```
-
-8. Verify contracts:
-
-```sh
-# arbitrum
-yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
-# boba
-yarn hardhat --network boba sourcify
-# Optimism (etherscan-verify does not work on Optimism so we use hardhat verify)
-yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 7> <ASSOCIATED CONSTRUCTOR PARAMS FROM 7>
-# Base
-yarn hardhat --network base verify <EACH-DEPLOYED ADDRESS IN STEP 7> <ASSOCIATED CONSTRUCTOR PARAMS FROM 7>
-```
-
-9. Setup l2 optimistic oracle:
-
-```sh
-# Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
-CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba/optimism/base] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
-
-# Seed Collateral whitelist with all collaterals already approved on Mainnet. This will also pull the final fee from the L1 store and set it in the L2 Store.
-yarn hardhat --network [arbitrum/boba/optimism/base]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [42161/288/10/8453]
-
-# Point L2 Finder to remaining Optimistic Oracle system contracts.
-yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --optimisticoraclev2 --store --network [arbitrum/boba/optimism/base]
-# Register OptimisticOracles as registered contract.
-yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLE_ADDRESS>
-yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLEV2_ADDRESS>
-yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLEV3_ADDRESS>
-```
-
-10. At this point we can deploy the `OptimisticOracleV3` contract to the L2:
-
-- First deploy the `OptimisticOracleV3` contract with the required constructor arguments.
-- Then run again the `setup-finder` script to point the L2 Finder to the `OptimisticOracleV3` contract.
-  - Run: `yarn hardhat setup-finder --optimisticoraclev3 --network [arbitrum/boba/optimism/base]`
-- Finally, register the `OptimisticOracleV3` contract as a registered contract.
-  - Run: `yarn hardhat register-accounts --network [arbitrum/boba/optimism/base] --account <OPTIMISTIC_ORACLE_V3_ADDRESS>`
-
-11. Perform other set up when appropriate such as transferring ownership to the Governor and Governor spokes. Run the following script to check all required steps:
-
-```sh
-yarn hardhat verify-xchain --network mainnet --l2 [arbitrum/boba/optimism/base]
+yarn hardhat verify-xchain --network mainnet --l2 <L2_NAME>
 ```
 
 ## L2->L1 Message passing and finalization

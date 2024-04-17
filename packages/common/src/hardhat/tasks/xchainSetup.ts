@@ -8,7 +8,7 @@ import Web3 from "web3";
 const { utf8ToHex, toBN } = Web3.utils;
 const assert = require("assert");
 
-const L2_CHAIN_NAMES = ["arbitrum", "optimism", "boba", "base"];
+const L2_CHAIN_NAMES = ["arbitrum", "optimism", "boba", "base", "blast"];
 L2_CHAIN_NAMES.forEach((chainName) =>
   assert(isPublicNetwork(chainName), "L2_CHAIN_NAMES contains invalid public network name")
 );
@@ -38,11 +38,16 @@ async function setupHub(hub: Contract, deployer: string, parentMessenger: string
     hub.methods.messengers(childChainId).call(),
   ]);
 
-  assert(owner === deployer, `Accounts[0] (${deployer}) is not equal to hub owner (${owner})`);
   if (existingParentMessenger !== parentMessenger) {
     console.log(`Setting hub messenger for ID ${childChainId} to ${parentMessenger}...`);
-    const setMessengerTxn = await hub.methods.setMessenger(childChainId, parentMessenger).send({ from: deployer });
-    console.log(`...txn: ${setMessengerTxn.transactionHash}`);
+    const setMessengerObj = hub.methods.setMessenger(childChainId, parentMessenger);
+    if (owner === deployer) {
+      const setMessengerTxn = await setMessengerObj.send({ from: deployer });
+      console.log(`...txn: ${setMessengerTxn.transactionHash}`);
+    } else {
+      console.log(`Hub is not owned by deployer. This requires governance call to ${hub.options.address}:`);
+      console.log(`- ABI encoded calldata: ${setMessengerObj.encodeABI()}`);
+    }
   }
 }
 
@@ -164,16 +169,28 @@ async function setupOvmBasedL1Chain(hre_: any, chainId: number) {
 
   await setupParentMessenger(messenger, deployer, ChildMessenger, OracleHub, GovernorHub, OracleSpoke, GovernorSpoke);
 
+  // Default gas limit of 5M is too high. We can safely use 500k:
+  console.log(`Setting default gas limit to 500k on parent messenger at ${messenger.options.address}...`);
+  const setDefaultGasLimitTxn = await messenger.methods.setDefaultGasLimit("500000").send({ from: deployer });
+  console.log(`...txn: ${setDefaultGasLimitTxn.transactionHash}`);
+
   // Submit parent messenger cross-chain transactions:
   console.log(`Setting child oracle spoke address to ${OracleSpoke.address}...`);
+  const setChildOracleSpokeGasLimit = await messenger.methods
+    .setChildOracleSpoke(OracleSpoke.address)
+    .estimateGas({ from: deployer });
   const setChildOracleSpokeTxn = await messenger.methods
     .setChildOracleSpoke(OracleSpoke.address)
-    .send({ from: deployer });
+    .send({ from: deployer, gas: setChildOracleSpokeGasLimit });
   console.log(`...txn: ${setChildOracleSpokeTxn.transactionHash}`);
+
   console.log(`Setting child parent messenger to ${messenger.options.address}...`);
+  const setChildParentMessengerGasLimit = await messenger.methods
+    .setChildParentMessenger(messenger.options.address)
+    .estimateGas({ from: deployer });
   const setChildParentMessengerTxn = await messenger.methods
     .setChildParentMessenger(messenger.options.address)
-    .send({ from: deployer });
+    .send({ from: deployer, gas: setChildParentMessengerGasLimit });
   console.log(`...txn: ${setChildParentMessengerTxn.transactionHash}`);
 
   // Submit oracle hub transactions:
@@ -291,6 +308,13 @@ task("setup-l1-optimism-xchain", "Configures L1 cross chain smart contracts for 
     await setupOvmBasedL1Chain(hre_, 10);
   }
 );
+
+task("setup-l1-blast-xchain", "Configures L1 cross chain smart contracts for Blast bridge").setAction(async function (
+  _,
+  hre_
+) {
+  await setupOvmBasedL1Chain(hre_, 81457);
+});
 
 task("setup-l2-xchain", "Configures L2 cross chain smart contracts").setAction(async function (_, hre_) {
   const hre = hre_ as CombinedHRE;

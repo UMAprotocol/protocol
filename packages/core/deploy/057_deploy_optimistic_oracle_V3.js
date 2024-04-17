@@ -16,6 +16,7 @@ const ADDRESSES_FOR_NETWORK = {
   43114: { defaultCurrency: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E" },
   80001: { defaultCurrency: "0xe6b8a5CF854791412c1f6EFC7CAf629f5Df1c747" },
   80002: { defaultCurrency: "0x9b4A302A548c7e313c2b74C461db7b84d3074A84" },
+  81457: { defaultCurrency: "0x4300000000000000000000000000000000000003" },
   11155111: { defaultCurrency: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" },
 };
 const func = async function (hre) {

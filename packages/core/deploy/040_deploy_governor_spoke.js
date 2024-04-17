@@ -17,5 +17,6 @@ func.tags = [
   "l2-optimism-xchain",
   "l2-admin-xchain",
   "l2-base-xchain",
+  "l2-blast-xchain",
 ];
 func.dependencies = ["Finder"];
