@@ -1,29 +1,21 @@
 // This script can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
-// Export following environment variables:
-// - GCKMS_WALLET: (optional) GCKMS wallet name
-// - UMIP_NUMBER: Number in UMIP repository
-// - PARENT_MESSENGER_NAME: Contract name for the parent messenger on mainnet (e.g. Blast_ParentMessenger)
-// Then run the script with:
-// yarn hardhat run packages/scripts/src/admin-proposals/register-parent-messenger/0_Propose.ts --network <network>
+// and then running this script with:
+// GCKMS_WALLET=<OPTIONAL-GCKMS-WALLET> \
+// yarn hardhat run packages/scripts/src/admin-proposals/register-parent-messenger-and-gas-limit/0_Propose.ts --network <network>
 
 const hre = require("hardhat");
 
-import {
-  getParentMessengerBaseAbi,
-  GovernorHubEthers,
-  OracleHubEthers,
-  ParentMessengerBaseEthers,
-  ProposerV2Ethers,
-  VotingTokenEthers,
-} from "@uma/contracts-node";
+import { GovernorHubEthers, OracleHubEthers, ParentMessengerBaseEthers, ProposerV2Ethers, VotingTokenEthers } from "@uma/contracts-node";
 
 import { Provider } from "@ethersproject/abstract-provider";
 import { getGckmsSigner } from "@uma/common";
-import { BigNumberish, Contract, Signer, Wallet } from "ethers";
+import { OptimismParentMessenger } from "@uma/contracts-node/typechain/core/ethers";
+import { BigNumberish, Signer, Wallet } from "ethers";
 import { BytesLike } from "ethers/lib/utils";
 import { getAddress } from "../../upgrade-tests/register-new-contract/common";
 import { getContractInstance } from "../../utils/contracts";
+import { BASE_CHAIN_ID, PARENT_MESSENGER_DEFAULT_GAS_LIMIT } from "./common";
 
 interface AdminProposalTransaction {
   to: string;
@@ -35,12 +27,6 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
 async function main() {
   const adminProposalTransactions: AdminProposalTransaction[] = [];
-
-  const umipNumber = Number(process.env.UMIP_NUMBER);
-  if (!Number.isInteger(umipNumber)) throw new Error("Missing or invalid UMIP_NUMBER env");
-
-  const parentMessengerName = process.env.PARENT_MESSENGER_NAME;
-  if (parentMessengerName === undefined) throw new Error("Missing PARENT_MESSENGER_NAME env");
 
   let proposerSigner: Signer;
 
@@ -58,32 +44,48 @@ async function main() {
 
   const proposer = await await getContractInstance<ProposerV2Ethers>("ProposerV2");
 
-  const parentMessengerAddress = await getAddress(parentMessengerName, 1);
+  const baseParentMessengerAddress = await getAddress("Base_ParentMessenger", 1);
   const oracleHub = await getContractInstance<OracleHubEthers>("OracleHub");
   const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHub");
-
-  const parentMessenger = new Contract(
-    parentMessengerAddress,
-    getParentMessengerBaseAbi(),
-    hre.ethers.provider
-  ) as ParentMessengerBaseEthers;
-  const targetChainId = await parentMessenger.childChainId();
+  const optimismParentMessenger = await getContractInstance<OptimismParentMessenger>("Optimism_ParentMessenger");
 
   // set messenger in oracle hub
   const setMessengerOracleHubTx = await oracleHub.populateTransaction.setMessenger(
-    targetChainId,
-    parentMessengerAddress
+    BASE_CHAIN_ID,
+    baseParentMessengerAddress
   );
   if (!setMessengerOracleHubTx.data) throw "setMessengerOracleHubTx.data is null";
   adminProposalTransactions.push({ to: oracleHub.address, value: 0, data: setMessengerOracleHubTx.data });
 
   // set messenger in governor hub
   const setMessengerGovernorHubTx = await governorHub.populateTransaction.setMessenger(
-    targetChainId,
-    parentMessengerAddress
+    BASE_CHAIN_ID,
+    baseParentMessengerAddress
   );
   if (!setMessengerGovernorHubTx.data) throw "setMessengerGovernorHubTx.data is null";
   adminProposalTransactions.push({ to: governorHub.address, value: 0, data: setMessengerGovernorHubTx.data });
+
+  // set optimism parent messenger defaultGasLimit
+  const setParentMessengerDefaultGasLimitTx = await optimismParentMessenger.populateTransaction.setDefaultGasLimit(
+    PARENT_MESSENGER_DEFAULT_GAS_LIMIT
+  );
+  if (!setParentMessengerDefaultGasLimitTx.data) throw "setParentMessengerDefaultGasLimitTx.data is null";
+  adminProposalTransactions.push({
+    to: optimismParentMessenger.address,
+    value: 0,
+    data: setParentMessengerDefaultGasLimitTx.data,
+  });
+
+  // set base parent messenger defaultGasLimit
+  const setBaseParentMessengerDefaultGasLimitTx = await optimismParentMessenger.populateTransaction.setDefaultGasLimit(
+    PARENT_MESSENGER_DEFAULT_GAS_LIMIT
+  );
+  if (!setBaseParentMessengerDefaultGasLimitTx.data) throw "setBaseParentMessengerDefaultGasLimitTx.data is null";
+  adminProposalTransactions.push({
+    to: baseParentMessengerAddress,
+    value: 0,
+    data: setBaseParentMessengerDefaultGasLimitTx.data,
+  });
 
   const defaultBond = await proposer.bond();
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);
@@ -93,15 +95,11 @@ async function main() {
     await approveTx.wait();
   }
 
-  const proposalExplanation = `UMIP-${umipNumber} Register parent messenger ${parentMessengerAddress} on chain ${targetChainId}`;
-
-  console.log(`Submitting proposal for: ${proposalExplanation}`);
-
   const tx = await (await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address))
     .connect(proposerSigner)
     .propose(
       adminProposalTransactions,
-      hre.ethers.utils.toUtf8Bytes(proposalExplanation)
+      hre.ethers.utils.toUtf8Bytes(`Register parent messenger ${baseParentMessengerAddress} on chain ${BASE_CHAIN_ID}`)
     );
 
   await tx.wait();
