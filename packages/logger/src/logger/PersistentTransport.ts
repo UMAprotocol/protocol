@@ -33,7 +33,7 @@ export abstract class PersistentTransport extends Transport {
     const botIdentifier = process.env.BOT_IDENTIFIER || noBotId;
     this.logListKey = `uma-persistent-log-queue:${botIdentifier}:${derivedTransport}`;
 
-    this.on("processed", () => this.isQueueBeingExecuted = false); // Unlock queue execution when current run processed.
+    this.on("processed", () => (this.isQueueBeingExecuted = false)); // Unlock queue execution when current run processed.
   }
 
   // Getter for checking if the transport is flushed.
