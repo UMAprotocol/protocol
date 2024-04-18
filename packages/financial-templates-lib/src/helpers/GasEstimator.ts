@@ -71,7 +71,7 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
     defaultMaxPriorityFeePerGasGwei: 1,
     type: NetworkType.London,
   },
-  81457: { type: NetworkType.London },
+  81457: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
 };
 
 const DEFAULT_NETWORK_ID = 1; // Ethereum Mainnet.
