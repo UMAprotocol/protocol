@@ -1,44 +1,35 @@
 // This script verify that the upgrade was executed correctly.
+// Export following environment variable:
+// - PARENT_MESSENGER_NAME: Contract name for the parent messenger on mainnet (e.g. Blast_ParentMessenger)
+// - TARGET_CHAIN_ID: Chain ID for target L2 network.
+// Then run the script with:
 // yarn hardhat run packages/scripts/src/admin-proposals/register-parent-messenger/1_Verify.ts --network localhost
 
 import { strict as assert } from "assert";
 
-import { GovernorHubEthers, OracleHubEthers, getAddress } from "@uma/contracts-node";
-import { OptimismParentMessenger } from "@uma/contracts-node/typechain/core/ethers";
+import { GovernorHubEthers, OracleHubEthers } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
-import { PARENT_MESSENGER_DEFAULT_GAS_LIMIT } from "./common";
+import { getAddress } from "../../upgrade-tests/register-new-contract/common";
 
 async function main() {
-  const baseChainId = 8453;
-  const newGasLimit = PARENT_MESSENGER_DEFAULT_GAS_LIMIT;
+  const targetChainId = Number(process.env.TARGET_CHAIN_ID);
+  if (!Number.isInteger(targetChainId)) throw new Error("Missing or invalid TARGET_CHAIN_ID env");
 
-  const baseParentMessengerAddress = await getAddress("Base_ParentMessenger", 1);
+  const parentMessengerName = process.env.PARENT_MESSENGER_NAME;
+  if (parentMessengerName === undefined) throw new Error("Missing PARENT_MESSENGER_NAME env");
+
+  const parentMessengerAddress = await getAddress(parentMessengerName, 1);
 
   const oracleHub = await getContractInstance<OracleHubEthers>("OracleHub");
   const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHub");
-  const optimismParentMessenger = await getContractInstance<OptimismParentMessenger>("Optimism_ParentMessenger");
-  const baseParentMessenger = await getContractInstance<OptimismParentMessenger>(
-    "Optimism_ParentMessenger",
-    baseParentMessengerAddress
-  );
 
-  console.log(` 1. Validating base parent messenger on OracleHub`);
-  assert((await oracleHub.messengers(baseChainId)) === baseParentMessengerAddress, "Parent messenger not set");
-  console.log(`✅ Base Parent Messenger is set to ${baseParentMessengerAddress} on OracleHub`);
+  console.log(` 1. Validating parent messenger on OracleHub`);
+  assert((await oracleHub.messengers(targetChainId)) === parentMessengerAddress, "Parent messenger not set");
+  console.log(`✅ Parent Messenger for chain ${targetChainId} is set to ${parentMessengerAddress} on OracleHub`);
 
-  console.log(` 2. Validating base parent messenger on GovernorHub`);
-  assert((await governorHub.messengers(baseChainId)) === baseParentMessengerAddress, "Parent messenger not set");
-  console.log(`✅ Base Parent Messenger is set to ${baseParentMessengerAddress} on GovernorHub`);
-
-  console.log(` 3. Validating default gas limit on OptimismParentMessenger`);
-  const defaultGasLimit = await optimismParentMessenger.defaultGasLimit();
-  assert(defaultGasLimit === newGasLimit, "Default gas limit not set");
-  console.log(`✅ Default gas limit is set to ${newGasLimit} on OptimismParentMessenger`);
-
-  console.log(` 4. Validating default gas limit on Base Parent Messenger`);
-  const baseParentMessengerGasLimit = await baseParentMessenger.defaultGasLimit();
-  assert(baseParentMessengerGasLimit === newGasLimit, "Default gas limit not set");
-  console.log(`✅ Default gas limit is set to ${newGasLimit} on Base Parent Messenger`);
+  console.log(` 2. Validating parent messenger on GovernorHub`);
+  assert((await governorHub.messengers(targetChainId)) === parentMessengerAddress, "Parent messenger not set");
+  console.log(`✅ Parent Messenger for chain ${targetChainId} is set to ${parentMessengerAddress} on GovernorHub`);
 }
 
 main().then(
