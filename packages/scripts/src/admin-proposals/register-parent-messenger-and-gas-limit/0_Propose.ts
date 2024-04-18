@@ -6,7 +6,7 @@
 
 const hre = require("hardhat");
 
-import { GovernorHubEthers, OracleHubEthers, ParentMessengerBaseEthers, ProposerV2Ethers, VotingTokenEthers } from "@uma/contracts-node";
+import { GovernorHubEthers, OracleHubEthers, ProposerV2Ethers, VotingTokenEthers } from "@uma/contracts-node";
 
 import { Provider } from "@ethersproject/abstract-provider";
 import { getGckmsSigner } from "@uma/common";
