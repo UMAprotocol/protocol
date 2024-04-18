@@ -58,15 +58,16 @@ function isLoggerFlushed(logger: AugmentedLogger): boolean {
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // This method will check if all transports attached to AugmentedLogger having isFlushed getter return it as true. If
 // not, it will block until such time that all these transports have been flushed. This still can exit before all
-// transports are flushed if the logger flush timeout is reached.
+// transports are flushed if the logger flush timeout is reached for non-persistent log queue transports.
 export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
-  pauseLogQueueProcessing(logger.transports); // Signal to pause log queue processing.
-
   const waitForFlushed = async (): Promise<void> => {
     while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
   };
   // Wait for the logger to be flushed or for the logger flush timeout to be reached.
   await Promise.race([waitForFlushed(), delay(logger.flushTimeout)]);
+
+  // Signal to pause log queue processing on persistent queue transports. This waits for current element to be logged.
+  await pausePersistentLogQueueProcessing(logger.transports);
 }
 
 export interface AugmentedLogger extends _Logger {
@@ -100,11 +101,15 @@ function filterLogErrorTransports(transports: Transport[]): Transport[] {
 }
 
 // Signal pause queue processing from persistent storage on all transports that support it.
-// This is intended to be used only when flushing logger before termination.
-function pauseLogQueueProcessing(transports: Transport[]): void {
-  for (const transport of transports) {
-    if (transport instanceof PersistentTransport) transport.pauseProcessing();
-  }
+// This is intended to be used only when waiting for logger before termination.
+async function pausePersistentLogQueueProcessing(transports: Transport[]): Promise<void> {
+  const persistentTransports = transports.filter(
+    (transport) => transport instanceof PersistentTransport
+  ) as PersistentTransport[];
+
+  // Signal pause queue processing, but wait for any currently processed elements still being logged.
+  const pausePromises = persistentTransports.map((transport) => transport.pauseProcessing());
+  await Promise.all(pausePromises);
 }
 
 // Initiate log queue processing from persistent storage on all transports that support it.

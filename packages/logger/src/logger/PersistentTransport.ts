@@ -32,6 +32,8 @@ export abstract class PersistentTransport extends Transport {
 
     const botIdentifier = process.env.BOT_IDENTIFIER || noBotId;
     this.logListKey = `uma-persistent-log-queue:${botIdentifier}:${derivedTransport}`;
+
+    this.on("processed", () => this.isQueueBeingExecuted = false); // Unlock queue execution when current run processed.
   }
 
   // Getter for checking if the transport is flushed.
@@ -59,8 +61,15 @@ export abstract class PersistentTransport extends Transport {
   }
 
   // Signal to pause processing messages from persistent storage.
-  pauseProcessing() {
+  async pauseProcessing() {
     this.canProcess = false;
+
+    // Wait to log for currently processed element.
+    if (this.isQueueBeingExecuted) {
+      await new Promise((resolve) => {
+        this.once("processed", resolve);
+      });
+    }
   }
 
   // Logs queue element when processing persistent storage. Implementation is specific to derived class.
@@ -102,8 +111,8 @@ export abstract class PersistentTransport extends Transport {
       await delay(this.rateLimit);
     }
 
-    // Unlock the queue execution.
-    this.isQueueBeingExecuted = false;
+    // Unblock any pauseProcessing call that waits for current log element being processed.
+    this.emit("processed"); // This should also unlock the queue execution in the listener.
   }
 
   // Connect to redis when not ready.
