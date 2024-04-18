@@ -99,10 +99,7 @@ async function main() {
 
   const tx = await (await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address))
     .connect(proposerSigner)
-    .propose(
-      adminProposalTransactions,
-      hre.ethers.utils.toUtf8Bytes(proposalExplanation)
-    );
+    .propose(adminProposalTransactions, hre.ethers.utils.toUtf8Bytes(proposalExplanation));
 
   await tx.wait();
 
