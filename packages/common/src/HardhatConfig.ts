@@ -131,6 +131,11 @@ export function getHardhatConfig(
         accounts: { mnemonic },
         companionNetworks: { mainnet: "mainnet" },
       },
+      "base-sepolia": {
+        chainId: 84532,
+        url: getNodeUrl("base-sepolia", true, 84532),
+        accounts: { mnemonic },
+      },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true, 42), accounts: { mnemonic } },
       optimism: {
         chainId: 10,
@@ -236,6 +241,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://api-goerli.basescan.org/api",
             browserURL: "https://goerli.basescan.org",
+          },
+        },
+        {
+          network: "base-sepolia",
+          chainId: 84532,
+          urls: {
+            apiURL: "https://api-sepolia.basescan.org/api",
+            browserURL: "https://sepolia.basescan.org",
           },
         },
         {
