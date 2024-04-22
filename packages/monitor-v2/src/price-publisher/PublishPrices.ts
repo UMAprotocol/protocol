@@ -10,6 +10,7 @@ import { logPricePublished } from "./BotLogger";
 import {
   ARBITRUM_CHAIN_ID,
   BASE_CHAIN_ID,
+  BLAST_CHAIN_ID,
   BLOCKS_WEEK_MAINNET,
   Logger,
   MonitoringParams,
@@ -116,9 +117,16 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     await getAddress("Base_ParentMessenger", params.chainId)
   );
 
+  const blastParentMessenger = await getContractInstanceWithProvider<OptimismParentMessenger>(
+    "Optimism_ParentMessenger",
+    params.provider,
+    await getAddress("Blast_ParentMessenger", params.chainId)
+  );
+
   const arbitrumL1CallValue = await arbitrumParentMessenger.getL1CallValue();
   const optimismL1CallValue = await optimismParentMessenger.getL1CallValue();
   const baseL1CallValue = await baseParentMessenger.getL1CallValue();
+  const blastL1CallValue = await blastParentMessenger.getL1CallValue();
   const currentBlockNumber = await params.provider.getBlockNumber();
 
   const lookBack = params.blockLookback || BLOCKS_WEEK_MAINNET;
@@ -141,10 +149,11 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     const isArbitrum = decodedAncillary.endsWith(`,childChainId:${ARBITRUM_CHAIN_ID}`);
     const isOptimism = decodedAncillary.endsWith(`,childChainId:${OPTIMISM_CHAIN_ID}`);
     const isBase = decodedAncillary.endsWith(`,childChainId:${BASE_CHAIN_ID}`);
+    const isBlast = decodedAncillary.endsWith(`,childChainId:${BLAST_CHAIN_ID}`);
 
     if (isPolygon) {
       await processOracleRoot(logger, params, oracleRootTunnel, event);
-    } else if (isOptimism || isArbitrum || isBase) {
+    } else if (isOptimism || isArbitrum || isBase || isBlast) {
       let chainId, callValue;
 
       if (isArbitrum) {
@@ -156,6 +165,9 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
       } else if (isBase) {
         chainId = BASE_CHAIN_ID;
         callValue = baseL1CallValue;
+      } else if (isBlast) {
+        chainId = BLAST_CHAIN_ID;
+        callValue = blastL1CallValue;
       } else {
         throw new Error("Invalid chainId");
       }
