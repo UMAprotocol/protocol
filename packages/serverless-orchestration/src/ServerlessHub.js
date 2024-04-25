@@ -247,8 +247,15 @@ hub.post("/", async (req, res) => {
           message: `Attempting to execute ${botName} serverless spoke using named spoke ${botConfig.spokeUrlName}`,
         });
       const spokeUrl = getSpokeUrl(botConfig.spokeUrlName);
+      const runId = botConfig.environmentVariables[RUN_IDENTIFIER_KEY];
       promiseArray.push(
-        Promise.race([_executeServerlessSpoke(spokeUrl, botConfig), _rejectAfterDelay(spokeRejectionTimeout, botName)])
+        Promise.race([
+          _executeServerlessSpoke(spokeUrl, botConfig, botName),
+          _rejectAfterDelay(spokeRejectionTimeout, botName),
+        ]).then(
+          (value) => ({ ...value, runIds: [runId] }),
+          (err) => Promise.reject({ ...err, runIds: [runId] })
+        )
       );
     }
     logger.debug({ at: "ServerlessHub", message: "Executing Serverless spokes", botConfigs });
@@ -290,10 +297,11 @@ hub.post("/", async (req, res) => {
 
         rejectedRetryPromiseArray.push(
           Promise.race([
-            _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
+            _executeServerlessSpoke(spokeUrl, botConfigs[botName], botName),
             _rejectAfterDelay(spokeRejectionTimeout, botName),
-          ]).catch((err) =>
-            Promise.reject(new Error(`${runId} and ${retryRunId} failed. Retry failed with err: ${err.toString()}`))
+          ]).then(
+            (value) => ({ ...value, runIds: [runId, retryRunId] }),
+            (err) => Promise.reject({ ...err, runIds: [runId, retryRunId] })
           )
         );
       });
@@ -322,6 +330,7 @@ hub.post("/", async (req, res) => {
     // If the errorOutput is an instance of Error then we know that error was produced within the hub. Else, it is from
     // one of the upstream spoke calls. Depending on the kind of error, process the logs differently.
     if (errorOutput instanceof Error) {
+      console.log(errorOutput.stack);
       logger.error({
         at: "ServerlessHub",
         message: "A fatal error occurred in the hub",
@@ -368,16 +377,20 @@ hub.post("/", async (req, res) => {
 
 // Execute a serverless POST command on a given `url` with a provided json `body`. This is used to initiate the spoke
 // instance from the hub. If running in gcp mode then local service account must be permissioned to execute this command.
-const _executeServerlessSpoke = async (url, body) => {
-  if (hubConfig.spokeRunner == "gcp") {
-    const targetAudience = new URL(url).origin;
+const _executeServerlessSpoke = async (url, body, botName) => {
+  try {
+    if (hubConfig.spokeRunner == "gcp") {
+      const targetAudience = new URL(url).origin;
 
-    const client = await auth.getIdTokenClient(targetAudience);
-    const res = await client.request({ url: url, method: "post", data: body });
+      const client = await auth.getIdTokenClient(targetAudience);
+      const res = await client.request({ url: url, method: "post", data: body });
 
-    return res.data;
-  } else if (hubConfig.spokeRunner == "localStorage") {
-    return _postJson(url, body);
+      return res.data;
+    } else if (hubConfig.spokeRunner == "localStorage") {
+      return _postJson(url, body);
+    }
+  } catch (err) {
+    return Promise.reject({ status: "error", message: err.toString(), childProcessIdentifier: botName });
   }
 };
 
@@ -566,7 +579,12 @@ async function _postJson(url, body) {
 // an error code from the spoke or the stdout is a blank string. If there is no error, append to validOutputs.
 function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs) {
   if (spokeResponse.status == "rejected" && spokeResponse.reason.status == "timeout") {
-    errorOutputs[botKey] = { status: "timeout", message: spokeResponse.reason.message, botIdentifier: botKey };
+    errorOutputs[botKey] = {
+      status: "timeout",
+      message: spokeResponse.reason.message,
+      botIdentifier: botKey,
+      runIds: spokeResponse.reason.runIds,
+    };
   } else if (
     spokeResponse.status == "rejected" ||
     (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.error) ||
@@ -581,6 +599,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
           spokeResponse.reason.response.data &&
           spokeResponse.reason.response.data.execResponse),
       botIdentifier: botKey,
+      runIds: spokeResponse?.reason?.runIds || spokeResponse?.value?.runIds,
     };
   } else if (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.stdout == "") {
     errorOutputs[botKey] = {
@@ -588,6 +607,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
       message: "empty stdout",
       botIdentifier: botKey,
+      runIds: spokeResponse.value.runIds,
     };
   } else if (
     spokeResponse.value &&
@@ -599,24 +619,25 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
       message: "missing `started` keyword",
       botIdentifier: botKey,
+      runIds: spokeResponse.value.runIds,
     };
   } else {
     validOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
       botIdentifier: botKey,
+      runIds: spokeResponse?.value?.runIds,
     };
   }
 }
 
 // Returns a promise that is rejected after seconds delay. Used to limit how long a spoke can run for.
-const _rejectAfterDelay = (seconds, childProcessIdentifier, runIdentifiers) =>
+const _rejectAfterDelay = (seconds, childProcessIdentifier) =>
   new Promise((_, reject) => {
     setTimeout(reject, seconds * 1000, {
       status: "timeout",
       message: `The spoke call took longer than ${seconds} seconds to reply`,
       childProcessIdentifier,
-      runIdentifiers,
     });
   });
 
