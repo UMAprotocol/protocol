@@ -1,4 +1,4 @@
-Adds a new identifier to IdentifierWhitelist through a proposal in ProposerV2 and vote in VotingV2.
+Adds a new identifier to IdentifierWhitelist through a proposal in ProposerV2 in mainnet, polygon, arbitrum, optimism and base chain.
 
 Console 1
 
@@ -11,9 +11,24 @@ Console 2
 ```
 ./packages/scripts/setupFork.sh
 
-IDENTIFIER=<IDENTIFIER> UMIP_NUMBER=<UMIP_NUMBER> yarn hardhat run ./packages/scripts/src/upgrade-tests/add-identifier/0_Propose.ts --network localhost
+IDENTIFIER=<IDENTIFIER-TO-ADD> \
+UMIP_NUMBER=<UMIP-NUMBER> \
+NODE_URL_1=<MAINNET-NODE-URL> \
+NODE_URL_10=<OPTIMISM-NODE-URL> \
+NODE_URL_137=<POLYGON-NODE-URL> \
+NODE_URL_8453=<BASE-NODE-URL> \
+NODE_URL_42161=<ARBITRUM-NODE-URL> \
+yarn hardhat run ./packages/scripts/src/admin-proposals/add-identifier/0_Propose.ts --network localhost
 
 yarn hardhat run ./packages/scripts/src/admin-proposals/simulateVoteV2.ts --network localhost
 
-IDENTIFIER=<IDENTIFIER> yarn hardhat run ./packages/scripts/src/upgrade-tests/add-identifier/1_Verify.ts --network localhost
+IDENTIFIER=<IDENTIFIER> yarn hardhat run ./packages/scripts/src/admin-proposals/add-identifier/1_Verify.ts --network localhost
+
+FORK_NETWORK=true \
+NODE_URL_10=<OPTIMISM-NODE-URL> \
+NODE_URL_137=<POLYGON-NODE-URL> \
+NODE_URL_8453=<BASE-NODE-URL> \
+NODE_URL_42161=<ARBITRUM-NODE-URL> \
+IDENTIFIER=<IDENTIFIER> yarn hardhat run ./packages/scripts/src/admin-proposals/add-identifier/2_VerifyRelays.ts --network localhost
+
 ```

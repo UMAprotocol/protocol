@@ -21,5 +21,12 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["OracleHub", "l1-arbitrum-xchain", "l1-boba-xchain", "l1-optimism-xchain", "l1-base-xchain"];
+func.tags = [
+  "OracleHub",
+  "l1-arbitrum-xchain",
+  "l1-boba-xchain",
+  "l1-optimism-xchain",
+  "l1-base-xchain",
+  "l1-blast-xchain",
+];
 func.dependencies = ["Finder", "VotingToken"];

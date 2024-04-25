@@ -32,6 +32,8 @@ export async function averageBlockTimeSeconds(chainId?: number): Promise<number>
       return 3;
     case 8453:
       return 2;
+    case 81457:
+      return 2;
     case 1:
       return defaultBlockTimeSeconds;
     default:

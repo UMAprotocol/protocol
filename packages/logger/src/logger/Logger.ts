@@ -33,10 +33,12 @@ import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
 import { TransportError } from "./TransportError";
 import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
+import { noBotId } from "../constants";
 import { delay } from "../helpers/delay";
 
 import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
+import { PersistentTransport } from "./PersistentTransport";
 
 // Custom interface for transports that have the isFlushed getter.
 interface FlushableTransport extends Transport {
@@ -56,13 +58,16 @@ function isLoggerFlushed(logger: AugmentedLogger): boolean {
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // This method will check if all transports attached to AugmentedLogger having isFlushed getter return it as true. If
 // not, it will block until such time that all these transports have been flushed. This still can exit before all
-// transports are flushed if the logger flush timeout is reached.
+// transports are flushed if the logger flush timeout is reached for non-persistent log queue transports.
 export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
   const waitForFlushed = async (): Promise<void> => {
     while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
   };
   // Wait for the logger to be flushed or for the logger flush timeout to be reached.
   await Promise.race([waitForFlushed(), delay(logger.flushTimeout)]);
+
+  // Signal to pause log queue processing on persistent queue transports. This waits for current element to be logged.
+  await pausePersistentLogQueueProcessing(logger.transports);
 }
 
 export interface AugmentedLogger extends _Logger {
@@ -105,6 +110,27 @@ function filterLogErrorTransports(transports: Transport[]): Transport[] {
   );
 }
 
+// Signal pause queue processing from persistent storage on all transports that support it.
+// This is intended to be used only when waiting for logger before termination.
+async function pausePersistentLogQueueProcessing(transports: Transport[]): Promise<void> {
+  const persistentTransports = transports.filter(
+    (transport) => transport instanceof PersistentTransport
+  ) as PersistentTransport[];
+
+  // Signal pause queue processing, but wait for any currently processed elements still being logged.
+  const pausePromises = persistentTransports.map((transport) => transport.pauseProcessing());
+  await Promise.all(pausePromises);
+}
+
+// Initiate log queue processing from persistent storage on all transports that support it.
+function resumeLogQueueProcessing(transports: Transport[]): void {
+  for (const transport of transports) {
+    // Initiate log que processing. We don't await it as this should run in background and it is controlled externally
+    // via pauseProcessing method.
+    if (transport instanceof PersistentTransport) transport.processLogQueue();
+  }
+}
+
 export function generateRandomRunId() {
   return Math.round(Math.random() * Number.MAX_SAFE_INTEGER).toString();
 }
@@ -112,7 +138,7 @@ export function generateRandomRunId() {
 export function createNewLogger(
   injectedTransports: Transport[] = [],
   transportsConfig = {},
-  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID",
+  botIdentifier = process.env.BOT_IDENTIFIER || noBotId,
   runIdentifier = process.env.RUN_IDENTIFIER || generateRandomRunId()
 ): AugmentedLogger {
   const transports = [...createTransports(transportsConfig), ...injectedTransports];
@@ -145,6 +171,9 @@ export function createNewLogger(
       });
     }
   });
+
+  // Resume log queue processing from persistent storage. Any errors should be handled by above error event listener.
+  resumeLogQueueProcessing(logger.transports);
 
   return logger;
 }

@@ -107,7 +107,14 @@ export function getHardhatConfig(
         chainId: 1,
         url: getNodeUrl("mainnet", true, 1),
         accounts: { mnemonic },
-        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba", xdai: "xdai", base: "base" },
+        companionNetworks: {
+          arbitrum: "arbitrum",
+          optimism: "optimism",
+          boba: "boba",
+          xdai: "xdai",
+          base: "base",
+          blast: "blast",
+        },
       },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },
@@ -123,6 +130,11 @@ export function getHardhatConfig(
         url: getNodeUrl("base", true, 8453),
         accounts: { mnemonic },
         companionNetworks: { mainnet: "mainnet" },
+      },
+      "base-sepolia": {
+        chainId: 84532,
+        url: getNodeUrl("base-sepolia", true, 84532),
+        accounts: { mnemonic },
       },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true, 42), accounts: { mnemonic } },
       optimism: {
@@ -202,6 +214,12 @@ export function getHardhatConfig(
         accounts: { mnemonic },
         companionNetworks: { mainnet: "mainnet" },
       },
+      blast: {
+        chainId: 81457,
+        url: getNodeUrl("blast", true, 81457),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {
@@ -223,6 +241,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://api-goerli.basescan.org/api",
             browserURL: "https://goerli.basescan.org",
+          },
+        },
+        {
+          network: "base-sepolia",
+          chainId: 84532,
+          urls: {
+            apiURL: "https://api-sepolia.basescan.org/api",
+            browserURL: "https://sepolia.basescan.org",
           },
         },
         {
@@ -263,6 +289,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://www.oklink.com/api/explorer/v1/contract/verify/async/api/polygonAmoy",
             browserURL: "https://www.oklink.com/amoy",
+          },
+        },
+        {
+          network: "blast",
+          chainId: 81457,
+          urls: {
+            apiURL: "https://api.blastscan.io/api",
+            browserURL: "https://blastscan.io/",
           },
         },
       ],

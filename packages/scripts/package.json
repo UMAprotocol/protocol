@@ -9,6 +9,7 @@
     "@google-cloud/bigquery": "^5.3.0",
     "@safe-global/safe-deployments": "^1.21.1",
     "@uma/common": "^2.36.0",
+    "@uma/contracts-node": "^0.4.21",
     "@uma/financial-templates-lib": "^2.35.2",
     "dotenv": "^6.2.0",
     "ethers": "^5.4.2",

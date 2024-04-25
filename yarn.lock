@@ -3635,44 +3635,44 @@
   integrity sha512-hOUk6AyBFmqVrv7k5WAw/LpszxVbj9gGN4JRkIX52fdFAj1UA61KXmZDvqVEm+pOyec3+fIeZB02LYa/pWOArw==
 
 "@node-rs/crc32-android-arm64@^1.0.0":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.9.1.tgz#f34e71cad679bc48a3ab8f8aa3542f8d361043e9"
-  integrity sha512-glJx4YstOlfF1jmtVBpmhwNsuE+qV0GnNUDQWQ134uGa+XWOpK/I/nSH+peGlmUEmy0YGeboe7h3M/ecBchcBA==
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.10.0.tgz#8a926ad4ba8609c026b52d9b7dfa97e7591bfaa5"
+  integrity sha512-4vX1gB+rf3sYma/LLycmYsuFKolWdZX7tQOwLQ6PDwE7dAoN3mWAgS3RBw2G6PerGD9r90vSXWXPLJnF3OAhlw==
 
 "@node-rs/crc32-darwin-arm64@^1.0.0":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.9.1.tgz#41b89028c7d65c2ea19dd2cb957ef2101474e2b8"
-  integrity sha512-IG5G4r5lZekKfw/lY4pzeSpZC3d4M46T6lOlG5084OGWUmMawAI1VgWFVWN5VsztdbN9vClDqixIH0txWY4KBg==
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.10.0.tgz#fba0b3cf8f17c6f5768604d6d84decb44f332396"
+  integrity sha512-nAAdxZqxFBxqhI3ZMEGi7QDwg44N4laYO4iGIGhjLvsUDqJlYeIlqZ39Lh2gOK3D2uF/TaT4b0bU5EPHWnKMOQ==
 
 "@node-rs/crc32-darwin-x64@^1.0.0":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.9.1.tgz#10fbdcb20924b5595a26dfec31732db20d93b259"
-  integrity sha512-Dr7Fqqw4FDb9Ui0dG/SO0ivnzkYqIdFxrn3ykz3cOfBMNpn2/m2nvxban0cgICbjl3M4lg0FOrCkoulym34uyg==
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.10.0.tgz#3301fba789c59e75fcae1563c1bc635b57ee8325"
+  integrity sha512-0YhLJFDY7VAKlJ4+SdfZFY+u0X18tkuD3NCtPp1SYh1o9pWpFVBbTKWvdjjx/Ihqw0ozkfc3iewFJU7vlrDQJg==
 
 "@node-rs/crc32-linux-arm-gnueabihf@^1.0.0":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.9.1.tgz#c724a1709208233e95a284e5d79694c8df77b77e"
-  integrity sha512-XDXu30DH9sRpf6arLOi+0CGokKL/BEAZeWZ6/s8WVF7ft7EpyXKTAVQimrq0wKUuk/GisQRFgxrdfMYLDAIovg==
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.10.0.tgz#42c12d5aebd398409b28e84623e645002d13aaac"
+  integrity sha512-R3mN3uSZaslJtXW3NXdropB9tHCnOgbrvq7MtmCRpHi2Ie3E46Ohi8cW0HgHjihptafTf8NWsoYzErm39BTY0Q==
 
 "@node-rs/crc32-linux-arm64-gnu@^1.0.0":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.9.1.tgz#b557154d5264fc5ccec6a931a29177afd065d817"
-  integrity sha512-988Oq0/J0METxGui6DdDGeoMNVfoZoJ2krgXpY5/ZrLo9BL05gseWcEQvHH1AlzzRGAMgba+JBxCAX+XjiWsXA==
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.10.0.tgz#4a1849b882737c73541cf7141557ea12269161ee"
+  integrity sha512-2zZ2RQLVhjCWRWiLvz/CoP5BFld/zE/uD2Z9Nk+Y5zmJ11CD1RC3lqKG1M3MgEiQq9CnWJxwyy5kM2q4jDeXkg==
 
 "@node-rs/crc32-linux-x64-gnu@^1.0.0":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.9.1.tgz#ba2afccc2c5537e946f9aee80b3d57f0a792153d"
-  integrity sha512-D0tJRYa2Bg8EeD6iDe/SgQg81W2+75cGrl+0hK65qSCVLUHPVeIXVFzSheeL7XxMsKHLhv1rZpt+YmxP5GGHrw==
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.10.0.tgz#02c5bc402d783cce8d922240ebaba58c4ed07052"
+  integrity sha512-K/7aY/h8QngsLk0KsalQ3AlZ8ljXRisZgc20RcbB4UZkjl5AN6TeHQlVbx9U2MSBE5f6ViiZEr8c8CcID3W2Mg==
 
 "@node-rs/crc32-linux-x64-musl@^1.0.0":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.9.1.tgz#ddbd5745001f50a2da80272709860ce140bcdaba"
-  integrity sha512-WD0GHcQCNNMXwtb5NI7Y6WjXWBd8LEBUpo2XrMZstL8fEAWC0qGO7RsIaDclAAN2T/B7L74tud5yYVLm/c5XMw==
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.10.0.tgz#07d0a1914652a3cf058e7cde5bc85f75a4106bbf"
+  integrity sha512-GyCSm+Dp96qUvqrsxKgfd3TFrE8v5sRUYiMgNKK6G1m7nQb/VXvab9UoBSKeFw131odt3LlIuBAuhMnbb4za5w==
 
 "@node-rs/crc32-win32-x64-msvc@^1.0.0":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.9.1.tgz#e44e392b5a66270efcb31772fa734c4cc2d4be42"
-  integrity sha512-HEg0560fHGUJJohxEHQYQeg/ITqaW9033PURG8M1S0rFmJpl2a7aeWouQRBDCfWJXSA2N1QIjRa3csMyULTKvg==
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.10.0.tgz#9fe9a4f4020a330dc500421d7c8da805bab08fdd"
+  integrity sha512-6b99QpwNCQube1xleD+9IcF6foEWHYQYjuZrHAR5diuP/uqM7i+KCgMU9fbCFLs5zmssYHO3CQSZ8G+V0eC59g==
 
 "@node-rs/helper@^1.0.0":
   version "1.5.0"
@@ -4339,6 +4339,40 @@
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
+
+"@redis/bloom@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@redis/bloom/-/bloom-1.2.0.tgz#d3fd6d3c0af3ef92f26767b56414a370c7b63b71"
+  integrity sha512-HG2DFjYKbpNmVXsa0keLHp/3leGJz1mjh09f2RLGGLQZzSHpkmZWuwJbAvo3QcRY8p80m5+ZdXZdYOSBLlp7Cg==
+
+"@redis/client@1.5.14":
+  version "1.5.14"
+  resolved "https://registry.yarnpkg.com/@redis/client/-/client-1.5.14.tgz#1107893464d092f140d77c468b018a6ed306a180"
+  integrity sha512-YGn0GqsRBFUQxklhY7v562VMOP0DcmlrHHs3IV1mFE3cbxe31IITUkqhBcIhVSI/2JqtWAJXg5mjV4aU+zD0HA==
+  dependencies:
+    cluster-key-slot "1.1.2"
+    generic-pool "3.9.0"
+    yallist "4.0.0"
+
+"@redis/graph@1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@redis/graph/-/graph-1.1.1.tgz#8c10df2df7f7d02741866751764031a957a170ea"
+  integrity sha512-FEMTcTHZozZciLRl6GiiIB4zGm5z5F3F6a6FZCyrfxdKOhFlGkiAqlexWMBzCi4DcRoyiOsuLfW+cjlGWyExOw==
+
+"@redis/json@1.0.6":
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/@redis/json/-/json-1.0.6.tgz#b7a7725bbb907765d84c99d55eac3fcf772e180e"
+  integrity sha512-rcZO3bfQbm2zPRpqo82XbW8zg4G/w4W3tI7X8Mqleq9goQjAGLL7q/1n1ZX4dXEAmORVZ4s1+uKLaUOg7LrUhw==
+
+"@redis/search@1.1.6":
+  version "1.1.6"
+  resolved "https://registry.yarnpkg.com/@redis/search/-/search-1.1.6.tgz#33bcdd791d9ed88ab6910243a355d85a7fedf756"
+  integrity sha512-mZXCxbTYKBQ3M2lZnEddwEAks0Kc7nauire8q20oA0oA/LoA+E/b5Y5KZn232ztPb1FkIGqo12vh3Lf+Vw5iTw==
+
+"@redis/time-series@1.0.5":
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/@redis/time-series/-/time-series-1.0.5.tgz#a6d70ef7a0e71e083ea09b967df0a0ed742bc6ad"
+  integrity sha512-IFjIgTusQym2B5IZJG3XKr5llka7ey84fw/NOYqESP5WUfQs9zz1ww/9+qoz4ka/S6KcGBodzlCeZ5UImKbscg==
 
 "@resolver-engine/core@^0.3.3":
   version "0.3.3"
@@ -8887,6 +8921,11 @@ cloneable-readable@^1.0.0:
     process-nextick-args "^2.0.0"
     readable-stream "^2.3.5"
 
+cluster-key-slot@1.1.2:
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/cluster-key-slot/-/cluster-key-slot-1.1.2.tgz#88ddaa46906e303b5de30d3153b7d9fe0a0c19ac"
+  integrity sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==
+
 cmd-shim@^4.0.1:
   version "4.1.0"
   resolved "https://registry.yarnpkg.com/cmd-shim/-/cmd-shim-4.1.0.tgz#b3a904a6743e9fede4148c6f3800bf2a08135bdd"
@@ -12734,6 +12773,11 @@ gcp-metadata@^6.0.0:
   dependencies:
     gaxios "^6.0.0"
     json-bigint "^1.0.0"
+
+generic-pool@3.9.0:
+  version "3.9.0"
+  resolved "https://registry.yarnpkg.com/generic-pool/-/generic-pool-3.9.0.tgz#36f4a678e963f4fdb8707eab050823abc4e8f5e4"
+  integrity sha512-hymDOu5B53XvN4QT9dBmZxPX4CWhBPPLguTZ9MMFeFa/Kg0xWVfylOVNlJji/E7yTZWFd/q9GO5TxDLq156D7g==
 
 genfun@^5.0.0:
   version "5.0.0"
@@ -21090,6 +21134,18 @@ redent@^3.0.0:
     indent-string "^4.0.0"
     strip-indent "^3.0.0"
 
+redis@^4.6.13:
+  version "4.6.13"
+  resolved "https://registry.yarnpkg.com/redis/-/redis-4.6.13.tgz#e247267c5f3ba35ab8277b57343d3a56acb2f0a6"
+  integrity sha512-MHgkS4B+sPjCXpf+HfdetBwbRz6vCtsceTmw1pHNYJAsYxrfpOP6dz+piJWGos8wqG7qb3vj/Rrc5qOlmInUuA==
+  dependencies:
+    "@redis/bloom" "1.2.0"
+    "@redis/client" "1.5.14"
+    "@redis/graph" "1.1.1"
+    "@redis/json" "1.0.6"
+    "@redis/search" "1.1.6"
+    "@redis/time-series" "1.0.5"
+
 reduce-flatten@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/reduce-flatten/-/reduce-flatten-2.0.0.tgz#734fd84e65f375d7ca4465c69798c25c9d10ae27"
@@ -26246,15 +26302,15 @@ yaeti@^0.0.6:
   resolved "https://registry.yarnpkg.com/yaeti/-/yaeti-0.0.6.tgz#f26f484d72684cf42bedfb76970aa1608fbf9577"
   integrity sha512-MvQa//+KcZCUkBTIC9blM+CU9J2GzuTytsOUwf2lidtvkx/6gnEp1QvJv34t9vdjhFmha/mUiNDbN0D0mJWdug==
 
+yallist@4.0.0, yallist@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/yallist/-/yallist-4.0.0.tgz#9bb92790d9c0effec63be73519e11a35019a3a72"
+  integrity sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==
+
 yallist@^3.0.0, yallist@^3.0.2, yallist@^3.1.1:
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/yallist/-/yallist-3.1.1.tgz#dbb7daf9bfd8bac9ab45ebf602b8cbad0d5d08fd"
   integrity sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==
-
-yallist@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/yallist/-/yallist-4.0.0.tgz#9bb92790d9c0effec63be73519e11a35019a3a72"
-  integrity sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==
 
 yaml@^1.10.0, yaml@^1.10.2, yaml@^1.7.2:
   version "1.10.2"
