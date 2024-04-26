@@ -332,7 +332,6 @@ describe("ServerlessHub.js", function () {
     assert.isTrue(spyLogIncludes(hubSpy, -3, "retriedOutputs"));
     assert.equal(rejectedResponse.res.statusCode, 500); // error code
     assert.isTrue(rejectedResponse.res.text.includes("Some spoke calls returned errors"));
-    console.log(rejectedResponse.res);
     assert.isTrue(rejectedResponse.res.text.includes("The spoke call took longer than 1 seconds to reply"));
     assert.isTrue(rejectedResponse.res.text.includes("retriedOutputs"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
@@ -452,7 +451,6 @@ describe("ServerlessHub.js", function () {
 
     assert.equal(errorResponse.res.statusCode, 500); // error code
     const responseObject = JSON.parse(errorResponse.res.text); // extract json response
-    console.log(errorResponse.res.text);
 
     // Check that the http response contains correct logs
     assert.equal(responseObject.message, "Some spoke calls returned errors"); // Final text in monitor loop.
