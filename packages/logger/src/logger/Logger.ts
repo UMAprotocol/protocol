@@ -35,6 +35,7 @@ import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { noBotId } from "../constants";
 import { delay } from "../helpers/delay";
+import { randomUUID } from "crypto";
 
 import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
@@ -127,7 +128,7 @@ function resumeLogQueueProcessing(transports: Transport[]): void {
 }
 
 export function generateRandomRunId() {
-  return Math.round(Math.random() * Number.MAX_SAFE_INTEGER).toString();
+  return randomUUID();
 }
 
 export function createNewLogger(
