@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.31.0...@uma/scripts@1.32.0) (2024-04-30)
+
+### Features
+
+- generic parent messenger proposal ([#4754](https://github.com/UMAprotocol/protocol/issues/4754)) ([87a73da](https://github.com/UMAprotocol/protocol/commit/87a73da03528f57fea1ac434c587cd5347cd7ef2))
+- update admin identifier whitelist script to support rollups ([#4748](https://github.com/UMAprotocol/protocol/issues/4748)) ([5a7d924](https://github.com/UMAprotocol/protocol/commit/5a7d924334ca1269c5d2427ca102885f0da61c42))
+
 # [1.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.30.0...@uma/scripts@1.31.0) (2024-04-09)
 
 ### Features

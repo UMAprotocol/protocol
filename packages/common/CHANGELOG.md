@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.37.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.36.0...@uma/common@2.37.0) (2024-04-30)
+
+### Features
+
+- blast contract deployments ([#4750](https://github.com/UMAprotocol/protocol/issues/4750)) ([6e9ab5f](https://github.com/UMAprotocol/protocol/commit/6e9ab5fe2f6d32b975497423104749c490b1c7e9))
+- deploy base sepolia contracts ([#4753](https://github.com/UMAprotocol/protocol/issues/4753)) ([7780cf7](https://github.com/UMAprotocol/protocol/commit/7780cf7831bdfce3ffb4ab2997f2e6b33f175650))
+
 # [2.36.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.35.0...@uma/common@2.36.0) (2024-04-09)
 
 ### Bug Fixes

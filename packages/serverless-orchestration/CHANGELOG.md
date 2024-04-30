@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.15.7...@uma/serverless-orchestration@2.16.0) (2024-04-30)
+
+### Features
+
+- add run identifier in logger and hub/spoke ([#4745](https://github.com/UMAprotocol/protocol/issues/4745)) ([fbbc3a6](https://github.com/UMAprotocol/protocol/commit/fbbc3a6d0f2c755b1b54784c9a083b022b005503))
+
 ## [2.15.7](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.15.6...@uma/serverless-orchestration@2.15.7) (2024-04-09)
 
 **Note:** Version bump only for package @uma/serverless-orchestration
