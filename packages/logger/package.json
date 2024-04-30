@@ -1,6 +1,6 @@
 {
   "name": "@uma/logger",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Logger library",
   "dependencies": {
     "@google-cloud/logging-winston": "^4.1.1",

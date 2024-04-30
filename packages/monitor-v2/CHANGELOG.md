@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.7.0...@uma/monitor-v2@1.8.0) (2024-04-30)
+
+### Features
+
+- support blast in dvm price publisher ([#4755](https://github.com/UMAprotocol/protocol/issues/4755)) ([f9f61e9](https://github.com/UMAprotocol/protocol/commit/f9f61e913c30fe1704c078be6acd52994166206b))
+
 # [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.6.0...@uma/monitor-v2@1.7.0) (2024-04-09)
 
 ### Features

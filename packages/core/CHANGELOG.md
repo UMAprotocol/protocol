@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.59.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.58.0...@uma/core@2.59.0) (2024-04-30)
+
+### Features
+
+- blast contract deployments ([#4750](https://github.com/UMAprotocol/protocol/issues/4750)) ([6e9ab5f](https://github.com/UMAprotocol/protocol/commit/6e9ab5fe2f6d32b975497423104749c490b1c7e9))
+- deploy base sepolia contracts ([#4753](https://github.com/UMAprotocol/protocol/issues/4753)) ([7780cf7](https://github.com/UMAprotocol/protocol/commit/7780cf7831bdfce3ffb4ab2997f2e6b33f175650))
+- deploy optimistic governor mastercopy base ([#4747](https://github.com/UMAprotocol/protocol/issues/4747)) ([2f8bfad](https://github.com/UMAprotocol/protocol/commit/2f8bfadee13c0c538bf85ad6da56a540dec75faa))
+
 # [2.58.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.57.0...@uma/core@2.58.0) (2024-04-09)
 
 ### Features

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.36.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.35.2...@uma/financial-templates-lib@2.36.0) (2024-04-30)
+
+### Bug Fixes
+
+- blast and base gas estimator ([#4752](https://github.com/UMAprotocol/protocol/issues/4752)) ([1149018](https://github.com/UMAprotocol/protocol/commit/1149018474f8e98ad558985697e73c49994c5f11))
+
+### Features
+
+- blast contract deployments ([#4750](https://github.com/UMAprotocol/protocol/issues/4750)) ([6e9ab5f](https://github.com/UMAprotocol/protocol/commit/6e9ab5fe2f6d32b975497423104749c490b1c7e9))
+
 ## [2.35.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.35.1...@uma/financial-templates-lib@2.35.2) (2024-04-09)
 
 **Note:** Version bump only for package @uma/financial-templates-lib
