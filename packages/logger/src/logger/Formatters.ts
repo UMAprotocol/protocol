@@ -39,9 +39,10 @@ export function handleRecursiveErrorArray(error: Error | any[]): string | any[] 
 }
 
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
-export function botIdentifyFormatter(botIdentifier: string) {
+export function botIdentifyFormatter(botIdentifier: string, runIdentifier: string) {
   return function (logEntry: LogEntry) {
-    if (botIdentifier) logEntry["bot-identifier"] = botIdentifier;
+    logEntry["bot-identifier"] = botIdentifier;
+    logEntry["run-identifier"] = runIdentifier;
     return logEntry;
   };
 }

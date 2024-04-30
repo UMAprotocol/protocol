@@ -35,6 +35,7 @@ import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { noBotId } from "../constants";
 import { delay } from "../helpers/delay";
+import { randomUUID } from "crypto";
 
 import type { Logger as _Logger } from "winston";
 import type * as Transport from "winston-transport";
@@ -75,11 +76,16 @@ export interface AugmentedLogger extends _Logger {
   transportErrorLogger: _Logger; // Dedicated logger for logging transport execution errors.
 }
 
-function createBaseLogger(level: string, transports: Transport[], botIdentifier: string): _Logger {
+function createBaseLogger(
+  level: string,
+  transports: Transport[],
+  botIdentifier: string,
+  runIdentifier: string
+): _Logger {
   return winston.createLogger({
     level,
     format: winston.format.combine(
-      winston.format(botIdentifyFormatter(botIdentifier))(),
+      winston.format(botIdentifyFormatter(botIdentifier, runIdentifier))(),
       winston.format((logEntry) => logEntry)(),
       winston.format(errorStackTracerFormatter)(),
       winston.format(bigNumberFormatter)(),
@@ -121,18 +127,28 @@ function resumeLogQueueProcessing(transports: Transport[]): void {
   }
 }
 
+export function generateRandomRunId() {
+  return randomUUID();
+}
+
 export function createNewLogger(
   injectedTransports: Transport[] = [],
   transportsConfig = {},
-  botIdentifier = process.env.BOT_IDENTIFIER || noBotId
+  botIdentifier = process.env.BOT_IDENTIFIER || noBotId,
+  runIdentifier = process.env.RUN_IDENTIFIER || generateRandomRunId()
 ): AugmentedLogger {
   const transports = [...createTransports(transportsConfig), ...injectedTransports];
-  const logger = createBaseLogger("debug", transports, botIdentifier) as AugmentedLogger;
+  const logger = createBaseLogger("debug", transports, botIdentifier, runIdentifier) as AugmentedLogger;
 
   logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 30;
 
   // Attach dedicated logger for handling and logging transport execution errors.
-  logger.transportErrorLogger = createBaseLogger("error", filterLogErrorTransports(logger.transports), botIdentifier);
+  logger.transportErrorLogger = createBaseLogger(
+    "error",
+    filterLogErrorTransports(logger.transports),
+    botIdentifier,
+    runIdentifier
+  );
   logger.on("error", (error) => {
     if (error instanceof TransportError) {
       // We can detect transport source and failed log info from the error object if it is a TransportError.

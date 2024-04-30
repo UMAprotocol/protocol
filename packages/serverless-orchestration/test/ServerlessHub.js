@@ -146,6 +146,7 @@ describe("ServerlessHub.js", function () {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "A fatal error occurred in the hub"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
+
   it("ServerlessHub can correctly execute bot logic with valid body and config", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be

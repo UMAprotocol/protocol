@@ -40,6 +40,9 @@ const { WAIT_FOR_LOGGER_DELAY, GCP_STORAGE_CONFIG } = process.env;
 // Enabling retry in case of transient timeout issues.
 const DEFAULT_RETRIES = 1;
 
+// Assign key name to variable since it's referenced multiple times.
+const RUN_IDENTIFIER_KEY = "RUN_IDENTIFIER";
+
 // Allows the environment to customize the config that's used to interact with google cloud storage.
 // Relevant options can be found here: https://googleapis.dev/nodejs/storage/latest/global.html#StorageOptions.
 // Specific fields of interest:
@@ -57,7 +60,7 @@ const { createBasicProvider } = require("@uma/common");
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { delay, createNewLogger } = require("@uma/financial-templates-lib");
+const { delay, createNewLogger, generateRandomRunId } = require("@uma/financial-templates-lib");
 let customLogger;
 let spokeUrl;
 // spokeUrlTable is an optional table populated through the env var SPOKE_URLS. SPOKE_URLS is expected to be a
@@ -244,8 +247,15 @@ hub.post("/", async (req, res) => {
           message: `Attempting to execute ${botName} serverless spoke using named spoke ${botConfig.spokeUrlName}`,
         });
       const spokeUrl = getSpokeUrl(botConfig.spokeUrlName);
+      const runId = botConfig.environmentVariables[RUN_IDENTIFIER_KEY];
       promiseArray.push(
-        Promise.race([_executeServerlessSpoke(spokeUrl, botConfig), _rejectAfterDelay(spokeRejectionTimeout, botName)])
+        Promise.race([
+          _executeServerlessSpoke(spokeUrl, botConfig, botName),
+          _rejectAfterDelay(spokeRejectionTimeout, botName),
+        ]).then(
+          (value) => ({ ...value, runIds: [runId] }),
+          (err) => Promise.reject({ ...err, runIds: [runId] })
+        )
       );
     }
     logger.debug({ at: "ServerlessHub", message: "Executing Serverless spokes", botConfigs });
@@ -279,11 +289,20 @@ hub.post("/", async (req, res) => {
       let rejectedRetryPromiseArray = [];
       retriedOutputs.forEach((botName) => {
         const spokeUrl = getSpokeUrl(botConfigs[botName].spokeUrlName);
+
+        // Swap out the run identifer for one with an `r` appended to signify a retry.
+        const runId = botConfigs[botName].environmentVariables[RUN_IDENTIFIER_KEY];
+        const retryRunId = `${runId}r`;
+        botConfigs[botName].environmentVariables[RUN_IDENTIFIER_KEY] = retryRunId;
+
         rejectedRetryPromiseArray.push(
           Promise.race([
-            _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
+            _executeServerlessSpoke(spokeUrl, botConfigs[botName], botName),
             _rejectAfterDelay(spokeRejectionTimeout, botName),
-          ])
+          ]).then(
+            (value) => ({ ...value, runIds: [runId, retryRunId] }),
+            (err) => Promise.reject({ ...err, runIds: [runId, retryRunId] })
+          )
         );
       });
       const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
@@ -357,16 +376,20 @@ hub.post("/", async (req, res) => {
 
 // Execute a serverless POST command on a given `url` with a provided json `body`. This is used to initiate the spoke
 // instance from the hub. If running in gcp mode then local service account must be permissioned to execute this command.
-const _executeServerlessSpoke = async (url, body) => {
-  if (hubConfig.spokeRunner == "gcp") {
-    const targetAudience = new URL(url).origin;
+const _executeServerlessSpoke = async (url, body, botName) => {
+  try {
+    if (hubConfig.spokeRunner == "gcp") {
+      const targetAudience = new URL(url).origin;
 
-    const client = await auth.getIdTokenClient(targetAudience);
-    const res = await client.request({ url: url, method: "post", data: body });
+      const client = await auth.getIdTokenClient(targetAudience);
+      const res = await client.request({ url: url, method: "post", data: body });
 
-    return res.data;
-  } else if (hubConfig.spokeRunner == "localStorage") {
-    return _postJson(url, body);
+      return res.data;
+    } else if (hubConfig.spokeRunner == "localStorage") {
+      return _postJson(url, body);
+    }
+  } catch (err) {
+    return Promise.reject({ status: "error", message: err.toString(), childProcessIdentifier: botName });
   }
 };
 
@@ -530,6 +553,7 @@ function _appendEnvVars(config, botName, singleChainId, blockNumbersForChain, mu
     Number(blockNumbersForChain[singleChainId].lastQueriedBlockNumber) + 1;
   config.environmentVariables["ENDING_BLOCK_NUMBER"] = blockNumbersForChain[singleChainId].latestBlockNumber;
   config.environmentVariables["BOT_IDENTIFIER"] = botName;
+  config.environmentVariables[RUN_IDENTIFIER_KEY] = generateRandomRunId();
   if (multiChainBlocks)
     multiChainBlocks.forEach((chainId) => {
       config.environmentVariables[`STARTING_BLOCK_NUMBER_${chainId}`] =
@@ -554,7 +578,12 @@ async function _postJson(url, body) {
 // an error code from the spoke or the stdout is a blank string. If there is no error, append to validOutputs.
 function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs) {
   if (spokeResponse.status == "rejected" && spokeResponse.reason.status == "timeout") {
-    errorOutputs[botKey] = { status: "timeout", message: spokeResponse.reason.message, botIdentifier: botKey };
+    errorOutputs[botKey] = {
+      status: "timeout",
+      message: spokeResponse.reason.message,
+      botIdentifier: botKey,
+      runIds: spokeResponse.reason.runIds,
+    };
   } else if (
     spokeResponse.status == "rejected" ||
     (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.error) ||
@@ -569,6 +598,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
           spokeResponse.reason.response.data &&
           spokeResponse.reason.response.data.execResponse),
       botIdentifier: botKey,
+      runIds: spokeResponse?.reason?.runIds || spokeResponse?.value?.runIds,
     };
   } else if (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.stdout == "") {
     errorOutputs[botKey] = {
@@ -576,6 +606,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
       message: "empty stdout",
       botIdentifier: botKey,
+      runIds: spokeResponse.value.runIds,
     };
   } else if (
     spokeResponse.value &&
@@ -587,12 +618,14 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
       message: "missing `started` keyword",
       botIdentifier: botKey,
+      runIds: spokeResponse.value.runIds,
     };
   } else {
     validOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
       botIdentifier: botKey,
+      runIds: spokeResponse?.value?.runIds,
     };
   }
 }
