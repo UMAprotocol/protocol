@@ -88,7 +88,7 @@ export const PublicNetworks: PublicNetworksType = {
   80002: {
     name: "polygon-amoy",
     nativeToken: "MATIC",
-    etherscan: "https://www.oklink.com/amoy/",
+    etherscan: "https://amoy.polygonscan.com/",
   },
   42161: { name: "arbitrum", nativeToken: "ETH", etherscan: "https://arbiscan.io/" },
   43114: { name: "avalanche", nativeToken: "AVAX", etherscan: "https://snowtrace.io/" },
