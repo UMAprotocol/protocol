@@ -29,12 +29,22 @@ interface GnosisSafe {
 
 // oSnap plugin data type.
 interface OsnapPluginData {
-  safe: GnosisSafe;
+  safes: GnosisSafe[];
 }
 
 // oSnap plugin type, will be translated to safeSnap type for the verification.
 interface OsnapPlugin {
   oSnap: OsnapPluginData;
+}
+
+// Legacy oSnap plugin data type (with a single safe).
+interface LegacyOsnapPluginData {
+  safe: GnosisSafe;
+}
+
+// Legacy oSnap plugin type (with a single safe), will be translated to safeSnap type for the verification.
+interface LegacyOsnapPlugin {
+  oSnap: LegacyOsnapPluginData;
 }
 
 // safeSnap plugin type for mainTransaction. If there are multiple transactions within a batch, they are aggregated as
@@ -67,7 +77,7 @@ interface SnapshotProposalIpfs {
   space: string;
   type: string;
   choices: string[];
-  plugins: SafeSnapPlugin | OsnapPlugin;
+  plugins: SafeSnapPlugin | OsnapPlugin | LegacyOsnapPlugin;
 }
 
 // We only type the properties requested in the GraphQL queries. This extends SnapshotProposalIpfs, but we need to
@@ -150,6 +160,16 @@ const isGnosisSafe = (safe: unknown): safe is GnosisSafe => {
 
 // Type guard for OsnapPlugin.
 const isOsnapPlugin = (plugin: unknown): plugin is OsnapPlugin => {
+  return (
+    isDictionary(plugin) &&
+    isDictionary(plugin.oSnap) &&
+    Array.isArray(plugin.oSnap.safes) &&
+    plugin.oSnap.safes.every((safe) => isGnosisSafe(safe))
+  );
+};
+
+// Type guard for LegacyOsnapPlugin.
+const isLegacyOsnapPlugin = (plugin: unknown): plugin is LegacyOsnapPlugin => {
   return isDictionary(plugin) && isDictionary(plugin.oSnap) && isGnosisSafe(plugin.oSnap.safe);
 };
 
@@ -203,7 +223,7 @@ const isSnapshotProposalIpfs = (proposal: unknown): proposal is SnapshotProposal
     typeof proposal.type === "string" &&
     Array.isArray(proposal.choices) &&
     proposal.choices.every((choice) => typeof choice === "string") &&
-    (isSafeSnapPlugin(proposal.plugins) || isOsnapPlugin(proposal.plugins)) &&
+    (isSafeSnapPlugin(proposal.plugins) || isLegacyOsnapPlugin(proposal.plugins) || isOsnapPlugin(proposal.plugins)) &&
     !("safeSnap" in proposal.plugins && "oSnap" in proposal.plugins) // We don't support both plugins at the same time.
   );
 };
@@ -253,17 +273,28 @@ const baseTransactionToMainTransaction = (baseTransaction: BaseTransaction): Mai
   return { to, operation: "0", value, data };
 };
 
+// Translates potential single safe LegacyOsnapPluginData to OsnapPluginData.
+const translateToOsnapData = (pluginData: LegacyOsnapPluginData | OsnapPluginData): OsnapPluginData => {
+  if ("safes" in pluginData) return pluginData; // Already OsnapPluginData.
+
+  return { safes: [pluginData.safe] };
+};
+
 // Translates plugin to safeSnap plugin.
-export const translateToSafeSnap = (plugin: SafeSnapPlugin | OsnapPlugin): SafeSnapPlugin => {
+export const translateToSafeSnap = (plugin: SafeSnapPlugin | LegacyOsnapPlugin | OsnapPlugin): SafeSnapPlugin => {
   if ("safeSnap" in plugin) return plugin; // Already safeSnap plugin.
 
   const safeSnapPlugin: SafeSnapPlugin = { safeSnap: { safes: [] } };
-  const safeSnapSafe: SafeSnapSafe = {
-    txs: plugin.oSnap.safe.transactions.map((tx) => ({ mainTransaction: baseTransactionToMainTransaction(tx) })),
-    network: plugin.oSnap.safe.network,
-    umaAddress: plugin.oSnap.safe.moduleAddress,
-  };
-  safeSnapPlugin.safeSnap.safes.push(safeSnapSafe);
+  const oSnapPluginData = translateToOsnapData(plugin.oSnap); // Make sure to have multi safe oSnap data.
+
+  oSnapPluginData.safes.forEach((safe) => {
+    const safeSnapSafe: SafeSnapSafe = {
+      txs: safe.transactions.map((tx) => ({ mainTransaction: baseTransactionToMainTransaction(tx) })),
+      network: safe.network,
+      umaAddress: safe.moduleAddress,
+    };
+    safeSnapPlugin.safeSnap.safes.push(safeSnapSafe);
+  });
   return safeSnapPlugin;
 };
 
