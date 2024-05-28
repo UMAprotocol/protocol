@@ -87,7 +87,7 @@ async function run({
       web3,
       optimisticOracleAddress,
       await getAddress(oracleType, networkId),
-      604800, // default lookback setting for this client
+      commonPriceFeedConfig?.lookback || 604800, // default lookback setting for this client
       optimisticOracleType,
       blocksPerEventSearch ? Number(blocksPerEventSearch) : null
     );
