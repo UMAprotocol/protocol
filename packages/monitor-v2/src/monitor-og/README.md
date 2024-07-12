@@ -93,3 +93,4 @@ All the configuration should be provided with following environment variables:
   `datastore`. Supported values are `datastore` (Google Datastore) and `file` (local file system).
 - `TENDERLY_USER`, `TENDERLY_PROJECT` and `TENDERLY_ACCESS_KEY` are used to simulate proposed transaction execution on
   Tenderly. If any of these are missing, the bot will skip the simulation.
+- `REPROPOSE_DISPUTED` is a boolean indicating whether to re-propose disputed proposals. Defaults to `false`.
