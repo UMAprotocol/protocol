@@ -75,6 +75,7 @@ export interface MonitoringParams {
   useTenderly: boolean;
   botModes: BotModes;
   retryOptions: RetryOptions;
+  reproposeDisputed: boolean; // Defaults to false, so we don't repropose disputed proposals.
   storage: "datastore" | "file"; // Defaults to "datastore", but only used when notifying new proposals.
 }
 
@@ -258,6 +259,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     throw new Error(`Invalid STORAGE type: ${storage}`);
   }
 
+  // By default, do not re-propose disputed proposals.
+  const reproposeDisputed = env.REPROPOSE_DISPUTED === "true" ? true : false;
+
   const initialParams: MonitoringParams = {
     ogAddresses: [], // Will be added later after validation.
     moduleProxyFactoryAddresses,
@@ -280,6 +284,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv, _provider?: P
     botModes,
     retryOptions,
     storage,
+    reproposeDisputed,
   };
 
   // If OG_ADDRESS is provided, use it in the monitored address list and return monitoring params.

@@ -26,7 +26,8 @@ import {
   monitorTransactionsExecuted,
   monitorTransactionsProposed,
 } from "../src/monitor-og/MonitorEvents";
-import { executeProposals } from "../src/monitor-og/oSnapAutomation";
+import { executeProposals, proposeTransactions } from "../src/monitor-og/oSnapAutomation";
+import * as osnapAutomation from "../src/monitor-og/oSnapAutomation";
 import { parseRules, RulesParameters } from "../src/monitor-og/SnapshotVerification";
 import { optimisticGovernorFixture } from "./fixtures/OptimisticGovernor.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
@@ -41,7 +42,7 @@ import {
   toUtf8String,
 } from "./utils";
 import { getContractInstanceWithProvider } from "../src/utils/contracts";
-
+import { MainTransaction } from "../src/monitor-og/SnapshotVerification";
 const ethers = hre.ethers;
 
 interface OGModuleProxyDeployment {
@@ -504,6 +505,150 @@ describe("OptimisticGovernorMonitor", function () {
     assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(explanation)));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-governor");
   });
+  it("Automatically propose transactions", async function () {
+    // Deploy a new OG module proxy and approve the proposal bond.
+    const space = "test.eth";
+    const { customAvatar, ogModuleProxy } = await deployOgModuleProxy({
+      space,
+      quorum: 0,
+      votingPeriod: 0,
+    });
+    await bondToken.connect(proposer).approve(ogModuleProxy.address, await ogModuleProxy.getProposalBond());
+
+    // Set supported bond settings.
+    const supportedBonds: SupportedBonds = {};
+    supportedBonds[bondToken.address] = (await ogModuleProxy.getProposalBond()).toString();
+
+    // Fund the avatar
+    await bondToken.mint(customAvatar.address, parseEther("500"));
+
+    // Construct the transaction data for spending tokens from the avatar.
+    const txnData1 = await bondToken.populateTransaction.transfer(await proposer.getAddress(), parseEther("250"));
+    if (!txnData1.data) throw new Error("Transaction data is undefined");
+
+    // Create the proposal with multiple transactions.
+    const transactions = [{ to: bondToken.address, operation: 0, value: 0, data: txnData1.data }];
+
+    const explanationString = "These transactions were approved by majority vote on Snapshot.";
+
+    const mockProposals = [
+      {
+        space: { id: "test" },
+        type: "single-choice",
+        choices: ["choice1", "choice2"],
+        id: "proposal-id",
+        start: 1234567890,
+        end: 1234567890,
+        state: "active",
+        safe: {
+          txs: [
+            {
+              mainTransaction: {
+                to: bondToken.address,
+                value: "0",
+                data: txnData1.data,
+                operation: "0" as MainTransaction["operation"],
+              },
+            },
+          ],
+          network: "31337",
+          umaAddress: ogModuleProxy.address,
+        },
+        ipfs: explanationString,
+        scores: [0, 0],
+        scores_total: 0,
+        quorum: 100,
+      },
+    ];
+
+    // Mock Snapshot logic
+    sinon.stub(osnapAutomation, "getSupportedSnapshotProposals").resolves(mockProposals);
+    sinon.stub(osnapAutomation, "filterUnblockedProposals").callsFake(async (proposals) => proposals);
+    sinon.stub(osnapAutomation, "filterVerifiedProposals").callsFake(async (proposals) => proposals);
+
+    const submitProposalsStub = sinon.stub(osnapAutomation, "submitProposals");
+
+    let latestBlockNumber = await ethers.provider.getBlockNumber();
+    let spyLogger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
+
+    // Case Snapshot approved proposal and proposal not proposed yet
+    await proposeTransactions(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, { ogDiscovery: true, signer: executor, supportedBonds })
+    );
+    // It should propose
+    sinon.assert.calledWithMatch(
+      submitProposalsStub,
+      sinon.match.any,
+      sinon.match((arg) => arg.length == 1)
+    );
+
+    const tx = await ogModuleProxy.connect(proposer).proposeTransactions(transactions, toUtf8Bytes(explanationString));
+    await tx.wait();
+    const proposeBlockNumber = await getBlockNumberFromTx(tx);
+
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    // Case Snapshot approved proposal and proposal already proposed
+    spyLogger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
+    await proposeTransactions(
+      spyLogger,
+      await createMonitoringParams(latestBlockNumber, { ogDiscovery: true, signer: executor, supportedBonds })
+    );
+
+    // It should not propose
+    sinon.assert.calledWithMatch(
+      submitProposalsStub,
+      sinon.match.any,
+      sinon.match((arg) => arg.length == 0)
+    );
+
+    const transactionProposedEvent = (
+      await ogModuleProxy.queryFilter(
+        optimisticGovernor.filters.TransactionsProposed(),
+        proposeBlockNumber,
+        proposeBlockNumber
+      )
+    )[0];
+
+    await bondToken.mint(await disputer.getAddress(), await optimisticGovernor.getProposalBond());
+    await bondToken.connect(disputer).approve(optimisticOracleV3.address, await optimisticGovernor.getProposalBond());
+
+    const disputeTx = await optimisticOracleV3
+      .connect(disputer)
+      .disputeAssertion(transactionProposedEvent.args.assertionId, await disputer.getAddress());
+
+    await disputeTx.wait();
+
+    latestBlockNumber = await ethers.provider.getBlockNumber();
+
+    // Case Snapshot approved proposal and proposal disputed and reproposeDisputed = false
+    spyLogger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
+    const monitoringParams = await createMonitoringParams(latestBlockNumber, {
+      ogDiscovery: true,
+      signer: executor,
+      supportedBonds,
+    });
+    await proposeTransactions(spyLogger, monitoringParams);
+    // It should not propose with reproposeDisputed = false
+    sinon.assert.calledWithMatch(
+      submitProposalsStub,
+      sinon.match.any,
+      sinon.match((arg) => arg.length == 0)
+    );
+
+    // Case Snapshot approved proposal and proposal disputed and reproposeDisputed = true
+    spyLogger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
+    monitoringParams.reproposeDisputed = true;
+    await proposeTransactions(spyLogger, monitoringParams);
+    // It should propose
+    sinon.assert.calledWithMatch(
+      submitProposalsStub,
+      sinon.match.any,
+      sinon.match((arg) => arg.length == 1)
+    );
+  });
+
   it("Automatically execute transactions", async function () {
     // Deploy a new OG module proxy and approve the proposal bond.
     const space = "test.eth";

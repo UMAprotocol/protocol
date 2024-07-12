@@ -49,7 +49,7 @@ interface LegacyOsnapPlugin {
 
 // safeSnap plugin type for mainTransaction. If there are multiple transactions within a batch, they are aggregated as
 // multiSend in the mainTransaction.
-interface MainTransaction {
+export interface MainTransaction {
   to: string;
   data: string;
   value: string;
