@@ -10,11 +10,13 @@ import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts
 import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 
-export { Logger } from "@uma/financial-templates-lib";
+import { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 
 const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
+
+export { Logger };
 
 export const ONE_SCALED = ethers.utils.parseUnits("1", 18);
 
@@ -33,6 +35,8 @@ export interface MonitoringParams {
   chainId: number;
   pollingDelay: number;
   unknownProposalNotificationInterval: number;
+  retryAttempts: number;
+  retryDelayMs: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -138,6 +142,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
 };
 
 export const getPolymarketMarketInformation = async (
+  logger: typeof Logger,
   params: MonitoringParams,
   questionID: string
 ): Promise<PolymarketMarketGraphqlProcessed> => {
@@ -162,6 +167,13 @@ export const getPolymarketMarketInformation = async (
   const { markets } = (await graphQLClient.request(query)) as {
     markets: PolymarketMarketGraphql[];
   };
+
+  logger.info({
+    at: "PolymarketMonitor",
+    message: "Logging polymarket market data received from subgraph",
+    markets,
+    questionID,
+  });
 
   const market = markets[0];
   if (!market) {
@@ -343,6 +355,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
 
   const maxBlockLookBack = env.MAX_BLOCK_LOOK_BACK ? Number(env.MAX_BLOCK_LOOK_BACK) : 3499;
+  const retryAttempts = env.RETRY_ATTEMPTS ? Number(env.RETRY_ATTEMPTS) : 1;
+  const retryDelayMs = env.RETRY_DELAY_MS ? Number(env.RETRY_DELAY_MS) : 0;
 
   const unknownProposalNotificationInterval = env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL
     ? Number(env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL)
@@ -361,5 +375,34 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     chainId,
     pollingDelay,
     unknownProposalNotificationInterval,
+    retryAttempts,
+    retryDelayMs,
   };
 };
+
+/**
+ * Retries an async function if it errors up to N times with M delay between retries.
+ * @param fn - The async function to retry.
+ * @param retries - Number of times to retry the function.
+ * @param delayMs - Delay between retries in milliseconds.
+ * @returns A promise that resolves with the result of the async function.
+ */
+export async function retryAsync<T>(fn: () => Promise<T>, retries: number, delayMs: number): Promise<T> {
+  let attempts = 0;
+
+  // This will always run at least once, even if retries is set to 0 or less
+  do {
+    try {
+      return await fn();
+    } catch (error) {
+      attempts++;
+      if (attempts >= retries) {
+        throw error;
+      }
+      await new Promise((res) => setTimeout(res, delayMs));
+    }
+  } while (attempts < retries);
+
+  // Should never actually reach this, but for the sake of typescript
+  throw new Error(`React a maximum of ${retries} retries.`);
+}
