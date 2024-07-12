@@ -214,24 +214,24 @@ const getUndiscardedProposals = async (
     )
   ).flat();
 
-  // Get all deleted proposals for all provided modules.
-  const deletedProposals = (
-    await Promise.all(
-      ogAddresses.map(async (ogAddress) => {
-        const og = await getOgByAddress(params, ogAddress);
-        return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
-          start: 0,
-          end: params.blockRange.end,
-        });
-      })
-    )
-  ).flat();
-
-  // Filter out all proposals that have been deleted by matching assertionId. assertionId should be sufficient property
-  // for filtering as it is derived from module address, transaction content and assertion time among other factors.
-  const deletedAssertionIds = new Set(deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId));
-
   if (params.reproposeDisputed) {
+    // Get all deleted proposals for all provided modules.
+    const deletedProposals = (
+      await Promise.all(
+        ogAddresses.map(async (ogAddress) => {
+          const og = await getOgByAddress(params, ogAddress);
+          return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
+            start: 0,
+            end: params.blockRange.end,
+          });
+        })
+      )
+    ).flat();
+
+    // Filter out all proposals that have been deleted by matching assertionId. assertionId should be sufficient property
+    // for filtering as it is derived from module address, transaction content and assertion time among other factors.
+    const deletedAssertionIds = new Set(deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId));
+
     return allProposals.filter((proposal) => !deletedAssertionIds.has(proposal.args.assertionId));
   }
   return allProposals;
