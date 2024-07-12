@@ -167,6 +167,9 @@ export const getPolymarketMarketInformation = async (
   if (!market) {
     throw new Error(`No market found for question ID: ${questionID}`);
   }
+  if (!market.clobTokenIds) {
+    throw new Error(`Market found for question ID: ${questionID} has no clobTokenIds`);
+  }
 
   return {
     ...market,
