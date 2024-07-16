@@ -17,6 +17,7 @@ import {
   getPolymarketOrderBook,
   getPolymarketProposedPriceRequestsOO,
   storeNotifiedProposals,
+  retryAsync,
 } from "./common";
 
 export async function monitorTransactionsProposedOrderBook(
@@ -50,7 +51,12 @@ export async function monitorTransactionsProposedOrderBook(
 async function processMarketProposal(market: OptimisticPriceRequest, params: MonitoringParams, logger: typeof Logger) {
   const networker = new Networker(logger);
   const questionID = calculatePolymarketQuestionID(market.ancillaryData);
-  const polymarketInfo = await getPolymarketMarketInformation(params, questionID);
+  // set this to retry twice and wait 5 seconds between retries.
+  const polymarketInfo = await retryAsync(
+    () => getPolymarketMarketInformation(logger, params, questionID),
+    params.retryAttempts,
+    params.retryDelayMs
+  );
   const orderBook = await getPolymarketOrderBook(params, polymarketInfo.clobTokenIds, networker);
   const orderFilledEvents = await getOrderFilledEvents(
     params,
