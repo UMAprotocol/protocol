@@ -213,9 +213,9 @@ const getAllProposals = async (
   ).flat();
 };
 
-// Filters all proposals that have not been discarded. Discards are most likely due to disputes, but can also occur on
+// Filters out all proposals that have been deleted. Discards are most likely due to disputes, but can also occur on
 // OOv3 upgrades.
-const filterUndiscardedProposals = async (
+const removeDeletedProposals = async (
   allProposals: TransactionsProposedEvent[],
   params: MonitoringParams
 ): Promise<Array<TransactionsProposedEvent>> => {
@@ -729,7 +729,7 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
 
   // Get all on-chain proposals for supported modules and filter all proposals that have not been discarded.
   const allOnChainProposals = await getAllProposals(Object.keys(supportedModules), params);
-  const undiscardedOnChainProposals = await filterUndiscardedProposals(allOnChainProposals, params);
+  const undiscardedOnChainProposals = await removeDeletedProposals(allOnChainProposals, params);
 
   // Filter Snapshot proposals that could potentially be proposed on-chain. This discards proposals that have been
   // posted on-chain: when re-proposing of disputed proposals is enabled we only consider undiscarded proposals,
@@ -748,7 +748,7 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
 
 export const disputeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
   // Get all undiscarded on-chain proposals for all monitored modules.
-  const onChainProposals = await filterUndiscardedProposals(await getAllProposals(params.ogAddresses, params), params);
+  const onChainProposals = await removeDeletedProposals(await getAllProposals(params.ogAddresses, params), params);
 
   // Filter out all proposals that have been executed on-chain.
   const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
@@ -769,7 +769,7 @@ export const disputeProposals = async (logger: typeof Logger, params: Monitoring
 
 export const executeProposals = async (logger: typeof Logger, params: MonitoringParams): Promise<void> => {
   // Get all undiscarded on-chain proposals for all monitored modules.
-  const onChainProposals = await filterUndiscardedProposals(await getAllProposals(params.ogAddresses, params), params);
+  const onChainProposals = await removeDeletedProposals(await getAllProposals(params.ogAddresses, params), params);
 
   // Filter out all proposals that have been executed on-chain.
   const unexecutedProposals = await filterUnexecutedProposals(onChainProposals, params);
