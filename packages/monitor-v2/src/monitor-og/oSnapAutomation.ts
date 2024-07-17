@@ -154,7 +154,7 @@ const getSnapshotProposals = async (
 };
 
 // Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes (returned in safeSnap format).
-const getSupportedSnapshotProposals = async (
+export const getSupportedSnapshotProposals = async (
   logger: typeof Logger,
   supportedModules: SupportedModules,
   params: MonitoringParams
@@ -214,23 +214,27 @@ const getUndiscardedProposals = async (
     )
   ).flat();
 
-  // Get all deleted proposals for all provided modules.
-  const deletedProposals = (
-    await Promise.all(
-      ogAddresses.map(async (ogAddress) => {
-        const og = await getOgByAddress(params, ogAddress);
-        return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
-          start: 0,
-          end: params.blockRange.end,
-        });
-      })
-    )
-  ).flat();
+  if (params.reproposeDisputed) {
+    // Get all deleted proposals for all provided modules.
+    const deletedProposals = (
+      await Promise.all(
+        ogAddresses.map(async (ogAddress) => {
+          const og = await getOgByAddress(params, ogAddress);
+          return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
+            start: 0,
+            end: params.blockRange.end,
+          });
+        })
+      )
+    ).flat();
 
-  // Filter out all proposals that have been deleted by matching assertionId. assertionId should be sufficient property
-  // for filtering as it is derived from module address, transaction content and assertion time among other factors.
-  const deletedAssertionIds = new Set(deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId));
-  return allProposals.filter((proposal) => !deletedAssertionIds.has(proposal.args.assertionId));
+    // Filter out all proposals that have been deleted by matching assertionId. assertionId should be sufficient property
+    // for filtering as it is derived from module address, transaction content and assertion time among other factors.
+    const deletedAssertionIds = new Set(deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId));
+
+    return allProposals.filter((proposal) => !deletedAssertionIds.has(proposal.args.assertionId));
+  }
+  return allProposals;
 };
 
 // Checks if a safeSnap safe from Snapshot proposal is supported by oSnap automation.
@@ -243,7 +247,7 @@ const isSafeSupported = (safe: SafeSnapSafe, supportedModules: SupportedModules,
 
 // Filters out all Snapshot proposals that have been proposed on-chain. This is done by matching safe, explanation and
 // proposed transactions.
-const filterPotentialProposals = (
+export const filterPotentialProposals = (
   supportedProposals: SnapshotProposalExpanded[],
   onChainProposals: TransactionsProposedEvent[],
   params: MonitoringParams
@@ -267,7 +271,7 @@ const filterPotentialProposals = (
 
 // Filters out all Snapshot proposals that cannot be proposed due to blocking on-chain proposals. This is done by
 // matching safe and proposed transactions.
-const filterUnblockedProposals = async (
+export const filterUnblockedProposals = async (
   potentialProposals: SnapshotProposalExpanded[],
   onChainProposals: TransactionsProposedEvent[],
   params: MonitoringParams
@@ -289,7 +293,7 @@ const filterUnblockedProposals = async (
 };
 
 // Verifies proposals before they are proposed on-chain.
-const filterVerifiedProposals = async (
+export const filterVerifiedProposals = async (
   proposals: SnapshotProposalExpanded[],
   supportedModules: SupportedModules,
   params: MonitoringParams
@@ -483,7 +487,7 @@ const hasFunds = async (provider: Provider, signer: Signer, currency: string, bo
   return balance.gte(BigNumber.from(bond));
 };
 
-const submitProposals = async (
+export const submitProposals = async (
   logger: typeof Logger,
   proposals: SnapshotProposalExpanded[],
   supportedModules: SupportedModules,
