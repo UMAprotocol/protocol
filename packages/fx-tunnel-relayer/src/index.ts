@@ -38,7 +38,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     const maticPOSClient = new MaticJs.POSClient();
     await maticPOSClient.init({
       network: polygonNetworkId === 137 ? "mainnet" : "testnet",
-      version: polygonNetworkId === 137 ? "v1" : "mumbai",
+      version: polygonNetworkId === 137 ? "v1" : "amoy",
       parent: {
         provider: web3.currentProvider,
         defaultConfig: {
