@@ -214,26 +214,44 @@ const getUndiscardedProposals = async (
     )
   ).flat();
 
-  if (params.reproposeDisputed) {
-    // Get all deleted proposals for all provided modules.
-    const deletedProposals = (
-      await Promise.all(
-        ogAddresses.map(async (ogAddress) => {
-          const og = await getOgByAddress(params, ogAddress);
-          return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
-            start: 0,
-            end: params.blockRange.end,
-          });
-        })
-      )
-    ).flat();
+  // Get all deleted proposals for all provided modules.
+  const deletedProposals = (
+    await Promise.all(
+      ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<ProposalDeletedEvent>(og, og.filters.ProposalDeleted(), {
+          start: 0,
+          end: params.blockRange.end,
+        });
+      })
+    )
+  ).flat();
 
-    // Filter out all proposals that have been deleted by matching assertionId. assertionId should be sufficient property
-    // for filtering as it is derived from module address, transaction content and assertion time among other factors.
-    const deletedAssertionIds = new Set(deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId));
+  // Filter out all proposals that have been deleted by matching assertionId. assertionId should be sufficient property
+  // for filtering as it is derived from module address, transaction content and assertion time among other factors.
+  const deletedAssertionIds = new Set(deletedProposals.map((deletedProposal) => deletedProposal.args.assertionId));
 
-    return allProposals.filter((proposal) => !deletedAssertionIds.has(proposal.args.assertionId));
-  }
+  return allProposals.filter((proposal) => !deletedAssertionIds.has(proposal.args.assertionId));
+};
+
+// Get all proposals for all provided modules.
+const getAllProposals = async (
+  ogAddresses: string[],
+  params: MonitoringParams
+): Promise<Array<TransactionsProposedEvent>> => {
+  // Get all proposals for all provided modules.
+  const allProposals = (
+    await Promise.all(
+      ogAddresses.map(async (ogAddress) => {
+        const og = await getOgByAddress(params, ogAddress);
+        return runQueryFilter<TransactionsProposedEvent>(og, og.filters.TransactionsProposed(), {
+          start: 0,
+          end: params.blockRange.end,
+        });
+      })
+    )
+  ).flat();
+
   return allProposals;
 };
 
@@ -723,7 +741,12 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   const supportedProposals = await getSupportedSnapshotProposals(logger, supportedModules, params);
 
   // Get all undiscarded on-chain proposals for supported modules.
-  const onChainProposals = await getUndiscardedProposals(Object.keys(supportedModules), params);
+  let onChainProposals;
+  if (params.reproposeDisputed) {
+    onChainProposals = await getUndiscardedProposals(Object.keys(supportedModules), params);
+  } else {
+    onChainProposals = await getAllProposals(Object.keys(supportedModules), params);
+  }
 
   // Filter Snapshot proposals that could potentially be proposed on-chain.
   const potentialProposals = filterPotentialProposals(supportedProposals, onChainProposals, params);
