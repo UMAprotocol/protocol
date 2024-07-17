@@ -5,7 +5,7 @@ version: 2.1
 jobs:
   tests-required:
     docker:
-      - image: cimg/node:16.17.0
+      - image: cimg/node:lts
     steps:
       - run:
           name: Test dependencies
