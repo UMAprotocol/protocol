@@ -91,7 +91,7 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
     if (transportsConfig.pdApiToken || process.env.PAGER_DUTY_CONFIG) {
       transports.push(
         new PagerDutyTransport(
-          { level: "warn" },
+          { level: "error" },
           transportsConfig.pagerDutyConfig ?? JSON.parse(process.env.PAGER_DUTY_CONFIG || "null")
         )
       );
@@ -103,7 +103,7 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
         transportsConfig.pagerDutyV2Config ?? JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null");
       // this will throw an error if an invalid configuration is present
       if (!disabled) {
-        transports.push(new PagerDutyV2Transport({ level: "warn" }, pagerDutyV2CreateConfig(pagerDutyV2Config)));
+        transports.push(new PagerDutyV2Transport({ level: "error" }, pagerDutyV2CreateConfig(pagerDutyV2Config)));
       }
     }
   }
