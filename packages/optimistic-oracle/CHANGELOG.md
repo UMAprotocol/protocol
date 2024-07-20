@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.16.8](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.16.7...@uma/optimistic-oracle@2.16.8) (2024-07-20)
+
+### Bug Fixes
+
+- Revert "improve(oo): reuse lookback config when initing ooclient" ([#4761](https://github.com/UMAprotocol/protocol/issues/4761)) ([6ef5fe9](https://github.com/UMAprotocol/protocol/commit/6ef5fe9d2fa5545c079603f8cd20f976aeb23295))
+
 ## [2.16.7](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.16.6...@uma/optimistic-oracle@2.16.7) (2024-04-30)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.8.0...@uma/monitor-v2@1.9.0) (2024-07-20)
+
+### Bug Fixes
+
+- osnap bot on disputed proposals ([#4768](https://github.com/UMAprotocol/protocol/issues/4768)) ([30ab4dd](https://github.com/UMAprotocol/protocol/commit/30ab4dd0a6f4465902bf10896c11188e4cafb4b4))
+
+### Features
+
+- **monitor-v2:** add simple retry logic to polymarket graph call ([#4766](https://github.com/UMAprotocol/protocol/issues/4766)) ([de4c47e](https://github.com/UMAprotocol/protocol/commit/de4c47ea21dc797a7bc77565ceb3910e94656168))
+- Prevent reproposing disputed proposals in snapshot ([#4765](https://github.com/UMAprotocol/protocol/issues/4765)) ([619910b](https://github.com/UMAprotocol/protocol/commit/619910b144cc27a8d1fe8ae4653a44d321f04993))
+- support multiple safes in osnap plugin ([#4759](https://github.com/UMAprotocol/protocol/issues/4759)) ([ff46ab6](https://github.com/UMAprotocol/protocol/commit/ff46ab6e4e4ffa5358cb816e39a5d48c0ae1e1fa))
+
 # [1.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.7.0...@uma/monitor-v2@1.8.0) (2024-04-30)
 
 ### Features

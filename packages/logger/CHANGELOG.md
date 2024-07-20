@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/logger@1.2.0...@uma/logger@1.3.0) (2024-07-20)
+
+### Features
+
+- filter warnings from PD ([#4771](https://github.com/UMAprotocol/protocol/issues/4771)) ([f72d0b7](https://github.com/UMAprotocol/protocol/commit/f72d0b78c8892d97b97b4ef2d2f685e360dc5831))
+
 # [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/logger@1.1.0...@uma/logger@1.2.0) (2024-04-30)
 
 ### Bug Fixes
