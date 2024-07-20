@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.43](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.42...@uma/fx-tunnel-relayer@1.3.43) (2024-07-20)
+
+### Bug Fixes
+
+- **fx-tunnel-relayer:** replace mumbay with amoy ([#4769](https://github.com/UMAprotocol/protocol/issues/4769)) ([3711850](https://github.com/UMAprotocol/protocol/commit/3711850f61daa7756389f9c8d5bcead9882ec49c))
+
 ## [1.3.42](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.41...@uma/fx-tunnel-relayer@1.3.42) (2024-04-30)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer
