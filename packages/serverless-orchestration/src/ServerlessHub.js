@@ -316,11 +316,18 @@ hub.post("/", async (req, res) => {
     }
 
     // If no errors and got to this point correctly then return a 200 success status.
+    // Note: we don't log the error outputs since it is empty in this branch.
     logger.debug({
       at: "ServerlessHub",
       message: "All calls returned correctly",
-      output: { errorOutputs, validOutputs, retriedOutputs },
+      output: { validOutputs: Object.keys(validOutputs), retriedOutputs },
     });
+
+    // Log each bot's output separately to avoid creating huge log messages.
+    // Note: no need to loop through errorOutputs since the length has been
+    for (const [botName, output] of Object.entries(validOutputs)) {
+      logger.debug({ at: "ServerlessHub", message: `Bot ${botName} succeeded`, output });
+    }
 
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res
