@@ -171,7 +171,6 @@ export const getPolymarketMarketInformation = async (
   logger.info({
     at: "PolymarketMonitor",
     message: "Logging polymarket market data received from subgraph",
-    markets,
     questionID,
   });
 
