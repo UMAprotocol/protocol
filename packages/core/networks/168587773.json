@@ -17,7 +17,7 @@
   },
   {
     "contractName": "Store",
-    "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96"
+    "address": "0xCD43CEa89DF8fE39031C03c24BC24480e942470B"
   },
   {
     "contractName": "TestnetERC20",
@@ -25,7 +25,7 @@
   },
   {
     "contractName": "OptimisticOracleV2",
-    "address": "0x76f3fe966F91602129cb278043239afBB7B7646A"
+    "address": "0xD8c6dD978a3768F7DDfE3A9aAD2c3Fd75Fa9B6Fd"
   },
   {
     "contractName": "OptimisticOracleV3",
