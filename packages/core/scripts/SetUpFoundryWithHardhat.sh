@@ -10,7 +10,7 @@ if ! command -v forge &>/dev/null; then
 fi
 
 # Then, configure the core package to work with foundry. To do this we need to pull out the foundry standard library and
-# place it in a way that it can be accessed within the core directory. This amounts the the manual steps listed here
+# place it in a way that it can be accessed within the core directory. This amounts the manual steps listed here
 # https://book.getfoundry.sh/config/hardhat#use-foundry-in-an-existing-hardhat-project without wanting to commit the
 # foundry lib & standard lib to the repo.
 
