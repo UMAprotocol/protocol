@@ -4,7 +4,6 @@
   "description": "Arbitrage automation and libraries for UMA financial templates",
   "dependencies": {
     "@ethersproject/bignumber": "^5.4.2",
-    "@google-cloud/logging-winston": "^4.1.1",
     "@google-cloud/trace-agent": "^5.1.6",
     "@pagerduty/pdjs": "^2.2.4",
     "@uma/common": "^2.37.1",
