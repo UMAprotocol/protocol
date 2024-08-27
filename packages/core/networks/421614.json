@@ -1,0 +1,34 @@
+[
+    {
+        "contractName": "Finder",
+        "address": "0x4da2fD75dd26A8C8A0a8Db892019651344705836"
+    },
+    {
+        "contractName": "AddressWhitelist",
+        "address": "0x20e2Bf3422290CbadcE3289aD3f317Ae9E80636D"
+    },
+    {
+        "contractName": "IdentifierWhitelist",
+        "address": "0xB04926aF663cB52899361B1F6313bcFEa5A58B29"
+    },
+    {
+        "contractName": "MockOracleAncillary",
+        "address": "0x7E6d9618Ba8a87421609352d6e711958A97e2512"
+    },
+    {
+        "contractName": "Store",
+        "address": "0x54e38A62ED3dC88e2B80cBA50deB940580511D26"
+    },
+    {
+        "contractName": "TestnetERC20",
+        "address": "0x689FF0D2c17ECbB01477420aB18482A8DAd45186"
+    },
+    {
+        "contractName": "OptimisticOracleV2",
+        "address": "0x0F7fC5E6482f096380db6158f978167b57388deE"
+    },
+    {
+        "contractName": "OptimisticOracleV3",
+        "address": "0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8"
+    }
+]
