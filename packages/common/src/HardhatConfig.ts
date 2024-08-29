@@ -182,6 +182,11 @@ export function getHardhatConfig(
         url: getNodeUrl("arbitrum-rinkeby", true, 421611),
         accounts: { mnemonic },
       },
+      "arbitrum-sepolia": {
+        chainId: 421614,
+        url: getNodeUrl("arbitrum-sepolia", true, 421614),
+        accounts: { mnemonic },
+      },
       sx: {
         chainId: 416,
         url: getNodeUrl("sx", true, 416),
@@ -297,6 +302,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://api.blastscan.io/api",
             browserURL: "https://blastscan.io/",
+          },
+        },
+        {
+          network: "arbitrum-sepolia",
+          chainId: 421614,
+          urls: {
+            apiURL: "https://api-sepolia.arbiscan.io/api",
+            browserURL: "https://sepolia.arbiscan.io/",
           },
         },
       ],
