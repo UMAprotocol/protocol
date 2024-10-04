@@ -187,6 +187,11 @@ export function getHardhatConfig(
         url: getNodeUrl("arbitrum-sepolia", true, 421614),
         accounts: { mnemonic },
       },
+      "illiad": {
+        chainId: 1513,
+        url: getNodeUrl("illiad", true, 1513),
+        accounts: { mnemonic },
+      },
       sx: {
         chainId: 416,
         url: getNodeUrl("sx", true, 416),
@@ -310,6 +315,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://api-sepolia.arbiscan.io/api",
             browserURL: "https://sepolia.arbiscan.io/",
+          },
+        },
+        {
+          network: "illiad",
+          chainId: 1513,
+          urls: {
+            apiURL: "https://testnet.storyscan.xyz/",
+            browserURL: "https://testnet.storyscan.xyz/",
           },
         },
       ],
