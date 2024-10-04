@@ -187,7 +187,7 @@ export function getHardhatConfig(
         url: getNodeUrl("arbitrum-sepolia", true, 421614),
         accounts: { mnemonic },
       },
-      "illiad": {
+      illiad: {
         chainId: 1513,
         url: getNodeUrl("illiad", true, 1513),
         accounts: { mnemonic },
