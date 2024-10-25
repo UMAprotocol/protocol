@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.16.2](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.16.1...@uma/serverless-orchestration@2.16.2) (2024-10-25)
+
+### Bug Fixes
+
+- reduce log size for all calls returned correctly ([#4774](https://github.com/UMAprotocol/protocol/issues/4774)) ([aa4e966](https://github.com/UMAprotocol/protocol/commit/aa4e966c5af3f197a5a9f1679414abd49d612cdc))
+
 ## [2.16.1](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.16.0...@uma/serverless-orchestration@2.16.1) (2024-07-20)
 
 **Note:** Version bump only for package @uma/serverless-orchestration
