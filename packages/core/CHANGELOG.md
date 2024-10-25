@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.60.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.59.1...@uma/core@2.60.0) (2024-10-25)
+
+### Features
+
+- deploy lsp on base and base testnet ([#4777](https://github.com/UMAprotocol/protocol/issues/4777)) ([f6255ac](https://github.com/UMAprotocol/protocol/commit/f6255ac9857104abd17b7244173aeb7424d0867b))
+
 ## [2.59.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.59.0...@uma/core@2.59.1) (2024-07-20)
 
 **Note:** Version bump only for package @uma/core
