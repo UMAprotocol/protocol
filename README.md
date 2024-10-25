@@ -240,3 +240,11 @@ The full report can be viewed by opening the `packages/core/coverage/index.html`
 ### Style Guide 🕺
 
 See [STYLE.md](STYLE.md).
+
+### Package Upgrade
+
+The recommended way to upgrade a version number on any sub-package in this monorepo is to create a release for all candidate packages. To generate this release diff, run the following command and create a PR with the diff.
+
+```
+yarn create-release
+```
