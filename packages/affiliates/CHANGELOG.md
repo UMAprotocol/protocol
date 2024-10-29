@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.25.0...@uma/affiliates@1.27.0) (2024-10-28)
+
+### Features
+
+- gas rebates august 2024 ([#4781](https://github.com/UMAprotocol/protocol/issues/4781)) ([156246f](https://github.com/UMAprotocol/protocol/commit/156246f5f48fa3a86ec144abe85cea9e42be8348))
+- gas rebates july 2024 ([#4776](https://github.com/UMAprotocol/protocol/issues/4776)) ([425b075](https://github.com/UMAprotocol/protocol/commit/425b075093de42695ef9ca02d542197f44dcfc31))
+- gas rebates september 2024 ([#4785](https://github.com/UMAprotocol/protocol/issues/4785)) ([3c3ac6a](https://github.com/UMAprotocol/protocol/commit/3c3ac6a3a013369182829657c6e9c15c7c2b4a33))
+
 # [1.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.25.0...@uma/affiliates@1.26.0) (2024-10-25)
 
 ### Features

@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.34.10](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.34.8...@uma/sdk@0.34.10) (2024-10-28)
+
+**Note:** Version bump only for package @uma/sdk
+
 ## [0.34.9](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.34.8...@uma/sdk@0.34.9) (2024-10-25)
 
 **Note:** Version bump only for package @uma/sdk
