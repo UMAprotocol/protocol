@@ -78,6 +78,7 @@ export const PublicNetworks: PublicNetworksType = {
   416: { name: "sx", nativeToken: "SX", etherscan: "https://explorer.sx.technology/" },
   1115: { name: "core-testnet", nativeToken: "tCORE", etherscan: "https://scan.test.btcs.network/" },
   1116: { name: "core", nativeToken: "CORE", etherscan: "https://scan.coredao.org/" },
+  1513: { name: "illiad", nativeToken: "IP", etherscan: "https://testnet.storyscan.xyz/" },
   9001: { name: "evmos", nativeToken: "EVMOS", etherscan: "https://evm.evmos.org" },
   80001: {
     name: "polygon-mumbai",
