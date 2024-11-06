@@ -9,7 +9,7 @@ import hre from "hardhat";
 const { ethers } = hre as any;
 import { BigNumber } from "ethers";
 import moment from "moment";
-import { findBlockNumberAtTimestamp, getWeb3 } from "@uma/common";
+import { findBlockNumberAtTimestamp, getWeb3, paginatedEventQuery } from "@uma/common";
 import fs from "fs";
 import path from "path";
 
@@ -44,8 +44,17 @@ export async function run(): Promise<void> {
 
   // Fetch all commit and reveal events.
   const voting = await ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1));
-  const commitEvents = await voting.queryFilter(voting.filters.VoteCommitted(), fromBlock, toBlock);
-  const revealEvents = await voting.queryFilter(voting.filters.VoteRevealed(), fromBlock, toBlock);
+
+  const searchConfig = {
+    fromBlock,
+    toBlock,
+    maxBlockLookBack: 20000,
+  };
+
+  // Find resolved events
+  const commitEvents = await paginatedEventQuery<any>(voting, voting.filters.VoteCommitted(), searchConfig);
+
+  const revealEvents = await paginatedEventQuery<any>(voting, voting.filters.VoteRevealed(), searchConfig);
 
   // For each event find the associated transaction. We want to refund all transactions that were sent by voters.
   // Function to process events sequentially
