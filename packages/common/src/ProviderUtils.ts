@@ -56,6 +56,7 @@ export function getNodeUrl(networkName: string, useHttps = false, chainId: numbe
     if (name === "base") return overrideUrl || "https://mainnet.base.org";
     if (name === "blast") return overrideUrl || "https://rpc.blast.io/";
     if (name === "illiad") return overrideUrl || "https://testnet.storyrpc.io/";
+    if (name === "odyssey") return overrideUrl || "https://odyssey-testnet-explorer.storyscan.xyz";
     return (
       overrideUrl ||
       (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
