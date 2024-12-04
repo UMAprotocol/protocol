@@ -192,6 +192,11 @@ export function getHardhatConfig(
         url: getNodeUrl("illiad", true, 1513),
         accounts: { mnemonic },
       },
+      odyssey: {
+        chainId: 1516,
+        url: getNodeUrl("odyssey", true, 1516),
+        accounts: { mnemonic },
+      },
       sx: {
         chainId: 416,
         url: getNodeUrl("sx", true, 416),
@@ -321,8 +326,16 @@ export function getHardhatConfig(
           network: "illiad",
           chainId: 1513,
           urls: {
-            apiURL: "https://testnet.storyscan.xyz/",
+            apiURL: "https://testnet.storyscan.xyz/api",
             browserURL: "https://testnet.storyscan.xyz/",
+          },
+        },
+        {
+          network: "odyssey",
+          chainId: 1516,
+          urls: {
+            apiURL: "https://odyssey-testnet-explorer.storyscan.xyz/api",
+            browserURL: "https://odyssey-testnet-explorer.storyscan.xyz",
           },
         },
       ],
