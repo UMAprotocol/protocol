@@ -1,7 +1,7 @@
 {
   "votingContractAddress": "0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac",
   "rebate": 51,
-  "fromBlock": 21303933,
+  "fromBlock": 21303934,
   "toBlock": 21525890,
   "countVoters": 667,
   "totalRebateAmount": 35.04216189251573,
