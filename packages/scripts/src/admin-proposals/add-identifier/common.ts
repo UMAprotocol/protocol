@@ -31,7 +31,7 @@ const getAddress = (contractName: string, networkId: number): Promise<string> =>
   return _getAddress(contractName as any, networkId);
 };
 
-const supportedNetworks = ["mainnet", "polygon", "arbitrum", "optimism", "base"] as const;
+const supportedNetworks = ["mainnet", "polygon", "arbitrum", "optimism", "base", "blast"] as const;
 type SupportedNetwork = typeof supportedNetworks[number];
 
 const networksNumber: Record<SupportedNetwork, number> = {
@@ -40,6 +40,7 @@ const networksNumber: Record<SupportedNetwork, number> = {
   optimism: 10,
   arbitrum: 42161,
   base: 8453,
+  blast: 81457,
 };
 
 function isSupportedNetwork(key: string): key is SupportedNetwork {
