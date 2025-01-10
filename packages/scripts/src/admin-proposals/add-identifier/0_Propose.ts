@@ -9,6 +9,7 @@
 // NODE_URL_137=<POLYGON-NODE-URL> \
 // NODE_URL_8453=<BASE-NODE-URL> \
 // NODE_URL_42161=<ARBITRUM-NODE-URL> \
+// NODE_URL_81457=<BLAST-NODE-URL> \
 // yarn hardhat run packages/scripts/src/admin-proposals/add-identifier/0_Propose.ts --network <network>
 
 const hre = require("hardhat");
