@@ -193,7 +193,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 - add new voting v2 goerli address ([#4386](https://github.com/UMAprotocol/protocol/issues/4386)) ([cdb0679](https://github.com/UMAprotocol/protocol/commit/cdb0679347d752e8c200ee30310b589da21ed240))
 - add post update functions ([#4383](https://github.com/UMAprotocol/protocol/issues/4383)) ([861dc62](https://github.com/UMAprotocol/protocol/commit/861dc623f4ba711caf363b457d2915444b1513b6))
 - Address unbounded intra round slashing ([#4380](https://github.com/UMAprotocol/protocol/issues/4380)) ([324f309](https://github.com/UMAprotocol/protocol/commit/324f309364c27896e950f23f8325ce8f636abcd3))
-- small commenting change to be as consistant as posible ([#4382](https://github.com/UMAprotocol/protocol/issues/4382)) ([9c55f01](https://github.com/UMAprotocol/protocol/commit/9c55f013d23dc04780c0222788b2fa347ec29a17))
+- small commenting change to be as consistant as possible ([#4382](https://github.com/UMAprotocol/protocol/issues/4382)) ([9c55f01](https://github.com/UMAprotocol/protocol/commit/9c55f013d23dc04780c0222788b2fa347ec29a17))
 - voting v2 minor refactoring ([#4385](https://github.com/UMAprotocol/protocol/issues/4385)) ([824615e](https://github.com/UMAprotocol/protocol/commit/824615e15a588628e822f5985432a481fede14da))
 
 # [2.47.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.46.0...@uma/core@2.47.0) (2023-01-11)
