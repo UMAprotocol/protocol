@@ -107,9 +107,10 @@ export async function run(): Promise<void> {
   // Filter out events with less than the minimum UMA tokens staked
   const revealEventsMinBalance = revealEvents.filter((event) => event.args.numTokens.gte(minTokens));
 
-  // Filter out duplicate commit events as we only refund the first commit event per voter per round
+  // Filter out duplicate commit events as we only refund the latest commit event per voter per round
   const uniqueCommitEvents = new Map<string, VoteCommittedEvent>();
-  for (const event of commitEvents) {
+  const sortedCommitEvents = commitEvents.sort((a, b) => b.blockNumber - a.blockNumber);
+  for (const event of sortedCommitEvents) {
     const key = `${event.args.voter}-${event.args.roundId}-${event.args.identifier}-${event.args.time}-${event.args.ancillaryData}`;
     if (!uniqueCommitEvents.has(key)) {
       uniqueCommitEvents.set(key, event);
