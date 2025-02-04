@@ -109,7 +109,14 @@ export async function run(): Promise<void> {
 
   // Filter out duplicate commit events as we only refund the latest commit event per voter per round
   const uniqueCommitEvents = new Map<string, VoteCommittedEvent>();
-  const sortedCommitEvents = commitEvents.sort((a, b) => b.blockNumber - a.blockNumber);
+
+  // Sort first by blockNumber (desc) and then by logIndex (desc) as a tiebreaker
+  const sortedCommitEvents = commitEvents.sort((a, b) => {
+    if (b.blockNumber !== a.blockNumber) {
+      return b.blockNumber - a.blockNumber; // Sort by blockNumber (desc)
+    }
+    return b.logIndex - a.logIndex; // Sort by logIndex (desc) within the same block
+  });
   for (const event of sortedCommitEvents) {
     const key = `${event.args.voter}-${event.args.roundId}-${event.args.identifier}-${event.args.time}-${event.args.ancillaryData}`;
     if (!uniqueCommitEvents.has(key)) {
