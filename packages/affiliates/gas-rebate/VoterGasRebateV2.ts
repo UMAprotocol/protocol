@@ -20,7 +20,14 @@ import moment from "moment";
 import path from "path";
 const { ethers } = hre;
 
-const { OVERRIDE_FROM_BLOCK, OVERRIDE_TO_BLOCK, TRANSACTION_CONCURRENCY, MAX_RETRIES, RETRY_DELAY } = process.env;
+const {
+  OVERRIDE_FROM_BLOCK,
+  OVERRIDE_TO_BLOCK,
+  TRANSACTION_CONCURRENCY,
+  MAX_RETRIES,
+  RETRY_DELAY,
+  MIN_STAKED_TOKENS,
+} = process.env;
 
 async function retryAsyncOperation<T>(
   operation: () => Promise<T>,
@@ -68,6 +75,10 @@ export async function run(): Promise<void> {
     ? Number(OVERRIDE_TO_BLOCK)
     : (await findBlockNumberAtTimestamp(getWeb3(), prevMonthEnd.getTime() / 1000)).blockNumber;
 
+  // Minimum UMA tokens staked to be eligible for a rebate
+  const minTokens = ethers.utils.parseEther(MIN_STAKED_TOKENS ? MIN_STAKED_TOKENS : "500");
+
+  console.log("Minimum UMA tokens staked to be eligible for a rebate:", ethers.utils.formatEther(minTokens));
   console.log("Current time:", moment(currentDate).format());
   console.log("Previous Month Start:", moment(prevMonthStart).format(), "& block", fromBlock);
   console.log("Previous Month End:", moment(prevMonthEnd).format(), "& block", toBlock);
@@ -93,6 +104,27 @@ export async function run(): Promise<void> {
     searchConfig
   );
 
+  // Filter out events with less than the minimum UMA tokens staked
+  const revealEventsMinBalance = revealEvents.filter((event) => event.args.numTokens.gte(minTokens));
+
+  // Filter out duplicate commit events as we only refund the first commit event per voter per round
+  const uniqueCommitEvents = new Map<string, VoteCommittedEvent>();
+  for (const event of commitEvents) {
+    const key = `${event.args.voter}-${event.args.roundId}-${event.args.identifier}-${event.args.time}-${event.args.ancillaryData}`;
+    if (!uniqueCommitEvents.has(key)) {
+      uniqueCommitEvents.set(key, event);
+    }
+  }
+
+  // Filter out commit events that don't have a corresponding reveal event
+  const matchingCommitEvents = revealEventsMinBalance
+    .map((event) =>
+      uniqueCommitEvents.get(
+        `${event.args.voter}-${event.args.roundId}-${event.args.identifier}-${event.args.time}-${event.args.ancillaryData}`
+      )
+    )
+    .filter((event) => event !== undefined);
+
   // For each event find the associated transaction. We want to refund all transactions that were sent by voters.
   // Function to process events sequentially
   const getTransactionsFromEvents = async (events: Event[]) => {
@@ -108,8 +140,8 @@ export async function run(): Promise<void> {
     return transactions;
   };
 
-  const commitTransactions = await getTransactionsFromEvents(commitEvents);
-  const revealTransactions = await getTransactionsFromEvents(revealEvents);
+  const commitTransactions = await getTransactionsFromEvents(matchingCommitEvents);
+  const revealTransactions = await getTransactionsFromEvents(revealEventsMinBalance);
 
   // The transactions to refund are the union of the commit and reveal transactions. We need to remove any duplicates
   // as a voter could have done multiple commits and reveals in the same transaction due to multicall. If we refund
