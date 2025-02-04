@@ -4,14 +4,16 @@
 // used in UMA tokens. The script aggregates the gas rebates by voter and saves the results to a file. // It is designed
 // to not require any run time parameters by always running it one month after the desired output month.
 
-import { getAddress } from "@uma/contracts-node";
-import hre from "hardhat";
-import { BigNumber, ethers } from "ethers";
-import moment from "moment";
+import "@nomiclabs/hardhat-ethers";
 import { findBlockNumberAtTimestamp, getWeb3, paginatedEventQuery } from "@uma/common";
-import fs from "fs";
-import path from "path";
+import { getAddress } from "@uma/contracts-node";
 import Bluebird from "bluebird";
+import { BigNumber, Event } from "ethers";
+import fs from "fs";
+import hre from "hardhat";
+import moment from "moment";
+import path from "path";
+const { ethers } = hre;
 
 const { OVERRIDE_FROM_BLOCK, OVERRIDE_TO_BLOCK, TRANSACTION_CONCURRENCY, MAX_RETRIES, RETRY_DELAY } = process.env;
 
@@ -80,7 +82,7 @@ export async function run(): Promise<void> {
 
   // For each event find the associated transaction. We want to refund all transactions that were sent by voters.
   // Function to process events sequentially
-  const getTransactionsFromEvents = async (events: ethers.Event[]) => {
+  const getTransactionsFromEvents = async (events: Event[]) => {
     const transactions = await Bluebird.map(
       events,
       async (event) => {
