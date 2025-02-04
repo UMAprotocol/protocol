@@ -4,6 +4,7 @@
 // used in UMA tokens. The script aggregates the gas rebates by voter and saves the results to a file. // It is designed
 // to not require any run time parameters by always running it one month after the desired output month.
 
+import { TransactionReceipt } from "@ethersproject/abstract-provider";
 import "@nomiclabs/hardhat-ethers";
 import { findBlockNumberAtTimestamp, getWeb3, paginatedEventQuery } from "@uma/common";
 import { getAddress } from "@uma/contracts-node";
@@ -113,12 +114,15 @@ export async function run(): Promise<void> {
   // The transactions to refund are the union of the commit and reveal transactions. We need to remove any duplicates
   // as a voter could have done multiple commits and reveals in the same transaction due to multicall. If we refund
   // the full gas used within a transaction then we will refund for all commit-reveal operations within that tx.
-  const transactionsToRefund = [...commitTransactions, ...revealTransactions].reduce((accumulator, current) => {
-    if (!accumulator.find((transaction: any) => transaction.transactionHash === current.transactionHash))
-      accumulator.push(current);
+  const transactionsToRefund = [...commitTransactions, ...revealTransactions].reduce(
+    (accumulator: TransactionReceipt[], current) => {
+      if (!accumulator.find((transaction) => transaction.transactionHash === current.transactionHash))
+        accumulator.push(current);
 
-    return accumulator;
-  }, []);
+      return accumulator;
+    },
+    []
+  );
 
   console.log(
     `In aggregate, refund ${commitEvents.length} commits and ${revealEvents.length} Reveals` +
