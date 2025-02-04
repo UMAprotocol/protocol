@@ -7,6 +7,10 @@
 import "@nomiclabs/hardhat-ethers";
 import { findBlockNumberAtTimestamp, getWeb3, paginatedEventQuery } from "@uma/common";
 import { getAddress } from "@uma/contracts-node";
+import {
+  VoteCommittedEvent,
+  VoteRevealedEvent,
+} from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
 import Bluebird from "bluebird";
 import { BigNumber, Event } from "ethers";
 import fs from "fs";
@@ -68,7 +72,7 @@ export async function run(): Promise<void> {
   console.log("Previous Month End:", moment(prevMonthEnd).format(), "& block", toBlock);
 
   // Fetch all commit and reveal events.
-  const voting = await (hre as any).ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1));
+  const voting = await hre.ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1));
 
   const searchConfig = {
     fromBlock,
@@ -77,8 +81,16 @@ export async function run(): Promise<void> {
   };
 
   // Find resolved events
-  const commitEvents = await paginatedEventQuery<any>(voting, voting.filters.VoteCommitted(), searchConfig);
-  const revealEvents = await paginatedEventQuery<any>(voting, voting.filters.VoteRevealed(), searchConfig);
+  const commitEvents = await paginatedEventQuery<VoteCommittedEvent>(
+    voting,
+    voting.filters.VoteCommitted(),
+    searchConfig
+  );
+  const revealEvents = await paginatedEventQuery<VoteRevealedEvent>(
+    voting,
+    voting.filters.VoteRevealed(),
+    searchConfig
+  );
 
   // For each event find the associated transaction. We want to refund all transactions that were sent by voters.
   // Function to process events sequentially
