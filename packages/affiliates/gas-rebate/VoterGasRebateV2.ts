@@ -13,16 +13,19 @@ import fs from "fs";
 import path from "path";
 import Bluebird from "bluebird";
 
-const { OVERRIDE_FROM_BLOCK, OVERRIDE_TO_BLOCK, TRANSACTION_CONCURRENCY } = process.env;
+const { OVERRIDE_FROM_BLOCK, OVERRIDE_TO_BLOCK, TRANSACTION_CONCURRENCY, MAX_RETRIES, RETRY_DELAY } = process.env;
 
-async function retryAsyncOperation<T>(operation: () => Promise<T>, retries = 10, delay = 1000): Promise<T> {
+async function retryAsyncOperation<T>(
+  operation: () => Promise<T>,
+  retries = MAX_RETRIES ? Number(MAX_RETRIES) : 10,
+  delay = RETRY_DELAY ? Number(RETRY_DELAY) : 1000
+): Promise<T> {
   let attempt = 0;
   while (attempt < retries) {
     try {
       return await operation();
     } catch (error) {
       attempt++;
-      console.log(`Attempt ${attempt} failed. Retrying...`);
       if (attempt < retries) {
         await new Promise((resolve) => setTimeout(resolve, delay));
       } else {
