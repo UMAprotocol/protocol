@@ -111,7 +111,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         onlyMessenger(chainId)
     {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData) = abi.decode(data, (bytes32, uint256, bytes));
-        bool newPriceRequested = _requestPrice(identifier, time, ancillaryData);
+        bool newPriceRequested = _requestPrice(identifier, time, ancillaryData, "");
         if (newPriceRequested) {
             _getOracle().requestPrice(identifier, time, ancillaryData);
         }
@@ -126,7 +126,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
      * @dev The caller must pay a final fee and have approved this contract to pull final fee from it.
      * @dev If the price request params including the ancillary data does not match exactly the price request submitted
      * on the child chain, then the child chain's price request will not resolve. The caller is recommended to use the
-     * `stampAncillaryData` method on the OracleSpoke to reconstruct the ancillary data.
+     * `compressAncillaryData` method on the OracleSpoke to reconstruct the ancillary data.
      * @param identifier Identifier for price request.
      * @param time time for price request.
      * @param ancillaryData Extra data for price request.
@@ -136,7 +136,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         uint256 time,
         bytes memory ancillaryData
     ) public nonReentrant() {
-        bool newPriceRequested = _requestPrice(identifier, time, ancillaryData);
+        bool newPriceRequested = _requestPrice(identifier, time, ancillaryData, "");
         if (newPriceRequested) {
             uint256 finalFee = _getStore().computeFinalFee(address(token)).rawValue;
             token.safeTransferFrom(msg.sender, address(_getStore()), finalFee);

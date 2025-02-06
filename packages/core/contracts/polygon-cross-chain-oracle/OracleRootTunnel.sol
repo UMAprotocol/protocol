@@ -52,7 +52,7 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel, Lockable {
      */
     function _processMessageFromChild(bytes memory data) internal override {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData) = abi.decode(data, (bytes32, uint256, bytes));
-        _requestPrice(identifier, time, ancillaryData);
+        _requestPrice(identifier, time, ancillaryData, "");
         _getOracle().requestPrice(identifier, time, ancillaryData);
     }
 

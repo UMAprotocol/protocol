@@ -16,7 +16,7 @@ contract OracleBaseTunnelMock is OracleBaseTunnel {
         uint256 time,
         bytes memory ancillaryData
     ) public {
-        _requestPrice(identifier, time, ancillaryData);
+        _requestPrice(identifier, time, ancillaryData, "");
     }
 
     function encodePriceRequest(

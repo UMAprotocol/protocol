@@ -15,18 +15,19 @@ abstract contract OracleBaseTunnel {
         int256 price;
     }
 
-    // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
-    // that a price can be requested to this contract successfully, but cannot be resolved by the DVM which refuses
-    // to accept a price request made with ancillary data length over a certain size.
-    uint256 public constant ancillaryBytesLimit = 8192;
-
     // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
 
     // Finder to provide addresses for DVM system contracts.
     FinderInterface public finder;
 
-    event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bytes32 indexed requestHash);
+    event PriceRequestAdded(
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        bytes32 indexed requestHash,
+        bytes childAncillaryData
+    );
     event PushedPrice(
         bytes32 indexed identifier,
         uint256 time,
@@ -46,18 +47,20 @@ abstract contract OracleBaseTunnel {
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time,
      * ancillary data) combination. Will only emit an event if the request has never been requested.
+     * @dev This internal method is used both by child and root tunnels and childAncillaryData would be empty on the
+     * root tunnel as it is potentially compressed before sending over the bridge.
      */
     function _requestPrice(
         bytes32 identifier,
         uint256 time,
-        bytes memory ancillaryData
+        bytes memory l1AncillaryData,
+        bytes memory childAncillaryData
     ) internal {
-        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, l1AncillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
             lookup.state = RequestState.Requested;
-            emit PriceRequestAdded(identifier, time, ancillaryData, priceRequestId);
+            emit PriceRequestAdded(identifier, time, l1AncillaryData, priceRequestId, childAncillaryData);
         }
     }
 
@@ -72,11 +75,10 @@ abstract contract OracleBaseTunnel {
     ) internal {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
-        if (lookup.state == RequestState.Requested) {
-            lookup.price = price;
-            lookup.state = RequestState.Resolved;
-            emit PushedPrice(identifier, time, ancillaryData, lookup.price, priceRequestId);
-        }
+        if (lookup.state == RequestState.Resolved) return;
+        lookup.price = price;
+        lookup.state = RequestState.Resolved;
+        emit PushedPrice(identifier, time, ancillaryData, lookup.price, priceRequestId);
     }
 
     /**
