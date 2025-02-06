@@ -62,6 +62,11 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
     type: NetworkType.London,
   },
   288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
+  1514: {
+    defaultMaxFeePerGasGwei: 10,
+    defaultMaxPriorityFeePerGasGwei: 2,
+    type: NetworkType.London,
+  },
   1115: { defaultFastPriceGwei: 30, type: NetworkType.Legacy },
   1116: { defaultFastPriceGwei: 30, type: NetworkType.Legacy },
   8453: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },

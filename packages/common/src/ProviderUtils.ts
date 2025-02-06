@@ -51,6 +51,7 @@ export function getNodeUrl(networkName: string, useHttps = false, chainId: numbe
     if (name === "core-testnet") return overrideUrl || "https://rpc.test.btcs.network/";
     if (name === "blast-sepolia") return overrideUrl || "https://sepolia.blast.io";
     if (name === "core") return overrideUrl || "https://rpc.coredao.org/";
+    if (name === "story") return overrideUrl || "https://mainnet.storyrpc.io/";
     if (name === "base-goerli") return overrideUrl || "https://goerli.base.org";
     if (name === "base-sepolia") return overrideUrl || "https://sepolia.base.org";
     if (name === "base") return overrideUrl || "https://mainnet.base.org";
