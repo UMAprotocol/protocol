@@ -120,7 +120,7 @@ contract OracleSpoke is
         address childRequester
     ) external {
         bytes32 legacyRequestId =
-            _encodePriceRequest(identifier, time, _stampAncillaryData(requestAncillaryData, childRequester));
+            _encodePriceRequest(identifier, time, _legacyStampAncillaryData(requestAncillaryData));
         Price storage legacyLookup = prices[legacyRequestId];
         require(legacyLookup.state == RequestState.Resolved, "Price has not been resolved");
 
@@ -272,5 +272,15 @@ contract OracleSpoke is
                 "childChainId",
                 block.chainid
             );
+    }
+
+    /**
+     * @dev This replicates the implementation of `_stampAncillaryData` from the previous version of this contract for
+     * the purpose of resolving legacy requests if they had not been resolved before the upgrade.
+     */
+    function _legacyStampAncillaryData(bytes memory ancillaryData) internal view returns (bytes memory) {
+        // This contract should stamp the child network's ID so that voters on the parent network can
+        // deterministically track unique price requests back to this contract.
+        return AncillaryData.appendKeyValueUint(ancillaryData, "childChainId", block.chainid);
     }
 }
