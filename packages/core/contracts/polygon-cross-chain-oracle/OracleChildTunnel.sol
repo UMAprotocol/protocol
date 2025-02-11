@@ -75,7 +75,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
             bytes memory parentAncillaryData = _stampOrCompressAncillaryData(ancillaryData, requester, block.number);
             bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
 
-            // There is no need to store te childRequestId in the mapping if the parentRequestId is the same since this
+            // There is no need to store the childRequestId in the mapping if the parentRequestId is the same since this
             // contract would fallback to the parentRequestId when receiving the resolved price.
             if (parentRequestId != childRequestId) childRequestIds[parentRequestId] = childRequestId;
 
