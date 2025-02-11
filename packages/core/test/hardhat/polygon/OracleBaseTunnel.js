@@ -47,7 +47,7 @@ describe("OracleBaseTunnel", async () => {
     await assertEventNotEmitted(txn, tunnel, "PriceRequestAdded");
   });
   it("publishPrice", async function () {
-    await tunnel.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
+    // No need to request price, state should be updated as long as request has not been resolved.
     let txn = await tunnel.methods
       .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
       .send({ from: owner });

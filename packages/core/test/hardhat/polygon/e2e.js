@@ -117,14 +117,19 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
       ["bytes32", "uint256", "bytes"],
       [testIdentifier, testTimestamp, expectedStampedAncillaryData]
     );
+    // For short ancillary data the requestId will be the same on child and parent chain.
+    const requestId = web3.utils.keccak256(messageBytes);
     await assertEventEmitted(
       txn,
       oracleChild,
-      "PriceRequestAdded",
+      "PriceRequestBridged",
       (event) =>
+        event.requester === owner &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase()
+        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase() &&
+        event.childRequestId === requestId &&
+        event.parentRequestId === requestId
     );
     await assertEventEmitted(txn, oracleChild, "MessageSent", (event) => event.message === messageBytes);
 
@@ -138,7 +143,8 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase()
+        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase() &&
+        event.requestHash === requestId
     );
 
     // We should be able to resolve price now and emit message to send back to Polygon:

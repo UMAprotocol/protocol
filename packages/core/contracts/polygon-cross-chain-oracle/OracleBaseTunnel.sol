@@ -21,13 +21,7 @@ abstract contract OracleBaseTunnel {
     // Finder to provide addresses for DVM system contracts.
     FinderInterface public finder;
 
-    event PriceRequestAdded(
-        bytes32 indexed identifier,
-        uint256 time,
-        bytes ancillaryData,
-        bytes32 indexed requestHash,
-        bytes childAncillaryData
-    );
+    event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bytes32 indexed requestHash);
     event PushedPrice(
         bytes32 indexed identifier,
         uint256 time,
@@ -47,20 +41,17 @@ abstract contract OracleBaseTunnel {
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time,
      * ancillary data) combination. Will only emit an event if the request has never been requested.
-     * @dev This internal method is used both by child and root tunnels and childAncillaryData would be empty on the
-     * root tunnel as it is potentially compressed before sending over the bridge.
      */
     function _requestPrice(
         bytes32 identifier,
         uint256 time,
-        bytes memory l1AncillaryData,
-        bytes memory childAncillaryData
+        bytes memory ancillaryData
     ) internal {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, l1AncillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
             lookup.state = RequestState.Requested;
-            emit PriceRequestAdded(identifier, time, l1AncillaryData, priceRequestId, childAncillaryData);
+            emit PriceRequestAdded(identifier, time, ancillaryData, priceRequestId);
         }
     }
 
