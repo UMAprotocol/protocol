@@ -32,6 +32,7 @@ const createMonitoringParams = async (): Promise<MonitoringParams> => {
       return { number: 0, timestamp: 0 };
     }),
     pollingDelay: 0,
+    gasLimitMultiplier: 150,
   };
 };
 
