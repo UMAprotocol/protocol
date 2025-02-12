@@ -38,13 +38,13 @@ abstract contract OracleBase is HasFinder {
     function _requestPrice(
         bytes32 identifier,
         uint256 time,
-        bytes memory parentAncillaryData
+        bytes memory ancillaryData
     ) internal returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
             lookup.state = RequestState.Requested;
-            emit PriceRequestAdded(identifier, time, parentAncillaryData, priceRequestId);
+            emit PriceRequestAdded(identifier, time, ancillaryData, priceRequestId);
             return true;
         } else {
             return false;
