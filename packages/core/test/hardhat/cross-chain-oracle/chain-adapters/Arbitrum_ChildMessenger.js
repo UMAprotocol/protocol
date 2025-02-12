@@ -125,7 +125,7 @@ describe("Arbitrum_ChildMessenger", function () {
         [
           priceIdentifier,
           requestTime,
-          await oracleSpoke.methods.compressAncillaryData(ancillaryData, controlledEOA).call(),
+          await oracleSpoke.methods.stampOrCompressAncillaryData(ancillaryData, controlledEOA, 0).call(),
         ]
       );
 
@@ -168,9 +168,11 @@ describe("Arbitrum_ChildMessenger", function () {
         .requestPrice(priceIdentifier, defaultTimestamp, ancillaryData)
         .send({ from: controlledEOA });
 
-      const priceRequestEvents = await oracleSpoke.getPastEvents("PriceRequestAdded", { fromBock: 0 });
+      const priceRequestEvents = await oracleSpoke.getPastEvents("PriceRequestBridged", { fromBock: 0 });
 
-      const requestAncillaryData = await oracleSpoke.methods.compressAncillaryData(ancillaryData, controlledEOA).call();
+      const requestAncillaryData = await oracleSpoke.methods
+        .stampOrCompressAncillaryData(ancillaryData, controlledEOA, 0)
+        .call();
       const requestPrice = toWei("1234");
 
       const data = web3.eth.abi.encodeParameters(
@@ -192,7 +194,7 @@ describe("Arbitrum_ChildMessenger", function () {
           ev.identifier == priceIdentifier &&
           ev.ancillaryData == requestAncillaryData &&
           ev.price == requestPrice &&
-          ev.requestHash == priceRequestEvents[0].returnValues.requestHash
+          ev.requestHash == priceRequestEvents[0].returnValues.childRequestId
         );
       });
     });

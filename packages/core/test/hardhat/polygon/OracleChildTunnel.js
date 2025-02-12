@@ -17,8 +17,6 @@ const testPrice = toWei("0.5");
 const stateId = "1";
 
 const compressAncillaryBytesThreshold = 256;
-const shortAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold));
-const longAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold + 1));
 
 describe("OracleChildTunnel", async () => {
   let accounts;
@@ -52,10 +50,10 @@ describe("OracleChildTunnel", async () => {
   });
 
   it("stampOrCompressAncillaryData", async function () {
-    // For short ancillary data only requester and chain id should be added.
-    const blockNumber = await web3.eth.getBlockNumber();
+    // For short ancillary data only requester and chain id should be added, block number is not used.
+    const shortAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold));
     const stampedAncillaryData = await oracleChild.methods
-      .stampOrCompressAncillaryData(shortAncillaryData, owner, blockNumber)
+      .stampOrCompressAncillaryData(shortAncillaryData, owner, 0)
       .call();
     const chainId = await web3.eth.getChainId();
     assert.equal(
@@ -64,6 +62,8 @@ describe("OracleChildTunnel", async () => {
     );
 
     // Longer ancillary data should be compressed to a hash and include block number, spoke, requester and chain id.
+    const longAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold + 1));
+    const blockNumber = await web3.eth.getBlockNumber();
     const compressedData = await oracleChild.methods
       .stampOrCompressAncillaryData(longAncillaryData, owner, blockNumber)
       .call();
@@ -79,7 +79,7 @@ describe("OracleChildTunnel", async () => {
     );
   });
 
-  it("migrated requests", async function () {
+  describe("migrated requests", async function () {
     // Resolving of requests initiated from the previous implementation should be supported automatically since the
     // derivation of request hash is the same where requester and chain id are appended to ancillary data.
     const publishPrice = async (ancillaryData) => {
@@ -118,20 +118,22 @@ describe("OracleChildTunnel", async () => {
           event.price.toString() === testPrice &&
           event.requestHash === requestId
       );
+
+      // getPrice should return the price as the legacy requests were resolved.
+      assert.equal(
+        await oracleChild.methods.getPrice(testIdentifier, testTimestamp, ancillaryData).call({ from: owner }),
+        testPrice
+      );
     };
 
-    // Publish prices to child chain both for short and long ancillary data.
-    await publishPrice(shortAncillaryData);
-    await publishPrice(longAncillaryData);
+    it("migrated short ancillary data request", async function () {
+      const shortAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold));
+      await publishPrice(shortAncillaryData);
+    });
 
-    // getPrice should return the price as the legacy requests were resolved.
-    assert.equal(
-      await oracleChild.methods.getPrice(testIdentifier, testTimestamp, shortAncillaryData).call({ from: owner }),
-      testPrice
-    );
-    assert.equal(
-      await oracleChild.methods.getPrice(testIdentifier, testTimestamp, longAncillaryData).call({ from: owner }),
-      testPrice
-    );
+    it("migrated long ancillary data request", async function () {
+      const longAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold + 1));
+      await publishPrice(longAncillaryData);
+    });
   });
 });

@@ -35,6 +35,17 @@ contract OracleSpoke is
     // safe margin ensuring that the compression will not be longer than stamping.
     uint256 public constant compressAncillaryBytesThreshold = 256;
 
+    // Mapping of parent request ID to child request ID.
+    mapping(bytes32 => bytes32) public childRequestIds;
+
+    event PriceRequestBridged(
+        address indexed requester,
+        bytes32 identifier,
+        uint256 time,
+        bytes ancillaryData,
+        bytes32 indexed childRequestId,
+        bytes32 indexed parentRequestId
+    );
     event ResolvedLegacyRequest(
         bytes32 indexed identifier,
         uint256 time,
@@ -70,12 +81,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public override nonReentrant() onlyRegisteredContract() {
-        bytes memory l1AncillaryData = _compressAncillaryData(ancillaryData, msg.sender);
-
-        bool newPriceRequested = _requestPrice(identifier, time, l1AncillaryData, ancillaryData);
-        if (newPriceRequested) {
-            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, l1AncillaryData));
-        }
+        _requestPrice(identifier, time, ancillaryData);
     }
 
     /**
@@ -83,11 +89,39 @@ contract OracleSpoke is
      * ancillary data.
      */
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
-        bytes memory l1AncillaryData = _compressAncillaryData("", msg.sender);
+        _requestPrice(identifier, time, "");
+    }
 
-        bool newPriceRequested = _requestPrice(identifier, time, l1AncillaryData, "");
-        if (newPriceRequested) {
-            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, l1AncillaryData));
+    function _requestPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal {
+        // Append requester and chainId so that the request is unique.
+        address requester = msg.sender;
+        bytes memory childAncillaryData = _stampAncillaryData(ancillaryData, requester);
+        bytes32 childRequestId = _encodePriceRequest(identifier, time, childAncillaryData);
+
+        // Send the request to mainnet if it has not been requested yet.
+        Price storage lookup = prices[childRequestId];
+        if (lookup.state == RequestState.NeverRequested) {
+            lookup.state = RequestState.Requested;
+
+            // Longer ancillary data is compressed to save gas on the mainnet.
+            bytes memory parentAncillaryData = _stampOrCompressAncillaryData(ancillaryData, requester, block.number);
+            bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
+
+            // There is no need to store the childRequestId in the mapping if the parentRequestId is the same since this
+            // contract would fallback to the parentRequestId when receiving the resolved price.
+            if (parentRequestId != childRequestId) childRequestIds[parentRequestId] = childRequestId;
+
+            // In case of longer ancillary data, only its compressed representation is bridged to mainnet. In any case,
+            // emit all required information so that voters on mainnet can track the origin of the request and full
+            // ancillary data by using the parentRequestId that is derived from identifier, time and ancillary data as
+            // observed on mainnet.
+            emit PriceRequestBridged(requester, identifier, time, childAncillaryData, childRequestId, parentRequestId);
+
+            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, parentAncillaryData));
         }
     }
 
@@ -100,14 +134,32 @@ contract OracleSpoke is
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData, int256 price) =
             abi.decode(data, (bytes32, uint256, bytes, int256));
-        _publishPrice(identifier, time, ancillaryData, price);
+        bytes32 parentRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+
+        // Resolve the requestId used when requesting and checking the price. This could differ from the parent if the
+        // ancillary data was compressed when sending to the mainnet. The childRequestIds value in the mapping could
+        // be uninitialized in the following cases:
+        // - Ancillary data was not compressed, so requestId would be the same.
+        // - The request was originated from the previous implementation of this contract.
+        // - The request was originated from another chain and was pushed to this chain by mistake.
+        bytes32 priceRequestId = childRequestIds[parentRequestId];
+        if (priceRequestId == bytes32(0)) priceRequestId = parentRequestId;
+
+        // In order to support resolving the requests initiated from the previous implementation of this contract, we
+        // only check if it has not yet been resolved (can be NeverRequested).
+        Price storage lookup = prices[priceRequestId];
+        if (lookup.state != RequestState.Resolved) {
+            lookup.price = price;
+            lookup.state = RequestState.Resolved;
+            emit PushedPrice(identifier, time, ancillaryData, price, priceRequestId);
+        }
     }
 
     /**
      * @notice This method handles a special case when a price request was originated on the previous implementation of
      * this contract, but was not settled before the upgrade.
-     * @dev Duplicates the resolved state from the legacy request (ancillary data was stamped) to the new request where
-     * longer ancillary data would be compressed. Will revert if the legacy request has not been pushed from mainnet.
+     * @dev Duplicates the resolved state from the legacy request to the new request where requester address is now
+     * appended. Will revert if the legacy request has not been pushed from mainnet.
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
      * @param requestAncillaryData Original ancillary data passed by the requester before stamping by the legacy spoke.
@@ -124,15 +176,16 @@ contract OracleSpoke is
         Price storage legacyLookup = prices[legacyRequestId];
         require(legacyLookup.state == RequestState.Resolved, "Price has not been resolved");
 
-        bytes memory ancillaryData = _compressAncillaryData(requestAncillaryData, childRequester);
+        bytes memory ancillaryData = _stampAncillaryData(requestAncillaryData, childRequester);
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
 
         // Update the state and emit an event only if the legacy request has not been resolved yet.
-        if (lookup.state == RequestState.Resolved) return;
-        lookup.price = legacyLookup.price;
-        lookup.state = RequestState.Resolved;
-        emit ResolvedLegacyRequest(identifier, time, ancillaryData, lookup.price, priceRequestId, legacyRequestId);
+        if (lookup.state != RequestState.Resolved) {
+            lookup.price = legacyLookup.price;
+            lookup.state = RequestState.Resolved;
+            emit ResolvedLegacyRequest(identifier, time, ancillaryData, lookup.price, priceRequestId, legacyRequestId);
+        }
     }
 
     /**
@@ -147,8 +200,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId =
-            _encodePriceRequest(identifier, time, _compressAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -164,7 +216,7 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (bool)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _compressAncillaryData("", msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData("", msg.sender));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -180,8 +232,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId =
-            _encodePriceRequest(identifier, time, _compressAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -199,45 +250,46 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (int256)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _compressAncillaryData("", msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData("", msg.sender));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
     }
 
     /**
-     * @notice Generates compressed ancillary data in the format that it would be bridged to mainnet in the case of a
-     * price request.
+     * @notice Generates compressed or stamped ancillary data in the format that it would be bridged to mainnet in the
+     * case of a price request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param requester sender of the initial price request.
-     * @return the compressed ancillary bytes.
+     * @param requestBlockNumber block number of the price request.
+     * @return the stamped or compressed ancillary bytes.
      */
-    function compressAncillaryData(bytes memory ancillaryData, address requester)
-        external
-        view
-        nonReentrantView()
-        returns (bytes memory)
-    {
-        return _compressAncillaryData(ancillaryData, requester);
+    function stampOrCompressAncillaryData(
+        bytes memory ancillaryData,
+        address requester,
+        uint256 requestBlockNumber
+    ) external view nonReentrantView() returns (bytes memory) {
+        return _stampOrCompressAncillaryData(ancillaryData, requester, requestBlockNumber);
     }
 
     /**
      * @notice Compresses longer ancillary data by providing sufficient information to track back the original ancillary
      * data on mainnet. In case of shorter ancillary data, it simply stamps the requester's address and chainId.
      */
-    function _compressAncillaryData(bytes memory ancillaryData, address requester)
-        internal
-        view
-        returns (bytes memory)
-    {
+    function _stampOrCompressAncillaryData(
+        bytes memory ancillaryData,
+        address requester,
+        uint256 requestBlockNumber
+    ) internal view returns (bytes memory) {
         if (ancillaryData.length <= compressAncillaryBytesThreshold) {
             return _stampAncillaryData(ancillaryData, requester);
         }
 
         // Compared to the simple stamping method, the compression replaces original ancillary data with its hash and
         // adds address of this child oracle and block number so that its more efficient to fetch original ancillary
-        // data from PriceRequestAdded event on origin chain indexed by requestId. This requestId can be reconstructed
-        // by taking keccak256 hash of ABI encoded price identifier, time and ancillary data as bridged to mainnet.
+        // data from PriceRequestBridged event on origin chain indexed by parentRequestId. This parentRequestId can be
+        // reconstructed by taking keccak256 hash of ABI encoded price identifier, time and ancillary data as bridged
+        // to mainnet.
         return
             AncillaryData.appendKeyValueUint(
                 AncillaryData.appendKeyValueAddress(
@@ -245,7 +297,7 @@ contract OracleSpoke is
                         AncillaryData.appendKeyValueUint(
                             AncillaryData.appendKeyValueBytes32("", "ancillaryDataHash", keccak256(ancillaryData)),
                             "childBlockNumber",
-                            block.number
+                            requestBlockNumber
                         ),
                         "childOracle",
                         address(this)

@@ -145,7 +145,8 @@ describe("OracleHub.js", async () => {
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(defaultIdentifier) &&
         event.time.toString() === defaultTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === defaultAncillaryData.toLowerCase()
+        event.ancillaryData.toLowerCase() === defaultAncillaryData.toLowerCase() &&
+        event.childAncillaryData === null
     );
 
     // Calling it again succeeds but does not emit event. It also doesn't need to pull final fee from caller.
