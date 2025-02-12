@@ -14,7 +14,7 @@ contract OracleBaseMock is OracleBase {
         uint256 time,
         bytes memory ancillaryData
     ) public returns (bool) {
-        return _requestPrice(identifier, time, ancillaryData, "");
+        return _requestPrice(identifier, time, ancillaryData);
     }
 
     function encodePriceRequest(

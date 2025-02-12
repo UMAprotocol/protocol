@@ -20,13 +20,7 @@ abstract contract OracleBase is HasFinder {
     // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
 
-    event PriceRequestAdded(
-        bytes32 indexed identifier,
-        uint256 time,
-        bytes ancillaryData,
-        bytes32 indexed requestHash,
-        bytes childAncillaryData
-    );
+    event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bytes32 indexed requestHash);
     event PushedPrice(
         bytes32 indexed identifier,
         uint256 time,
@@ -44,14 +38,13 @@ abstract contract OracleBase is HasFinder {
     function _requestPrice(
         bytes32 identifier,
         uint256 time,
-        bytes memory l1AncillaryData,
-        bytes memory childAncillaryData
+        bytes memory parentAncillaryData
     ) internal returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, l1AncillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
             lookup.state = RequestState.Requested;
-            emit PriceRequestAdded(identifier, time, l1AncillaryData, priceRequestId, childAncillaryData);
+            emit PriceRequestAdded(identifier, time, parentAncillaryData, priceRequestId);
             return true;
         } else {
             return false;

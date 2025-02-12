@@ -81,7 +81,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public override nonReentrant() onlyRegisteredContract() {
-        _requestPrice(identifier, time, ancillaryData);
+        _requestPriceSpoke(identifier, time, ancillaryData);
     }
 
     /**
@@ -89,10 +89,10 @@ contract OracleSpoke is
      * ancillary data.
      */
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
-        _requestPrice(identifier, time, "");
+        _requestPriceSpoke(identifier, time, "");
     }
 
-    function _requestPrice(
+    function _requestPriceSpoke(
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
