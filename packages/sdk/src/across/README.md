@@ -96,7 +96,7 @@ const { slowPct, instantPct } = await gasFeecalculator.getDepositFees(provider, 
 
 #### Detailed Fees Example
 
-This uses the same underlying logic as the basic example, but returns omre information useful for display purposes.
+This uses the same underlying logic as the basic example, but returns more information useful for display purposes.
 
 ```ts
 import * as uma from "@uma/sdk"
