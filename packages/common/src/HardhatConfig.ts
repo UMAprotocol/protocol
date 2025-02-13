@@ -308,8 +308,8 @@ export function getHardhatConfig(
           network: "story",
           chainId: 1514,
           urls: {
-            apiURL: "https://dev-mainnet.storyscan.xyz/api",
-            browserURL: "https://dev-mainnet.storyscan.xyz/",
+            apiURL: "https://www.storyscan.xyz/api",
+            browserURL: "https://mainnet.storyrpc.io/",
           },
         },
         {
