@@ -101,29 +101,28 @@ contract OracleSpoke is
         address requester = msg.sender;
         bytes memory childAncillaryData = _stampAncillaryData(ancillaryData, requester);
         bytes32 childRequestId = _encodePriceRequest(identifier, time, childAncillaryData);
-
-        // Send the request to mainnet if it has not been requested yet.
         Price storage lookup = prices[childRequestId];
-        if (lookup.state == RequestState.NeverRequested) {
-            lookup.state = RequestState.Requested;
 
-            // Longer ancillary data is compressed to save gas on the mainnet.
-            bytes memory parentAncillaryData = _stampOrCompressAncillaryData(ancillaryData, requester, block.number);
-            bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
+        // Send the request to mainnet only if it has not been requested yet.
+        if (lookup.state != RequestState.NeverRequested) return;
+        lookup.state = RequestState.Requested;
 
-            // There is no need to store the childRequestId in the mapping if the parentRequestId is the same since this
-            // contract would fallback to the parentRequestId when receiving the resolved price.
-            if (parentRequestId != childRequestId) childRequestIds[parentRequestId] = childRequestId;
+        // Longer ancillary data is compressed to save gas on the mainnet.
+        bytes memory parentAncillaryData = _stampOrCompressAncillaryData(ancillaryData, requester, block.number);
+        bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
 
-            // In case of longer ancillary data, only its compressed representation is bridged to mainnet. In any case,
-            // emit all required information so that voters on mainnet can track the origin of the request and full
-            // ancillary data by using the parentRequestId that is derived from identifier, time and ancillary data as
-            // observed on mainnet.
-            emit PriceRequestBridged(requester, identifier, time, childAncillaryData, childRequestId, parentRequestId);
-            emit PriceRequestAdded(identifier, time, parentAncillaryData, parentRequestId);
+        // There is no need to store the childRequestId in the mapping if the parentRequestId is the same since this
+        // contract would fallback to the parentRequestId when receiving the resolved price.
+        if (parentRequestId != childRequestId) childRequestIds[parentRequestId] = childRequestId;
 
-            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, parentAncillaryData));
-        }
+        // In case of longer ancillary data, only its compressed representation is bridged to mainnet. In any case,
+        // emit all required information so that voters on mainnet can track the origin of the request and full
+        // ancillary data by using the parentRequestId that is derived from identifier, time and ancillary data as
+        // observed on mainnet.
+        emit PriceRequestBridged(requester, identifier, time, childAncillaryData, childRequestId, parentRequestId);
+        emit PriceRequestAdded(identifier, time, parentAncillaryData, parentRequestId);
+
+        getChildMessenger().sendMessageToParent(abi.encode(identifier, time, parentAncillaryData));
     }
 
     /**
@@ -145,15 +144,14 @@ contract OracleSpoke is
         // - The request was originated from another chain and was pushed to this chain by mistake.
         bytes32 priceRequestId = childRequestIds[parentRequestId];
         if (priceRequestId == bytes32(0)) priceRequestId = parentRequestId;
+        Price storage lookup = prices[priceRequestId];
 
         // In order to support resolving the requests initiated from the previous implementation of this contract, we
-        // only check if it has not yet been resolved (can be NeverRequested).
-        Price storage lookup = prices[priceRequestId];
-        if (lookup.state != RequestState.Resolved) {
-            lookup.price = price;
-            lookup.state = RequestState.Resolved;
-            emit PushedPrice(identifier, time, ancillaryData, price, priceRequestId);
-        }
+        // only the state and emit an event if it has not yet been resolved.
+        if (lookup.state == RequestState.Resolved) return;
+        lookup.price = price;
+        lookup.state = RequestState.Resolved;
+        emit PushedPrice(identifier, time, ancillaryData, price, priceRequestId);
     }
 
     /**
@@ -182,11 +180,10 @@ contract OracleSpoke is
         Price storage lookup = prices[priceRequestId];
 
         // Update the state and emit an event only if the legacy request has not been resolved yet.
-        if (lookup.state != RequestState.Resolved) {
-            lookup.price = legacyLookup.price;
-            lookup.state = RequestState.Resolved;
-            emit ResolvedLegacyRequest(identifier, time, ancillaryData, lookup.price, priceRequestId, legacyRequestId);
-        }
+        if (lookup.state == RequestState.Resolved) return;
+        lookup.price = legacyLookup.price;
+        lookup.state = RequestState.Resolved;
+        emit ResolvedLegacyRequest(identifier, time, ancillaryData, lookup.price, priceRequestId, legacyRequestId);
     }
 
     /**
