@@ -120,6 +120,7 @@ contract OracleSpoke is
             // ancillary data by using the parentRequestId that is derived from identifier, time and ancillary data as
             // observed on mainnet.
             emit PriceRequestBridged(requester, identifier, time, childAncillaryData, childRequestId, parentRequestId);
+            emit PriceRequestAdded(identifier, time, parentAncillaryData, parentRequestId);
 
             getChildMessenger().sendMessageToParent(abi.encode(identifier, time, parentAncillaryData));
         }

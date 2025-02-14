@@ -84,6 +84,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
             // ancillary data by using the parentRequestId that is derived from identifier, time and ancillary data as
             // observed on mainnet.
             emit PriceRequestBridged(requester, identifier, time, childAncillaryData, childRequestId, parentRequestId);
+            emit PriceRequestAdded(identifier, time, parentAncillaryData, parentRequestId);
 
             _sendMessageToRoot(abi.encode(identifier, time, parentAncillaryData));
         }
