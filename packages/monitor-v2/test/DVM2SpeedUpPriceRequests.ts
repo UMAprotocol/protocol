@@ -160,13 +160,15 @@ describe("DVM2 Price Speed up", function () {
     const finalFee = await store.computeFinalFee(votingToken.address);
     await votingToken.approve(oracleHub.address, finalFee.rawValue);
     await (
-      await oracleHub
-        .connect(deployer)
-        .requestPrice(
-          testIdentifier,
-          testRequestTime,
-          await (oracleSpokeOptimism as OracleSpokeEthers).stampAncillaryData(testAncillaryData)
+      await oracleHub.connect(deployer).requestPrice(
+        testIdentifier,
+        testRequestTime,
+        await (oracleSpokeOptimism as OracleSpokeEthers).stampOrCompressAncillaryData(
+          testAncillaryData,
+          await registeredContract.getAddress(),
+          0 // block number not used for short ancillary data (testAncillaryData.length <= 256B)
         )
+      )
     ).wait();
 
     await speedUpPrices(spyLogger, await createMonitoringParams());
