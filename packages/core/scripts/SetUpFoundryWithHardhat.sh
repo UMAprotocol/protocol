@@ -20,7 +20,7 @@ if [ ! -d "./lib" ] || [ -z "$(ls -A ./lib)" ] || [ -z "$(ls -A ./lib/forge-std)
     mv .gitignore .gitignore.tmp
     mkdir temp
     cd temp
-    forge init --force --no-commit # Init the forge project to get the required libraries.
+    /home/circleci/.foundry/bin/forge init --force --no-commit # Init the forge project to get the required libraries.
     mv ./lib ../                   # Move the required foundry components to root of core.
     cd ..
     rm -rf temp                    # Clean up.
