@@ -119,7 +119,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         Price storage lookup = prices[priceRequestId];
 
         // In order to support resolving the requests initiated from the previous implementation of this contract, we
-        // only the state and emit an event if it has not yet been resolved.
+        // only update the state and emit an event if it has not yet been resolved.
         if (lookup.state == RequestState.Resolved) return;
         lookup.price = price;
         lookup.state = RequestState.Resolved;
