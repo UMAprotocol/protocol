@@ -108,7 +108,10 @@ contract OracleSpoke is
         lookup.state = RequestState.Requested;
 
         // Longer ancillary data is compressed to save gas on the mainnet.
-        bytes memory parentAncillaryData = _stampOrCompressAncillaryData(ancillaryData, requester, block.number);
+        bytes memory parentAncillaryData =
+            ancillaryData.length <= compressAncillaryBytesThreshold
+                ? childAncillaryData
+                : _compressAncillaryData(ancillaryData, requester, block.number);
         bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
 
         // There is no need to store the childRequestId in the mapping if the parentRequestId is the same since this
@@ -255,8 +258,8 @@ contract OracleSpoke is
     }
 
     /**
-     * @notice Generates compressed or stamped ancillary data in the format that it would be bridged to mainnet in the
-     * case of a price request.
+     * @notice Compresses longer ancillary data by providing sufficient information to track back the original ancillary
+     * data on mainnet. In case of shorter ancillary data, it simply stamps the requester's address and chainId.
      * @param ancillaryData ancillary data of the price being requested.
      * @param requester sender of the initial price request.
      * @param requestBlockNumber block number of the price request.
@@ -267,27 +270,25 @@ contract OracleSpoke is
         address requester,
         uint256 requestBlockNumber
     ) external view nonReentrantView() returns (bytes memory) {
-        return _stampOrCompressAncillaryData(ancillaryData, requester, requestBlockNumber);
+        return
+            ancillaryData.length <= compressAncillaryBytesThreshold
+                ? _stampAncillaryData(ancillaryData, requester)
+                : _compressAncillaryData(ancillaryData, requester, requestBlockNumber);
     }
 
     /**
-     * @notice Compresses longer ancillary data by providing sufficient information to track back the original ancillary
-     * data on mainnet. In case of shorter ancillary data, it simply stamps the requester's address and chainId.
+     * @notice Compresses ancillary data by providing sufficient information to track back the original ancillary data
+     * on mainnet.
+     * @dev Compared to the simple stamping method, the compression replaces original ancillary data with its hash and
+     * adds address of this child oracle and block number so that its more efficient to fetch original ancillary data
+     * from PriceRequestBridged event on origin chain indexed by parentRequestId. This parentRequestId can be
+     * reconstructed by taking keccak256 hash of ABI encoded price identifier, time and ancillary data.
      */
-    function _stampOrCompressAncillaryData(
+    function _compressAncillaryData(
         bytes memory ancillaryData,
         address requester,
         uint256 requestBlockNumber
     ) internal view returns (bytes memory) {
-        if (ancillaryData.length <= compressAncillaryBytesThreshold) {
-            return _stampAncillaryData(ancillaryData, requester);
-        }
-
-        // Compared to the simple stamping method, the compression replaces original ancillary data with its hash and
-        // adds address of this child oracle and block number so that its more efficient to fetch original ancillary
-        // data from PriceRequestBridged event on origin chain indexed by parentRequestId. This parentRequestId can be
-        // reconstructed by taking keccak256 hash of ABI encoded price identifier, time and ancillary data as bridged
-        // to mainnet.
         return
             AncillaryData.appendKeyValueUint(
                 AncillaryData.appendKeyValueAddress(
