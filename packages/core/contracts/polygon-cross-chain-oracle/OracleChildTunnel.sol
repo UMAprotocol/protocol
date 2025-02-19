@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@maticnetwork/fx-portal/contracts/tunnel/FxBaseChildTunnel.sol";
+import "../cross-chain-oracle/AncillaryDataBridging.sol";
 import "../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
 import "../data-verification-mechanism/interfaces/RegistryInterface.sol";
 import "./OracleBaseTunnel.sol";
@@ -17,11 +18,7 @@ import "../common/implementation/Lockable.sol";
  * resolution secured by the DVM on mainnet.
  */
 contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBaseChildTunnel, Lockable {
-    // Compressing the ancillary data adds additional key-value pairs compared to the stamping method so that its easier
-    // to track back the original request when voting on mainnet. Actual threshold when compression would produce
-    // shorter data varies depending on the number of decimal digits of chainId and block number, but 256 bytes has a
-    // safe margin ensuring that the compression will not be longer than stamping.
-    uint256 public constant compressAncillaryBytesThreshold = 256;
+    using AncillaryDataBridging for bytes;
 
     // Mapping of parent request ID to child request ID.
     mapping(bytes32 => bytes32) public childRequestIds;
@@ -63,7 +60,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
     ) public override nonReentrant() onlyRegisteredContract() {
         // Append requester and chainId so that the request is unique.
         address requester = msg.sender;
-        bytes memory childAncillaryData = _stampAncillaryData(ancillaryData, requester);
+        bytes memory childAncillaryData = ancillaryData.stampAncillaryData(requester);
         bytes32 childRequestId = _encodePriceRequest(identifier, time, childAncillaryData);
         Price storage lookup = prices[childRequestId];
 
@@ -73,9 +70,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
 
         // Longer ancillary data is compressed to save gas on the mainnet.
         bytes memory parentAncillaryData =
-            ancillaryData.length <= compressAncillaryBytesThreshold
-                ? childAncillaryData
-                : _compressAncillaryData(ancillaryData, requester, block.number);
+            ancillaryData.stampOrCompressAncillaryData(childAncillaryData, requester, block.number);
         bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
 
         // There is no need to store the childRequestId in the mapping if the parentRequestId is the same since this
@@ -138,7 +133,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData.stampAncillaryData(msg.sender));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -155,7 +150,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData.stampAncillaryData(msg.sender));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -164,69 +159,23 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
     /**
      * @notice Compresses longer ancillary data by providing sufficient information to track back the original ancillary
      * data on mainnet. In case of shorter ancillary data, it simply stamps the requester's address and chainId.
-     * @param ancillaryData ancillary data of the price being requested.
-     * @param requester sender of the initial price request.
-     * @param requestBlockNumber block number of the price request.
-     * @return the stamped or compressed ancillary bytes.
+     * @dev This method is not optimized for onchain calls as it always stamps the ancillary data before compressing it.
+     * It is expected to be used in offchain infrastructure when speeding up requests to the mainnet.
+     * @param ancillaryData original ancillary data to be processed.
+     * @param requester address of the requester who initiated the price request.
+     * @param requestBlockNumber block number when the price request was initiated.
+     * @return compressed ancillary data if it exceeds the threshold, otherwise metadata is appended at the end.
      */
     function stampOrCompressAncillaryData(
         bytes memory ancillaryData,
         address requester,
         uint256 requestBlockNumber
-    ) external view nonReentrantView() returns (bytes memory) {
+    ) external view returns (bytes memory) {
         return
-            ancillaryData.length <= compressAncillaryBytesThreshold
-                ? _stampAncillaryData(ancillaryData, requester)
-                : _compressAncillaryData(ancillaryData, requester, requestBlockNumber);
-    }
-
-    /**
-     * @notice Compresses ancillary data by providing sufficient information to track back the original ancillary data
-     * on mainnet.
-     * @dev Compared to the simple stamping method, the compression replaces original ancillary data with its hash and
-     * adds address of this child oracle and block number so that its more efficient to fetch original ancillary data
-     * from PriceRequestBridged event on origin chain indexed by parentRequestId. This parentRequestId can be
-     * reconstructed by taking keccak256 hash of ABI encoded price identifier, time and ancillary data.
-     */
-    function _compressAncillaryData(
-        bytes memory ancillaryData,
-        address requester,
-        uint256 requestBlockNumber
-    ) internal view returns (bytes memory) {
-        return
-            AncillaryData.appendKeyValueUint(
-                AncillaryData.appendKeyValueAddress(
-                    AncillaryData.appendKeyValueAddress(
-                        AncillaryData.appendKeyValueUint(
-                            AncillaryData.appendKeyValueBytes32("", "ancillaryDataHash", keccak256(ancillaryData)),
-                            "childBlockNumber",
-                            requestBlockNumber
-                        ),
-                        "childOracle",
-                        address(this)
-                    ),
-                    "childRequester",
-                    requester
-                ),
-                "childChainId",
-                block.chainid
-            );
-    }
-
-    /**
-     * @dev We don't handle specifically the case where `ancillaryData` is not already readily translatable in utf8.
-     * For those cases, we assume that the client will be able to strip out the utf8-translatable part of the
-     * ancillary data that this contract stamps.
-     */
-    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal view returns (bytes memory) {
-        // Price requests that originate from this method, on Polygon, will ultimately be submitted to the DVM on
-        // Ethereum via the OracleRootTunnel. Therefore this contract should stamp its requester's address in the
-        // ancillary data so voters can conveniently track the requests path to the DVM.
-        return
-            AncillaryData.appendKeyValueUint(
-                AncillaryData.appendKeyValueAddress(ancillaryData, "childRequester", requester),
-                "childChainId",
-                block.chainid
+            ancillaryData.stampOrCompressAncillaryData(
+                ancillaryData.stampAncillaryData(requester),
+                requester,
+                requestBlockNumber
             );
     }
 }
