@@ -6,7 +6,6 @@ import "../cross-chain-oracle/AncillaryDataBridging.sol";
 import "../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
 import "../data-verification-mechanism/interfaces/RegistryInterface.sol";
 import "./OracleBaseTunnel.sol";
-import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";
 
 /**
