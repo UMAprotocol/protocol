@@ -41,7 +41,7 @@ library AncillaryDataBridging {
      * @notice Compresses ancillary data by providing sufficient information to track back the original ancillary data
      * on mainnet.
      * @dev Compared to the simple stamping method, the compression replaces original ancillary data with its hash and
-     * adds address of this child oracle and block number so that its more efficient to fetch original ancillary data
+     * adds address of origin chain oracle and block number so that its more efficient to fetch original ancillary data
      * from PriceRequestBridged event on origin chain indexed by parentRequestId. This parentRequestId can be
      * reconstructed by taking keccak256 hash of ABI encoded price identifier, time and ancillary data.
      * @param ancillaryData original ancillary data to be processed.
