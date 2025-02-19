@@ -21,7 +21,7 @@ import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
 import { tryHexToUtf8String } from "../src/utils/contracts";
-
+import "@nomiclabs/hardhat-ethers";
 const ethers = hre.ethers;
 
 describe("PolymarketNotifier", function () {
@@ -62,6 +62,7 @@ describe("PolymarketNotifier", function () {
     const ctfAdapterAddress = await deployer.getAddress();
     const ctfAdapterAddressV2 = "0x1234";
     const ctfExchangeAddress = "0x1234";
+    const ctfSportsOracleAddress = "0x1234";
     const graphqlEndpoint = "endpoint";
     const apiEndpoint = "endpoint";
 
@@ -70,6 +71,7 @@ describe("PolymarketNotifier", function () {
       ctfAdapterAddress,
       ctfAdapterAddressV2,
       ctfExchangeAddress,
+      ctfSportsOracleAddress,
       maxBlockLookBack: 3499,
       graphqlEndpoint,
       apiEndpoint,
@@ -78,6 +80,8 @@ describe("PolymarketNotifier", function () {
       pollingDelay: 0,
       polymarketApiKey: "key",
       unknownProposalNotificationInterval: 1800,
+      retryAttempts: 3,
+      retryDelayMs: 1000,
     };
   };
 
