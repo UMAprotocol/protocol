@@ -30,6 +30,14 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         bytes32 indexed childRequestId,
         bytes32 indexed parentRequestId
     );
+    event ResolvedLegacyRequest(
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        int256 price,
+        bytes32 indexed requestHash,
+        bytes32 indexed legacyRequestHash
+    );
 
     constructor(address _fxChild, address _finderAddress)
         OracleBaseTunnel(_finderAddress)
@@ -57,30 +65,24 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public override nonReentrant() onlyRegisteredContract() {
-        // Append requester and chainId so that the request is unique.
         address requester = msg.sender;
-        bytes memory childAncillaryData = ancillaryData.stampAncillaryData(requester);
-        bytes32 childRequestId = _encodePriceRequest(identifier, time, childAncillaryData);
+        bytes32 childRequestId = _encodeChildPriceRequest(requester, identifier, time, ancillaryData);
         Price storage lookup = prices[childRequestId];
 
         // Send the request to mainnet if it has not been requested yet.
         if (lookup.state != RequestState.NeverRequested) return;
         lookup.state = RequestState.Requested;
 
-        // Longer ancillary data is compressed to save gas on the mainnet.
-        bytes memory parentAncillaryData =
-            ancillaryData.stampOrCompressAncillaryData(childAncillaryData, requester, block.number);
+        // Only the compressed ancillary data is sent to the mainnet. As it includes the request block number that is
+        // not available when getting the resolved price, we map the derived request ID.
+        bytes memory parentAncillaryData = ancillaryData.compressAncillaryData(requester, block.number);
         bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
+        childRequestIds[parentRequestId] = childRequestId;
 
-        // There is no need to store the childRequestId in the mapping if the parentRequestId is the same since this
-        // contract would fallback to the parentRequestId when receiving the resolved price.
-        if (parentRequestId != childRequestId) childRequestIds[parentRequestId] = childRequestId;
-
-        // In case of longer ancillary data, only its compressed representation is bridged to mainnet. In any case,
-        // emit all required information so that voters on mainnet can track the origin of the request and full
+        // Emit all required information so that voters on mainnet can track the origin of the request and full
         // ancillary data by using the parentRequestId that is derived from identifier, time and ancillary data as
         // observed on mainnet.
-        emit PriceRequestBridged(requester, identifier, time, childAncillaryData, childRequestId, parentRequestId);
+        emit PriceRequestBridged(requester, identifier, time, ancillaryData, childRequestId, parentRequestId);
         emit PriceRequestAdded(identifier, time, parentAncillaryData, parentRequestId);
 
         _sendMessageToRoot(abi.encode(identifier, time, parentAncillaryData));
@@ -102,12 +104,10 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
             abi.decode(data, (bytes32, uint256, bytes, int256));
         bytes32 parentRequestId = _encodePriceRequest(identifier, time, ancillaryData);
 
-        // Resolve the requestId used when requesting and checking the price. This could differ from the parent if the
-        // ancillary data was compressed when sending to the mainnet. The childRequestIds value in the mapping could
-        // be uninitialized in the following cases:
-        // - Ancillary data was not compressed, so requestId would be the same.
-        // - The request was originated from the previous implementation of this contract.
-        // - The request was originated from another chain and was pushed to this chain by mistake.
+        // Resolve the requestId used when requesting and checking the price. The childRequestIds value in the mapping
+        // could be uninitialized if the request was originated from:
+        // - the previous implementation of this contract, or
+        // - another chain and was pushed to this chain by mistake.
         bytes32 priceRequestId = childRequestIds[parentRequestId];
         if (priceRequestId == bytes32(0)) priceRequestId = parentRequestId;
         Price storage lookup = prices[priceRequestId];
@@ -118,6 +118,37 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         lookup.price = price;
         lookup.state = RequestState.Resolved;
         emit PushedPrice(identifier, time, ancillaryData, price, priceRequestId);
+    }
+
+    /**
+     * @notice This method handles a special case when a price request was originated on the previous implementation of
+     * this contract, but was not settled before the upgrade.
+     * @dev Duplicates the resolved state from the legacy request to the new request where requester address is also
+     * part of request ID derivation. Will revert if the legacy request has not been pushed from mainnet.
+     * @param identifier Identifier of price request to resolve.
+     * @param time Timestamp of price request to resolve.
+     * @param ancillaryData Original ancillary data passed by the requester before stamping by the legacy spoke.
+     * @param childRequester Address of the requester that initiated the price request.
+     */
+    function resolveLegacyRequest(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        address childRequester
+    ) external {
+        bytes32 legacyRequestId =
+            _encodePriceRequest(identifier, time, _legacyStampAncillaryData(ancillaryData, childRequester));
+        Price storage legacyLookup = prices[legacyRequestId];
+        require(legacyLookup.state == RequestState.Resolved, "Price has not been resolved");
+
+        bytes32 priceRequestId = _encodeChildPriceRequest(childRequester, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+
+        // Update the state and emit an event only if the legacy request has not been resolved yet.
+        if (lookup.state == RequestState.Resolved) return;
+        lookup.price = legacyLookup.price;
+        lookup.state = RequestState.Resolved;
+        emit ResolvedLegacyRequest(identifier, time, ancillaryData, lookup.price, priceRequestId, legacyRequestId);
     }
 
     /**
@@ -132,7 +163,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData.stampAncillaryData(msg.sender));
+        bytes32 priceRequestId = _encodeChildPriceRequest(msg.sender, identifier, time, ancillaryData);
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -149,32 +180,60 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData.stampAncillaryData(msg.sender));
+        bytes32 priceRequestId = _encodeChildPriceRequest(msg.sender, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
     }
 
     /**
-     * @notice Compresses longer ancillary data by providing sufficient information to track back the original ancillary
-     * data on mainnet. In case of shorter ancillary data, it simply stamps the requester's address and chainId.
-     * @dev This method is not optimized for onchain calls as it always stamps the ancillary data before compressing it.
-     * It is expected to be used in offchain infrastructure when speeding up requests to the mainnet.
+     * @notice Compresses ancillary data by providing sufficient information to track back the original ancillary data
+     * mainnet.
+     * @dev This is expected to be used in offchain infrastructure when speeding up requests to the mainnet.
      * @param ancillaryData original ancillary data to be processed.
      * @param requester address of the requester who initiated the price request.
      * @param requestBlockNumber block number when the price request was initiated.
      * @return compressed ancillary data if it exceeds the threshold, otherwise metadata is appended at the end.
      */
-    function stampOrCompressAncillaryData(
+    function compressAncillaryData(
         bytes memory ancillaryData,
         address requester,
         uint256 requestBlockNumber
     ) external view returns (bytes memory) {
+        return ancillaryData.compressAncillaryData(requester, requestBlockNumber);
+    }
+
+    /**
+     * @dev This replicates the implementation of `_stampAncillaryData` from the previous version of this contract for
+     * the purpose of resolving legacy requests if they had not been resolved before the upgrade.
+     */
+    function _legacyStampAncillaryData(bytes memory ancillaryData, address requester)
+        internal
+        view
+        returns (bytes memory)
+    {
+        // Price requests that originate from this method, on Polygon, will ultimately be submitted to the DVM on
+        // Ethereum via the OracleRootTunnel. Therefore this contract should stamp its requester's address in the
+        // ancillary data so voters can conveniently track the requests path to the DVM.
         return
-            ancillaryData.stampOrCompressAncillaryData(
-                ancillaryData.stampAncillaryData(requester),
-                requester,
-                requestBlockNumber
+            AncillaryData.appendKeyValueUint(
+                AncillaryData.appendKeyValueAddress(ancillaryData, "childRequester", requester),
+                "childChainId",
+                block.chainid
             );
+    }
+
+    /**
+     * @notice Returns the convenient way to store price requests, uniquely identified by {requester, identifier, time,
+     * ancillaryData }.
+     * @dev Compared to _encodePriceRequest, this method ensures requests are unique also among different requesters.
+     */
+    function _encodeChildPriceRequest(
+        address requester,
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(requester, identifier, time, ancillaryData));
     }
 }

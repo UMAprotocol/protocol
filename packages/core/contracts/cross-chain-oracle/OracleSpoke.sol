@@ -147,8 +147,8 @@ contract OracleSpoke is
     /**
      * @notice This method handles a special case when a price request was originated on the previous implementation of
      * this contract, but was not settled before the upgrade.
-     * @dev Duplicates the resolved state from the legacy request to the new request where requester address is now
-     * appended. Will revert if the legacy request has not been pushed from mainnet.
+     * @dev Duplicates the resolved state from the legacy request to the new request where requester address is also
+     * part of request ID derivation. Will revert if the legacy request has not been pushed from mainnet.
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
      * @param ancillaryData Original ancillary data passed by the requester before stamping by the legacy spoke.

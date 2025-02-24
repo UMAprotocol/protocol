@@ -1,8 +1,8 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
 const { web3 } = hre;
-const { getContract, assertEventEmitted } = hre;
-const { RegistryRolesEnum, ZERO_ADDRESS } = require("@uma/common");
+const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
+const { RegistryRolesEnum, ZERO_ADDRESS, didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 
@@ -13,10 +13,9 @@ const Registry = getContract("Registry");
 
 const testIdentifier = utf8ToHex("TEST");
 const testTimestamp = 100;
+const testAncillaryData = utf8ToHex("key:value");
 const testPrice = toWei("0.5");
 const stateId = "1";
-
-const compressAncillaryBytesThreshold = 256;
 
 describe("OracleChildTunnel", async () => {
   let accounts;
@@ -49,25 +48,14 @@ describe("OracleChildTunnel", async () => {
     });
   });
 
-  it("stampOrCompressAncillaryData", async function () {
-    // For short ancillary data only requester and chain id should be added, block number is not used.
-    const shortAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold));
-    const stampedAncillaryData = await oracleChild.methods
-      .stampOrCompressAncillaryData(shortAncillaryData, owner, 0)
-      .call();
+  it("compressAncillaryData", async function () {
+    // Ancillary data should be compressed to a hash and include block number, spoke, requester and chain id.
     const chainId = await web3.eth.getChainId();
-    assert.equal(
-      hexToUtf8(stampedAncillaryData),
-      `${hexToUtf8(shortAncillaryData)},childRequester:${owner.slice(2).toLowerCase()},childChainId:${chainId}`
-    );
-
-    // Longer ancillary data should be compressed to a hash and include block number, spoke, requester and chain id.
-    const longAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold + 1));
     const blockNumber = await web3.eth.getBlockNumber();
     const compressedData = await oracleChild.methods
-      .stampOrCompressAncillaryData(longAncillaryData, owner, blockNumber)
+      .compressAncillaryData(testAncillaryData, owner, blockNumber)
       .call();
-    const ancillaryDataHash = web3.utils.sha3(longAncillaryData);
+    const ancillaryDataHash = web3.utils.sha3(testAncillaryData);
     const childBlockNumber = await web3.eth.getBlockNumber();
     assert.equal(
       hexToUtf8(compressedData),
@@ -79,61 +67,92 @@ describe("OracleChildTunnel", async () => {
     );
   });
 
-  describe("migrated requests", async function () {
-    // Resolving of requests initiated from the previous implementation should be supported automatically since the
-    // derivation of request hash is the same where requester and chain id are appended to ancillary data.
-    const publishPrice = async (ancillaryData) => {
-      const chainId = await web3.eth.getChainId();
-      const parentAncillaryData = utf8ToHex(
-        `${hexToUtf8(ancillaryData)},childRequester:${owner.slice(2).toLowerCase()},childChainId:${chainId}`
-      );
-      const fxChildData = web3.eth.abi.encodeParameters(
-        ["address", "address", "bytes"],
-        [
-          ZERO_ADDRESS, // Root tunnel is not initialized for these tests.
-          oracleChild.options.address,
-          web3.eth.abi.encodeParameters(
-            ["bytes32", "uint256", "bytes", "int256"],
-            [testIdentifier, testTimestamp, parentAncillaryData, testPrice]
-          ),
-        ]
-      );
-      const publishPriceTx = await fxChild.methods.onStateReceive(stateId, fxChildData).send({ from: systemSuperUser });
-      const requestId = web3.utils.keccak256(
+  it("resolveLegacyRequest", async function () {
+    // Reverts as price not yet available
+    assert(
+      await didContractThrow(
+        oracleChild.methods
+          .resolveLegacyRequest(testIdentifier, testTimestamp, testAncillaryData, owner)
+          .send({ from: owner })
+      )
+    );
+
+    const chainId = await web3.eth.getChainId();
+    const legacyAncillaryData = utf8ToHex(
+      `${hexToUtf8(testAncillaryData)},childRequester:${owner.slice(2).toLowerCase()},childChainId:${chainId}`
+    );
+    const fxChildData = web3.eth.abi.encodeParameters(
+      ["address", "address", "bytes"],
+      [
+        ZERO_ADDRESS, // Root tunnel is not initialized for these tests.
+        oracleChild.options.address,
         web3.eth.abi.encodeParameters(
-          ["bytes32", "uint256", "bytes"],
-          [testIdentifier, testTimestamp, parentAncillaryData]
-        )
-      );
+          ["bytes32", "uint256", "bytes", "int256"],
+          [testIdentifier, testTimestamp, legacyAncillaryData, testPrice]
+        ),
+      ]
+    );
+    const publishPriceTx = await fxChild.methods.onStateReceive(stateId, fxChildData).send({ from: systemSuperUser });
+    const legacyRequestHash = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(
+        ["bytes32", "uint256", "bytes"],
+        [testIdentifier, testTimestamp, legacyAncillaryData]
+      )
+    );
 
-      // Price should be pushed even if the request was not initiated from the current implementation.
-      await assertEventEmitted(
-        publishPriceTx,
-        oracleChild,
-        "PushedPrice",
-        (event) =>
-          hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
-          event.time.toString() === testTimestamp.toString() &&
-          event.ancillaryData.toLowerCase() === parentAncillaryData.toLowerCase() &&
-          event.price.toString() === testPrice &&
-          event.requestHash === requestId
-      );
+    // Price should be pushed even if the request was not initiated from the current implementation.
+    await assertEventEmitted(
+      publishPriceTx,
+      oracleChild,
+      "PushedPrice",
+      (event) =>
+        hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
+        event.time.toString() === testTimestamp.toString() &&
+        event.ancillaryData.toLowerCase() === legacyAncillaryData.toLowerCase() &&
+        event.price.toString() === testPrice &&
+        event.requestHash === legacyRequestHash
+    );
 
-      // getPrice should return the price as the legacy requests were resolved.
-      assert.equal(
-        await oracleChild.methods.getPrice(testIdentifier, testTimestamp, ancillaryData).call({ from: owner }),
-        testPrice
-      );
-    };
+    // Encoding of request ID was different in the legacy contract so getPrice will revert even though price was pushed.
+    assert(
+      await didContractThrow(
+        oracleChild.methods.getPrice(testIdentifier, testTimestamp, testAncillaryData).call({ from: owner })
+      )
+    );
 
-    it("migrated short ancillary data request", async function () {
-      const shortAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold));
-      await publishPrice(shortAncillaryData);
-    });
+    // Requester is now passed when deriving the request hash.
+    const requestHash = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(
+        ["address", "bytes32", "uint256", "bytes"],
+        [owner, testIdentifier, testTimestamp, testAncillaryData]
+      )
+    );
+    let resolveLegactTx = await oracleChild.methods
+      .resolveLegacyRequest(testIdentifier, testTimestamp, testAncillaryData, owner)
+      .send({ from: owner });
+    await assertEventEmitted(
+      resolveLegactTx,
+      oracleChild,
+      "ResolvedLegacyRequest",
+      (event) =>
+        hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
+        event.time.toString() === testTimestamp.toString() &&
+        event.ancillaryData.toLowerCase() === testAncillaryData.toLowerCase() &&
+        event.price.toString() === testPrice &&
+        event.requestHash === requestHash &&
+        event.legacyRequestHash === legacyRequestHash
+    );
 
-    it("migrated long ancillary data request", async function () {
-      const longAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold + 1));
-      await publishPrice(longAncillaryData);
-    });
+    // getPrice should now return the price as the legacy request was resolved.
+    assert.equal(
+      await oracleChild.methods.getPrice(testIdentifier, testTimestamp, testAncillaryData).call({ from: owner }),
+      testPrice
+    );
+
+    // Duplicate call does not emit an event.
+    resolveLegactTx = await oracleChild.methods
+      .resolveLegacyRequest(testIdentifier, testTimestamp, testAncillaryData, owner)
+      .send({ from: owner });
+    await assertEventNotEmitted(resolveLegactTx, oracleChild, "ResolvedLegacyRequest");
   });
 });
