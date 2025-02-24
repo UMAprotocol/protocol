@@ -92,7 +92,7 @@ describe("Admin_ChildMessenger", function () {
       [
         identifier,
         timestamp,
-        await oracleSpokeReal.methods.stampOrCompressAncillaryData(ancillaryData, owner, 0).call(),
+        await oracleSpokeReal.methods.compressAncillaryData(ancillaryData, owner, receipt.blockNumber).call(),
         "100",
       ]
     );

@@ -15,8 +15,6 @@ const defaultTimestamp = 100;
 const defaultAncillaryData = utf8ToHex("key:value");
 const defaultPrice = toWei("1");
 
-const compressAncillaryBytesThreshold = 256;
-
 describe("OracleSpoke.js", async () => {
   let accounts;
   let owner;
@@ -57,15 +55,19 @@ describe("OracleSpoke.js", async () => {
     assert(await didContractThrow(requestPrice.send({ from: rando })));
 
     const txn1 = await requestPrice.send({ from: owner });
-    const chainId = await web3.eth.getChainId();
-    // Default ancillary data is below 256 bytes so only requester and chain id should be added.
-    const stamptedAncillaryDataString1 = `${hexToUtf8(defaultAncillaryData)},childRequester:${owner
-      .slice(2)
-      .toLowerCase()},childChainId:${chainId}`;
-    const requestId1 = web3.utils.keccak256(
+    const parentAncillaryData1 = await oracleSpoke.methods
+      .compressAncillaryData(defaultAncillaryData, owner, txn1.blockNumber)
+      .call();
+    const childRequestId1 = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(
+        ["address", "bytes32", "uint256", "bytes"],
+        [owner, defaultIdentifier, defaultTimestamp, defaultAncillaryData]
+      )
+    );
+    const parentRequestId1 = web3.utils.keccak256(
       web3.eth.abi.encodeParameters(
         ["bytes32", "uint256", "bytes"],
-        [defaultIdentifier, defaultTimestamp, utf8ToHex(stamptedAncillaryDataString1)]
+        [defaultIdentifier, defaultTimestamp, parentAncillaryData1]
       )
     );
     await assertEventEmitted(
@@ -76,16 +78,13 @@ describe("OracleSpoke.js", async () => {
         event.requester === owner &&
         hexToUtf8(event.identifier) === hexToUtf8(defaultIdentifier) &&
         event.time.toString() === defaultTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === utf8ToHex(stamptedAncillaryDataString1) &&
-        event.childRequestId === requestId1 &&
-        event.parentRequestId === requestId1
+        event.ancillaryData.toLowerCase() === defaultAncillaryData &&
+        event.childRequestId === childRequestId1 &&
+        event.parentRequestId === parentRequestId1
     );
 
     // Check that external call messenger.sendMessageToParent occurred.
-    const expectedAncillaryData1 = await oracleSpoke.methods
-      .stampOrCompressAncillaryData(defaultAncillaryData, owner, txn1.blockNumber)
-      .call();
-    assert.equal(await messenger.methods.latestAncillaryData().call(), expectedAncillaryData1);
+    assert.equal(await messenger.methods.latestAncillaryData().call(), parentAncillaryData1);
     assert.equal(await messenger.methods.latestTime().call(), defaultTimestamp);
     assert.equal(hexToUtf8(await messenger.methods.latestIdentifier().call()), hexToUtf8(defaultIdentifier));
 
@@ -97,12 +96,17 @@ describe("OracleSpoke.js", async () => {
 
     // Can call requestPrice without ancillary data:
     const txn2 = await oracleSpoke.methods.requestPrice(defaultIdentifier, defaultTimestamp).send({ from: owner });
-    // Only the requester and chain id should be present for empty original ancillary data.
-    const stamptedAncillaryDataString2 = `childRequester:${owner.slice(2).toLowerCase()},childChainId:${chainId}`;
-    const requestId2 = web3.utils.keccak256(
+    const parentAncillaryData2 = await oracleSpoke.methods.compressAncillaryData("0x", owner, txn2.blockNumber).call();
+    const childRequestId2 = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(
+        ["address", "bytes32", "uint256", "bytes"],
+        [owner, defaultIdentifier, defaultTimestamp, utf8ToHex("")]
+      )
+    );
+    const parentRequestId2 = web3.utils.keccak256(
       web3.eth.abi.encodeParameters(
         ["bytes32", "uint256", "bytes"],
-        [defaultIdentifier, defaultTimestamp, utf8ToHex(stamptedAncillaryDataString2)]
+        [defaultIdentifier, defaultTimestamp, parentAncillaryData2]
       )
     );
     await assertEventEmitted(
@@ -113,14 +117,11 @@ describe("OracleSpoke.js", async () => {
         event.requester === owner &&
         hexToUtf8(event.identifier) === hexToUtf8(defaultIdentifier) &&
         event.time.toString() === defaultTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === utf8ToHex(stamptedAncillaryDataString2) &&
-        event.childRequestId === requestId2 &&
-        event.parentRequestId === requestId2
+        event.ancillaryData === null &&
+        event.childRequestId === childRequestId2 &&
+        event.parentRequestId === parentRequestId2
     );
-    const expectedAncillaryData2 = await oracleSpoke.methods
-      .stampOrCompressAncillaryData("0x", owner, txn2.blockNumber)
-      .call();
-    assert.equal(await messenger.methods.latestAncillaryData().call(), expectedAncillaryData2);
+    assert.equal(await messenger.methods.latestAncillaryData().call(), parentAncillaryData2);
     assert.equal(await messenger.methods.latestTime().call(), defaultTimestamp);
     assert.equal(hexToUtf8(await messenger.methods.latestIdentifier().call()), hexToUtf8(defaultIdentifier));
 
@@ -136,9 +137,12 @@ describe("OracleSpoke.js", async () => {
     assert.equal(await oracleSpoke.methods.getChildMessenger().call(), owner);
   });
   it("processMessageFromParent", async function () {
-    // Block number is not used for short ancillary data.
+    // Request price and get expected ancillary data.
+    const requestTxn = await oracleSpoke.methods
+      .requestPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
+      .send({ from: owner });
     const expectedAncillaryData = await oracleSpoke.methods
-      .stampOrCompressAncillaryData(defaultAncillaryData, owner, 0)
+      .compressAncillaryData(defaultAncillaryData, owner, requestTxn.blockNumber)
       .call();
     const expectedData = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes", "int256"],
@@ -168,22 +172,26 @@ describe("OracleSpoke.js", async () => {
     );
   });
   it("hasPrice", async function () {
+    // Request price and get expected ancillary data.
+    const requestTxn1 = await oracleSpoke.methods
+      .requestPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
+      .send({ from: owner });
+    const expectedAncillaryData1 = await oracleSpoke.methods
+      .compressAncillaryData(defaultAncillaryData, owner, requestTxn1.blockNumber)
+      .call();
+
     assert.isFalse(
       await oracleSpoke.methods
         .hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
         .call({ from: owner })
     );
 
-    // Block number is not used for short ancillary data.
-    let expectedAncillaryData = await oracleSpoke.methods
-      .stampOrCompressAncillaryData(defaultAncillaryData, owner, 0)
-      .call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
         defaultIdentifier,
         defaultTimestamp,
-        expectedAncillaryData,
+        expectedAncillaryData1,
         defaultPrice
       )
       .send({ from: owner });
@@ -202,20 +210,33 @@ describe("OracleSpoke.js", async () => {
     );
 
     // Can call has without ancillary data:
+    const requestTxn2 = await oracleSpoke.methods
+      .requestPrice(defaultIdentifier, defaultTimestamp)
+      .send({ from: owner });
     assert.isFalse(await oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp).call({ from: owner }));
-    expectedAncillaryData = await oracleSpoke.methods.stampOrCompressAncillaryData("0x", owner, 0).call();
+    const expectedAncillaryData2 = await oracleSpoke.methods
+      .compressAncillaryData("0x", owner, requestTxn2.blockNumber)
+      .call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
         defaultIdentifier,
         defaultTimestamp,
-        expectedAncillaryData,
+        expectedAncillaryData2,
         defaultPrice
       )
       .send({ from: owner });
     assert.isTrue(await oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp).call({ from: owner }));
   });
   it("getPrice", async function () {
+    // Request price and get expected ancillary data.
+    const requestTxn1 = await oracleSpoke.methods
+      .requestPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
+      .send({ from: owner });
+    const expectedAncillaryData1 = await oracleSpoke.methods
+      .compressAncillaryData(defaultAncillaryData, owner, requestTxn1.blockNumber)
+      .call();
+
     // Reverts if price not available
     assert(
       await didContractThrow(
@@ -223,16 +244,12 @@ describe("OracleSpoke.js", async () => {
       )
     );
 
-    // Block number is not used for short ancillary data.
-    let expectedAncillaryData = await oracleSpoke.methods
-      .stampOrCompressAncillaryData(defaultAncillaryData, owner, 0)
-      .call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
         defaultIdentifier,
         defaultTimestamp,
-        expectedAncillaryData,
+        expectedAncillaryData1,
         defaultPrice
       )
       .send({ from: owner });
@@ -252,13 +269,18 @@ describe("OracleSpoke.js", async () => {
     );
 
     // Can call has without ancillary data:
-    expectedAncillaryData = await oracleSpoke.methods.stampOrCompressAncillaryData("0x", owner, 0).call();
+    const requestTxn2 = await oracleSpoke.methods
+      .requestPrice(defaultIdentifier, defaultTimestamp)
+      .send({ from: owner });
+    const expectedAncillaryData2 = await oracleSpoke.methods
+      .compressAncillaryData("0x", owner, requestTxn2.blockNumber)
+      .call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
         defaultIdentifier,
         defaultTimestamp,
-        expectedAncillaryData,
+        expectedAncillaryData2,
         defaultPrice
       )
       .send({ from: owner });
@@ -267,25 +289,14 @@ describe("OracleSpoke.js", async () => {
       defaultPrice
     );
   });
-  it("stampOrCompressAncillaryData", async function () {
-    // For short ancillary data only requester and chain id should be added, block number is not used.
-    const shortAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold));
-    const stampedAncillaryData = await oracleSpoke.methods
-      .stampOrCompressAncillaryData(shortAncillaryData, owner, 0)
-      .call();
+  it("compressAncillaryData", async function () {
+    // Ancillary data should be compressed to a hash and include block number, spoke, requester and chain id.
     const chainId = await web3.eth.getChainId();
-    assert.equal(
-      hexToUtf8(stampedAncillaryData),
-      `${hexToUtf8(shortAncillaryData)},childRequester:${owner.slice(2).toLowerCase()},childChainId:${chainId}`
-    );
-
-    // Longer ancillary data should be compressed to a hash and include block number, spoke, requester and chain id.
-    const longAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold + 1));
     const childBlockNumber = await web3.eth.getBlockNumber();
     const compressedData = await oracleSpoke.methods
-      .stampOrCompressAncillaryData(longAncillaryData, owner, childBlockNumber)
+      .compressAncillaryData(defaultAncillaryData, owner, childBlockNumber)
       .call();
-    const ancillaryDataHash = web3.utils.sha3(longAncillaryData);
+    const ancillaryDataHash = web3.utils.sha3(defaultAncillaryData);
     assert.equal(
       hexToUtf8(compressedData),
       `ancillaryDataHash:${ancillaryDataHash.slice(
@@ -295,101 +306,82 @@ describe("OracleSpoke.js", async () => {
         .toLowerCase()},childRequester:${owner.slice(2).toLowerCase()},childChainId:${chainId}`
     );
   });
-  describe("resolveLegacyRequest", async function () {
-    const resolveLegacyRequest = async (ancillaryData) => {
-      // Reverts as price not yet available
-      assert(
-        await didContractThrow(
-          oracleSpoke.methods
-            .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, ancillaryData, owner)
-            .send({ from: owner })
-        )
-      );
+  it("resolveLegacyRequest", async function () {
+    // Reverts as price not yet available
+    assert(
+      await didContractThrow(
+        oracleSpoke.methods
+          .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData, owner)
+          .send({ from: owner })
+      )
+    );
 
-      // Only chainId was added to ancillary data for legacy requests, no requester address.
-      const chainId = await web3.eth.getChainId();
-      const legacyAncillaryData = utf8ToHex(`${hexToUtf8(ancillaryData)},childChainId:${chainId}`);
-      const publishPriceTx = await messenger.methods
-        .publishPrice(
-          oracleSpoke.options.address,
-          defaultIdentifier,
-          defaultTimestamp,
-          legacyAncillaryData,
-          defaultPrice
-        )
-        .send({ from: owner });
-      const legacyRequestHash = web3.utils.keccak256(
-        web3.eth.abi.encodeParameters(
-          ["bytes32", "uint256", "bytes"],
-          [defaultIdentifier, defaultTimestamp, legacyAncillaryData]
-        )
-      );
-      await assertEventEmitted(
-        publishPriceTx,
-        oracleSpoke,
-        "PushedPrice",
-        (event) =>
-          hexToUtf8(event.identifier) === hexToUtf8(defaultIdentifier) &&
-          event.time.toString() === defaultTimestamp.toString() &&
-          event.ancillaryData.toLowerCase() === legacyAncillaryData.toLowerCase() &&
-          event.price.toString() === defaultPrice &&
-          event.requestHash === legacyRequestHash
-      );
+    // Only chainId was added to ancillary data for legacy requests, no requester address.
+    const chainId = await web3.eth.getChainId();
+    const legacyAncillaryData = utf8ToHex(`${hexToUtf8(defaultAncillaryData)},childChainId:${chainId}`);
+    const publishPriceTx = await messenger.methods
+      .publishPrice(oracleSpoke.options.address, defaultIdentifier, defaultTimestamp, legacyAncillaryData, defaultPrice)
+      .send({ from: owner });
+    const legacyRequestHash = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(
+        ["bytes32", "uint256", "bytes"],
+        [defaultIdentifier, defaultTimestamp, legacyAncillaryData]
+      )
+    );
+    await assertEventEmitted(
+      publishPriceTx,
+      oracleSpoke,
+      "PushedPrice",
+      (event) =>
+        hexToUtf8(event.identifier) === hexToUtf8(defaultIdentifier) &&
+        event.time.toString() === defaultTimestamp.toString() &&
+        event.ancillaryData.toLowerCase() === legacyAncillaryData.toLowerCase() &&
+        event.price.toString() === defaultPrice &&
+        event.requestHash === legacyRequestHash
+    );
 
-      // Encoding of request was different in the legacy contract so getPrice will revert even though price was pushed.
-      assert(
-        await didContractThrow(
-          oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, ancillaryData).call({ from: owner })
-        )
-      );
+    // Encoding of request was different in the legacy contract so getPrice will revert even though price was pushed.
+    assert(
+      await didContractThrow(
+        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData).call({ from: owner })
+      )
+    );
 
-      // Requester is now added to child ancillary data.
-      const childAncillaryData = utf8ToHex(
-        `${hexToUtf8(ancillaryData)},childRequester:${owner.slice(2).toLowerCase()},childChainId:${chainId}`
-      );
-      const requestHash = web3.utils.keccak256(
-        web3.eth.abi.encodeParameters(
-          ["bytes32", "uint256", "bytes"],
-          [defaultIdentifier, defaultTimestamp, childAncillaryData]
-        )
-      );
-      let resolveLegactTx = await oracleSpoke.methods
-        .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, ancillaryData, owner)
-        .send({ from: owner });
-      await assertEventEmitted(
-        resolveLegactTx,
-        oracleSpoke,
-        "ResolvedLegacyRequest",
-        (event) =>
-          hexToUtf8(event.identifier) === hexToUtf8(defaultIdentifier) &&
-          event.time.toString() === defaultTimestamp.toString() &&
-          event.ancillaryData.toLowerCase() === childAncillaryData.toLowerCase() &&
-          event.price.toString() === defaultPrice &&
-          event.requestHash === requestHash &&
-          event.legacyRequestHash === legacyRequestHash
-      );
+    // Requester is now passed when deriving the request hash.
+    const requestHash = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(
+        ["address", "bytes32", "uint256", "bytes"],
+        [owner, defaultIdentifier, defaultTimestamp, defaultAncillaryData]
+      )
+    );
+    let resolveLegactTx = await oracleSpoke.methods
+      .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData, owner)
+      .send({ from: owner });
+    await assertEventEmitted(
+      resolveLegactTx,
+      oracleSpoke,
+      "ResolvedLegacyRequest",
+      (event) =>
+        hexToUtf8(event.identifier) === hexToUtf8(defaultIdentifier) &&
+        event.time.toString() === defaultTimestamp.toString() &&
+        event.ancillaryData.toLowerCase() === defaultAncillaryData.toLowerCase() &&
+        event.price.toString() === defaultPrice &&
+        event.requestHash === requestHash &&
+        event.legacyRequestHash === legacyRequestHash
+    );
 
-      // getPrice should now return the price as the legacy request was resolved.
-      assert.equal(
-        await oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, ancillaryData).call({ from: owner }),
-        defaultPrice
-      );
+    // getPrice should now return the price as the legacy request was resolved.
+    assert.equal(
+      await oracleSpoke.methods
+        .getPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
+        .call({ from: owner }),
+      defaultPrice
+    );
 
-      // Duplicate call does not emit an event.
-      resolveLegactTx = await oracleSpoke.methods
-        .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, ancillaryData, owner)
-        .send({ from: owner });
-      await assertEventNotEmitted(resolveLegactTx, oracleSpoke, "ResolvedLegacyRequest");
-    };
-
-    it("migrated short ancillary data request", async function () {
-      const shortAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold));
-      await resolveLegacyRequest(shortAncillaryData);
-    });
-
-    it("migrated long ancillary data request", async function () {
-      const longAncillaryData = utf8ToHex("x".repeat(compressAncillaryBytesThreshold + 1));
-      await resolveLegacyRequest(longAncillaryData);
-    });
+    // Duplicate call does not emit an event.
+    resolveLegactTx = await oracleSpoke.methods
+      .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData, owner)
+      .send({ from: owner });
+    await assertEventNotEmitted(resolveLegactTx, oracleSpoke, "ResolvedLegacyRequest");
   });
 });

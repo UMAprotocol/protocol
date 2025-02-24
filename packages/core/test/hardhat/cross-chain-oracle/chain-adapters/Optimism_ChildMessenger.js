@@ -118,7 +118,7 @@ describe("Optimism_ChildMessenger", function () {
         [
           priceIdentifier,
           requestTime,
-          await oracleSpoke.methods.stampOrCompressAncillaryData(ancillaryData, controlledEOA, 0).call(),
+          await oracleSpoke.methods.compressAncillaryData(ancillaryData, controlledEOA, txn.blockNumber).call(),
         ]
       );
 
@@ -172,14 +172,14 @@ describe("Optimism_ChildMessenger", function () {
       // For this test request a price from a registered contract and then push the price. Validate the data is
       // requested and forwarded to the oracleSpoke correctly.
 
-      await oracleSpoke.methods
+      const txn = await oracleSpoke.methods
         .requestPrice(priceIdentifier, defaultTimestamp, ancillaryData)
         .send({ from: controlledEOA });
 
       const priceRequestEvents = await oracleSpoke.getPastEvents("PriceRequestBridged", { fromBock: 0 });
 
       const requestAncillaryData = await oracleSpoke.methods
-        .stampOrCompressAncillaryData(ancillaryData, controlledEOA, 0)
+        .compressAncillaryData(ancillaryData, controlledEOA, txn.blockNumber)
         .call();
       const requestPrice = toWei("1234");
 

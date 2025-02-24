@@ -125,7 +125,7 @@ describe("Arbitrum_ChildMessenger", function () {
         [
           priceIdentifier,
           requestTime,
-          await oracleSpoke.methods.stampOrCompressAncillaryData(ancillaryData, controlledEOA, 0).call(),
+          await oracleSpoke.methods.compressAncillaryData(ancillaryData, controlledEOA, txn.blockNumber).call(),
         ]
       );
 
@@ -164,14 +164,14 @@ describe("Arbitrum_ChildMessenger", function () {
     it("Correctly decodes and sends to target when sent from parent messenger on L1", async () => {
       // For this test request a price from a registered contract and then push the price. Validate the data is
       // requested and forwarded to the oracleSpoke correctly.
-      await oracleSpoke.methods
+      const txn = await oracleSpoke.methods
         .requestPrice(priceIdentifier, defaultTimestamp, ancillaryData)
         .send({ from: controlledEOA });
 
       const priceRequestEvents = await oracleSpoke.getPastEvents("PriceRequestBridged", { fromBock: 0 });
 
       const requestAncillaryData = await oracleSpoke.methods
-        .stampOrCompressAncillaryData(ancillaryData, controlledEOA, 0)
+        .compressAncillaryData(ancillaryData, controlledEOA, txn.blockNumber)
         .call();
       const requestPrice = toWei("1234");
 
