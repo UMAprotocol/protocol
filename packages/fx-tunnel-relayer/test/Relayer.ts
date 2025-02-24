@@ -9,7 +9,7 @@ import { ZERO_ADDRESS, interfaceName, RegistryRolesEnum } from "@uma/common";
 
 const { getContract, deployments, web3 } = require("hardhat");
 
-const { utf8ToHex, hexToUtf8 } = web3.utils;
+const { utf8ToHex } = web3.utils;
 const Finder = getContract("Finder");
 const OracleChildTunnel = getContract("OracleChildTunnel");
 const Registry = getContract("Registry");
@@ -38,8 +38,6 @@ describe("Relayer unit tests", function () {
   const testIdentifier = utf8ToHex("TEST");
   const testTimestamp = 100;
   const testAncillaryData = utf8ToHex("key:value");
-  let expectedStampedAncillaryData: string; // Can determine this after OracleChildTunnel is deployed.
-  const childChainId = "31337";
 
   // Tested relayer:
   let relayer: any;
@@ -89,12 +87,6 @@ describe("Relayer unit tests", function () {
     await oracleChild.methods.setFxRootTunnel(oracleRoot.options.address).send({ from: owner });
     await oracleRoot.methods.setFxChildTunnel(oracleChild.options.address).send({ from: owner });
 
-    // The OracleChildTunnel should stamp ",childRequester:<requester-address>,childChainId:<chain-id>" to the original
-    // ancillary data.
-    expectedStampedAncillaryData = utf8ToHex(
-      `${hexToUtf8(testAncillaryData)},childRequester:${owner.substr(2).toLowerCase()},childChainId:${childChainId}`
-    );
-
     spy = sinon.spy();
     spyLogger = winston.createLogger({
       level: "debug",
@@ -127,10 +119,15 @@ describe("Relayer unit tests", function () {
   });
   it("relays message successfully", async function () {
     // Emit new MessageSent event.
-    await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
+    const txn = await oracleChild.methods
+      .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
+      .send({ from: owner });
+    const parentAncillaryData = await oracleChild.methods
+      .compressAncillaryData(testAncillaryData, owner, txn.blockNumber)
+      .call();
     const messageBytes = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testTimestamp, expectedStampedAncillaryData]
+      [testIdentifier, testTimestamp, parentAncillaryData]
     );
     const eventsEmitted = await oracleChild.getPastEvents("MessageSent", { fromBlock: 0 });
     assert.equal(eventsEmitted.length, 1);
@@ -143,10 +140,15 @@ describe("Relayer unit tests", function () {
     assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
   });
   it("ignores events older than earliest polygon block to query", async function () {
-    await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
+    const txn = await oracleChild.methods
+      .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
+      .send({ from: owner });
+    const parentAncillaryData = await oracleChild.methods
+      .compressAncillaryData(testAncillaryData, owner, txn.blockNumber)
+      .call();
     const messageBytes = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testTimestamp, expectedStampedAncillaryData]
+      [testIdentifier, testTimestamp, parentAncillaryData]
     );
     const eventsEmitted = await oracleChild.getPastEvents("MessageSent", { fromBlock: 0 });
     assert.equal(eventsEmitted.length, 1);
