@@ -139,7 +139,7 @@ describe("DVM2 Price Speed up", function () {
     assert.equal(spy.getCall(0).lastArg.message, "Price Request Sped Up ✅");
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
-    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(utils.toUtf8String(testAncillaryData)));
+    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(ethers.utils.keccak256(testAncillaryData).slice(2)));
     assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "price-speed-up");
   });
@@ -148,7 +148,7 @@ describe("DVM2 Price Speed up", function () {
     await finder.changeImplementationAddress(formatBytes32String("ChildMessenger"), optimismChildMessengerMock.address);
     await optimismChildMessengerMock.mock.sendMessageToParent.returns();
 
-    await oracleSpokeOptimism
+    const requestTxn = await oracleSpokeOptimism
       .connect(registeredContract)
       ["requestPrice(bytes32,uint256,bytes)"](testIdentifier, testRequestTime, testAncillaryData);
 
@@ -160,15 +160,17 @@ describe("DVM2 Price Speed up", function () {
     const finalFee = await store.computeFinalFee(votingToken.address);
     await votingToken.approve(oracleHub.address, finalFee.rawValue);
     await (
-      await oracleHub.connect(deployer).requestPrice(
-        testIdentifier,
-        testRequestTime,
-        await (oracleSpokeOptimism as OracleSpokeEthers).stampOrCompressAncillaryData(
-          testAncillaryData,
-          await registeredContract.getAddress(),
-          0 // block number not used for short ancillary data (testAncillaryData.length <= 256B)
+      await oracleHub
+        .connect(deployer)
+        .requestPrice(
+          testIdentifier,
+          testRequestTime,
+          await (oracleSpokeOptimism as OracleSpokeEthers).compressAncillaryData(
+            testAncillaryData,
+            await registeredContract.getAddress(),
+            requestTxn.blockNumber
+          )
         )
-      )
     ).wait();
 
     await speedUpPrices(spyLogger, await createMonitoringParams());
@@ -194,7 +196,7 @@ describe("DVM2 Price Speed up", function () {
     assert.equal(spy.getCall(0).lastArg.message, "Price Request Sped Up ✅");
     assert.equal(spyLogLevel(spy, 0), "warn");
     assert.isTrue(spyLogIncludes(spy, 0, utils.parseBytes32String(testIdentifier)));
-    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(utils.toUtf8String(testAncillaryData)));
+    assert.isTrue(spy.getCall(0).lastArg.mrkdwn.includes(ethers.utils.keccak256(testAncillaryData).slice(2)));
     assert.isTrue(spyLogIncludes(spy, 0, testRequestTime.toString()));
     assert.equal(spy.getCall(0).lastArg.notificationPath, "price-speed-up");
   });
