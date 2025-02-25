@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
 import "../data-verification-mechanism/interfaces/OracleInterface.sol";
 import "../data-verification-mechanism/interfaces/RegistryInterface.sol";
-import "./AncillaryDataBridging.sol";
+import "./AncillaryDataCompression.sol";
 import "./OracleBase.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";
@@ -30,7 +30,7 @@ contract OracleSpoke is
     ChildMessengerConsumerInterface,
     Lockable
 {
-    using AncillaryDataBridging for bytes;
+    using AncillaryDataCompression for bytes;
 
     // Mapping of parent request ID to child request ID.
     mapping(bytes32 => bytes32) public childRequestIds;
@@ -104,7 +104,7 @@ contract OracleSpoke is
 
         // Only the compressed ancillary data is sent to the mainnet. As it includes the request block number that is
         // not available when getting the resolved price, we map the derived request ID.
-        bytes memory parentAncillaryData = ancillaryData.compressAncillaryData(requester, block.number);
+        bytes memory parentAncillaryData = ancillaryData.compress(requester, block.number);
         bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
         childRequestIds[parentRequestId] = childRequestId;
 
@@ -256,7 +256,7 @@ contract OracleSpoke is
         address requester,
         uint256 requestBlockNumber
     ) external view returns (bytes memory) {
-        return ancillaryData.compressAncillaryData(requester, requestBlockNumber);
+        return ancillaryData.compress(requester, requestBlockNumber);
     }
 
     /**

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@maticnetwork/fx-portal/contracts/tunnel/FxBaseChildTunnel.sol";
-import "../cross-chain-oracle/AncillaryDataBridging.sol";
+import "../cross-chain-oracle/AncillaryDataCompression.sol";
 import "../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
 import "../data-verification-mechanism/interfaces/RegistryInterface.sol";
 import "./OracleBaseTunnel.sol";
@@ -17,7 +17,7 @@ import "../common/implementation/Lockable.sol";
  * resolution secured by the DVM on mainnet.
  */
 contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBaseChildTunnel, Lockable {
-    using AncillaryDataBridging for bytes;
+    using AncillaryDataCompression for bytes;
 
     // Mapping of parent request ID to child request ID.
     mapping(bytes32 => bytes32) public childRequestIds;
@@ -75,7 +75,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
 
         // Only the compressed ancillary data is sent to the mainnet. As it includes the request block number that is
         // not available when getting the resolved price, we map the derived request ID.
-        bytes memory parentAncillaryData = ancillaryData.compressAncillaryData(requester, block.number);
+        bytes memory parentAncillaryData = ancillaryData.compress(requester, block.number);
         bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
         childRequestIds[parentRequestId] = childRequestId;
 
@@ -200,7 +200,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         address requester,
         uint256 requestBlockNumber
     ) external view returns (bytes memory) {
-        return ancillaryData.compressAncillaryData(requester, requestBlockNumber);
+        return ancillaryData.compress(requester, requestBlockNumber);
     }
 
     /**
