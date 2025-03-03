@@ -249,7 +249,7 @@ contract OracleSpoke is
      * @param ancillaryData original ancillary data to be processed.
      * @param requester address of the requester who initiated the price request.
      * @param requestBlockNumber block number when the price request was initiated.
-     * @return compressed ancillary data if it exceeds the threshold, otherwise metadata is appended at the end.
+     * @return compressed ancillary data.
      */
     function compressAncillaryData(
         bytes memory ancillaryData,
