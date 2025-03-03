@@ -1,0 +1,1026 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_ctf",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_optimisticOracle",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_addressWhitelist",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "inputs": [],
+        "name": "GameAlreadyCreated",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "GameCannotBeEmergencySettled",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "GameCannotBePaused",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "GameCannotBeReset",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "GameCannotBeUnpaused",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "GameDoesNotExist",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "GameNotResolvable",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidAncillaryData",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidGame",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidLine",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidPayouts",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "InvalidRequestState",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "MarketAlreadyCreated",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "MarketCannotBeEmergencyResolved",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "MarketCannotBePaused",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "MarketCannotBeResolved",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "MarketCannotBeUnpaused",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "MarketDoesNotExist",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NotAdmin",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NotOptimisticOracle",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "UnsupportedToken",
+        "type": "error"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "updatedBond",
+                "type": "uint256"
+            }
+        ],
+        "name": "BondUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "GameCanceled",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint8",
+                "name": "ordering",
+                "type": "uint8"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "timestamp",
+                "type": "uint256"
+            }
+        ],
+        "name": "GameCreated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "home",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "away",
+                "type": "uint256"
+            }
+        ],
+        "name": "GameEmergencySettled",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "GamePaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "GameReset",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "home",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "away",
+                "type": "uint256"
+            }
+        ],
+        "name": "GameSettled",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "GameUnpaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "updatedLiveness",
+                "type": "uint256"
+            }
+        ],
+        "name": "LivenessUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "conditionId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint8",
+                "name": "marketType",
+                "type": "uint8"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint8",
+                "name": "underdog",
+                "type": "uint8"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "line",
+                "type": "uint256"
+            }
+        ],
+        "name": "MarketCreated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256[]",
+                "name": "payouts",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "MarketEmergencyResolved",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "MarketPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256[]",
+                "name": "payouts",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "MarketResolved",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "MarketUnpaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "newAdminAddress",
+                "type": "address"
+            }
+        ],
+        "name": "NewAdmin",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "removedAdmin",
+                "type": "address"
+            }
+        ],
+        "name": "RemovedAdmin",
+        "type": "event"
+    },
+    {
+        "inputs": [],
+        "name": "IDENTIFIER",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
+            }
+        ],
+        "name": "addAdmin",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "addressWhitelist",
+        "outputs": [
+            {
+                "internalType": "contract IAddressWhitelist",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "admins",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            },
+            {
+                "internalType": "enum Ordering",
+                "name": "ordering",
+                "type": "uint8"
+            },
+            {
+                "internalType": "address",
+                "name": "token",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "reward",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "bond",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "liveness",
+                "type": "uint256"
+            }
+        ],
+        "name": "createGame",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "enum Underdog",
+                "name": "underdog",
+                "type": "uint8"
+            },
+            {
+                "internalType": "uint256",
+                "name": "line",
+                "type": "uint256"
+            }
+        ],
+        "name": "createSpreadsMarket",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "uint256",
+                "name": "line",
+                "type": "uint256"
+            }
+        ],
+        "name": "createTotalsMarket",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "createWinnerMarket",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "ctf",
+        "outputs": [
+            {
+                "internalType": "contract IConditionalTokens",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "payouts",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "emergencyResolveMarket",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "uint32",
+                "name": "home",
+                "type": "uint32"
+            },
+            {
+                "internalType": "uint32",
+                "name": "away",
+                "type": "uint32"
+            }
+        ],
+        "name": "emergencySettleGame",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getGame",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "creator",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "enum GameState",
+                        "name": "state",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "enum Ordering",
+                        "name": "ordering",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "homeScore",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "awayScore",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "token",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "reward",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "bond",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "liveness",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "timestamp",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "ancillaryData",
+                        "type": "bytes"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "reset",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "refund",
+                        "type": "bool"
+                    }
+                ],
+                "internalType": "struct GameData",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getMarket",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "bytes32",
+                        "name": "gameId",
+                        "type": "bytes32"
+                    },
+                    {
+                        "internalType": "enum MarketState",
+                        "name": "state",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "enum MarketType",
+                        "name": "marketType",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "line",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "enum Underdog",
+                        "name": "underdog",
+                        "type": "uint8"
+                    }
+                ],
+                "internalType": "struct MarketData",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "addr",
+                "type": "address"
+            }
+        ],
+        "name": "isAdmin",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "optimisticOracle",
+        "outputs": [
+            {
+                "internalType": "contract IOptimisticOracleV2",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "pauseGame",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "pauseMarket",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "uint256",
+                "name": "timestamp",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "priceDisputed",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "uint256",
+                "name": "timestamp",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            },
+            {
+                "internalType": "int256",
+                "name": "price",
+                "type": "int256"
+            }
+        ],
+        "name": "priceSettled",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
+            }
+        ],
+        "name": "removeAdmin",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "renounceAdmin",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "resetGame",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "resolveMarket",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "uint256",
+                "name": "bond",
+                "type": "uint256"
+            }
+        ],
+        "name": "setBond",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "uint256",
+                "name": "liveness",
+                "type": "uint256"
+            }
+        ],
+        "name": "setLiveness",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "unpauseGame",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "marketId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "unpauseMarket",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]
