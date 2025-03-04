@@ -120,12 +120,9 @@ describe("OracleChildTunnel", async () => {
       )
     );
 
-    // Requester is now passed when deriving the request hash.
+    // Original ancillary data is now passed when deriving the request hash.
     const requestHash = web3.utils.keccak256(
-      web3.eth.abi.encodeParameters(
-        ["address", "bytes32", "uint256", "bytes"],
-        [owner, testIdentifier, testTimestamp, testAncillaryData]
-      )
+      web3.eth.abi.encodeParameters(["bytes32", "uint256", "bytes"], [testIdentifier, testTimestamp, testAncillaryData])
     );
     let resolveLegactTx = await oracleChild.methods
       .resolveLegacyRequest(testIdentifier, testTimestamp, testAncillaryData, owner)

@@ -60,8 +60,8 @@ describe("OracleSpoke.js", async () => {
       .call();
     const childRequestId1 = web3.utils.keccak256(
       web3.eth.abi.encodeParameters(
-        ["address", "bytes32", "uint256", "bytes"],
-        [owner, defaultIdentifier, defaultTimestamp, defaultAncillaryData]
+        ["bytes32", "uint256", "bytes"],
+        [defaultIdentifier, defaultTimestamp, defaultAncillaryData]
       )
     );
     const parentRequestId1 = web3.utils.keccak256(
@@ -99,8 +99,8 @@ describe("OracleSpoke.js", async () => {
     const parentAncillaryData2 = await oracleSpoke.methods.compressAncillaryData("0x", owner, txn2.blockNumber).call();
     const childRequestId2 = web3.utils.keccak256(
       web3.eth.abi.encodeParameters(
-        ["address", "bytes32", "uint256", "bytes"],
-        [owner, defaultIdentifier, defaultTimestamp, utf8ToHex("")]
+        ["bytes32", "uint256", "bytes"],
+        [defaultIdentifier, defaultTimestamp, utf8ToHex("")]
       )
     );
     const parentRequestId2 = web3.utils.keccak256(
@@ -311,7 +311,7 @@ describe("OracleSpoke.js", async () => {
     assert(
       await didContractThrow(
         oracleSpoke.methods
-          .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData, owner)
+          .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
           .send({ from: owner })
       )
     );
@@ -347,15 +347,15 @@ describe("OracleSpoke.js", async () => {
       )
     );
 
-    // Requester is now passed when deriving the request hash.
+    // Original ancillary data is now passed when deriving the request hash.
     const requestHash = web3.utils.keccak256(
       web3.eth.abi.encodeParameters(
-        ["address", "bytes32", "uint256", "bytes"],
-        [owner, defaultIdentifier, defaultTimestamp, defaultAncillaryData]
+        ["bytes32", "uint256", "bytes"],
+        [defaultIdentifier, defaultTimestamp, defaultAncillaryData]
       )
     );
     let resolveLegactTx = await oracleSpoke.methods
-      .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData, owner)
+      .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
       .send({ from: owner });
     await assertEventEmitted(
       resolveLegactTx,
@@ -380,7 +380,7 @@ describe("OracleSpoke.js", async () => {
 
     // Duplicate call does not emit an event.
     resolveLegactTx = await oracleSpoke.methods
-      .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData, owner)
+      .resolveLegacyRequest(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
       .send({ from: owner });
     await assertEventNotEmitted(resolveLegactTx, oracleSpoke, "ResolvedLegacyRequest");
   });

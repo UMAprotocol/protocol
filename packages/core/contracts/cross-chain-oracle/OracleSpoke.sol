@@ -95,7 +95,7 @@ contract OracleSpoke is
         bytes memory ancillaryData
     ) internal {
         address requester = msg.sender;
-        bytes32 childRequestId = _encodeChildPriceRequest(requester, identifier, time, ancillaryData);
+        bytes32 childRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[childRequestId];
 
         // Send the request to mainnet only if it has not been requested yet.
@@ -147,24 +147,22 @@ contract OracleSpoke is
     /**
      * @notice This method handles a special case when a price request was originated on the previous implementation of
      * this contract, but was not settled before the upgrade.
-     * @dev Duplicates the resolved state from the legacy request to the new request where requester address is also
-     * part of request ID derivation. Will revert if the legacy request has not been pushed from mainnet.
+     * @dev Duplicates the resolved state from the legacy request to the new request where original ancillary data is
+     * used for request ID derivation. Will revert if the legacy request has not been pushed from mainnet.
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
      * @param ancillaryData Original ancillary data passed by the requester before stamping by the legacy spoke.
-     * @param childRequester Address of the requester that initiated the price request.
      */
     function resolveLegacyRequest(
         bytes32 identifier,
         uint256 time,
-        bytes memory ancillaryData,
-        address childRequester
+        bytes memory ancillaryData
     ) external {
         bytes32 legacyRequestId = _encodePriceRequest(identifier, time, _legacyStampAncillaryData(ancillaryData));
         Price storage legacyLookup = prices[legacyRequestId];
         require(legacyLookup.state == RequestState.Resolved, "Price has not been resolved");
 
-        bytes32 priceRequestId = _encodeChildPriceRequest(childRequester, identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
 
         // Update the state and emit an event only if the legacy request has not been resolved yet.
@@ -186,7 +184,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodeChildPriceRequest(msg.sender, identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -202,7 +200,7 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (bool)
     {
-        bytes32 priceRequestId = _encodeChildPriceRequest(msg.sender, identifier, time, "");
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -218,7 +216,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodeChildPriceRequest(msg.sender, identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -236,7 +234,7 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (int256)
     {
-        bytes32 priceRequestId = _encodeChildPriceRequest(msg.sender, identifier, time, "");
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -267,19 +265,5 @@ contract OracleSpoke is
         // This contract should stamp the child network's ID so that voters on the parent network can
         // deterministically track unique price requests back to this contract.
         return AncillaryData.appendKeyValueUint(ancillaryData, "childChainId", block.chainid);
-    }
-
-    /**
-     * @notice Returns the convenient way to store price requests, uniquely identified by {requester, identifier, time,
-     * ancillaryData }.
-     * @dev Compared to _encodePriceRequest, this method ensures requests are unique also among different requesters.
-     */
-    function _encodeChildPriceRequest(
-        address requester,
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(requester, identifier, time, ancillaryData));
     }
 }

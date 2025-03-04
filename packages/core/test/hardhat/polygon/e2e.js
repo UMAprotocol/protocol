@@ -113,10 +113,7 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
       [testIdentifier, testTimestamp, parentAncillaryData]
     );
     const childRequestId = web3.utils.keccak256(
-      web3.eth.abi.encodeParameters(
-        ["address", "bytes32", "uint256", "bytes"],
-        [owner, testIdentifier, testTimestamp, testAncillaryData]
-      )
+      web3.eth.abi.encodeParameters(["bytes32", "uint256", "bytes"], [testIdentifier, testTimestamp, testAncillaryData])
     );
     const parentRequestId = web3.utils.keccak256(messageBytes);
     await assertEventEmitted(
