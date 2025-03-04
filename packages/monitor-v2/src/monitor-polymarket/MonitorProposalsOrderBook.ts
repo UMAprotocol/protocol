@@ -1,14 +1,12 @@
 import { Networker } from "@uma/financial-templates-lib";
+import { ethers } from "ethers";
 import {
-  logProposalHighVolume,
-  logMarketSentimentDiscrepancy,
   logFailedMarketProposalVerification,
+  logMarketSentimentDiscrepancy,
+  logProposalHighVolume,
 } from "./MonitorLogger";
+import umaSportsOracleAbi from "./abi/umaSportsOracle.json";
 import {
-  Logger,
-  MonitoringParams,
-  ONE_SCALED,
-  OptimisticPriceRequest,
   calculatePolymarketQuestionID,
   getMarketKeyToStore,
   getNotifiedProposals,
@@ -16,12 +14,16 @@ import {
   getPolymarketMarketInformation,
   getPolymarketOrderBook,
   getPolymarketProposedPriceRequestsOO,
-  storeNotifiedProposals,
+  getSportsPayouts,
+  isUnresolvable,
+  Logger,
+  Market,
+  MonitoringParams,
+  ONE_SCALED,
+  OptimisticPriceRequest,
   retryAsync,
+  storeNotifiedProposals,
 } from "./common";
-import { decodeMultipleQueryPriceAtIndex } from "./helpers";
-import { ethers } from "ethers";
-import umaSportsOracleAbi from "./abi/umaSportsOracle.json";
 export async function monitorTransactionsProposedOrderBook(
   logger: typeof Logger,
   params: MonitoringParams
@@ -75,69 +77,71 @@ async function processMarketProposal(market: OptimisticPriceRequest, params: Mon
         polymarketInfo.clobTokenIds,
         Number(market.requestBlockNumber)
       );
-      if (!isSportsMarket) {
-        const proposedOutcome = market.proposedPrice.eq(ONE_SCALED) ? 0 : 1;
-        const complementaryOutcome = proposedOutcome === 0 ? 1 : 0;
-
-        const thresholds = {
-          asks: Number(process.env["THRESHOLD_ASKS"]) || 1,
-          bids: Number(process.env["THRESHOLD_BIDS"]) || 0,
-          volume: Number(process.env["THRESHOLD_VOLUME"]) || 500000,
-        };
-
-        const sellingWinnerSide = orderBook[proposedOutcome].asks.find((ask) => ask.price < thresholds.asks);
-        const buyingLoserSide = orderBook[complementaryOutcome].bids.find((bid) => bid.price > thresholds.bids);
-
-        const soldWinnerSide = orderFilledEvents[proposedOutcome].filter(
-          (event) => event.type == "sell" && event.price < thresholds.asks
-        );
-        const boughtLoserSide = orderFilledEvents[complementaryOutcome].filter(
-          (event) => event.type == "buy" && event.price > thresholds.bids
-        );
-
-        let notified = false;
-        const notificationData = {
-          txHash: market.proposalHash,
-          question: polymarketInfo.question,
-          proposedPrice: market.proposedPrice,
-          requestTimestamp: market.requestTimestamp,
-        };
-
-        if (polymarketInfo.volumeNum > thresholds.volume) {
-          await logProposalHighVolume(logger, { ...market, ...polymarketInfo }, params);
-          notified = true;
-        }
-
-        if (sellingWinnerSide || buyingLoserSide || soldWinnerSide.length > 0 || boughtLoserSide.length > 0) {
-          await logMarketSentimentDiscrepancy(
-            logger,
-            {
-              ...market,
-              ...polymarketInfo,
-              sellingWinnerSide,
-              buyingLoserSide,
-              soldWinnerSide,
-              boughtLoserSide,
-            },
-            params
-          );
-          notified = true;
-        }
-
-        return { notified, notifiedProposal: notified ? notificationData : null };
-      } else {
-        const sportsMarketType = "winner";
-        const proposedPrice = market.proposedPrice;
-        const score1 = decodeMultipleQueryPriceAtIndex(proposedPrice, 0);
-        const score2 = decodeMultipleQueryPriceAtIndex(proposedPrice, 1);
+      let winnerOutcome, loserOutcome;
+      if (isSportsMarket) {
+        // Unresolvable prices are not supported
+        if (isUnresolvable(market.proposedPrice)) return { notified: false, notifiedProposal: null };
 
         const umaSportsOracle = new ethers.Contract(params.ctfSportsOracleAddress, umaSportsOracleAbi, params.provider);
+        const sportsMarketData: Market = await umaSportsOracle.getMarket(questionID);
+        const payouts = getSportsPayouts(sportsMarketData, market.proposedPrice);
 
+        // Draws are not supported
+        if (payouts[0] === payouts[1]) return { notified: false, notifiedProposal: null };
 
-
-        return { notified: false, notifiedProposal: null };
+        winnerOutcome = payouts[0] === 1 ? 0 : 1;
+        loserOutcome = winnerOutcome === 1 ? 0 : 1;
+      } else {
+        winnerOutcome = market.proposedPrice.eq(ONE_SCALED) ? 0 : 1;
+        loserOutcome = winnerOutcome === 0 ? 1 : 0;
       }
-    })
 
+      const thresholds = {
+        asks: Number(process.env["THRESHOLD_ASKS"]) || 1,
+        bids: Number(process.env["THRESHOLD_BIDS"]) || 0,
+        volume: Number(process.env["THRESHOLD_VOLUME"]) || 500000,
+      };
+
+      const sellingWinnerSide = orderBook[winnerOutcome].asks.find((ask) => ask.price < thresholds.asks);
+      const buyingLoserSide = orderBook[loserOutcome].bids.find((bid) => bid.price > thresholds.bids);
+
+      const soldWinnerSide = orderFilledEvents[winnerOutcome].filter(
+        (event) => event.type == "sell" && event.price < thresholds.asks
+      );
+      const boughtLoserSide = orderFilledEvents[loserOutcome].filter(
+        (event) => event.type == "buy" && event.price > thresholds.bids
+      );
+
+      let notified = false;
+      const notificationData = {
+        txHash: market.proposalHash,
+        question: polymarketInfo.question,
+        proposedPrice: market.proposedPrice,
+        requestTimestamp: market.requestTimestamp,
+      };
+
+      if (polymarketInfo.volumeNum > thresholds.volume) {
+        await logProposalHighVolume(logger, { ...market, ...polymarketInfo }, params);
+        notified = true;
+      }
+
+      if (sellingWinnerSide || buyingLoserSide || soldWinnerSide.length > 0 || boughtLoserSide.length > 0) {
+        await logMarketSentimentDiscrepancy(
+          logger,
+          {
+            ...market,
+            ...polymarketInfo,
+            sellingWinnerSide,
+            buyingLoserSide,
+            soldWinnerSide,
+            boughtLoserSide,
+          },
+          params
+        );
+        notified = true;
+      }
+
+      return { notified, notifiedProposal: notified ? notificationData : null };
+    })
   );
 }

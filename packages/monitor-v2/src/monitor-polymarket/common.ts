@@ -95,6 +95,29 @@ interface StoredNotifiedProposal {
   proposalHash: string;
 }
 
+enum MarketType {
+  Winner,
+  Spreads,
+  Totals,
+}
+
+enum Ordering {
+  HomeVsAway,
+  AwayVsHome,
+}
+
+enum Underdog {
+  Home,
+  Away,
+}
+
+export type Market = {
+  marketType: MarketType;
+  ordering: Ordering;
+  underdog: Underdog;
+  line: ethers.BigNumber;
+};
+
 export const getPolymarketProposedPriceRequestsOO = async (
   params: MonitoringParams,
   version: "v1" | "v2",
@@ -149,7 +172,7 @@ export const getPolymarketMarketInformation = async (
 ): Promise<PolymarketMarketGraphqlProcessed[]> => {
   const query = `
     {
-      markets(where: "LOWER(question_id) = LOWER('${questionID}') or LOWER(neg_risk_request_id) = LOWER('${questionID}')") {
+      markets(where: "LOWER(question_id) = LOWER('${questionID}') or LOWER(neg_risk_request_id) = LOWER('${questionID}') or LOWER(game_id) = LOWER('${questionID}')") {
         clobTokenIds
         volumeNum
         outcomes
@@ -176,22 +199,18 @@ export const getPolymarketMarketInformation = async (
     questionID,
   });
 
-  const market = markets[0];
-  if (!market) {
+  if (!markets.length) {
     throw new Error(`No market found for question ID: ${questionID}`);
   }
-  if (!market.clobTokenIds) {
-    throw new Error(`Market found for question ID: ${questionID} has no clobTokenIds`);
-  }
 
-  return [
-    {
+  return markets.map((market) => {
+    return {
       ...market,
       outcomes: JSON.parse(market.outcomes),
       outcomePrices: JSON.parse(market.outcomePrices),
       clobTokenIds: JSON.parse(market.clobTokenIds),
-    },
-  ];
+    };
+  });
 };
 
 const getTradeInfoFromOrderFilledEvent = async (
@@ -305,6 +324,86 @@ export const getPolymarketOrderBook = async (
       asks: stringToNumber(outcome2Asks),
     },
   ];
+};
+
+export function decodeMultipleQueryPriceAtIndex(encodedPrice: BigNumber, index: number): BigNumber {
+  if (index < 0 || index > 6) {
+    throw new Error("Index out of range");
+  }
+  // Shift the bits of encodedPrice to the right by (32 * index) positions.
+  // This moves the desired 32-bit segment to the least significant bits.
+  // Then, we use bitwise AND with 0xffffffff (as a BigNumber) to extract that segment.
+  return encodedPrice.shr(32 * index).and(BigNumber.from("0xffffffff"));
+}
+
+export function encodeMultipleQuery(values: string[]): BigNumber {
+  if (values.length > 7) {
+    throw new Error("Maximum of 7 values allowed");
+  }
+  let encodedPrice = BigNumber.from(0);
+  for (let i = 0; i < values.length; i++) {
+    if (!values[i]) {
+      throw new Error("All values must be defined");
+    }
+    const numValue = Number(values[i]);
+    if (!Number.isInteger(numValue)) {
+      throw new Error("All values must be integers");
+    }
+    if (numValue > 0xffffffff || numValue < 0) {
+      throw new Error("Values must be uint32 (0 <= value <= 2^32 - 1)");
+    }
+    // Shift the current value by 32 * i bits (placing the first value at the LSB)
+    // then OR it into the encodedPrice.
+    encodedPrice = encodedPrice.or(BigNumber.from(numValue).shl(32 * i));
+  }
+  return encodedPrice;
+}
+export function isUnresolvable(price: BigNumber | string): boolean {
+  const maxInt256 = ethers.constants.MaxInt256;
+  return typeof price === "string" ? price === maxInt256.toString() : price.eq(maxInt256);
+}
+
+function decodeScores(ordering: Ordering, data: ethers.BigNumber) {
+  const home = decodeMultipleQueryPriceAtIndex(data, ordering === Ordering.HomeVsAway ? 0 : 1);
+  const away = decodeMultipleQueryPriceAtIndex(data, ordering === Ordering.HomeVsAway ? 1 : 0);
+  return { home, away };
+}
+
+export const getSportsPayouts = (market: Market, proposedPrice: ethers.BigNumber): [number, number] => {
+  const { home, away } = decodeScores(market.ordering, proposedPrice);
+  const line = market.line.div(ethers.utils.parseUnits("1", 6));
+
+  // Handle Spreads market
+  if (market.marketType === MarketType.Spreads) {
+    // Spreads are always: ["Favorite", "Underdog"]
+    // Determine which score is underdog's based on market.underdog
+    const [underdogScore, favoriteScore] = market.underdog === Underdog.Home ? [home, away] : [away, home];
+
+    // Underdog wins if their score is higher OR if the spread (difference) is within the line.
+    return underdogScore.gt(favoriteScore) || favoriteScore.sub(underdogScore).lte(line)
+      ? [0, 1] // Underdog wins
+      : [1, 0]; // Favorite wins
+  }
+
+  // Handle Totals market
+  if (market.marketType === MarketType.Totals) {
+    // Totals are always: ["Under", "Over"]
+    const total = home.add(away);
+    return total.lte(line) ? [0, 1] : [1, 0];
+  }
+
+  // Handle Draw (applicable for Winner markets)
+  if (home.eq(away)) {
+    return [1, 1];
+  }
+
+  // Handle Winner market for Home vs Away ordering
+  if (market.ordering === Ordering.HomeVsAway) {
+    return home.gt(away) ? [1, 0] : [0, 1];
+  }
+
+  // Handle Winner market for Away vs Home ordering
+  return home.gt(away) ? [0, 1] : [1, 0];
 };
 
 export const getMarketKeyToStore = (market: StoredNotifiedProposal | OptimisticPriceRequest): string => {
