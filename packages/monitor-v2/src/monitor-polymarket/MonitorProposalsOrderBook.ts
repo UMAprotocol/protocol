@@ -1,24 +1,28 @@
 import { Networker } from "@uma/financial-templates-lib";
 import { ethers } from "ethers";
+import { tryHexToUtf8String } from "../utils/contracts";
 import {
   logFailedMarketProposalVerification,
   logMarketSentimentDiscrepancy,
   logProposalHighVolume,
 } from "./MonitorLogger";
-import umaSportsOracleAbi from "./abi/umaSportsOracle.json";
 import {
   calculatePolymarketQuestionID,
+  decodeMultipleQueryPriceAtIndex,
+  decodeMultipleValuesQuery,
   getMarketKeyToStore,
   getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarketInformation,
   getPolymarketOrderBook,
   getPolymarketProposedPriceRequestsOO,
+  getSportsMarketData,
   getSportsPayouts,
   isUnresolvable,
   Logger,
   Market,
   MonitoringParams,
+  MultipleValuesQuery,
   ONE_SCALED,
   OptimisticPriceRequest,
   retryAsync,
@@ -78,12 +82,16 @@ async function processMarketProposal(market: OptimisticPriceRequest, params: Mon
         Number(market.requestBlockNumber)
       );
       let winnerOutcome, loserOutcome;
+      let multipleValuesQuery: MultipleValuesQuery = {} as MultipleValuesQuery;
+      const scores: [ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(0), ethers.BigNumber.from(0)];
       if (isSportsMarket) {
         // Unresolvable prices are not supported
         if (isUnresolvable(market.proposedPrice)) return { notified: false, notifiedProposal: null };
 
-        const umaSportsOracle = new ethers.Contract(params.ctfSportsOracleAddress, umaSportsOracleAbi, params.provider);
-        const sportsMarketData: Market = await umaSportsOracle.getMarket(questionID);
+        const sportsMarketData: Market = await getSportsMarketData(params, questionID);
+        scores[0] = decodeMultipleQueryPriceAtIndex(market.proposedPrice, 0);
+        scores[1] = decodeMultipleQueryPriceAtIndex(market.proposedPrice, 1);
+        multipleValuesQuery = decodeMultipleValuesQuery(tryHexToUtf8String(market.ancillaryData));
         const payouts = getSportsPayouts(sportsMarketData, market.proposedPrice);
 
         // Draws are not supported
@@ -121,7 +129,11 @@ async function processMarketProposal(market: OptimisticPriceRequest, params: Mon
       };
 
       if (polymarketInfo.volumeNum > thresholds.volume) {
-        await logProposalHighVolume(logger, { ...market, ...polymarketInfo }, params);
+        await logProposalHighVolume(
+          logger,
+          { ...market, ...polymarketInfo, scores, multipleValuesQuery, isSportsMarket },
+          params
+        );
         notified = true;
       }
 
@@ -135,6 +147,9 @@ async function processMarketProposal(market: OptimisticPriceRequest, params: Mon
             buyingLoserSide,
             soldWinnerSide,
             boughtLoserSide,
+            scores,
+            multipleValuesQuery,
+            isSportsMarket,
           },
           params
         );

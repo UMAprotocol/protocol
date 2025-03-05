@@ -1,13 +1,24 @@
 import { createEtherscanLinkMarkdown } from "@uma/common";
 import { Logger, ONE_SCALED, PolymarketTradeInformation } from "./common";
 
-import type { MonitoringParams, OptimisticPriceRequest, PolymarketMarketGraphqlProcessed } from "./common";
+import type {
+  MonitoringParams,
+  MultipleValuesQuery,
+  OptimisticPriceRequest,
+  PolymarketMarketGraphqlProcessed,
+} from "./common";
 import { tryHexToUtf8String } from "../utils/contracts";
 import { ethers } from "ethers";
 
 function generateUILink(transactionHash: string, chainId: number, eventIndex: number) {
   return `<https://oracle.uma.xyz/request?transactionHash=${transactionHash}&chainId=${chainId}&oracleType=OptimisticV2&eventIndex=${eventIndex} | View in the Oracle UI.>`;
 }
+
+type SportMarketData = {
+  scores: [ethers.BigNumber, ethers.BigNumber];
+  multipleValuesQuery: MultipleValuesQuery;
+  isSportsMarket: boolean;
+};
 
 export async function logMarketSentimentDiscrepancy(
   logger: typeof Logger,
@@ -28,17 +39,29 @@ export async function logMarketSentimentDiscrepancy(
       soldWinnerSide: PolymarketTradeInformation[];
       boughtLoserSide: PolymarketTradeInformation[];
       outcomes: [string, string];
-    },
+    } & SportMarketData,
   params: MonitoringParams
 ): Promise<void> {
+  let intro = "";
+  if (!market.isSportsMarket) {
+    intro = `A price of ${ethers.utils.formatEther(market.proposedPrice)} corresponding to outcome ${
+      market.proposedPrice.eq(ONE_SCALED) ? 0 : 1
+    } was proposed at ${market.proposalTimestamp.toString()} for the following question:  ${market.question}.`;
+  } else {
+    intro = `A price was proposed for the game "${
+      market.multipleValuesQuery.title
+    }" at ${market.proposalTimestamp.toString()}. The final scores reported were: ${
+      market.multipleValuesQuery.labels[0]
+    }: ${market.scores[0].toString()} and ${
+      market.multipleValuesQuery.labels[1]
+    }: ${market.scores[1].toString()}. Details: ${market.multipleValuesQuery.description}.`;
+  }
+
   logger.error({
     at: "PolymarketMonitor",
     message: "Difference between proposed price and market signal! 🚨",
     mrkdwn:
-      ` A price of ${ethers.utils.formatEther(market.proposedPrice)} corresponding to outcome ${
-        market.proposedPrice.eq(ONE_SCALED) ? 0 : 1
-      } was proposed at ${market.proposalTimestamp.toString()} for the following question:` +
-      ` ${market.question}.` +
+      intro +
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       (market.sellingWinnerSide
@@ -68,17 +91,29 @@ export async function logMarketSentimentDiscrepancy(
 
 export async function logProposalHighVolume(
   logger: typeof Logger,
-  market: OptimisticPriceRequest & PolymarketMarketGraphqlProcessed,
+  market: OptimisticPriceRequest & PolymarketMarketGraphqlProcessed & SportMarketData,
   params: MonitoringParams
 ): Promise<void> {
+  let intro = "";
+  if (!market.isSportsMarket) {
+    intro = `A price of ${ethers.utils.formatEther(market.proposedPrice)} corresponding to outcome ${
+      market.proposedPrice.eq(ONE_SCALED) ? 0 : 1
+    } was proposed at ${market.proposalTimestamp.toString()} for the following question:  ${market.question}.`;
+  } else {
+    intro = `A price was proposed for the game "${
+      market.multipleValuesQuery.title
+    }" at ${market.proposalTimestamp.toString()}. The final scores reported were: ${
+      market.multipleValuesQuery.labels[0]
+    }: ${market.scores[0].toString()} and ${
+      market.multipleValuesQuery.labels[1]
+    }: ${market.scores[1].toString()}. Details: ${market.multipleValuesQuery.description}.`;
+  }
+
   logger.error({
     at: "PolymarketMonitor",
     message: "A market with high volume has been proposed and needs to be checked! 🚨",
     mrkdwn:
-      ` A price of ${ethers.utils.formatEther(market.proposedPrice)} corresponding to outcome ${
-        market.proposedPrice.eq(ONE_SCALED) ? 0 : 1
-      } was proposed at ${market.proposalTimestamp.toString()} for the following question:` +
-      ` ${market.question}.` +
+      intro +
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       " The proposal can be disputed until " +

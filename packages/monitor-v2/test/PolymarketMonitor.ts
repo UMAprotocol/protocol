@@ -1,3 +1,4 @@
+import "@nomiclabs/hardhat-ethers";
 import { addGlobalHardhatTestingAddress, ZERO_ADDRESS } from "@uma/common";
 import {
   AddressWhitelistEthers,
@@ -11,18 +12,21 @@ import { assert } from "chai";
 import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
 import {
+  encodeMultipleQuery,
   getMarketKeyToStore,
   MarketOrderbook,
   MonitoringParams,
+  OptimisticPriceRequest,
   PolymarketMarketGraphqlProcessed,
   PolymarketTradeInformation,
 } from "../src/monitor-polymarket/common";
 import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
+import { tryHexToUtf8String } from "../src/utils/contracts";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
-import { tryHexToUtf8String } from "../src/utils/contracts";
-import "@nomiclabs/hardhat-ethers";
 const ethers = hre.ethers;
+
+type CommonModuleFunctions = keyof typeof commonModule;
 
 describe("PolymarketNotifier", function () {
   let sandbox: sinon.SinonSandbox;
@@ -35,13 +39,15 @@ describe("PolymarketNotifier", function () {
 
   const ONE = ethers.utils.parseEther("1");
 
-  const marketInfo: PolymarketMarketGraphqlProcessed = {
-    clobTokenIds: ["0x1234", "0x1234"],
-    volumeNum: 200_000,
-    outcomes: ["Yes", "No"],
-    outcomePrices: ["1", "0"],
-    question: "Will NATO expand by June 30?",
-  };
+  const marketInfo: PolymarketMarketGraphqlProcessed[] = [
+    {
+      clobTokenIds: ["0x1234", "0x1234"],
+      volumeNum: 200_000,
+      outcomes: ["Yes", "No"],
+      outcomePrices: ["1", "0"],
+      question: "Will NATO expand by June 30?",
+    },
+  ];
 
   const emptyOrders: [MarketOrderbook, MarketOrderbook] = [
     {
@@ -140,13 +146,13 @@ describe("PolymarketNotifier", function () {
     sandbox.restore();
   });
 
-  function mockFunctionWithReturnValue(functionName, mockValue) {
+  function mockFunctionWithReturnValue(functionName: CommonModuleFunctions, mockValue: any) {
     const mockDataFunction = sandbox.stub();
     mockDataFunction.returns(mockValue);
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
 
-  function mockFunctionThrowsError(functionName, errorMessage = "Mock error") {
+  function mockFunctionThrowsError(functionName: CommonModuleFunctions, errorMessage = "Mock error") {
     const mockDataFunction = sandbox.stub();
     mockDataFunction.throws(new Error(errorMessage));
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
@@ -176,7 +182,7 @@ describe("PolymarketNotifier", function () {
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
+    // Call monitorTransactionsProposedOrderBook for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
@@ -188,22 +194,23 @@ describe("PolymarketNotifier", function () {
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.isTrue(
       spyLogIncludes(spy, 0, ` Someone is trying to sell 100 winner outcome tokens at a price of 0.9 on the orderbook.`)
-    ); // price
+    );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should not notify if order book is empty", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should not have been called as the order book is empty.
+    // No notifications should be logged.
     assert.equal(spy.callCount, 0);
   });
+
   it("It should notify if there are sell trades over the threshold", async function () {
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
@@ -223,12 +230,10 @@ describe("PolymarketNotifier", function () {
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
@@ -242,9 +247,10 @@ describe("PolymarketNotifier", function () {
             orderFilledEvents[0]
           )}`
         )
-    ); // price
+    );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should notify if there are buy trades over the threshold", async function () {
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
@@ -264,12 +270,10 @@ describe("PolymarketNotifier", function () {
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
@@ -283,23 +287,22 @@ describe("PolymarketNotifier", function () {
             orderFilledEvents[1]
           )}`
         )
-    ); // price
+    );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should notify if there are proposals with high volume", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", { ...marketInfo, volumeNum: 2_000_000 });
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo, volumeNum: 2_000_000 }]);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(
@@ -309,20 +312,19 @@ describe("PolymarketNotifier", function () {
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should notify if market polymarket information is not found", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
-    mockFunctionThrowsError("getPolymarketMarketInformation");
+    mockFunctionThrowsError("getPolymarketMarketInformation", "Market not found");
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called as the market adapter is unknown.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Failed to verify proposed market, please verify manually! 🚨");
@@ -336,6 +338,7 @@ describe("PolymarketNotifier", function () {
     );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should not notify if already notified", async function () {
     sandbox.restore();
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
@@ -363,14 +366,14 @@ describe("PolymarketNotifier", function () {
     });
     sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should not have been called as the market adapter is unknown and was already notified.
+    // Already notified proposals should not trigger any logs.
     assert.equal(spy.callCount, 0);
   });
+
   it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
@@ -385,18 +388,102 @@ describe("PolymarketNotifier", function () {
     ];
 
     mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", { ...marketInfo, volumeNum: 2_000_000 });
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo, volumeNum: 2_000_000 }]);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called 2 times
+    // Expect two notifications due to both orderbook and trade event triggers.
     assert.equal(spy.callCount, 2);
+  });
+
+  describe("Sports Market Notifications", function () {
+    const sportsAncillaryData = ethers.utils.hexlify(
+      ethers.utils.toUtf8Bytes(
+        JSON.stringify({
+          title: "Los Angeles Lakers vs Boston Celtics",
+          description:
+            'Final scores for the "Los Angeles Lakers" vs "Boston Celtics" NBA game scheduled for Jan 7, 2025.',
+          labels: ["Lakers", "Celtics"],
+        })
+      )
+    );
+
+    it("should notify for a winner sports market", async function () {
+      const params = await createMonitoringParams();
+      // We are proposing Lakers 60, Celtics 50
+      const proposedPrice = encodeMultipleQuery(["60", "50"]);
+      const sportsProposal: OptimisticPriceRequest = {
+        proposalHash: "0xvalidsports",
+        requester: params.ctfSportsOracleAddress,
+        proposedPrice,
+        requestTimestamp: ethers.BigNumber.from(Date.now()),
+        requestBlockNumber: 12345,
+        ancillaryData: sportsAncillaryData,
+        requestHash: "0xrequesthash",
+        requestLogIndex: 0,
+        proposalTimestamp: ethers.BigNumber.from(Date.now()),
+        proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+        proposalLogIndex: 0,
+      };
+
+      const stubProposals = sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .resolves([sportsProposal]);
+
+      // Fake sports market data for a Winner market.
+      // Lakers are the home team, so they are the underdog.
+      const fakeSportsMarketData = {
+        marketType: commonModule.MarketType.Winner,
+        ordering: commonModule.Ordering.HomeVsAway,
+        underdog: 0, // Not used in Winner market
+        line: ethers.BigNumber.from("0"), // Not used in Winner market
+      };
+      const contractStub = sandbox.stub(commonModule, "getSportsMarketData").resolves(fakeSportsMarketData);
+
+      // The winning side is the Home team so selling tokens[0] is not profitable.
+      const sportsOrderBook: [MarketOrderbook, MarketOrderbook] = [
+        {
+          bids: [],
+          asks: [
+            {
+              price: 0.9, // below threshold (THRESHOLD_ASKS default 1)
+              size: 100,
+            },
+          ],
+        },
+        {
+          bids: [],
+          asks: [],
+        },
+      ];
+      mockFunctionWithReturnValue("getPolymarketOrderBook", sportsOrderBook);
+      mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+      mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+
+      const spy = sinon.spy();
+      const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+      await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+      // We expect a notification for the sports market due to the order book entry.
+      assert.isAbove(spy.callCount, 0);
+      const logMsg = spy.getCall(0).lastArg;
+      assert.equal(logMsg.at, "PolymarketMonitor");
+      assert.equal(logMsg.notificationPath, "polymarket-notifier");
+      assert.include(logMsg.mrkdwn, 'A price was proposed for the game "Los Angeles Lakers vs Boston Celtics"');
+      assert.include(logMsg.mrkdwn, "The final scores reported were: Lakers: 60 and Celtics: 50");
+      assert.include(
+        logMsg.mrkdwn,
+        "Someone is trying to sell 100 winner outcome tokens at a price of 0.9 on the orderbook"
+      );
+
+      stubProposals.restore();
+      contractStub.restore();
+    });
   });
 });

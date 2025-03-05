@@ -13,8 +13,12 @@ import { getContractInstanceWithProvider } from "../utils/contracts";
 import { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 
+import umaSportsOracleAbi from "./abi/umaSportsOracle.json";
+
 const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
+
+import * as s from "superstruct";
 
 export { Logger };
 
@@ -95,18 +99,18 @@ interface StoredNotifiedProposal {
   proposalHash: string;
 }
 
-enum MarketType {
+export enum MarketType {
   Winner,
   Spreads,
   Totals,
 }
 
-enum Ordering {
+export enum Ordering {
   HomeVsAway,
   AwayVsHome,
 }
 
-enum Underdog {
+export enum Underdog {
   Home,
   Away,
 }
@@ -326,6 +330,11 @@ export const getPolymarketOrderBook = async (
   ];
 };
 
+export async function getSportsMarketData(params: MonitoringParams, questionID: string): Promise<Market> {
+  const umaSportsOracle = new ethers.Contract(params.ctfSportsOracleAddress, umaSportsOracleAbi, params.provider);
+  return umaSportsOracle.getMarket(questionID);
+}
+
 export function decodeMultipleQueryPriceAtIndex(encodedPrice: BigNumber, index: number): BigNumber {
   if (index < 0 || index > 6) {
     throw new Error("Index out of range");
@@ -363,13 +372,16 @@ export function isUnresolvable(price: BigNumber | string): boolean {
   return typeof price === "string" ? price === maxInt256.toString() : price.eq(maxInt256);
 }
 
-function decodeScores(ordering: Ordering, data: ethers.BigNumber) {
+export function decodeScores(
+  ordering: Ordering,
+  data: ethers.BigNumber
+): { home: ethers.BigNumber; away: ethers.BigNumber } {
   const home = decodeMultipleQueryPriceAtIndex(data, ordering === Ordering.HomeVsAway ? 0 : 1);
   const away = decodeMultipleQueryPriceAtIndex(data, ordering === Ordering.HomeVsAway ? 1 : 0);
   return { home, away };
 }
 
-export const getSportsPayouts = (market: Market, proposedPrice: ethers.BigNumber): [number, number] => {
+export function getSportsPayouts(market: Market, proposedPrice: ethers.BigNumber): [number, number] {
   const { home, away } = decodeScores(market.ordering, proposedPrice);
   const line = market.line.div(ethers.utils.parseUnits("1", 6));
 
@@ -404,7 +416,28 @@ export const getSportsPayouts = (market: Market, proposedPrice: ethers.BigNumber
 
   // Handle Winner market for Away vs Home ordering
   return home.gt(away) ? [0, 1] : [1, 0];
-};
+}
+
+const MultipleValuesQuery = s.object({
+  // The title of the request
+  title: s.string(),
+  // Description of the request
+  description: s.string(),
+  // Values will be encoded into the settled price in the same order as the provided labels. The oracle UI will display each Label along with an input field. 7 labels maximum.
+  labels: s.array(s.string()),
+});
+export type MultipleValuesQuery = s.Infer<typeof MultipleValuesQuery>;
+
+const isMultipleValuesQueryFormat = (q: unknown) => s.is(q, MultipleValuesQuery);
+
+export function decodeMultipleValuesQuery(decodedAncillaryData: string): MultipleValuesQuery {
+  const endOfObjectIndex = decodedAncillaryData.lastIndexOf("}");
+  const maybeJson = endOfObjectIndex > 0 ? decodedAncillaryData.slice(0, endOfObjectIndex + 1) : decodedAncillaryData;
+
+  const json = JSON.parse(maybeJson);
+  if (!isMultipleValuesQueryFormat(json)) throw new Error("Not a valid multiple values request");
+  return json;
+}
 
 export const getMarketKeyToStore = (market: StoredNotifiedProposal | OptimisticPriceRequest): string => {
   return market.proposalHash;
