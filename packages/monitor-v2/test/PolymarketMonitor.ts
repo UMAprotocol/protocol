@@ -437,7 +437,6 @@ describe("PolymarketNotifier", function () {
         .resolves([sportsProposal]);
 
       // Fake sports market data for a Winner market.
-      // Lakers are the home team, so they are the underdog.
       const fakeSportsMarketData = {
         marketType: commonModule.MarketType.Winner,
         ordering: commonModule.Ordering.HomeVsAway,
