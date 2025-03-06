@@ -13,7 +13,7 @@ import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
 import {
   encodeMultipleQuery,
-  getMarketKeyToStore,
+  getProposalKeyToStore,
   getSportsPayouts,
   MarketOrderbook,
   MarketType,
@@ -366,7 +366,7 @@ describe("PolymarketNotifier", function () {
     getNotifiedProposalsStub.restore();
     const getNotifiedProposalsMock = sandbox.stub();
     getNotifiedProposalsMock.returns({
-      [getMarketKeyToStore({ proposalHash: tx.hash })]: { proposalHash: tx.hash },
+      [getProposalKeyToStore({ proposalHash: tx.hash })]: { proposalHash: tx.hash },
     });
     sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 

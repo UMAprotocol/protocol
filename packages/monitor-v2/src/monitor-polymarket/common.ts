@@ -439,13 +439,13 @@ export function decodeMultipleValuesQuery(decodedAncillaryData: string): Multipl
   return json;
 }
 
-export const getMarketKeyToStore = (market: StoredNotifiedProposal | OptimisticPriceRequest): string => {
+export const getProposalKeyToStore = (market: StoredNotifiedProposal | OptimisticPriceRequest): string => {
   return market.proposalHash;
 };
 
 export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceRequest[]): Promise<void> => {
   const promises = notifiedContracts.map((contract) => {
-    const key = datastore.key(["NotifiedProposals", getMarketKeyToStore(contract)]);
+    const key = datastore.key(["NotifiedProposals", getProposalKeyToStore(contract)]);
     datastore.save({
       key: key,
       data: {
@@ -463,7 +463,7 @@ export const getNotifiedProposals = async (): Promise<{
   return notifiedProposals.reduce((contracts: StoredNotifiedProposal[], contract: StoredNotifiedProposal) => {
     return {
       ...contracts,
-      [getMarketKeyToStore(contract)]: contract,
+      [getProposalKeyToStore(contract)]: contract,
     };
   }, {});
 };
