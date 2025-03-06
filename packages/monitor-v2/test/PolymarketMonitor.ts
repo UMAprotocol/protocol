@@ -14,11 +14,15 @@ import * as commonModule from "../src/monitor-polymarket/common";
 import {
   encodeMultipleQuery,
   getMarketKeyToStore,
+  getSportsPayouts,
   MarketOrderbook,
+  MarketType,
   MonitoringParams,
   OptimisticPriceRequest,
+  Ordering,
   PolymarketMarketGraphqlProcessed,
   PolymarketTradeInformation,
+  Underdog,
 } from "../src/monitor-polymarket/common";
 import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
 import { tryHexToUtf8String } from "../src/utils/contracts";
@@ -414,7 +418,7 @@ describe("PolymarketNotifier", function () {
       )
     );
 
-    it("should notify for a winner sports market", async function () {
+    it("should notify for a sports market", async function () {
       const params = await createMonitoringParams();
       // We are proposing Lakers 60, Celtics 50
       const proposedPrice = encodeMultipleQuery(["60", "50"]);
@@ -483,6 +487,173 @@ describe("PolymarketNotifier", function () {
 
       stubProposals.restore();
       contractStub.restore();
+    });
+
+    describe("getSportsPayouts", () => {
+      describe("Spreads Market", () => {
+        it("should return [0,1] when underdog (home) wins by having a higher score", () => {
+          // Market configuration: spreads market where home is the underdog.
+          // For HomeVsAway ordering, the proposedPrice encodes: home score at index 0, away score at index 1.
+          // Let line = 10.5 (after dividing by 1e6) and use scores home = 50, away = 40.
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.utils.parseUnits("10.5", 6), // represents a line of 10.5
+          };
+          const proposedPrice = encodeMultipleQuery(["50", "40"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          // For a spreads market when the underdog wins, the function returns [0, 1]
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [0,1] when underdog (home) wins because the spread is within the line", () => {
+          // Even if home is lower than away, if the difference is within the allowed line the underdog wins.
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.utils.parseUnits("10.5", 6), // line of 10.5
+          };
+          // Use scores: home = 30, away = 35 (difference 5 <= 10.5)
+          const proposedPrice = encodeMultipleQuery(["30", "35"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [1,0] when underdog (home) loses because the spread exceeds the line", () => {
+          // With the same market configuration but a tighter line, the favorite wins.
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.utils.parseUnits("5.5", 6), // line of 5.5
+          };
+          // Use scores: home = 30, away = 40 (difference 10 > 5.5)
+          const proposedPrice = encodeMultipleQuery(["30", "40"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+
+        it("should return [0,1] when underdog (away) wins", () => {
+          // For a spreads market where away is the underdog.
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Away,
+            line: ethers.utils.parseUnits("10.5", 6), // line of 10.5
+          };
+          // For Underdog = Away, the decoding swaps the scores:
+          // Use scores: home = 40, away = 50 (thus underdogScore = 50, favoriteScore = 40)
+          const proposedPrice = encodeMultipleQuery(["40", "50"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [1,0] when underdog (away) loses because the spread exceeds the line", () => {
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Away,
+            line: ethers.utils.parseUnits("5.5", 6), // line of 5.5
+          };
+          // Use scores: home = 50, away = 40 (for away as underdog, this means underdogScore = 40 and favoriteScore = 50)
+          const proposedPrice = encodeMultipleQuery(["50", "40"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+      });
+
+      describe("Totals Market", () => {
+        it("should return [0,1] when the total is less than or equal to the line (favoring Under)", () => {
+          // For totals markets, the outcomes are always: ["Under", "Over"].
+          const market = {
+            marketType: MarketType.Totals,
+            ordering: Ordering.HomeVsAway, // ordering is irrelevant here
+            underdog: Underdog.Home, // not used in totals
+            line: ethers.utils.parseUnits("100.5", 6), // line of 100.5
+          };
+          // Use scores: home = 40, away = 50, so total = 90 which is <= 100.5.
+          const proposedPrice = encodeMultipleQuery(["40", "50"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [1,0] when the total is greater than the line (favoring Over)", () => {
+          const market = {
+            marketType: MarketType.Totals,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.utils.parseUnits("100.5", 6), // line of 100.5
+          };
+          // Use scores: home = 60, away = 50, so total = 110 > 100.5.
+          const proposedPrice = encodeMultipleQuery(["60", "50"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+      });
+
+      describe("Winner Market", () => {
+        it("should return [1,1] when scores are equal (draw)", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.HomeVsAway, // ordering does not affect a draw
+            underdog: Underdog.Home, // not used in Winner markets
+            line: ethers.BigNumber.from("0"), // not used in Winner markets
+          };
+          const proposedPrice = encodeMultipleQuery(["50", "50"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 1]);
+        });
+
+        it("should return [1,0] for HomeVsAway ordering when home wins", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.BigNumber.from("0"),
+          };
+          const proposedPrice = encodeMultipleQuery(["60", "50"]); // home > away
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+
+        it("should return [0,1] for HomeVsAway ordering when away wins", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.BigNumber.from("0"),
+          };
+          const proposedPrice = encodeMultipleQuery(["40", "50"]); // home < away
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [0,1] for AwayVsHome ordering when home wins", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.AwayVsHome,
+            underdog: Underdog.Home,
+            line: ethers.BigNumber.from("0"),
+          };
+          const proposedPrice = encodeMultipleQuery(["50", "60"]); // home > away
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [1,0] for AwayVsHome ordering when away wins", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.AwayVsHome,
+            underdog: Underdog.Home,
+            line: ethers.BigNumber.from("0"),
+          };
+          const proposedPrice = encodeMultipleQuery(["50", "40"]); // home < away
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+      });
     });
   });
 });
