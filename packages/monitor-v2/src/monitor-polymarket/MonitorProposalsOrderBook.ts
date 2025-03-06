@@ -79,6 +79,10 @@ async function processProposal(proposal: OptimisticPriceRequest, params: Monitor
       loserOutcome = 1 - winnerOutcome;
     } else {
       // Non-sports market logic.
+      // Ignore unresolvable prices where the orderbook doesn't provide relevant information.
+      if (!proposal.proposedPrice.eq(ethers.BigNumber.from(0)) && !proposal.proposedPrice.eq(ONE_SCALED)) {
+        continue;
+      }
       winnerOutcome = proposal.proposedPrice.eq(ONE_SCALED) ? 0 : 1;
       loserOutcome = 1 - winnerOutcome;
     }
