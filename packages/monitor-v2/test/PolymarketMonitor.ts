@@ -402,7 +402,7 @@ describe("PolymarketNotifier", function () {
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // Expect two notifications due to both orderbook and trade event triggers.
+    // The spy should have been called 2 times
     assert.equal(spy.callCount, 2);
   });
 

@@ -29,6 +29,7 @@ import {
   storeNotifiedProposals,
 } from "./common";
 
+// Retrieve threshold values from environment variables.
 function getThresholds() {
   return {
     asks: Number(process.env["THRESHOLD_ASKS"]) || 1,
@@ -43,104 +44,108 @@ async function processProposal(proposal: OptimisticPriceRequest, params: Monitor
   const questionID = calculatePolymarketQuestionID(proposal.ancillaryData);
 
   // Retry fetching market information per configuration.
-  const polymarketMarkets = await retryAsync(
+  const markets = await retryAsync(
     () => getPolymarketMarketInformation(logger, params, questionID),
     params.retryAttempts,
     params.retryDelayMs
   );
 
-  return await Promise.all(
-    polymarketMarkets.map(async (polymarketInfo) => {
-      // Initialize default values.
-      let scores: [ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(0), ethers.BigNumber.from(0)];
-      let multipleValuesQuery: MultipleValuesQuery | undefined;
-      let winnerOutcome: number;
-      let loserOutcome: number;
+  for (const marketInfo of markets) {
+    let scores: [ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(0), ethers.BigNumber.from(0)];
+    let multipleValuesQuery: MultipleValuesQuery | undefined;
+    let winnerOutcome: number;
+    let loserOutcome: number;
 
-      if (isSportsMarket) {
-        // If the proposed price is unresolvable, skip further processing.
-        if (isUnresolvable(proposal.proposedPrice)) {
-          return { notified: false, notifiedProposal: null };
-        }
-        const sportsMarketData: Market = await getSportsMarketData(params, questionID);
-        scores = [
-          decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 0),
-          decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 1),
-        ];
-        multipleValuesQuery = decodeMultipleValuesQuery(tryHexToUtf8String(proposal.ancillaryData));
-        const payouts = getSportsPayouts(sportsMarketData, proposal.proposedPrice);
-
-        // Draws are not supported.
-        if (payouts[0] === payouts[1]) {
-          return { notified: false, notifiedProposal: null };
-        }
-        // Determine winning and losing outcomes.
-        winnerOutcome = payouts[0] === 1 ? 0 : 1;
-        loserOutcome = payouts[0] === 1 ? 1 : 0;
-      } else {
-        winnerOutcome = proposal.proposedPrice.eq(ONE_SCALED) ? 0 : 1;
-        loserOutcome = winnerOutcome === 0 ? 1 : 0;
+    if (isSportsMarket) {
+      // Skip if the proposed price is unresolvable.
+      if (isUnresolvable(proposal.proposedPrice)) {
+        continue;
       }
 
-      const thresholds = getThresholds();
-      const orderBook = await getPolymarketOrderBook(params, polymarketInfo.clobTokenIds, networker);
-      const orderFilledEvents = await getOrderFilledEvents(
-        params,
-        polymarketInfo.clobTokenIds,
-        Number(proposal.requestBlockNumber)
-      );
+      // Process sports-specific market data.
+      const sportsMarketData: Market = await getSportsMarketData(params, questionID);
+      scores = [
+        decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 0),
+        decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 1),
+      ];
+      multipleValuesQuery = decodeMultipleValuesQuery(tryHexToUtf8String(proposal.ancillaryData));
+      const payouts = getSportsPayouts(sportsMarketData, proposal.proposedPrice);
 
-      // Check for concerning signals in the order book and filled events.
-      const sellingWinnerSide = orderBook[winnerOutcome].asks.find((ask) => ask.price < thresholds.asks);
-      const buyingLoserSide = orderBook[loserOutcome].bids.find((bid) => bid.price > thresholds.bids);
-      const soldWinnerSide = orderFilledEvents[winnerOutcome].filter(
-        (event) => event.type === "sell" && event.price < thresholds.asks
-      );
-      const boughtLoserSide = orderFilledEvents[loserOutcome].filter(
-        (event) => event.type === "buy" && event.price > thresholds.bids
-      );
+      // If both payouts are equal (a draw), skip further processing.
+      if (payouts[0] === payouts[1]) {
+        continue;
+      }
+      winnerOutcome = payouts[0] === 1 ? 0 : 1;
+      loserOutcome = 1 - winnerOutcome;
+    } else {
+      // Non-sports market logic.
+      winnerOutcome = proposal.proposedPrice.eq(ONE_SCALED) ? 0 : 1;
+      loserOutcome = 1 - winnerOutcome;
+    }
 
-      let notified = false;
-      const notificationData = {
-        txHash: proposal.proposalHash,
-        question: polymarketInfo.question,
-        proposedPrice: proposal.proposedPrice,
-        requestTimestamp: proposal.requestTimestamp,
+    const thresholds = getThresholds();
+    const orderBook = await getPolymarketOrderBook(params, marketInfo.clobTokenIds, networker);
+    const orderFilledEvents = await getOrderFilledEvents(
+      params,
+      marketInfo.clobTokenIds,
+      Number(proposal.requestBlockNumber)
+    );
+
+    // Check the order book for concerning signals.
+    const sellingWinnerSide = orderBook[winnerOutcome].asks.find((ask) => ask.price < thresholds.asks);
+    const buyingLoserSide = orderBook[loserOutcome].bids.find((bid) => bid.price > thresholds.bids);
+    const soldWinnerSide = orderFilledEvents[winnerOutcome].filter(
+      (event) => event.type === "sell" && event.price < thresholds.asks
+    );
+    const boughtLoserSide = orderFilledEvents[loserOutcome].filter(
+      (event) => event.type === "buy" && event.price > thresholds.bids
+    );
+
+    let notified = false;
+
+    // Log high volume proposals.
+    if (marketInfo.volumeNum > thresholds.volume) {
+      await logProposalHighVolume(
+        logger,
+        { ...proposal, ...marketInfo, scores, multipleValuesQuery, isSportsMarket },
+        params
+      );
+      notified = true;
+    }
+
+    // Log market sentiment discrepancies.
+    if (sellingWinnerSide || buyingLoserSide || soldWinnerSide.length > 0 || boughtLoserSide.length > 0) {
+      await logMarketSentimentDiscrepancy(
+        logger,
+        {
+          ...proposal,
+          ...marketInfo,
+          sellingWinnerSide,
+          buyingLoserSide,
+          soldWinnerSide,
+          boughtLoserSide,
+          scores,
+          multipleValuesQuery,
+          isSportsMarket,
+        },
+        params
+      );
+      notified = true;
+    }
+
+    if (notified) {
+      return {
+        notified,
+        notifiedProposal: {
+          txHash: proposal.proposalHash,
+          question: marketInfo.question,
+          proposedPrice: proposal.proposedPrice,
+          requestTimestamp: proposal.requestTimestamp,
+        },
       };
-
-      // Log high volume proposals.
-      if (polymarketInfo.volumeNum > thresholds.volume) {
-        await logProposalHighVolume(
-          logger,
-          { ...proposal, ...polymarketInfo, scores, multipleValuesQuery, isSportsMarket },
-          params
-        );
-        notified = true;
-      }
-
-      // Log market sentiment discrepancies.
-      if (sellingWinnerSide || buyingLoserSide || soldWinnerSide.length > 0 || boughtLoserSide.length > 0) {
-        await logMarketSentimentDiscrepancy(
-          logger,
-          {
-            ...proposal,
-            ...polymarketInfo,
-            sellingWinnerSide,
-            buyingLoserSide,
-            soldWinnerSide,
-            boughtLoserSide,
-            scores,
-            multipleValuesQuery,
-            isSportsMarket,
-          },
-          params
-        );
-        notified = true;
-      }
-
-      return { notified, notifiedProposal: notified ? notificationData : null };
-    })
-  );
+    }
+  }
+  return { notified: false, notifiedProposal: null };
 }
 
 export async function monitorTransactionsProposedOrderBook(
@@ -155,25 +160,24 @@ export async function monitorTransactionsProposedOrderBook(
     params.ctfSportsOracleAddress,
   ];
 
-  // Retrieve proposals from both v2 and v1, then merge the results.
-  const proposedPriceRequestsOOv2 = await getPolymarketProposedPriceRequestsOO(params, "v2", polymarketRequesters);
-  const proposedPriceRequestsOOv1 = await getPolymarketProposedPriceRequestsOO(params, "v1", polymarketRequesters);
-  const livePolymarketProposalRequests = [...proposedPriceRequestsOOv2, ...proposedPriceRequestsOOv1];
+  // Merge proposals from v2 and v1.
+  const proposalsV2 = await getPolymarketProposedPriceRequestsOO(params, "v2", polymarketRequesters);
+  const proposalsV1 = await getPolymarketProposedPriceRequestsOO(params, "v1", polymarketRequesters);
+  const proposals = [...proposalsV2, ...proposalsV1];
 
-  console.log(`Checking proposal price for ${livePolymarketProposalRequests.length} markets...`);
+  console.log(`Checking proposal price for ${proposals.length} markets...`);
   const notifiedProposals = [];
 
-  for (const proposal of livePolymarketProposalRequests) {
-    // Skip proposals that have already been notified.
-    if (Object.keys(pastNotifiedProposals).includes(getProposalKeyToStore(proposal))) continue;
+  for (const proposal of proposals) {
+    // Skip proposals that have already been processed.
+    if (Object.keys(pastNotifiedProposals).includes(getProposalKeyToStore(proposal))) {
+      continue;
+    }
 
     try {
-      const processingResults = await processProposal(proposal, params, logger);
-      for (const result of processingResults) {
-        if (result.notified) {
-          notifiedProposals.push(proposal);
-          break; // A single proposal can have multiple markets, we only notify once.
-        }
+      const { notified } = await processProposal(proposal, params, logger);
+      if (notified) {
+        notifiedProposals.push(proposal);
       }
     } catch (error) {
       await logFailedMarketProposalVerification(logger, params.chainId, proposal, error as Error);
