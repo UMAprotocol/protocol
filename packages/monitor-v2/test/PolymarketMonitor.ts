@@ -92,6 +92,7 @@ describe("PolymarketNotifier", function () {
       unknownProposalNotificationInterval: 1800,
       retryAttempts: 3,
       retryDelayMs: 1000,
+      checkBeforeExpirationSeconds: 0,
     };
   };
 
@@ -654,6 +655,63 @@ describe("PolymarketNotifier", function () {
           assert.deepEqual(payouts, [1, 0]);
         });
       });
+    });
+  });
+
+  describe("getPolymarketProposedPriceRequestsOO Filtering", function () {
+    it("should return only events with expirationTimestamp greater than current time plus checkBeforeExpirationSeconds", async function () {
+      const fakeRequester = "0xFAKE_REQUESTER";
+      // Set a fixed current time (in seconds)
+      const fakeTime = 1600000000;
+      // Stub Date.now() to return fakeTime * 1000
+      const dateNowStub = sandbox.stub(Date, "now").returns(fakeTime * 1000);
+
+      // Create two fake events:
+      // Event 1: expires at fakeTime + 100 seconds (below the 120s threshold)
+      const fakeEventBelow = {
+        transactionHash: "0xeventBelow",
+        logIndex: 0,
+        blockNumber: 90,
+        args: {
+          requester: fakeRequester,
+          expirationTimestamp: ethers.BigNumber.from(fakeTime + 100),
+          timestamp: ethers.BigNumber.from(fakeTime - 50),
+          ancillaryData: "data",
+          proposedPrice: ethers.BigNumber.from(123),
+        },
+      };
+      // Event 2: expires at fakeTime + 200 seconds (above the 120s threshold)
+      const fakeEventAbove = {
+        transactionHash: "0xeventAbove",
+        logIndex: 0,
+        blockNumber: 90,
+        args: {
+          requester: fakeRequester,
+          expirationTimestamp: ethers.BigNumber.from(fakeTime + 200),
+          timestamp: ethers.BigNumber.from(fakeTime - 50),
+          ancillaryData: "data",
+          proposedPrice: ethers.BigNumber.from(456),
+        },
+      };
+      // Stub paginatedEventQuery to return both fake events.
+      const paginatedEventQueryStub = sandbox
+        .stub(commonModule, "paginatedEventQuery")
+        .callsFake(async () => [fakeEventBelow as any, fakeEventAbove as any]);
+
+      const params = await createMonitoringParams();
+      // Set the new parameter to 120 seconds.
+      params.checkBeforeExpirationSeconds = 120;
+      const result = await commonModule.getPolymarketProposedPriceRequestsOO(params, "v2", [fakeRequester]);
+      // Expect that only the event with expirationTime fakeTime+200 is returned.
+      assert.equal(result.length, 1, "Expected one event to pass the expiration filter");
+      assert.equal(
+        result[0].requestHash,
+        "0xeventAbove",
+        "Expected the event with higher expiration timestamp to pass"
+      );
+
+      dateNowStub.restore();
+      paginatedEventQueryStub.restore();
     });
   });
 });

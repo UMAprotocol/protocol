@@ -1,4 +1,6 @@
-import { getRetryProvider, paginatedEventQuery } from "@uma/common";
+import { getRetryProvider, paginatedEventQuery as umaPaginatedEventQuery } from "@uma/common";
+export const paginatedEventQuery = umaPaginatedEventQuery;
+
 import { NetworkerInterface } from "@uma/financial-templates-lib";
 
 import type { Provider } from "@ethersproject/abstract-provider";
@@ -42,6 +44,7 @@ export interface MonitoringParams {
   unknownProposalNotificationInterval: number;
   retryAttempts: number;
   retryDelayMs: number;
+  checkBeforeExpirationSeconds: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -149,9 +152,13 @@ export const getPolymarketProposedPriceRequestsOO = async (
     searchConfig
   );
 
+  const currentTime = Math.floor(Date.now() / 1000);
+
   return events
     .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
-    .filter((event) => event.args.expirationTimestamp.gt(BigNumber.from(Math.floor(Date.now() / 1000))))
+    .filter((event) =>
+      event.args.expirationTimestamp.gt(BigNumber.from(currentTime + params.checkBeforeExpirationSeconds))
+    )
     .map((event) => {
       return {
         requestHash: event.transactionHash,
@@ -498,6 +505,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     ? Number(env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL)
     : 300; // 5 minutes
 
+  const checkBeforeExpirationSeconds = env.CHECK_BEFORE_EXPIRATION_SECONDS
+    ? Number(env.CHECK_BEFORE_EXPIRATION_SECONDS)
+    : 1800; // default to 30 minutes
   return {
     binaryAdapterAddress,
     ctfAdapterAddress,
@@ -514,6 +524,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     unknownProposalNotificationInterval,
     retryAttempts,
     retryDelayMs,
+    checkBeforeExpirationSeconds,
   };
 };
 
