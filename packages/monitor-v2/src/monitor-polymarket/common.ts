@@ -157,7 +157,9 @@ export const getPolymarketProposedPriceRequestsOO = async (
   return events
     .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
     .filter((event) =>
-      event.args.expirationTimestamp.gt(BigNumber.from(currentTime + params.checkBeforeExpirationSeconds))
+      BigNumber.from(currentTime).gt(
+        event.args.expirationTimestamp.sub(BigNumber.from(params.checkBeforeExpirationSeconds))
+      )
     )
     .map((event) => {
       return {
