@@ -92,7 +92,7 @@ describe("PolymarketNotifier", function () {
       unknownProposalNotificationInterval: 1800,
       retryAttempts: 3,
       retryDelayMs: 1000,
-      checkBeforeExpirationSeconds: 0,
+      checkBeforeExpirationSeconds: Date.now() + 1000 * 60 * 60 * 24,
     };
   };
 

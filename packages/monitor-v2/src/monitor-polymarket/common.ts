@@ -485,7 +485,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const ctfAdapterAddress = "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74";
   const ctfAdapterAddressV2 = "0x2f5e3684cb1f318ec51b00edba38d79ac2c0aa9d";
   const ctfExchangeAddress = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E";
-  const ctfSportsOracleAddress = "0xbec046ae23fee91643a45b03f12c6afdb2628d9c";
+  const ctfSportsOracleAddress = "0xb21182d0494521Cf45DbbeEbb5A3ACAAb6d22093";
 
   const graphqlEndpoint = "https://gamma-api.polymarket.com/query";
   const apiEndpoint = "https://clob.polymarket.com";
