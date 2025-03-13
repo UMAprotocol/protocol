@@ -153,14 +153,17 @@ export const getPolymarketProposedPriceRequestsOO = async (
   );
 
   const currentTime = Math.floor(Date.now() / 1000);
+  const currentTimeBN = BigNumber.from(currentTime);
+  const threshold = BigNumber.from(params.checkBeforeExpirationSeconds);
 
   return events
     .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
-    .filter((event) =>
-      BigNumber.from(currentTime).gt(
-        event.args.expirationTimestamp.sub(BigNumber.from(params.checkBeforeExpirationSeconds))
-      )
-    )
+    .filter((event) => {
+      const expirationTime = event.args.expirationTimestamp;
+      const thresholdTime = expirationTime.sub(threshold);
+      // Only keep if current time is greater than (expiration - threshold) but less than expiration.
+      return currentTimeBN.gt(thresholdTime) && currentTimeBN.lt(expirationTime);
+    })
     .map((event) => {
       return {
         requestHash: event.transactionHash,
