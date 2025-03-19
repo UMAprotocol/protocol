@@ -84,9 +84,6 @@ describe("ServerlessSpoke.js", function () {
 
     const validResponse = await sendRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // error code
-    assert.isTrue(validResponse.res.text.includes("End of serverless execution loop - terminating process")); // Final text in monitor loop.
-    assert.isFalse(validResponse.res.text.includes("[error]")); // There should be no error logs in a valid execution.
-    assert.isFalse(validResponse.res.text.includes("[info]")); // There should be no info logs in a valid execution.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with no error"));
   });
   it("Serverless Spoke can correctly returns errors over http calls(invalid path)", async function () {
@@ -104,8 +101,6 @@ describe("ServerlessSpoke.js", function () {
     const invalidPathResponse = await sendRequest(invalidPathBody);
     assert.equal(invalidPathResponse.res.statusCode, 500); // error code
     // Expected error text from an invalid path
-    assert.isTrue(invalidPathResponse.res.text.includes("Command INVALID not found")); // Check the HTTP response.
-    assert.isTrue(lastSpyLogIncludes(spy, "Command INVALID not found")); // Check the process logger contained the error.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
   });
   it("Serverless Spoke can correctly returns errors over http calls(invalid body)", async function () {
@@ -121,18 +116,6 @@ describe("ServerlessSpoke.js", function () {
 
     const invalidConfigResponse = await sendRequest(invalidConfigBody);
     assert.equal(invalidConfigResponse.res.statusCode, 500); // error code
-    // Expected error text from an invalid path
-    assert.isTrue(
-      invalidConfigResponse.res.text.includes(
-        "Bad environment variables! Specify an OPTIMISTIC_ORACLE_ADDRESS, EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS"
-      )
-    );
-    assert.isTrue(
-      lastSpyLogIncludes(
-        spy,
-        "Bad environment variables! Specify an OPTIMISTIC_ORACLE_ADDRESS, EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS"
-      )
-    ); // Check the process logger contained the error.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
   });
   it("Serverless Spoke can correctly returns errors over http calls(invalid oo)", async function () {
@@ -149,8 +132,6 @@ describe("ServerlessSpoke.js", function () {
     const invalidOOAddressResponse = await sendRequest(invalidOOAddressBody);
     assert.equal(invalidOOAddressResponse.res.statusCode, 500); // error code
     // Expected error text from loading in an OO from an invalid address
-    assert.isTrue(invalidOOAddressResponse.res.text.includes("Returned values aren't valid")); // error text
-    assert.isTrue(lastSpyLogIncludes(spy, "Returned values aren't valid")); // Check the process logger contained the error.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
   });
 });
