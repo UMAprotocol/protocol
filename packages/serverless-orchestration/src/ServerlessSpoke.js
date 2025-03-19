@@ -68,14 +68,14 @@ spoke.post("/", async (req, res) => {
     logger.debug({
       at: "ServerlessSpoke",
       message: "Process exited with no error",
-      childProcessIdentifier: _getChildProcessIdentifier(req)
+      childProcessIdentifier: _getChildProcessIdentifier(req),
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
 
     res.status(200).send({
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      success: true
+      success: true,
     });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
@@ -85,13 +85,13 @@ spoke.post("/", async (req, res) => {
       message: "Process exited with error 🚨",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       jsonBody: req.body,
-      error: execResponse instanceof Error ? execResponse.message : execResponse
+      error: execResponse instanceof Error ? execResponse.message : execResponse,
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      error: execResponse instanceof Error ? execResponse.message : execResponse
+      error: execResponse instanceof Error ? execResponse.message : execResponse,
     });
   }
 });
