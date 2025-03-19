@@ -68,15 +68,14 @@ spoke.post("/", async (req, res) => {
     logger.debug({
       at: "ServerlessSpoke",
       message: "Process exited with no error",
-      childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse,
+      childProcessIdentifier: _getChildProcessIdentifier(req)
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
 
     res.status(200).send({
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse,
+      success: true
     });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
@@ -86,68 +85,29 @@ spoke.post("/", async (req, res) => {
       message: "Process exited with error 🚨",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       jsonBody: req.body,
-      execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
+      error: execResponse instanceof Error ? execResponse.message : execResponse
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
+      error: execResponse instanceof Error ? execResponse.message : execResponse
     });
   }
 });
 
-function _execShellCommand(cmd, inputEnv, strategyRunnerSpoke = false) {
+function _execShellCommand(cmd, inputEnv) {
   return new Promise((resolve) => {
     const { stdout, stderr } = exec(
       cmd,
       { env: { ...process.env, ...inputEnv }, stdio: "inherit", maxBuffer },
-      (error, stdout, stderr) => {
-        // The output from the process execution contains punctuation marks and escape chars that should be stripped.
-        stdout = _stripExecStdout(stdout, strategyRunnerSpoke);
-        stderr = _stripExecStdError(stderr);
-        resolve({ error, stdout, stderr });
+      (error) => {
+        resolve({ error });
       }
     );
     stdout.pipe(process.stdout);
     stderr.pipe(process.stderr);
   });
-}
-
-// Format stdout outputs. Turns all logs generated while running the script into an array of Json objects.
-function _stripExecStdout(output, strategyRunnerSpoke = false) {
-  if (!output) return output;
-  // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parsable
-  // form if the spoke was running a process that did not correctly generate a winston log. In this case simply return
-  // the stripped output. Note that we use an array to preserve the log ordering.
-
-  try {
-    const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
-    const logsArray = JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
-    // If the body contains `strategyRunnerSpoke` return filter to only return the `BotStrategyRunner` logs. This is
-    // done to clean up the upstream logs produced by the bots so the serverless hub can still produce meaningful logs
-    // while preserving the individual bot execution logs within GCP when using the strategy runner.
-    if (strategyRunnerSpoke) return logsArray.filter((logMessage) => logMessage.at == "BotStrategyRunner");
-    // extract only the `message` field from each log to reduce how much is sent back to the hub and logged in GCP.
-    else return logsArray.map((logMessage) => logMessage["message"]);
-  } catch (error) {
-    return _regexStrip(output).replace(/\r?\n|\r/g, " "); // Remove escaped new line chars. Replace with space between each log output.
-  }
-}
-
-// Format stderr outputs.
-function _stripExecStdError(output) {
-  if (!output) return output;
-  return _regexStrip(output)
-    .replace(/\r?\n|\r/g, "")
-    .replace(/"/g, ""); // Remove escaped new line chars. Replace with no space.
-}
-
-// This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
-function _regexStrip(output) {
-  return output
-    .replace(/\s\s+/g, " ") // Remove tabbed chars.
-    .replace(/\\"/g, ""); // Remove escaped quotes.
 }
 
 function _getChildProcessIdentifier(req) {
