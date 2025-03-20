@@ -463,7 +463,6 @@ describe("ServerlessHub.js", function () {
       responseObject.output.errorOutputs["testServerlessMonitorError2"].botIdentifier,
       "testServerlessMonitorError2"
     ); // Check that the valid output is the expected bot
-
     assert.isTrue(responseObject.output.errorOutputs["testServerlessMonitorError"].error.error.code !== 0); // invalid path error
     assert.isTrue(responseObject.output.errorOutputs["testServerlessMonitorError2"].error.error.code !== 0); // invalid oo error
   });
