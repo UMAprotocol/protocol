@@ -13,18 +13,13 @@
 const express = require("express");
 const spoke = express();
 spoke.use(express.json()); // Enables json to be parsed by the express process.
-const exec = require("child_process").exec;
+const spawn = require("child_process").spawn;
 
 const { delay, createNewLogger } = require("@uma/financial-templates-lib");
 
 let customLogger;
 
 const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
-
-// To be used with exec to override the default input output buffer size.
-// 1024 * 1024 is the default.
-// This is 1024 * 1024 * 8.
-const maxBuffer = 8388608;
 
 spoke.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger with a run identifier if passed from the Hub.
@@ -56,15 +51,8 @@ spoke.post("/", async (req, res) => {
       });
     }
 
-    const execResponse = await _execShellCommand(
-      req.body.serverlessCommand,
-      processedEnvironmentVariables,
-      req.body.strategyRunnerSpoke
-    );
+    await _execShellCommand(req.body.serverlessCommand, processedEnvironmentVariables, req.body.strategyRunnerSpoke);
 
-    if (execResponse.error) {
-      throw execResponse;
-    }
     logger.debug({
       at: "ServerlessSpoke",
       message: "Process exited with no error",
@@ -96,17 +84,27 @@ spoke.post("/", async (req, res) => {
   }
 });
 
-function _execShellCommand(cmd, inputEnv) {
-  return new Promise((resolve) => {
-    const { stdout, stderr } = exec(
-      cmd,
-      { env: { ...process.env, ...inputEnv }, stdio: "inherit", maxBuffer },
-      (error) => {
-        resolve({ error });
+function _execShellCommand(fullCommand, inputEnv) {
+  return new Promise((resolve, reject) => {
+    const [cmd, ...args] = fullCommand.split(" ");
+    const child = spawn(cmd, args, { env: { ...process.env, ...inputEnv }, stdio: "pipe" });
+
+    // Wait for the process to exit to resolve the promise.
+    child.on("exit", (code, signal) => {
+      if (code === 0) {
+        resolve();
+      } else if (code !== null) {
+        // Process exited on its own with a non-zero exit code.
+        reject(new Error(`Process exited with code ${code}`));
+      } else {
+        // Process exited because of a signal.
+        reject(new Error(`Process exited with signal ${signal}`));
       }
-    );
-    stdout.pipe(process.stdout);
-    stderr.pipe(process.stderr);
+    });
+
+    // Pipe the stdout and stderr to the parent process.
+    child.stdout.pipe(process.stdout);
+    child.stderr.pipe(process.stderr);
   });
 }
 
