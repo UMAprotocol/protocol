@@ -463,8 +463,8 @@ describe("ServerlessHub.js", function () {
       responseObject.output.errorOutputs["testServerlessMonitorError2"].botIdentifier,
       "testServerlessMonitorError2"
     ); // Check that the valid output is the expected bot
-    assert.isTrue(responseObject.output.errorOutputs["testServerlessMonitorError"].error.error.code !== 0); // invalid path error
-    assert.isTrue(responseObject.output.errorOutputs["testServerlessMonitorError2"].error.error.code !== 0); // invalid oo error
+    assert.isTrue(responseObject.output.errorOutputs["testServerlessMonitorError"].error.includes("code 1")); // invalid path error
+    assert.isTrue(responseObject.output.errorOutputs["testServerlessMonitorError2"].error.includes("code 1")); // invalid oo error
   });
   it("ServerlessHub can correctly inject common config into child configs", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
