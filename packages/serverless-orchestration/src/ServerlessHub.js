@@ -593,44 +593,19 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
     };
   } else if (
     spokeResponse.status == "rejected" ||
-    (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.error) ||
+    (spokeResponse.value && !spokeResponse.value.success) ||
     (spokeResponse.reason && spokeResponse.reason.code == "500")
   ) {
     errorOutputs[botKey] = {
       status: spokeResponse.status,
-      execResponse:
-        (spokeResponse.value && spokeResponse.value.execResponse) ||
-        (spokeResponse.reason &&
-          spokeResponse.reason.response &&
-          spokeResponse.reason.response.data &&
-          spokeResponse.reason.response.data.execResponse),
+      error: spokeResponse.value?.error || spokeResponse.reason?.error,
       botIdentifier: botKey,
       runIds: spokeResponse?.reason?.runIds || spokeResponse?.value?.runIds,
-    };
-  } else if (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.stdout == "") {
-    errorOutputs[botKey] = {
-      status: spokeResponse.status,
-      execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-      message: "empty stdout",
-      botIdentifier: botKey,
-      runIds: spokeResponse.value.runIds,
-    };
-  } else if (
-    spokeResponse.value &&
-    spokeResponse.value.execResponse &&
-    !JSON.stringify(spokeResponse.value.execResponse.stdout).includes("started")
-  ) {
-    errorOutputs[botKey] = {
-      status: spokeResponse.status,
-      execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-      message: "missing `started` keyword",
-      botIdentifier: botKey,
-      runIds: spokeResponse.value.runIds,
     };
   } else {
     validOutputs[botKey] = {
       status: spokeResponse.status,
-      execResponse: spokeResponse.value && spokeResponse.value.execResponse,
+      success: true,
       botIdentifier: botKey,
       runIds: spokeResponse?.value?.runIds,
     };
