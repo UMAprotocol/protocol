@@ -86,6 +86,14 @@ describe("ServerlessSpoke.js", function () {
     assert.equal(validResponse.res.statusCode, 200); // error code
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with no error"));
   });
+  it("Serverless Spoke executes serverlessCommand in a shell", async function () {
+    const validBody = {
+      serverlessCommand: "test -n ${SHELL} && echo shell: ${SHELL}",
+      environmentVariables: {},
+    };
+    const validResponse = await sendRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // error code
+  });
   it("Serverless Spoke can correctly returns errors over http calls(invalid path)", async function () {
     // Invalid path should error out when trying to run an executable that does not exist
     const invalidPathBody = {
