@@ -88,7 +88,7 @@ describe("ServerlessSpoke.js", function () {
   });
   it("Serverless Spoke executes serverlessCommand in a shell", async function () {
     const validBody = {
-      serverlessCommand: 'test -n ${SHELL} && echo shell: ${SHELL}',
+      serverlessCommand: "test -n ${SHELL} && echo shell: ${SHELL}",
       environmentVariables: {},
     };
     const validResponse = await sendRequest(validBody);
