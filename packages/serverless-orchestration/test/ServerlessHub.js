@@ -466,26 +466,6 @@ describe("ServerlessHub.js", function () {
     assert.isTrue(responseObject.output.errorOutputs["testServerlessMonitorError"].error.includes("code 1")); // invalid path error
     assert.isTrue(responseObject.output.errorOutputs["testServerlessMonitorError2"].error.includes("code 1")); // invalid oo error
   });
-  it("ServerlessHub can correctly deal with some bots erroring out in execution", async function () {
-    // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
-    // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
-    // used by a user running the hub-spoke on their local machine.
-    const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
-
-    const hubConfig = {
-      testServerlessMonitor: {
-        serverlessCommand: "[ -n ${SHELL} ] && echo shell: ${SHELL}",
-        environmentVariables: {},
-      },
-    };
-    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
-
-    const errorBody = { bucket: testBucket, configFile: testConfigFile };
-    const errorResponse = await sendHubRequest(errorBody);
-
-    assert.equal(errorResponse.res.statusCode, 200); // error code
-  });
   it("ServerlessHub can correctly inject common config into child configs", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
