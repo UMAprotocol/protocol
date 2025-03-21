@@ -84,10 +84,9 @@ spoke.post("/", async (req, res) => {
   }
 });
 
-function _execShellCommand(fullCommand, inputEnv) {
+function _execShellCommand(cmd, inputEnv) {
   return new Promise((resolve, reject) => {
-    const [cmd, ...args] = fullCommand.split(" ");
-    const child = spawn(cmd, args, { env: { ...process.env, ...inputEnv }, stdio: "pipe", shell: true });
+    const child = spawn(cmd, [], { env: { ...process.env, ...inputEnv }, stdio: "pipe", shell: true });
 
     // Wait for the process to exit to resolve the promise.
     child.on("exit", (code, signal) => {

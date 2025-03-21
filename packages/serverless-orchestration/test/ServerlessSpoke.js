@@ -94,6 +94,17 @@ describe("ServerlessSpoke.js", function () {
     const validResponse = await sendRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // error code
   });
+  it("Serverless Spoke can execute multiple chained commands with &&", async function () {
+    const validBody = {
+      serverlessCommand: "cd . && echo TEST_VAR=${TEST_VAR}",
+      environmentVariables: {
+        TEST_VAR: "test_value",
+      },
+    };
+    const validResponse = await sendRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // error code
+    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with no error")); // Verify the process completed successfully
+  });
   it("Serverless Spoke can correctly returns errors over http calls(invalid path)", async function () {
     // Invalid path should error out when trying to run an executable that does not exist
     const invalidPathBody = {
