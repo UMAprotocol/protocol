@@ -75,7 +75,7 @@ async function simulateVoteV2() {
   async function _getAndDisplayVotingRoundStats() {
     const numProposals = Number(await governorV2.numProposals());
     assert(numProposals >= 1, "Must be at least 1 pending proposal");
-    const pendingRequests = await votingV2.callStatic.getPendingRequests();
+    const pendingRequests = (await votingV2.callStatic.getPendingRequests()).filter((request) => request.isGovernance);
     const currentTime = Number(await votingV2.getCurrentTime());
     const votingPhase = Number(await votingV2.getVotePhase());
     const roundId = Number(await votingV2.getCurrentRoundId());
@@ -167,9 +167,15 @@ async function simulateVoteV2() {
     const impersonatedSigner = await ethers.getImpersonatedSigner(voter);
     for (let i = 0; i < voterRequests[voter].length; i++) {
       const request = voterRequests[voter][i];
+      const estimatedGas = await votingV2
+        .connect(impersonatedSigner)
+        .estimateGas.commitVote(request.identifier, request.time, request.ancillaryData, request.voteHash);
+      // Send with double the estimated gas to ensure the transaction goes through.
       const txn = await votingV2
         .connect(impersonatedSigner)
-        .functions.commitVote(request.identifier, request.time, request.ancillaryData, request.voteHash);
+        .functions.commitVote(request.identifier, request.time, request.ancillaryData, request.voteHash, {
+          gasLimit: estimatedGas.mul(2),
+        });
       if (!realVoters) console.log(`- [${i + 1}/${requestsToVoteOn.length}] Commit transaction hash: ${txn.hash}`);
     }
   }
