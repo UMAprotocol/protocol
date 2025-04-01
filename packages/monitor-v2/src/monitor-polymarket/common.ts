@@ -9,7 +9,10 @@ import { GraphQLClient } from "graphql-request";
 import { BigNumber, Event, ethers } from "ethers";
 
 import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
-import { ProposePriceEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
+import {
+  ProposePriceEvent,
+  DisputePriceEvent,
+} from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 
 import { Logger } from "@uma/financial-templates-lib";
@@ -146,23 +149,49 @@ export const getPolymarketProposedPriceRequestsOO = async (
     params.provider
   );
 
-  const events = await paginatedEventQuery<ProposePriceEvent>(
+  const proposeEvents = await paginatedEventQuery<ProposePriceEvent>(
     oo,
     oo.filters.ProposePrice(null, null, null, null, null, null, null, null),
     searchConfig
+  );
+
+  const disputeEvents = await paginatedEventQuery<DisputePriceEvent>(
+    oo,
+    oo.filters.DisputePrice(null, null, null, null, null, null, null),
+    searchConfig
+  );
+
+  const disputedRequestIds = new Set(
+    disputeEvents.map((event) =>
+      ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+          ["address", "bytes32", "uint256", "bytes"],
+          [event.args.requester, event.args.identifier, event.args.timestamp, event.args.ancillaryData]
+        )
+      )
+    )
   );
 
   const currentTime = Math.floor(Date.now() / 1000);
   const currentTimeBN = BigNumber.from(currentTime);
   const threshold = BigNumber.from(params.checkBeforeExpirationSeconds);
 
-  return events
+  return proposeEvents
     .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
     .filter((event) => {
       const expirationTime = event.args.expirationTimestamp;
       const thresholdTime = expirationTime.sub(threshold);
       // Only keep if current time is greater than (expiration - threshold) but less than expiration.
       return currentTimeBN.gt(thresholdTime) && currentTimeBN.lt(expirationTime);
+    })
+    .filter((event) => {
+      const requestId = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+          ["address", "bytes32", "uint256", "bytes"],
+          [event.args.requester, event.args.identifier, event.args.timestamp, event.args.ancillaryData]
+        )
+      );
+      return !disputedRequestIds.has(requestId);
     })
     .map((event) => {
       return {
