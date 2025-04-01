@@ -660,11 +660,14 @@ describe("PolymarketNotifier", function () {
 
   describe("getPolymarketProposedPriceRequestsOO Filtering", function () {
     it("should return only events that are close enough to expiration (current time > expirationTimestamp - checkBeforeExpirationSeconds)", async function () {
-      const fakeRequester = "0xFAKE_REQUESTER";
+      const fakeRequester = "0x0000000000000000000000000000000000000000"; // Address 0
       // Set a fixed current time (in seconds)
       const fakeTime = 1600000000;
       // Stub Date.now() to return fakeTime * 1000
       const dateNowStub = sandbox.stub(Date, "now").returns(fakeTime * 1000);
+
+      const identifier = formatBytes32String("TEST_IDENTIFIER");
+      const ancillaryData = formatBytes32String("data");
 
       // Create two fake events:
       // Event 1: expires at fakeTime + 100 seconds.
@@ -677,8 +680,9 @@ describe("PolymarketNotifier", function () {
           requester: fakeRequester,
           expirationTimestamp: ethers.BigNumber.from(fakeTime + 100),
           timestamp: ethers.BigNumber.from(fakeTime - 50),
-          ancillaryData: "data",
+          ancillaryData,
           proposedPrice: ethers.BigNumber.from(123),
+          identifier,
         },
       };
       // Event 2: expires at fakeTime + 200 seconds.
@@ -691,15 +695,21 @@ describe("PolymarketNotifier", function () {
           requester: fakeRequester,
           expirationTimestamp: ethers.BigNumber.from(fakeTime + 200),
           timestamp: ethers.BigNumber.from(fakeTime - 50),
-          ancillaryData: "data",
+          ancillaryData,
           proposedPrice: ethers.BigNumber.from(456),
+          identifier,
         },
       };
 
-      // Stub paginatedEventQuery to return both fake events.
+      // Stub paginatedEventQuery to return different results based on the filter type.
       const paginatedEventQueryStub = sandbox
         .stub(commonModule, "paginatedEventQuery")
-        .callsFake(async () => [fakeEventBelow as any, fakeEventAbove as any]);
+        .callsFake(async (oo, filter) => {
+          if (filter.topics?.[0] === oo.filters.DisputePrice(null, null, null, null, null, null, null).topics?.[0]) {
+            return []; // Return an empty array for DisputePrice filter
+          }
+          return [fakeEventBelow as any, fakeEventAbove as any]; // Return existing data for ProposePrice filter
+        });
 
       const params = await createMonitoringParams();
       // Set the parameter to 120 seconds.
