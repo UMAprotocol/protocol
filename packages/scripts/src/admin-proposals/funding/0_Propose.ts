@@ -9,7 +9,7 @@
 // yarn hardhat run ./src/admin-proposals/funding/0_Propose.ts --network <network>
 
 import { strict as assert } from "assert";
-import { BigNumber, Signer } from "ethers";
+import { BigNumber, Signer, utils as ethersUtils } from "ethers";
 import hre from "hardhat";
 import { getGckmsSigner } from "@uma/common";
 import { getAddress, ERC20Ethers, ProposerV2Ethers, VotingTokenEthers } from "@uma/contracts-node";
@@ -77,7 +77,7 @@ async function getAndVerifyFundingAmount(
   // Get amount scaled by decimals.
   const token = await getContractInstance<ERC20Ethers>("ERC20", params.tokenAddress);
   const decimals = await token.decimals();
-  const fundingAmount = BigNumber.from(params.amount).mul(BigNumber.from(10).pow(decimals));
+  const fundingAmount = ethersUtils.parseUnits(params.amount.toString(), decimals);
 
   // Verify that GovernorV2 has sufficient balance.
   const governorV2Address = await getAddress("GovernorV2", 1);
