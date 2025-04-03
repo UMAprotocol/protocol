@@ -1,10 +1,10 @@
-import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV3Ethers } from "./common";
-import { logSettleAssertion } from "./BotLogger";
 import { paginatedEventQuery } from "@uma/common";
 import {
-  AssertionSettledEvent,
   AssertionMadeEvent,
+  AssertionSettledEvent,
 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV3";
+import { logSettleAssertion } from "./BotLogger";
+import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV3Ethers } from "./common";
 
 export async function settleAssertions(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
@@ -45,7 +45,9 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
   }
 
   for (const assertion of setteableAssertions) {
-    const tx = await oo.connect(params.signer).settleAssertion(assertion.args.assertionId);
+    const estimatedGas = await oo.estimateGas.settleAssertion(assertion.args.assertionId);
+    const gasLimit = estimatedGas.mul(params.gasLimitMultiplier).div(100);
+    const tx = await oo.connect(params.signer).settleAssertion(assertion.args.assertionId, { gasLimit });
     const receipt = await tx.wait();
     const event = receipt.events?.find((e) => e.event === "AssertionSettled");
     await logSettleAssertion(

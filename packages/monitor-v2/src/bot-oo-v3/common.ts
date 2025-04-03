@@ -27,6 +27,7 @@ export interface MonitoringParams {
   maxBlockLookBack: number;
   blockFinder: BlockFinder<Block>;
   pollingDelay: number;
+  gasLimitMultiplier: number;
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -60,6 +61,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const blockFinder = new BlockFinder(provider.getBlock.bind(provider), undefined, chainId);
 
+  const gasLimitMultiplier = Number(env.GAS_LIMIT_MULTIPLIER) || 150; // In percent
+
   return {
     provider,
     chainId,
@@ -69,6 +72,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     maxBlockLookBack,
     blockFinder,
     pollingDelay,
+    gasLimitMultiplier,
   };
 };
 

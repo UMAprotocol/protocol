@@ -1,3 +1,4 @@
+import "@nomiclabs/hardhat-ethers";
 import { addGlobalHardhatTestingAddress, ZERO_ADDRESS } from "@uma/common";
 import {
   AddressWhitelistEthers,
@@ -11,18 +12,25 @@ import { assert } from "chai";
 import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
 import {
-  getMarketKeyToStore,
+  encodeMultipleQuery,
+  getProposalKeyToStore,
+  getSportsPayouts,
   MarketOrderbook,
+  MarketType,
   MonitoringParams,
+  OptimisticPriceRequest,
+  Ordering,
   PolymarketMarketGraphqlProcessed,
   PolymarketTradeInformation,
+  Underdog,
 } from "../src/monitor-polymarket/common";
 import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
+import { tryHexToUtf8String } from "../src/utils/contracts";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
-import { tryHexToUtf8String } from "../src/utils/contracts";
-
 const ethers = hre.ethers;
+
+type CommonModuleFunctions = keyof typeof commonModule;
 
 describe("PolymarketNotifier", function () {
   let sandbox: sinon.SinonSandbox;
@@ -35,13 +43,15 @@ describe("PolymarketNotifier", function () {
 
   const ONE = ethers.utils.parseEther("1");
 
-  const marketInfo: PolymarketMarketGraphqlProcessed = {
-    clobTokenIds: ["0x1234", "0x1234"],
-    volumeNum: 200_000,
-    outcomes: ["Yes", "No"],
-    outcomePrices: ["1", "0"],
-    question: "Will NATO expand by June 30?",
-  };
+  const marketInfo: PolymarketMarketGraphqlProcessed[] = [
+    {
+      clobTokenIds: ["0x1234", "0x1234"],
+      volumeNum: 200_000,
+      outcomes: ["Yes", "No"],
+      outcomePrices: ["1", "0"],
+      question: "Will NATO expand by June 30?",
+    },
+  ];
 
   const emptyOrders: [MarketOrderbook, MarketOrderbook] = [
     {
@@ -62,6 +72,7 @@ describe("PolymarketNotifier", function () {
     const ctfAdapterAddress = await deployer.getAddress();
     const ctfAdapterAddressV2 = "0x1234";
     const ctfExchangeAddress = "0x1234";
+    const ctfSportsOracleAddress = "0x1234";
     const graphqlEndpoint = "endpoint";
     const apiEndpoint = "endpoint";
 
@@ -70,6 +81,7 @@ describe("PolymarketNotifier", function () {
       ctfAdapterAddress,
       ctfAdapterAddressV2,
       ctfExchangeAddress,
+      ctfSportsOracleAddress,
       maxBlockLookBack: 3499,
       graphqlEndpoint,
       apiEndpoint,
@@ -78,6 +90,9 @@ describe("PolymarketNotifier", function () {
       pollingDelay: 0,
       polymarketApiKey: "key",
       unknownProposalNotificationInterval: 1800,
+      retryAttempts: 3,
+      retryDelayMs: 1000,
+      checkBeforeExpirationSeconds: Date.now() + 1000 * 60 * 60 * 24,
     };
   };
 
@@ -136,13 +151,13 @@ describe("PolymarketNotifier", function () {
     sandbox.restore();
   });
 
-  function mockFunctionWithReturnValue(functionName, mockValue) {
+  function mockFunctionWithReturnValue(functionName: CommonModuleFunctions, mockValue: any) {
     const mockDataFunction = sandbox.stub();
     mockDataFunction.returns(mockValue);
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
 
-  function mockFunctionThrowsError(functionName, errorMessage = "Mock error") {
+  function mockFunctionThrowsError(functionName: CommonModuleFunctions, errorMessage = "Mock error") {
     const mockDataFunction = sandbox.stub();
     mockDataFunction.throws(new Error(errorMessage));
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
@@ -172,7 +187,7 @@ describe("PolymarketNotifier", function () {
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
+    // Call monitorTransactionsProposedOrderBook for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
@@ -184,22 +199,23 @@ describe("PolymarketNotifier", function () {
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.isTrue(
       spyLogIncludes(spy, 0, ` Someone is trying to sell 100 winner outcome tokens at a price of 0.9 on the orderbook.`)
-    ); // price
+    );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should not notify if order book is empty", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should not have been called as the order book is empty.
+    // No notifications should be logged.
     assert.equal(spy.callCount, 0);
   });
+
   it("It should notify if there are sell trades over the threshold", async function () {
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
@@ -219,12 +235,10 @@ describe("PolymarketNotifier", function () {
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
@@ -238,9 +252,10 @@ describe("PolymarketNotifier", function () {
             orderFilledEvents[0]
           )}`
         )
-    ); // price
+    );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should notify if there are buy trades over the threshold", async function () {
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
@@ -260,12 +275,10 @@ describe("PolymarketNotifier", function () {
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
@@ -279,23 +292,22 @@ describe("PolymarketNotifier", function () {
             orderFilledEvents[1]
           )}`
         )
-    ); // price
+    );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should notify if there are proposals with high volume", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", { ...marketInfo, volumeNum: 2_000_000 });
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo, volumeNum: 2_000_000 }]);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(
@@ -305,20 +317,19 @@ describe("PolymarketNotifier", function () {
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should notify if market polymarket information is not found", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
-    mockFunctionThrowsError("getPolymarketMarketInformation");
+    mockFunctionThrowsError("getPolymarketMarketInformation", "Market not found");
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called as the market adapter is unknown.
     assert.equal(spy.callCount, 1);
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Failed to verify proposed market, please verify manually! 🚨");
@@ -332,6 +343,7 @@ describe("PolymarketNotifier", function () {
     );
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
+
   it("It should not notify if already notified", async function () {
     sandbox.restore();
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
@@ -355,18 +367,18 @@ describe("PolymarketNotifier", function () {
     getNotifiedProposalsStub.restore();
     const getNotifiedProposalsMock = sandbox.stub();
     getNotifiedProposalsMock.returns({
-      [getMarketKeyToStore({ proposalHash: tx.hash })]: { proposalHash: tx.hash },
+      [getProposalKeyToStore({ proposalHash: tx.hash })]: { proposalHash: tx.hash },
     });
     sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should not have been called as the market adapter is unknown and was already notified.
+    // Already notified proposals should not trigger any logs.
     assert.equal(spy.callCount, 0);
   });
+
   it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
@@ -381,18 +393,339 @@ describe("PolymarketNotifier", function () {
     ];
 
     mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", { ...marketInfo, volumeNum: 2_000_000 });
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo, volumeNum: 2_000_000 }]);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
-    // Call monitorAssertions directly for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
     // The spy should have been called 2 times
     assert.equal(spy.callCount, 2);
+  });
+
+  describe("Sports Market Notifications", function () {
+    const sportsAncillaryData = ethers.utils.hexlify(
+      ethers.utils.toUtf8Bytes(
+        JSON.stringify({
+          title: "Los Angeles Lakers vs Boston Celtics",
+          description:
+            'Final scores for the "Los Angeles Lakers" vs "Boston Celtics" NBA game scheduled for Jan 7, 2025.',
+          labels: ["Lakers", "Celtics"],
+        })
+      )
+    );
+
+    it("should notify for a sports market", async function () {
+      const params = await createMonitoringParams();
+      // We are proposing Lakers 60, Celtics 50
+      const proposedPrice = encodeMultipleQuery(["60", "50"]);
+      const sportsProposal: OptimisticPriceRequest = {
+        proposalHash: "0xvalidsports",
+        requester: params.ctfSportsOracleAddress,
+        proposedPrice,
+        requestTimestamp: ethers.BigNumber.from(Date.now()),
+        requestBlockNumber: 12345,
+        ancillaryData: sportsAncillaryData,
+        requestHash: "0xrequesthash",
+        requestLogIndex: 0,
+        proposalTimestamp: ethers.BigNumber.from(Date.now()),
+        proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+        proposalLogIndex: 0,
+      };
+
+      const stubProposals = sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .resolves([sportsProposal]);
+
+      // Fake sports market data for a Winner market.
+      const fakeSportsMarketData = {
+        marketType: commonModule.MarketType.Winner,
+        ordering: commonModule.Ordering.HomeVsAway,
+        underdog: 0, // Not used in Winner market
+        line: ethers.BigNumber.from("0"), // Not used in Winner market
+      };
+      const contractStub = sandbox.stub(commonModule, "getSportsMarketData").resolves(fakeSportsMarketData);
+
+      // The winning side is the Home team so selling tokens[0] is not profitable.
+      const sportsOrderBook: [MarketOrderbook, MarketOrderbook] = [
+        {
+          bids: [],
+          asks: [
+            {
+              price: 0.9, // below threshold (THRESHOLD_ASKS default 1)
+              size: 100,
+            },
+          ],
+        },
+        {
+          bids: [],
+          asks: [],
+        },
+      ];
+      mockFunctionWithReturnValue("getPolymarketOrderBook", sportsOrderBook);
+      mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+      mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+
+      const spy = sinon.spy();
+      const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+      await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+      // We expect a notification for the sports market due to the order book entry.
+      assert.isAbove(spy.callCount, 0);
+      const logMsg = spy.getCall(0).lastArg;
+      assert.equal(logMsg.at, "PolymarketMonitor");
+      assert.equal(logMsg.notificationPath, "polymarket-notifier");
+      assert.include(logMsg.mrkdwn, 'A price was proposed for the game "Los Angeles Lakers vs Boston Celtics"');
+      assert.include(logMsg.mrkdwn, "The final scores reported were: Lakers: 60 and Celtics: 50");
+      assert.include(
+        logMsg.mrkdwn,
+        "Someone is trying to sell 100 winner outcome tokens at a price of 0.9 on the orderbook"
+      );
+
+      stubProposals.restore();
+      contractStub.restore();
+    });
+
+    describe("getSportsPayouts", () => {
+      describe("Spreads Market", () => {
+        it("should return [0,1] when underdog (home) wins by having a higher score", () => {
+          // Market configuration: spreads market where home is the underdog.
+          // For HomeVsAway ordering, the proposedPrice encodes: home score at index 0, away score at index 1.
+          // Let line = 10.5 (after dividing by 1e6) and use scores home = 50, away = 40.
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.utils.parseUnits("10.5", 6), // represents a line of 10.5
+          };
+          const proposedPrice = encodeMultipleQuery(["50", "40"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          // For a spreads market when the underdog wins, the function returns [0, 1]
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [0,1] when underdog (home) wins because the spread is within the line", () => {
+          // Even if home is lower than away, if the difference is within the allowed line the underdog wins.
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.utils.parseUnits("10.5", 6), // line of 10.5
+          };
+          // Use scores: home = 30, away = 35 (difference 5 <= 10.5)
+          const proposedPrice = encodeMultipleQuery(["30", "35"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [1,0] when underdog (home) loses because the spread exceeds the line", () => {
+          // With the same market configuration but a tighter line, the favorite wins.
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.utils.parseUnits("5.5", 6), // line of 5.5
+          };
+          // Use scores: home = 30, away = 40 (difference 10 > 5.5)
+          const proposedPrice = encodeMultipleQuery(["30", "40"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+
+        it("should return [0,1] when underdog (away) wins", () => {
+          // For a spreads market where away is the underdog.
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Away,
+            line: ethers.utils.parseUnits("10.5", 6), // line of 10.5
+          };
+          // For Underdog = Away, the decoding swaps the scores:
+          // Use scores: home = 40, away = 50 (thus underdogScore = 50, favoriteScore = 40)
+          const proposedPrice = encodeMultipleQuery(["40", "50"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [1,0] when underdog (away) loses because the spread exceeds the line", () => {
+          const market = {
+            marketType: MarketType.Spreads,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Away,
+            line: ethers.utils.parseUnits("5.5", 6), // line of 5.5
+          };
+          // Use scores: home = 50, away = 40 (for away as underdog, this means underdogScore = 40 and favoriteScore = 50)
+          const proposedPrice = encodeMultipleQuery(["50", "40"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+      });
+
+      describe("Totals Market", () => {
+        it("should return [0,1] when the total is less than or equal to the line (favoring Under)", () => {
+          // For totals markets, the outcomes are always: ["Under", "Over"].
+          const market = {
+            marketType: MarketType.Totals,
+            ordering: Ordering.HomeVsAway, // ordering is irrelevant here
+            underdog: Underdog.Home, // not used in totals
+            line: ethers.utils.parseUnits("100.5", 6), // line of 100.5
+          };
+          // Use scores: home = 40, away = 50, so total = 90 which is <= 100.5.
+          const proposedPrice = encodeMultipleQuery(["40", "50"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [1,0] when the total is greater than the line (favoring Over)", () => {
+          const market = {
+            marketType: MarketType.Totals,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.utils.parseUnits("100.5", 6), // line of 100.5
+          };
+          // Use scores: home = 60, away = 50, so total = 110 > 100.5.
+          const proposedPrice = encodeMultipleQuery(["60", "50"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+      });
+
+      describe("Winner Market", () => {
+        it("should return [1,1] when scores are equal (draw)", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.HomeVsAway, // ordering does not affect a draw
+            underdog: Underdog.Home, // not used in Winner markets
+            line: ethers.BigNumber.from("0"), // not used in Winner markets
+          };
+          const proposedPrice = encodeMultipleQuery(["50", "50"]);
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 1]);
+        });
+
+        it("should return [1,0] for HomeVsAway ordering when home wins", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.BigNumber.from("0"),
+          };
+          const proposedPrice = encodeMultipleQuery(["60", "50"]); // home > away
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+
+        it("should return [0,1] for HomeVsAway ordering when away wins", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.HomeVsAway,
+            underdog: Underdog.Home,
+            line: ethers.BigNumber.from("0"),
+          };
+          const proposedPrice = encodeMultipleQuery(["40", "50"]); // home < away
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [0,1] for AwayVsHome ordering when home wins", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.AwayVsHome,
+            underdog: Underdog.Home,
+            line: ethers.BigNumber.from("0"),
+          };
+          const proposedPrice = encodeMultipleQuery(["50", "60"]); // home > away
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [0, 1]);
+        });
+
+        it("should return [1,0] for AwayVsHome ordering when away wins", () => {
+          const market = {
+            marketType: MarketType.Winner,
+            ordering: Ordering.AwayVsHome,
+            underdog: Underdog.Home,
+            line: ethers.BigNumber.from("0"),
+          };
+          const proposedPrice = encodeMultipleQuery(["50", "40"]); // home < away
+          const payouts = getSportsPayouts(market, proposedPrice);
+          assert.deepEqual(payouts, [1, 0]);
+        });
+      });
+    });
+  });
+
+  describe("getPolymarketProposedPriceRequestsOO Filtering", function () {
+    it("should return only events that are close enough to expiration (current time > expirationTimestamp - checkBeforeExpirationSeconds)", async function () {
+      const fakeRequester = "0x0000000000000000000000000000000000000000"; // Address 0
+      // Set a fixed current time (in seconds)
+      const fakeTime = 1600000000;
+      // Stub Date.now() to return fakeTime * 1000
+      const dateNowStub = sandbox.stub(Date, "now").returns(fakeTime * 1000);
+
+      const identifier = formatBytes32String("TEST_IDENTIFIER");
+      const ancillaryData = formatBytes32String("data");
+
+      // Create two fake events:
+      // Event 1: expires at fakeTime + 100 seconds.
+      // Calculation: (fakeTime + 100) - 120 = fakeTime - 20, so current time (fakeTime) > fakeTime - 20 => condition satisfied.
+      const fakeEventBelow = {
+        transactionHash: "0xeventBelow",
+        logIndex: 0,
+        blockNumber: 90,
+        args: {
+          requester: fakeRequester,
+          expirationTimestamp: ethers.BigNumber.from(fakeTime + 100),
+          timestamp: ethers.BigNumber.from(fakeTime - 50),
+          ancillaryData,
+          proposedPrice: ethers.BigNumber.from(123),
+          identifier,
+        },
+      };
+      // Event 2: expires at fakeTime + 200 seconds.
+      // Calculation: (fakeTime + 200) - 120 = fakeTime + 80, so current time (fakeTime) is NOT > fakeTime + 80 => condition fails.
+      const fakeEventAbove = {
+        transactionHash: "0xeventAbove",
+        logIndex: 0,
+        blockNumber: 90,
+        args: {
+          requester: fakeRequester,
+          expirationTimestamp: ethers.BigNumber.from(fakeTime + 200),
+          timestamp: ethers.BigNumber.from(fakeTime - 50),
+          ancillaryData,
+          proposedPrice: ethers.BigNumber.from(456),
+          identifier,
+        },
+      };
+
+      // Stub paginatedEventQuery to return different results based on the filter type.
+      const paginatedEventQueryStub = sandbox
+        .stub(commonModule, "paginatedEventQuery")
+        .callsFake(async (oo, filter) => {
+          if (filter.topics?.[0] === oo.filters.DisputePrice(null, null, null, null, null, null, null).topics?.[0]) {
+            return []; // Return an empty array for DisputePrice filter
+          }
+          return [fakeEventBelow as any, fakeEventAbove as any]; // Return existing data for ProposePrice filter
+        });
+
+      const params = await createMonitoringParams();
+      // Set the parameter to 120 seconds.
+      params.checkBeforeExpirationSeconds = 120;
+      const result = await commonModule.getPolymarketProposedPriceRequestsOO(params, "v2", [fakeRequester]);
+
+      // Expect that only the event with expirationTime fakeTime+100 (the "close-to-expiration" event) is returned.
+      assert.equal(result.length, 1, "Expected one event to pass the expiration filter");
+      assert.equal(
+        result[0].requestHash,
+        "0xeventBelow",
+        "Expected the event with expiration close enough to current time to pass the filter"
+      );
+
+      dateNowStub.restore();
+      paginatedEventQueryStub.restore();
+    });
   });
 });

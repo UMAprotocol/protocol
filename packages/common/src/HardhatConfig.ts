@@ -229,6 +229,12 @@ export function getHardhatConfig(
         accounts: { mnemonic },
         companionNetworks: { mainnet: "mainnet" },
       },
+      story: {
+        chainId: 1514,
+        url: getNodeUrl("story", true, 1514),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
       blast: {
         chainId: 81457,
         url: getNodeUrl("blast", true, 81457),
@@ -296,6 +302,14 @@ export function getHardhatConfig(
           urls: {
             apiURL: "https://openapi.coredao.org/api",
             browserURL: "https://scan.coredao.org/",
+          },
+        },
+        {
+          network: "story",
+          chainId: 1514,
+          urls: {
+            apiURL: "https://www.storyscan.xyz/api",
+            browserURL: "https://mainnet.storyrpc.io/",
           },
         },
         {
