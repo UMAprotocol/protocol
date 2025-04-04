@@ -11,6 +11,7 @@
 // Note: use localhost for the forked L1, for L1 mainnet need to export NODE_URL_1 environment variable.
 
 import { strict as assert } from "assert";
+import { RegistryRolesEnum } from "@uma/common";
 import {
   FinderEthers,
   getAddress,
@@ -37,6 +38,9 @@ async function verifyRegistry() {
   const registry = await getContractInstance<RegistryEthers>("Registry");
   assert(await registry.isContractRegistered(oracleRootTunnelAddress));
   console.log(` ✅ OracleRootTunnel ${oracleRootTunnelAddress} is registered`);
+  const governorV2Address = await getAddress("GovernorV2", networksNumber["mainnet"]);
+  assert(!(await registry.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, governorV2Address)));
+  console.log(` ✅ GovernorV2 ${governorV2Address} does not hold CONTRACT_CREATOR role`);
 }
 
 async function verifyParentMessenger(networkName: RollupNetwork) {
