@@ -15,11 +15,6 @@ abstract contract OracleBaseTunnel {
         int256 price;
     }
 
-    // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
-    // that a price can be requested to this contract successfully, but cannot be resolved by the DVM which refuses
-    // to accept a price request made with ancillary data length over a certain size.
-    uint256 public constant ancillaryBytesLimit = 8192;
-
     // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
 
@@ -52,7 +47,6 @@ abstract contract OracleBaseTunnel {
         uint256 time,
         bytes memory ancillaryData
     ) internal {
-        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
@@ -72,11 +66,10 @@ abstract contract OracleBaseTunnel {
     ) internal {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
-        if (lookup.state == RequestState.Requested) {
-            lookup.price = price;
-            lookup.state = RequestState.Resolved;
-            emit PushedPrice(identifier, time, ancillaryData, lookup.price, priceRequestId);
-        }
+        if (lookup.state == RequestState.Resolved) return;
+        lookup.price = price;
+        lookup.state = RequestState.Resolved;
+        emit PushedPrice(identifier, time, ancillaryData, lookup.price, priceRequestId);
     }
 
     /**

@@ -122,7 +122,11 @@ describe("Arbitrum_ChildMessenger", function () {
       // We should be able to construct the function call sent from the oracle spoke directly.
       const encodedData = web3.eth.abi.encodeParameters(
         ["bytes32", "uint256", "bytes"],
-        [priceIdentifier, requestTime, await oracleSpoke.methods.stampAncillaryData(ancillaryData).call()]
+        [
+          priceIdentifier,
+          requestTime,
+          await oracleSpoke.methods.compressAncillaryData(ancillaryData, controlledEOA, txn.blockNumber).call(),
+        ]
       );
 
       // This data is then encoded within the ParentMessenger.processMessageFromCrossChainChild function.
@@ -160,13 +164,15 @@ describe("Arbitrum_ChildMessenger", function () {
     it("Correctly decodes and sends to target when sent from parent messenger on L1", async () => {
       // For this test request a price from a registered contract and then push the price. Validate the data is
       // requested and forwarded to the oracleSpoke correctly.
-      await oracleSpoke.methods
+      const txn = await oracleSpoke.methods
         .requestPrice(priceIdentifier, defaultTimestamp, ancillaryData)
         .send({ from: controlledEOA });
 
-      const priceRequestEvents = await oracleSpoke.getPastEvents("PriceRequestAdded", { fromBock: 0 });
+      const priceRequestEvents = await oracleSpoke.getPastEvents("PriceRequestBridged", { fromBock: 0 });
 
-      const requestAncillaryData = await oracleSpoke.methods.stampAncillaryData(ancillaryData).call();
+      const requestAncillaryData = await oracleSpoke.methods
+        .compressAncillaryData(ancillaryData, controlledEOA, txn.blockNumber)
+        .call();
       const requestPrice = toWei("1234");
 
       const data = web3.eth.abi.encodeParameters(
@@ -188,7 +194,7 @@ describe("Arbitrum_ChildMessenger", function () {
           ev.identifier == priceIdentifier &&
           ev.ancillaryData == requestAncillaryData &&
           ev.price == requestPrice &&
-          ev.requestHash == priceRequestEvents[0].returnValues.requestHash
+          ev.requestHash == priceRequestEvents[0].returnValues.childRequestId
         );
       });
     });

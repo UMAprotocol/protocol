@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
 import "../data-verification-mechanism/interfaces/OracleInterface.sol";
 import "../data-verification-mechanism/interfaces/RegistryInterface.sol";
+import "./AncillaryDataCompression.sol";
 import "./OracleBase.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";
@@ -29,6 +30,28 @@ contract OracleSpoke is
     ChildMessengerConsumerInterface,
     Lockable
 {
+    using AncillaryDataCompression for bytes;
+
+    // Mapping of parent request ID to child request ID.
+    mapping(bytes32 => bytes32) public childRequestIds;
+
+    event PriceRequestBridged(
+        address indexed requester,
+        bytes32 identifier,
+        uint256 time,
+        bytes ancillaryData,
+        bytes32 indexed childRequestId,
+        bytes32 indexed parentRequestId
+    );
+    event ResolvedLegacyRequest(
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        int256 price,
+        bytes32 indexed requestHash,
+        bytes32 indexed legacyRequestHash
+    );
+
     constructor(address _finderAddress) HasFinder(_finderAddress) {}
 
     // This assumes that the local network has a Registry that resembles the mainnet registry.
@@ -55,10 +78,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public override nonReentrant() onlyRegisteredContract() {
-        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(ancillaryData));
-        if (newPriceRequested) {
-            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData)));
-        }
+        _requestPriceSpoke(identifier, time, ancillaryData);
     }
 
     /**
@@ -66,10 +86,35 @@ contract OracleSpoke is
      * ancillary data.
      */
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
-        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(""));
-        if (newPriceRequested) {
-            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("")));
-        }
+        _requestPriceSpoke(identifier, time, "");
+    }
+
+    function _requestPriceSpoke(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal {
+        address requester = msg.sender;
+        bytes32 childRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        Price storage lookup = prices[childRequestId];
+
+        // Send the request to mainnet only if it has not been requested yet.
+        if (lookup.state != RequestState.NeverRequested) return;
+        lookup.state = RequestState.Requested;
+
+        // Only the compressed ancillary data is sent to the mainnet. As it includes the request block number that is
+        // not available when getting the resolved price, we map the derived request ID.
+        bytes memory parentAncillaryData = ancillaryData.compress(requester, block.number);
+        bytes32 parentRequestId = _encodePriceRequest(identifier, time, parentAncillaryData);
+        childRequestIds[parentRequestId] = childRequestId;
+
+        // Emit all required information so that voters on mainnet can track the origin of the request and full
+        // ancillary data by using the parentRequestId that is derived from identifier, time and ancillary data as
+        // observed on mainnet.
+        emit PriceRequestBridged(requester, identifier, time, ancillaryData, childRequestId, parentRequestId);
+        emit PriceRequestAdded(identifier, time, parentAncillaryData, parentRequestId);
+
+        getChildMessenger().sendMessageToParent(abi.encode(identifier, time, parentAncillaryData));
     }
 
     /**
@@ -81,7 +126,50 @@ contract OracleSpoke is
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData, int256 price) =
             abi.decode(data, (bytes32, uint256, bytes, int256));
-        _publishPrice(identifier, time, ancillaryData, price);
+        bytes32 parentRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+
+        // Resolve the requestId used when requesting and checking the price. The childRequestIds value in the mapping
+        // could be uninitialized if the request was originated from:
+        // - the previous implementation of this contract, or
+        // - another chain and was pushed to this chain by mistake.
+        bytes32 priceRequestId = childRequestIds[parentRequestId];
+        if (priceRequestId == bytes32(0)) priceRequestId = parentRequestId;
+        Price storage lookup = prices[priceRequestId];
+
+        // In order to support resolving the requests initiated from the previous implementation of this contract, we
+        // only update the state and emit an event if it has not yet been resolved.
+        if (lookup.state == RequestState.Resolved) return;
+        lookup.price = price;
+        lookup.state = RequestState.Resolved;
+        emit PushedPrice(identifier, time, ancillaryData, price, priceRequestId);
+    }
+
+    /**
+     * @notice This method handles a special case when a price request was originated on the previous implementation of
+     * this contract, but was not settled before the upgrade.
+     * @dev Duplicates the resolved state from the legacy request to the new request where original ancillary data is
+     * used for request ID derivation. Will revert if the legacy request has not been pushed from mainnet.
+     * @param identifier Identifier of price request to resolve.
+     * @param time Timestamp of price request to resolve.
+     * @param ancillaryData Original ancillary data passed by the requester before stamping by the legacy spoke.
+     */
+    function resolveLegacyRequest(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) external {
+        bytes32 legacyRequestId = _encodePriceRequest(identifier, time, _legacyStampAncillaryData(ancillaryData));
+        Price storage legacyLookup = prices[legacyRequestId];
+        require(legacyLookup.state == RequestState.Resolved, "Price has not been resolved");
+
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+
+        // Update the state and emit an event only if the legacy request has not been resolved yet.
+        if (lookup.state == RequestState.Resolved) return;
+        lookup.price = legacyLookup.price;
+        lookup.state = RequestState.Resolved;
+        emit ResolvedLegacyRequest(identifier, time, ancillaryData, lookup.price, priceRequestId, legacyRequestId);
     }
 
     /**
@@ -96,7 +184,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -112,7 +200,7 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (bool)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(""));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -128,7 +216,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -146,27 +234,34 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (int256)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(""));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
     }
 
     /**
-     * @notice Generates stamped ancillary data in the format that it would be used in the case of a price request.
-     * @param ancillaryData ancillary data of the price being requested.
-     * @return the stamped ancillary bytes.
+     * @notice Compresses ancillary data by providing sufficient information to track back the original ancillary data
+     * mainnet.
+     * @dev This is expected to be used in offchain infrastructure when speeding up requests to the mainnet.
+     * @param ancillaryData original ancillary data to be processed.
+     * @param requester address of the requester who initiated the price request.
+     * @param requestBlockNumber block number when the price request was initiated.
+     * @return compressed ancillary data.
      */
-    function stampAncillaryData(bytes memory ancillaryData) public view nonReentrantView() returns (bytes memory) {
-        return _stampAncillaryData(ancillaryData);
+    function compressAncillaryData(
+        bytes memory ancillaryData,
+        address requester,
+        uint256 requestBlockNumber
+    ) external view returns (bytes memory) {
+        return ancillaryData.compress(requester, requestBlockNumber);
     }
 
     /**
-     * @dev We don't handle specifically the case where `ancillaryData` is not already readily translatable in utf8.
-     * For those cases, we assume that the client will be able to strip out the utf8-translatable part of the
-     * ancillary data that this contract stamps.
+     * @dev This replicates the implementation of `_stampAncillaryData` from the previous version of this contract for
+     * the purpose of resolving legacy requests if they had not been resolved before the upgrade.
      */
-    function _stampAncillaryData(bytes memory ancillaryData) internal view returns (bytes memory) {
+    function _legacyStampAncillaryData(bytes memory ancillaryData) internal view returns (bytes memory) {
         // This contract should stamp the child network's ID so that voters on the parent network can
         // deterministically track unique price requests back to this contract.
         return AncillaryData.appendKeyValueUint(ancillaryData, "childChainId", block.chainid);

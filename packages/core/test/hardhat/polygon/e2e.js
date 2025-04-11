@@ -47,9 +47,7 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
   const testTimestamp = 100;
   const testAncillaryData = utf8ToHex("key:value");
   const testPrice = toWei("0.5");
-  let expectedStampedAncillaryData; // Can determine this after contracts are deployed.
   const expectedStateId = "1";
-  const childChainId = "31337";
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
@@ -94,12 +92,6 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
     governorRoot = await GovernorRootTunnel.new(checkpointManager, fxRoot.options.address).send({ from: owner });
     await governorChild.methods.setFxRootTunnel(governorRoot.options.address).send({ from: accounts[0] });
     await governorRoot.methods.setFxChildTunnel(governorChild.options.address).send({ from: accounts[0] });
-
-    // The OracleChildTunnel should stamp ",childRequester:<requester-address>,childChainId:<chain-id>" to the original
-    // ancillary data.
-    expectedStampedAncillaryData = utf8ToHex(
-      `${hexToUtf8(testAncillaryData)},childRequester:${owner.substr(2).toLowerCase()},childChainId:${childChainId}`
-    );
   });
   it("request price from Polygon to Ethereum, resolve price from Ethereum to Polygon", async function () {
     // Only registered caller can call.
@@ -113,18 +105,28 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
     let txn = await oracleChild.methods
       .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
       .send({ from: owner });
-    let messageBytes = web3.eth.abi.encodeParameters(
+    const parentAncillaryData = await oracleChild.methods
+      .compressAncillaryData(testAncillaryData, owner, txn.blockNumber)
+      .call();
+    const messageBytes = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testTimestamp, expectedStampedAncillaryData]
+      [testIdentifier, testTimestamp, parentAncillaryData]
     );
+    const childRequestId = web3.utils.keccak256(
+      web3.eth.abi.encodeParameters(["bytes32", "uint256", "bytes"], [testIdentifier, testTimestamp, testAncillaryData])
+    );
+    const parentRequestId = web3.utils.keccak256(messageBytes);
     await assertEventEmitted(
       txn,
       oracleChild,
-      "PriceRequestAdded",
+      "PriceRequestBridged",
       (event) =>
+        event.requester === owner &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase()
+        event.ancillaryData.toLowerCase() === testAncillaryData &&
+        event.childRequestId === childRequestId &&
+        event.parentRequestId === parentRequestId
     );
     await assertEventEmitted(txn, oracleChild, "MessageSent", (event) => event.message === messageBytes);
 
@@ -138,15 +140,16 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase()
+        event.ancillaryData.toLowerCase() === parentAncillaryData.toLowerCase() &&
+        event.requestHash === parentRequestId
     );
 
     // We should be able to resolve price now and emit message to send back to Polygon:
     await mockOracle.methods
-      .pushPrice(testIdentifier, testTimestamp, expectedStampedAncillaryData, testPrice)
+      .pushPrice(testIdentifier, testTimestamp, parentAncillaryData, testPrice)
       .send({ from: accounts[0] });
     txn = await oracleRoot.methods
-      .publishPrice(testIdentifier, testTimestamp, expectedStampedAncillaryData)
+      .publishPrice(testIdentifier, testTimestamp, parentAncillaryData)
       .send({ from: accounts[0] });
     await assertEventEmitted(
       txn,
@@ -155,7 +158,7 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase() &&
+        event.ancillaryData.toLowerCase() === parentAncillaryData.toLowerCase() &&
         event.price.toString() === testPrice
     );
     // FxRoot packs the publishPrice ABI-encoded paramaters with additional data:
@@ -167,7 +170,7 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
         oracleChild.options.address,
         web3.eth.abi.encodeParameters(
           ["bytes32", "uint256", "bytes", "int256"],
-          [testIdentifier, testTimestamp, expectedStampedAncillaryData, testPrice]
+          [testIdentifier, testTimestamp, parentAncillaryData, testPrice]
         ),
       ]
     );
@@ -200,7 +203,7 @@ describe("Polygon <> Ethereum Tunnel: End-to-End Test", async () => {
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase() &&
+        event.ancillaryData.toLowerCase() === parentAncillaryData.toLowerCase() &&
         event.price.toString() === testPrice
     );
 
