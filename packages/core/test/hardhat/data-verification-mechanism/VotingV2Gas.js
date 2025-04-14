@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { web3 } = hre;
 const { runVotingV2Fixture } = require("@uma/common");
 const { getContract } = hre;
-const { RegistryRolesEnum, getRandomSignedInt, computeVoteHash } = require("@uma/common");
+const { RegistryRolesEnum, getRandomSignedInt, computeVoteHashAncillary } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { toBN } = web3.utils;
 
@@ -88,13 +88,13 @@ Total for all voters: ${sum}
     console.groupEnd();
   }
 
-  async function runVoteAndPrintCosts(numRequests, numVoters, startTime) {
+  async function runVoteAndPrintCosts(numRequests, numVoters, startTime, ancillaryData = "0x") {
     if (numVoters > 4) throw new Error("Cannot have more than 4 voters");
 
     const identifier = padRight(utf8ToHex("gas-test"), 64);
 
     const requests = [];
-    for (let i = 0; i < numRequests; i++) requests.push({ identifier, time: startTime + i });
+    for (let i = 0; i < numRequests; i++) requests.push({ identifier, time: startTime + i, ancillaryData });
 
     const voters = [account1, account2, account3, account4].slice(0, numVoters);
 
@@ -103,8 +103,10 @@ Total for all voters: ${sum}
 
     // Request a price and move to the next round where that will be voted on.
     const requestPriceCosts = await Promise.all(
-      requests.map(async ({ identifier, time }) => {
-        const { gasUsed } = await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+      requests.map(async ({ identifier, time, ancillaryData }) => {
+        const { gasUsed } = await voting.methods
+          .requestPrice(identifier, time, ancillaryData)
+          .send({ from: registeredContract });
         return gasUsed;
       })
     );
@@ -118,9 +120,17 @@ Total for all voters: ${sum}
 
     const commitVoteCosts = await Promise.all(
       voters.map(async (voter) => {
-        const multicallData = requests.map(({ identifier, time }) => {
-          const hash = computeVoteHash({ price: winningPrice, salt, account: voter, time, roundId, identifier });
-          return voting.methods.commitAndEmitEncryptedVote(identifier, time, hash, "0x").encodeABI();
+        const multicallData = requests.map(({ identifier, time, ancillaryData }) => {
+          const hash = computeVoteHashAncillary({
+            price: winningPrice,
+            salt,
+            account: voter,
+            time,
+            roundId,
+            identifier,
+            ancillaryData,
+          });
+          return voting.methods.commitAndEmitEncryptedVote(identifier, time, ancillaryData, hash, "0x").encodeABI();
         });
 
         const { gasUsed } = await voting.methods.multicall(multicallData).send({ from: voter });
@@ -133,8 +143,8 @@ Total for all voters: ${sum}
 
     const revealVoteCosts = await Promise.all(
       voters.map(async (voter) => {
-        const multicallData = requests.map(({ identifier, time }) =>
-          voting.methods.revealVote(identifier, time, winningPrice, salt).encodeABI()
+        const multicallData = requests.map(({ identifier, time, ancillaryData }) =>
+          voting.methods.revealVote(identifier, time, winningPrice, ancillaryData, salt).encodeABI()
         );
 
         const { gasUsed } = await voting.methods.multicall(multicallData).send({ from: voter });
@@ -153,8 +163,10 @@ Total for all voters: ${sum}
     );
 
     const getPriceCosts = await Promise.all(
-      requests.map(async ({ identifier, time }) => {
-        const { gasUsed } = await voting.methods.getPrice(identifier, time).send({ from: registeredContract });
+      requests.map(async ({ identifier, time, ancillaryData }) => {
+        const { gasUsed } = await voting.methods
+          .getPrice(identifier, time, ancillaryData)
+          .send({ from: registeredContract });
         return gasUsed;
       })
     );
@@ -183,5 +195,34 @@ Total for all voters: ${sum}
 
     console.log("\n\nSteady state run. Gas costs should be normal.\n");
     await runVoteAndPrintCosts(4, 4, 5000);
+  });
+
+  it("Regular ancillary data gas test", async function () {
+    // Average length of ancillary data in DVM requests during Q1 of 2025 was 1191 bytes.
+    const ancillaryData = "0x" + "01".repeat(1191);
+
+    // Initialize Run
+    console.log("\n\nInitialize Run. Gas costs will likely be higher than typical\n");
+    await runVoteAndPrintCosts(4, 4, 1000, ancillaryData);
+
+    await moveToNextRound(voting, accounts[0]);
+
+    console.log("\n\nSteady state run. Gas costs should be normal.\n");
+    await runVoteAndPrintCosts(4, 4, 5000, ancillaryData);
+  });
+
+  it("Compressed ancillary data gas test", async function () {
+    // Expected length of compressed ancillary data for bridged Polygon requests is 234 bytes as per implementation in
+    // packages/core/contracts/cross-chain-oracle/AncillaryDataCompression.sol
+    const ancillaryData = "0x" + "01".repeat(234);
+
+    // Initialize Run
+    console.log("\n\nInitialize Run. Gas costs will likely be higher than typical\n");
+    await runVoteAndPrintCosts(4, 4, 1000, ancillaryData);
+
+    await moveToNextRound(voting, accounts[0]);
+
+    console.log("\n\nSteady state run. Gas costs should be normal.\n");
+    await runVoteAndPrintCosts(4, 4, 5000, ancillaryData);
   });
 });

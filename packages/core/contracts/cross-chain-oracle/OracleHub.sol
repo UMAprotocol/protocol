@@ -126,7 +126,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
      * @dev The caller must pay a final fee and have approved this contract to pull final fee from it.
      * @dev If the price request params including the ancillary data does not match exactly the price request submitted
      * on the child chain, then the child chain's price request will not resolve. The caller is recommended to use the
-     * `stampAncillaryData` method on the OracleSpoke to reconstruct the ancillary data.
+     * `compressAncillaryData` method on the OracleSpoke to reconstruct the ancillary data.
      * @param identifier Identifier for price request.
      * @param time time for price request.
      * @param ancillaryData Extra data for price request.

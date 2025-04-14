@@ -40,7 +40,6 @@ abstract contract OracleBase is HasFinder {
         uint256 time,
         bytes memory ancillaryData
     ) internal returns (bool) {
-        require(ancillaryData.length <= OptimisticOracleConstraints.ancillaryBytesLimit, "Invalid ancillary data");
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
