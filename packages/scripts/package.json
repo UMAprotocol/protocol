@@ -8,12 +8,14 @@
     "@gnosis.pm/zodiac": "^3.2.0",
     "@google-cloud/bigquery": "^5.3.0",
     "@safe-global/safe-deployments": "^1.21.1",
+    "@safe-global/types-kit": "^2.0.1",
     "@uma/common": "^2.37.3",
     "@uma/contracts-node": "^0.4.25",
     "@uma/financial-templates-lib": "^2.36.3",
     "dotenv": "^6.2.0",
     "ethers": "^5.4.2",
     "hardhat": "^2.12.6",
+    "lodash": "^4.17.21",
     "minimist": "^1.2.0",
     "web3": "^1.6.0",
     "winston": "^3.2.1",
@@ -30,10 +32,16 @@
   },
   "scripts": {
     "test": "mocha 'test/**/*.js'",
+    "prebuild": "ts-node generate-types.ts",
+    "clean": "rm -rf build",
     "build": "tsc --build"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
     "access": "public"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }
