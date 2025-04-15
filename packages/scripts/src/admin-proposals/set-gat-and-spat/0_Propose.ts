@@ -2,6 +2,7 @@
 // To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script:
+// NODE_URL_1=<MAINNET-NODE-URL> \
 // UMIP=<UMIP> \ # e.g. 186
 // GAT=<GAT> \ # e.g. 5000000
 // SPAT=<SPAT> \ # e.g. 65
