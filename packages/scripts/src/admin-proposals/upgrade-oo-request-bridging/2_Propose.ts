@@ -36,7 +36,7 @@ import {
   relayGovernanceHubMessages,
   relayGovernanceRootTunnelMessage,
 } from "../../utils/relay";
-import { RegistryRolesEnum } from "@uma/common";
+import { RegistryRolesEnum, interfaceName } from "@uma/common";
 
 async function main() {
   const adminProposalTransactions: AdminProposalTransaction[] = [];
@@ -82,7 +82,7 @@ async function main() {
     // Set OracleSpoke as Oracle in L2 Finder and sync the cached value in OptimisticOracleV3 atomically
     const governanceMessages: { targetAddress: string; tx: PopulatedTransaction }[] = [];
     const changeImplementationAddressTx = await finder.populateTransaction.changeImplementationAddress(
-      ethersUtils.formatBytes32String("Oracle"),
+      ethersUtils.formatBytes32String(interfaceName.Oracle),
       oracleSpokeAddress
     );
     governanceMessages.push({ targetAddress: finder.address, tx: changeImplementationAddressTx });
@@ -114,7 +114,7 @@ async function main() {
 
   // Set the new OracleChildTunnel as Oracle in the Polygon Finder
   const changeImplementationAddressTx = await polygonFinder.populateTransaction.changeImplementationAddress(
-    ethersUtils.formatBytes32String("Oracle"),
+    ethersUtils.formatBytes32String(interfaceName.Oracle),
     oracleChildTunnelAddress
   );
   adminProposalTransactions.push(

@@ -8,6 +8,7 @@
 
 import { strict as assert } from "assert";
 import { FinderEthers, getAddress, OptimisticOracleV3Ethers } from "@uma/contracts-node";
+import { interfaceName } from "@uma/common";
 import { utils as ethersUtils } from "ethers";
 import { getContractInstance } from "../../utils/contracts";
 import { AdminChildMessenger } from "@uma/contracts-node/typechain/core/ethers";
@@ -28,7 +29,10 @@ async function verifyChildMessenger(chainId: number) {
 async function verifyOracleImplementation(chainId: number) {
   const oracleSpokeAddress = await getAddress("OracleSpoke", chainId);
   const finder = await getContractInstance<FinderEthers>("Finder", undefined, chainId);
-  assert((await finder.getImplementationAddress(ethersUtils.formatBytes32String("Oracle"))) === oracleSpokeAddress);
+  assert(
+    (await finder.getImplementationAddress(ethersUtils.formatBytes32String(interfaceName.Oracle))) ===
+      oracleSpokeAddress
+  );
   console.log(` ✅ OracleSpoke ${oracleSpokeAddress} is set as Oracle in the Finder on chainId ${chainId}`);
 }
 

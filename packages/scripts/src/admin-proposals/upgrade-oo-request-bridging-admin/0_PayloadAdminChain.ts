@@ -10,6 +10,7 @@
 // environment variable.
 
 import { FinderEthers, getAbi, getAddress, OptimisticOracleV3Ethers } from "@uma/contracts-node";
+import { interfaceName } from "@uma/common";
 import { AdminChildMessenger } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
 import { utils as ethersUtils, constants as ethersConstants, BytesLike } from "ethers";
 import fs from "fs";
@@ -60,7 +61,7 @@ async function main() {
     data: BytesLike;
   }[] = [];
   const changeImplementationAddressTx = await finder.populateTransaction.changeImplementationAddress(
-    ethersUtils.formatBytes32String("Oracle"),
+    ethersUtils.formatBytes32String(interfaceName.Oracle),
     oracleSpokeAddress
   );
   if (!changeImplementationAddressTx.data) throw new Error("changeImplementationAddressTx.data is empty");
