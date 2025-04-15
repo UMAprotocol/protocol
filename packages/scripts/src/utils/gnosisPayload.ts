@@ -1,4 +1,4 @@
-import { utils as ethersUtils, constants as ethersConstants } from "ethers";
+import { utils as ethersUtils, constants as ethersConstants, BigNumber } from "ethers";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { MetaTransactionData, OperationType, SafeTransactionData, SafeVersion } from "@safe-global/types-kit";
 import { getMultiSendCallOnlyDeployment } from "@safe-global/safe-deployments";
@@ -242,13 +242,14 @@ export async function simulateSafePayload(
   const safe = GnosisSafeL2130__factory.connect(payload.meta.createdFromSafeAddress, provider);
   const threshold = await safe.getThreshold();
   const owners = await safe.getOwners();
+  const sortedOwners = owners.slice().sort((a, b) => (BigNumber.from(a).lt(BigNumber.from(b)) ? -1 : 1));
 
   // Populate the transaction data using the latest nonce.
   const safeTransactionData = await createSafeTransactionData(safeTransaction, safe);
 
   // Approve transaction hash by the first required owners.
-  const signatures = await approveTransaction(provider, safeTransactionData, safe, owners, threshold.toNumber());
+  const signatures = await approveTransaction(provider, safeTransactionData, safe, sortedOwners, threshold.toNumber());
 
   // Execute the transaction. We use the first owner, but any sender can do it as all required owners have approved it.
-  await executeTransaction(provider, safeTransactionData, safe, owners[0], signatures);
+  await executeTransaction(provider, safeTransactionData, safe, sortedOwners[0], signatures);
 }
