@@ -21,7 +21,7 @@ const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const ancillaryData = utf8ToHex("some-address-field:0x1234");
 const defaultTimestamp = 100;
 
-// Helper methods that we will use to call cross-domain permissioned methods on the Messenger. These are neccesary
+// Helper methods that we will use to call cross-domain permissioned methods on the Messenger. These are necessary
 // because addresses are aliased in any contract that extends AVM_CrossDomainEnabled
 function applyL1ToL2Alias(l1Address) {
   const offset = toBN("0x1111000000000000000000000000000000001111");
