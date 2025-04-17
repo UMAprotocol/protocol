@@ -9,19 +9,16 @@
 // yarn hardhat run packages/scripts/src/admin-proposals/set-gat-and-spat/0_Propose.ts --network localhost
 
 require("dotenv").config();
-import { Provider } from "@ethersproject/abstract-provider";
-import { getGckmsSigner } from "@uma/common";
 import { ProposerV2Ethers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { strict as assert } from "assert";
-import { Signer, Wallet } from "ethers";
 import hre from "hardhat";
 import { AdminProposalTransaction } from "../../upgrade-tests/voting2/migrationUtils";
 import { getContractInstance } from "../../utils/contracts";
-import { PROPOSER_ADDRESS } from "../common";
+import { approveProposerBond, getProposerSigner, PROPOSER_ADDRESS, submitAdminProposal } from "../common";
 const { ethers } = hre;
 
 function parseEnvVars() {
-  const { GAT, SPAT, UMIP, GCKMS_WALLET, TRACE } = process.env;
+  const { GAT, SPAT, UMIP } = process.env;
   assert(GAT && !isNaN(Number(GAT)), "Invalid or missing GAT"); // GAT in token units scaled by UMA VotingToken decimals
   assert(SPAT && !isNaN(Number(SPAT)), "Invalid or missing SPAT"); // SPAT as 65% → 0.65 * 1e18 (scaled with 16 decimals)
   assert(UMIP && Number(UMIP) > 0, "Invalid or missing UMIP");
@@ -34,39 +31,23 @@ function parseEnvVars() {
     gat: ethers.utils.parseEther(GAT),
     spat: ethers.utils.parseUnits(SPAT, 16),
     umip: UMIP,
-    gckmsWallet: GCKMS_WALLET,
-    trace: TRACE,
   };
 }
 
 async function setGatAndSpat(): Promise<void> {
   assert((await ethers.provider.getNetwork()).chainId === 1, "Can propose emission rate only on mainnet");
 
-  const { gat, spat, umip, gckmsWallet, trace } = parseEnvVars();
+  const { gat, spat, umip } = parseEnvVars();
 
   console.log("Proposing GAT and SPAT", { gat, spat });
 
-  let proposerSigner: Signer;
-
-  if (gckmsWallet) {
-    proposerSigner = ((await getGckmsSigner()) as Wallet).connect(ethers.provider as Provider);
-    if (PROPOSER_ADDRESS.toLowerCase() != (await proposerSigner.getAddress()).toLowerCase())
-      throw new Error("GCKMS wallet does not match proposer wallet");
-  } else {
-    if (hre.network.name !== "localhost") throw new Error("Cannot impersonate on mainnet");
-    proposerSigner = (await ethers.getImpersonatedSigner(PROPOSER_ADDRESS)) as Signer;
-  }
+  const proposerSigner = await getProposerSigner(PROPOSER_ADDRESS);
 
   // Approve required bond amount if necessary.
+  await approveProposerBond(proposerSigner);
   const proposerV2 = await getContractInstance<ProposerV2Ethers>("ProposerV2");
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
   const bond = await proposerV2.bond();
-  const allowance = await votingToken.allowance(PROPOSER_ADDRESS, proposerV2.address);
-  if (allowance.lt(bond)) {
-    console.log("Approving proposer bond");
-    const approveTx = await votingToken.connect(proposerSigner).approve(proposerV2.address, bond);
-    await approveTx.wait();
-  }
 
   // Check proposer balance.
   const balance = await votingToken.balanceOf(PROPOSER_ADDRESS);
@@ -80,7 +61,7 @@ async function setGatAndSpat(): Promise<void> {
     value: ethers.constants.Zero,
     data: votingV2.interface.encodeFunctionData("setGatAndSpat", [gat, spat]),
   });
-  console.log("Sending proposal transactions to the proposer");
+
   const ancillaryData =
     "title: Admin proposal setting GAT to " +
     ethers.utils.formatEther(gat) +
@@ -89,13 +70,7 @@ async function setGatAndSpat(): Promise<void> {
     "%" +
     ", umip: " +
     `"https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-${umip}.md"`;
-
-  console.log("Proposing transaction with ancillary data: ", ancillaryData);
-  const txn = await proposerV2
-    .connect(proposerSigner)
-    .propose(adminProposalTransactions, ethers.utils.toUtf8Bytes(ancillaryData));
-  await txn.wait();
-  if (trace) await hre.run("trace", { hash: txn.hash });
+  await submitAdminProposal(proposerSigner, adminProposalTransactions, ancillaryData);
 }
 
 function main() {
