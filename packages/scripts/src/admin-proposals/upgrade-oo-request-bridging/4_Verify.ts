@@ -11,7 +11,7 @@
 // Note: use localhost for the forked L1, for L1 mainnet need to export NODE_URL_1 environment variable.
 
 import { strict as assert } from "assert";
-import { RegistryRolesEnum } from "@uma/common";
+import { RegistryRolesEnum, interfaceName } from "@uma/common";
 import {
   FinderEthers,
   getAddress,
@@ -79,7 +79,10 @@ async function verifyOracleImplementation(networkName: L2Network) {
   const childOracleName = networkName === "polygon" ? "OracleChildTunnel" : "OracleSpoke";
   const finder = await getContractInstanceWithProvider<FinderEthers>("Finder", l2Provider);
   console.log(` - Validating ${childOracleName} ${childOracleAddress} is set as Oracle in ${networkName} Finder`);
-  assert((await finder.getImplementationAddress(ethersUtils.formatBytes32String("Oracle"))) === childOracleAddress);
+  assert(
+    (await finder.getImplementationAddress(ethersUtils.formatBytes32String(interfaceName.Oracle))) ===
+      childOracleAddress
+  );
   console.log(` ✅ ${childOracleName} ${childOracleAddress} is set as Oracle in ${networkName} Finder`);
 }
 
