@@ -531,38 +531,56 @@ describe("OptimisticGovernorMonitor", function () {
 
     const explanationString = "These transactions were approved by majority vote on Snapshot.";
 
-    const mockProposals = [
-      {
-        space: { id: "test" },
-        type: "single-choice",
-        choices: ["choice1", "choice2"],
-        id: "proposal-id",
-        start: 1234567890,
-        end: 1234567890,
-        state: "active",
-        safe: {
-          txs: [
-            {
-              mainTransaction: {
-                to: bondToken.address,
-                value: "0",
-                data: txnData1.data,
-                operation: "0" as MainTransaction["operation"],
-              },
-            },
-          ],
-          network: "31337",
-          umaAddress: ogModuleProxy.address,
+    const proposalId = "proposal-id";
+    const proposalSafe = {
+      txs: [
+        {
+          mainTransaction: {
+            to: bondToken.address,
+            value: "0",
+            data: txnData1.data,
+            operation: "0" as MainTransaction["operation"],
+          },
         },
-        ipfs: explanationString,
-        scores: [0, 0],
-        scores_total: 0,
-        quorum: 100,
+      ],
+      network: "31337",
+      umaAddress: ogModuleProxy.address,
+    };
+    const mockProposalBase = {
+      space: { id: "test" },
+      type: "single-choice",
+      choices: ["choice1", "choice2"],
+      id: proposalId,
+      start: 1234567890,
+      end: 1234567890,
+      state: "active",
+      ipfs: explanationString,
+      scores: [0, 0],
+      scores_total: 0,
+      quorum: 100,
+    };
+    const mockProposalsExpanded = [
+      {
+        ...mockProposalBase,
+        safe: proposalSafe,
       },
     ];
+    const mockProposalsOriginal = {
+      [proposalId]: {
+        ...mockProposalBase,
+        plugins: {
+          safeSnap: {
+            safes: [proposalSafe],
+          },
+        },
+      },
+    };
 
     // Mock Snapshot logic
-    sinon.stub(osnapAutomation, "getSupportedSnapshotProposals").resolves(mockProposals);
+    sinon.stub(osnapAutomation, "getSupportedSnapshotProposals").resolves({
+      supportedProposalsExpanded: mockProposalsExpanded,
+      supportedProposalsOriginal: mockProposalsOriginal,
+    });
     sinon.stub(osnapAutomation, "filterUnblockedProposals").callsFake(async (proposals) => proposals);
     sinon.stub(osnapAutomation, "filterVerifiedProposals").callsFake(async (proposals) => proposals);
 
