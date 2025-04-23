@@ -1,4 +1,4 @@
-# UMA Protocol
+# UMA Protocol test
 
 <p align="center">
   <img alt="UMA Logo" src="https://raw.githubusercontent.com/UMAprotocol/website/master/documents/press-kit/logos/01_PNG/red/uma_red.png" width="440">
