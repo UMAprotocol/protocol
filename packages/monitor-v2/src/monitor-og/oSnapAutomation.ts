@@ -153,12 +153,16 @@ const getSnapshotProposals = async (
   }
 };
 
-// Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes (returned in safeSnap format).
+// Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes (returned both in safeSnap array and
+// original id mapping formats).
 export const getSupportedSnapshotProposals = async (
   logger: typeof Logger,
   supportedModules: SupportedModules,
   params: MonitoringParams
-): Promise<Array<SnapshotProposalExpanded>> => {
+): Promise<{
+  supportedProposalsExpanded: Array<SnapshotProposalExpanded>;
+  supportedProposalsOriginal: Record<string, SnapshotProposalGraphql>;
+}> => {
   // Get supported space names from supported modules.
   const supportedSpaces = Array.from(
     new Set(Object.values(supportedModules).map((supportedModule) => supportedModule.parsedRules.space))
@@ -191,8 +195,19 @@ export const getSupportedSnapshotProposals = async (
     return safeSnapPlugin.safeSnap.safes.map((safe) => ({ ...clonedObject, safe }));
   });
 
-  // Return only proposals from supported safes.
-  return expandedProposals.filter((proposal) => isSafeSupported(proposal.safe, supportedModules, params.chainId));
+  // Get proposals from supported safes, but preserve the non-expanded proposal data for verification.
+  const supportedProposalsExpanded = expandedProposals.filter((proposal) =>
+    isSafeSupported(proposal.safe, supportedModules, params.chainId)
+  );
+  const supportedProposalsOriginal = nonErrorProposals.reduce((proposals, proposal) => {
+    // Include only supported proposals.
+    if (supportedProposalsExpanded.some((supportedProposal) => supportedProposal.id === proposal.id)) {
+      proposals[proposal.id] = proposal;
+    }
+    return proposals;
+  }, {} as Record<string, SnapshotProposalGraphql>);
+
+  return { supportedProposalsExpanded, supportedProposalsOriginal };
 };
 
 // Get all proposals posted on provided oSnap modules including the disputed ones.
@@ -297,51 +312,42 @@ export const filterUnblockedProposals = async (
   });
 };
 
-// Verifies proposals before they are proposed on-chain.
+// Verifies proposals before they are proposed on-chain. Caller must ensure that proposalsOriginal has all proposal id
+// keys from proposalsExpanded.
 export const filterVerifiedProposals = async (
-  proposals: SnapshotProposalExpanded[],
+  proposalsExpanded: SnapshotProposalExpanded[],
+  proposalsOriginal: Record<string, SnapshotProposalGraphql>,
   supportedModules: SupportedModules,
   params: MonitoringParams
 ): Promise<SnapshotProposalExpanded[]> => {
-  // Convert expanded proposals back to GraphqlData format as this is used in SnapshotVerification.
-  const graphqlData: GraphqlData = {
-    proposals: proposals.map((proposal) => {
-      const { safe, ...clonedObject } = proposal;
-      return { ...clonedObject, plugins: { safeSnap: { safes: [safe] } } };
-    }),
-  };
-
   // Verify all potential proposals.
   const lastTimestamp = await getBlockTimestamp(params.provider, params.blockRange.end);
   const verifiedProposals = (
     await Promise.all(
-      graphqlData.proposals.map(async (proposal) => {
+      proposalsExpanded.map(async (proposal) => {
+        const originalProposal = proposalsOriginal[proposal.id];
+        assert(originalProposal !== undefined, `Original snapshot proposal not found for id: ${proposal.id}`);
+
         // Check that the proposal was approved properly on Snapshot assuming we are at the end block timestamp.
-        const voteOutcomVerified = verifyVoteOutcome(proposal, lastTimestamp, 0).verified;
+        const voteOutcomeVerified = verifyVoteOutcome(originalProposal, lastTimestamp, 0).verified;
 
         // Check that proposal is hosted on IPFS and its content matches.
-        const ipfsVerified = (await verifyIpfs(proposal, params)).verified;
+        const ipfsVerified = (await verifyIpfs(originalProposal, params)).verified;
 
         // Check that the proposal meets rules requirements for the target oSnap module.
-        const safeSnapPlugin = translateToSafeSnap(proposal.plugins);
         const rulesVerified = verifyRules(
-          getModuleParameters(safeSnapPlugin.safeSnap.safes[0].umaAddress, supportedModules).parsedRules,
-          proposal
+          getModuleParameters(proposal.safe.umaAddress, supportedModules).parsedRules,
+          originalProposal
         ).verified;
 
         // Return verification result together with original proposal. This is used for filtering below.
-        return { verified: voteOutcomVerified && ipfsVerified && rulesVerified, proposal };
+        return { verified: voteOutcomeVerified && ipfsVerified && rulesVerified, proposal };
       })
     )
   ).filter((proposal) => proposal.verified); // Filter out all proposals that did not pass verification.
 
-  // Convert back to SnapshotProposalExpanded format.
-  return verifiedProposals.map((verificationResult) => {
-    const proposal = verificationResult.proposal;
-    const { plugins, ...clonedObject } = proposal;
-    const safeSnapPlugin = translateToSafeSnap(plugins);
-    return { ...clonedObject, safe: safeSnapPlugin.safeSnap.safes[0] };
-  });
+  // Return the proposals that passed verification.
+  return verifiedProposals.map((verificationResult) => verificationResult.proposal);
 };
 
 // Filters out all proposals that have been executed on-chain. This results in proposals both before and after their
@@ -725,7 +731,11 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   const supportedModules = await getSupportedModules(params);
 
   // Get all finalized basic safeSnap/oSnap proposals for supported spaces and safes (returned in safeSnap format)
-  const supportedProposals = await getSupportedSnapshotProposals(logger, supportedModules, params);
+  const { supportedProposalsExpanded, supportedProposalsOriginal } = await getSupportedSnapshotProposals(
+    logger,
+    supportedModules,
+    params
+  );
 
   // Get all on-chain proposals for supported modules and filter all proposals that have not been discarded.
   const allOnChainProposals = await getAllProposals(Object.keys(supportedModules), params);
@@ -735,12 +745,17 @@ export const proposeTransactions = async (logger: typeof Logger, params: Monitor
   // posted on-chain: when re-proposing of disputed proposals is enabled we only consider undiscarded proposals,
   // otherwise all on-chain proposals are considered.
   const potentialProposals = filterPotentialProposals(
-    supportedProposals,
+    supportedProposalsExpanded,
     params.reproposeDisputed ? undiscardedOnChainProposals : allOnChainProposals,
     params
   );
   const unblockedProposals = await filterUnblockedProposals(potentialProposals, undiscardedOnChainProposals, params);
-  const verifiedProposals = await filterVerifiedProposals(unblockedProposals, supportedModules, params);
+  const verifiedProposals = await filterVerifiedProposals(
+    unblockedProposals,
+    supportedProposalsOriginal,
+    supportedModules,
+    params
+  );
 
   // Submit proposals.
   await submitProposals(logger, verifiedProposals, supportedModules, params);
