@@ -176,38 +176,43 @@ export const getPolymarketProposedPriceRequestsOO = async (
   const currentTimeBN = BigNumber.from(currentTime);
   const threshold = BigNumber.from(params.checkBeforeExpirationSeconds);
 
-  return proposeEvents
-    .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
-    .filter((event) => {
-      const expirationTime = event.args.expirationTimestamp;
-      const thresholdTime = expirationTime.sub(threshold);
-      // Only keep if current time is greater than (expiration - threshold) but less than expiration.
-      return currentTimeBN.gt(thresholdTime) && currentTimeBN.lt(expirationTime);
-    })
-    .filter((event) => {
-      const requestId = ethers.utils.keccak256(
-        ethers.utils.defaultAbiCoder.encode(
-          ["address", "bytes32", "uint256", "bytes"],
-          [event.args.requester, event.args.identifier, event.args.timestamp, event.args.ancillaryData]
-        )
-      );
-      return !disputedRequestIds.has(requestId);
-    })
-    .map((event) => {
-      return {
-        requestHash: event.transactionHash,
-        requestLogIndex: event.logIndex,
-        requester: event.args.requester,
-        requestTimestamp: event.args.timestamp,
-        ancillaryData: event.args.ancillaryData,
-        requestBlockNumber: event.blockNumber,
-        proposedPrice: event.args.proposedPrice,
-        proposalTimestamp: event.args.timestamp,
-        proposalHash: event.transactionHash,
-        proposalExpirationTimestamp: event.args.expirationTimestamp,
-        proposalLogIndex: event.logIndex,
-      };
-    });
+  return Promise.all(
+    proposeEvents
+      .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
+      .filter((event) => {
+        const expirationTime = event.args.expirationTimestamp;
+        const thresholdTime = expirationTime.sub(threshold);
+        // Only keep if current time is greater than (expiration - threshold) but less than expiration.
+        return currentTimeBN.gt(thresholdTime) && currentTimeBN.lt(expirationTime);
+      })
+      .filter((event) => {
+        const requestId = ethers.utils.keccak256(
+          ethers.utils.defaultAbiCoder.encode(
+            ["address", "bytes32", "uint256", "bytes"],
+            [event.args.requester, event.args.identifier, event.args.timestamp, event.args.ancillaryData]
+          )
+        );
+        return !disputedRequestIds.has(requestId);
+      })
+      .map(async (event) => {
+        const proposalTimestamp = BigNumber.from(
+          await params.provider.getBlock(event.blockNumber).then((block) => block.timestamp)
+        );
+        return {
+          requestHash: event.transactionHash,
+          requestLogIndex: event.logIndex,
+          requester: event.args.requester,
+          requestTimestamp: event.args.timestamp,
+          ancillaryData: event.args.ancillaryData,
+          requestBlockNumber: event.blockNumber,
+          proposedPrice: event.args.proposedPrice,
+          proposalTimestamp,
+          proposalHash: event.transactionHash,
+          proposalExpirationTimestamp: event.args.expirationTimestamp,
+          proposalLogIndex: event.logIndex,
+        };
+      })
+  );
 };
 
 export const getPolymarketMarketInformation = async (
