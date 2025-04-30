@@ -93,7 +93,7 @@ export interface OptimisticPriceRequest {
   requestLogIndex: number;
   requester: string;
   ancillaryData: string;
-  requestBlockNumber: number;
+  proposalBlockNumber: number;
   proposedPrice: BigNumber;
   proposalTimestamp: BigNumber;
   proposalHash: string;
@@ -204,7 +204,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
           requester: event.args.requester,
           requestTimestamp: event.args.timestamp,
           ancillaryData: event.args.ancillaryData,
-          requestBlockNumber: event.blockNumber,
+          proposalBlockNumber: event.blockNumber,
           proposedPrice: event.args.proposedPrice,
           proposalTimestamp,
           proposalHash: event.transactionHash,
