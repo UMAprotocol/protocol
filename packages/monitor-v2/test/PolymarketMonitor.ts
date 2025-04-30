@@ -93,6 +93,7 @@ describe("PolymarketNotifier", function () {
       retryAttempts: 3,
       retryDelayMs: 1000,
       checkBeforeExpirationSeconds: Date.now() + 1000 * 60 * 60 * 24,
+      fillEventsLookbackSeconds: 0,
     };
   };
 
@@ -428,7 +429,7 @@ describe("PolymarketNotifier", function () {
         requester: params.ctfSportsOracleAddress,
         proposedPrice,
         requestTimestamp: ethers.BigNumber.from(Date.now()),
-        requestBlockNumber: 12345,
+        proposalBlockNumber: 12345,
         ancillaryData: sportsAncillaryData,
         requestHash: "0xrequesthash",
         requestLogIndex: 0,
@@ -656,6 +657,38 @@ describe("PolymarketNotifier", function () {
         });
       });
     });
+  });
+
+  it("getOrderFilledEvents uses the fillEventsLookbackSeconds", async function () {
+    const currentBlock = 100_000;
+    const fillEventsLookbackSeconds = 3_600; // 1 hour
+    const proposalBlockNumber = 95_000; // anchor block
+
+    const params = await createMonitoringParams();
+    params.fillEventsLookbackSeconds = fillEventsLookbackSeconds;
+
+    const providerStub = new ethers.providers.JsonRpcProvider();
+    sandbox.stub(providerStub, "getBlockNumber").resolves(currentBlock);
+    params.provider = providerStub as any;
+
+    const lookbackBlocks = Math.round((fillEventsLookbackSeconds * commonModule.POLYGON_BLOCKS_PER_HOUR) / 3_600);
+    const fromBlockParam = Math.max(proposalBlockNumber, currentBlock - lookbackBlocks);
+
+    let capturedFromBlock: number | undefined;
+    sandbox.stub(commonModule, "paginatedEventQuery").callsFake(async (_c, _f, searchConfig) => {
+      capturedFromBlock = searchConfig.fromBlock;
+      return [];
+    });
+
+    sandbox.stub(ethers, "Contract").returns({ filters: { OrderFilled: () => ({ topics: [] }) } } as any);
+
+    await commonModule.getOrderFilledEvents(params, ["0xdeadbeef", "0xfeedface"], fromBlockParam);
+
+    assert.equal(
+      capturedFromBlock,
+      fromBlockParam,
+      "`fromBlock` passed to paginatedEventQuery must equal the caller-computed value"
+    );
   });
 
   describe("getPolymarketProposedPriceRequestsOO Filtering", function () {
