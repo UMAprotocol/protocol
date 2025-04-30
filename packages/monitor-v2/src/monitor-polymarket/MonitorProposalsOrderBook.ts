@@ -92,7 +92,7 @@ async function processProposal(proposal: OptimisticPriceRequest, params: Monitor
     const orderFilledEvents = await getOrderFilledEvents(
       params,
       marketInfo.clobTokenIds,
-      Number(proposal.requestBlockNumber)
+      Number(proposal.proposalBlockNumber)
     );
 
     // Check the order book for concerning signals.

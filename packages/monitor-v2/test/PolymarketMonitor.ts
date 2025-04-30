@@ -669,13 +669,14 @@ describe("PolymarketNotifier", function () {
       const identifier = formatBytes32String("TEST_IDENTIFIER");
       const ancillaryData = formatBytes32String("data");
 
+      const blockNumber = await ethers.provider.getBlockNumber();
       // Create two fake events:
       // Event 1: expires at fakeTime + 100 seconds.
       // Calculation: (fakeTime + 100) - 120 = fakeTime - 20, so current time (fakeTime) > fakeTime - 20 => condition satisfied.
       const fakeEventBelow = {
         transactionHash: "0xeventBelow",
         logIndex: 0,
-        blockNumber: 90,
+        blockNumber,
         args: {
           requester: fakeRequester,
           expirationTimestamp: ethers.BigNumber.from(fakeTime + 100),
