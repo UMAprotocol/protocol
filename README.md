@@ -137,7 +137,7 @@ Note: development dependencies are those that are not required by the code that'
 sure whether a dependency should be dev or not, just ask! To install a dev dependency in a package:
 
 ```
-yarn workspace <package_name> add <dependency_name> --dev
+yarn workspace <package_name> add <dependency_-name> --dev
 ```
 
 Note: all root dependencies should be dev dependencies because the root package is not published to npm, so there is no "production" code.
