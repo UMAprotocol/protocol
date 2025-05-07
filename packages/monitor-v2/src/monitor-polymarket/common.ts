@@ -29,7 +29,7 @@ export { Logger };
 
 export const ONE_SCALED = ethers.utils.parseUnits("1", 18);
 
-const POLYGON_BLOCKS_PER_HOUR = 1800;
+export const POLYGON_BLOCKS_PER_HOUR = 1800;
 
 export interface MonitoringParams {
   binaryAdapterAddress: string;
@@ -48,6 +48,7 @@ export interface MonitoringParams {
   retryAttempts: number;
   retryDelayMs: number;
   checkBeforeExpirationSeconds: number;
+  fillEventsLookbackSeconds: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -547,6 +548,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const checkBeforeExpirationSeconds = env.CHECK_BEFORE_EXPIRATION_SECONDS
     ? Number(env.CHECK_BEFORE_EXPIRATION_SECONDS)
     : 1800; // default to 30 minutes
+  const fillEventsLookbackSeconds = env.FILL_EVENTS_LOOKBACK_SECONDS ? Number(env.FILL_EVENTS_LOOKBACK_SECONDS) : 1800; // default to 30 minutes
   return {
     binaryAdapterAddress,
     ctfAdapterAddress,
@@ -564,6 +566,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     retryAttempts,
     retryDelayMs,
     checkBeforeExpirationSeconds,
+    fillEventsLookbackSeconds,
   };
 };
 

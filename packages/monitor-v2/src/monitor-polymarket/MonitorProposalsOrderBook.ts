@@ -27,6 +27,7 @@ import {
   OptimisticPriceRequest,
   retryAsync,
   storeNotifiedProposals,
+  POLYGON_BLOCKS_PER_HOUR,
 } from "./common";
 
 // Retrieve threshold values from environment variables.
@@ -89,11 +90,12 @@ async function processProposal(proposal: OptimisticPriceRequest, params: Monitor
 
     const thresholds = getThresholds();
     const orderBook = await getPolymarketOrderBook(params, marketInfo.clobTokenIds, networker);
-    const orderFilledEvents = await getOrderFilledEvents(
-      params,
-      marketInfo.clobTokenIds,
-      Number(proposal.proposalBlockNumber)
-    );
+    // We only want to look back fillEventsLookbackSeconds seconds, but no older than startBlockNumber
+    const currentBlockNumber = await params.provider.getBlockNumber();
+    const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
+    const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
+    const fromBlock = Math.max(Number(proposal.proposalBlockNumber), currentBlockNumber - lookbackBlocks);
+    const orderFilledEvents = await getOrderFilledEvents(params, marketInfo.clobTokenIds, fromBlock);
 
     // Check the order book for concerning signals.
     const sellingWinnerSide = orderBook[winnerOutcome].asks.find((ask) => ask.price < thresholds.asks);
