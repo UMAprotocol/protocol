@@ -1,6 +1,5 @@
 import assert from "assert";
 import { ethers } from "ethers";
-import moment from "moment";
 import Events from "events";
 import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
 import { Datastore } from "@google-cloud/datastore";
@@ -8,17 +7,7 @@ import { Datastore } from "@google-cloud/datastore";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import {
-  addresses,
-  appStats,
-  empStats,
-  empStatsHistory,
-  lsps,
-  priceSamples,
-  registeredContracts,
-  StoresFactory,
-  tvl,
-} from "../../tables";
+import { addresses, appStats, lsps, registeredContracts, StoresFactory } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -63,58 +52,7 @@ export default async (env: ProcessEnv) => {
       active: tables.emps.Table("Active Emp", datastores.empsActive),
       expired: tables.emps.Table("Expired Emp", datastores.empsExpired),
     },
-    prices: {
-      usd: {
-        latest: priceSamples.Table("Latest Usd Prices", datastores.latestUsdPrices),
-        history: {},
-      },
-    },
-    synthPrices: {
-      latest: priceSamples.Table("Latest Synth Prices", datastores.latestSynthPrices),
-      history: {},
-    },
-    marketPrices: {
-      usdc: {
-        latest: priceSamples.Table("Latest USDC Market Prices", datastores.latestUsdcMarketPrices),
-        history: empStatsHistory.Table("Market Price", datastores.empStatsHistory),
-      },
-    },
     erc20s: tables.erc20s.Table("Erc20", datastores.erc20),
-    stats: {
-      emp: {
-        usd: {
-          latest: {
-            tvm: empStats.Table("Latest Tvm", datastores.empStatsTvm),
-            tvl: empStats.Table("Latest Tvl", datastores.empStatsTvl),
-          },
-          history: {
-            tvm: empStatsHistory.Table("Tvm History", datastores.empStatsTvlHistory),
-            tvl: empStatsHistory.Table("Tvl History", datastores.empStatsTvmHistory),
-          },
-        },
-      },
-      lsp: {
-        usd: {
-          latest: {
-            tvl: empStats.Table("Latest Tvl", datastores.lspStatsTvl),
-            tvm: empStats.Table("Latest Tvm", datastores.lspStatsTvm),
-          },
-          history: {
-            tvl: empStatsHistory.Table("Tvl History", datastores.lspStatsTvlHistory),
-          },
-        },
-      },
-      global: {
-        usd: {
-          latest: {
-            tvl: tvl.Table("Latest Usd Global Tvl", datastores.globalUsdLatestTvl),
-          },
-          history: {
-            tvl: empStatsHistory.Table("Tvl Global History"),
-          },
-        },
-      },
-    },
     registeredEmps: registeredContracts.Table("Registered Emps", datastores.registeredEmps),
     registeredLsps: registeredContracts.Table("Registered Lsps", datastores.registeredLsps),
     collateralAddresses: addresses.Table("Collateral Addresses", datastores.collateralAddresses),
@@ -145,29 +83,13 @@ export default async (env: ProcessEnv) => {
       { tables: appState, appClients },
       (event, data) => serviceEvents.emit("empRegistry", event, data)
     ),
-    collateralPrices: Services.CollateralPrices({ debug, network: networkChainId }, { tables: appState, appClients }),
-    syntheticPrices: Services.SyntheticPrices(
-      {
-        debug,
-        cryptowatchApiKey: env.cryptowatchApiKey,
-        tradermadeApiKey: env.tradermadeApiKey,
-        quandlApiKey: env.quandlApiKey,
-        defipulseApiKey: env.defipulseApiKey,
-      },
-      appState,
-      appClients
-    ),
     erc20s: Services.Erc20s({ debug }, { tables: appState, appClients }),
-    empStats: Services.stats.Emp({ debug }, appState),
-    marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
     lspCreator: await Services.MultiLspCreator(
       { debug, addresses: lspCreatorAddresses, network: networkChainId },
       { tables: appState, appClients },
       (event, data) => serviceEvents.emit("multiLspCreator", event, data)
     ),
     lsps: Services.LspState({ debug }, { tables: appState, appClients }),
-    lspStats: Services.stats.Lsp({ debug }, appState),
-    globalStats: Services.stats.Global({ debug }, appState),
   };
 
   // services consuming data
@@ -204,16 +126,6 @@ export default async (env: ProcessEnv) => {
     await appState.appStats.setLastBlockUpdate(endBlock);
   }
 
-  // separate out price updates into a different loop to query every few minutes
-  async function updatePrices() {
-    await services.collateralPrices.update();
-    await services.syntheticPrices.update();
-    await services.marketPrices.update();
-    await services.empStats.update();
-    await services.lspStats.update();
-    await services.globalStats.update();
-  }
-
   // listen for new lsp contracts since after we have started api, and make sure they get state updated asap
   // These events should only be bound after startup, since initialization above takes care of updating all contracts on startup
   // Because there is now a event driven dependency, the lsp creator and lsp state updater must be in same process
@@ -246,24 +158,6 @@ export default async (env: ProcessEnv) => {
   await detectContractsProfiled();
   await updateContractsStateProfiled();
 
-  // backfill price histories, disable if not specified in env
-  if (env.backfillDays) {
-    console.log(`Backfilling price history from ${env.backfillDays} days ago`);
-    await services.collateralPrices.backfill(moment().subtract(env.backfillDays, "days").valueOf());
-    console.log("Updated Collateral Prices Backfill");
-
-    // backfill price history only if runs for the first time
-    if (!(await appState.appStats.getLastBlockUpdate())) {
-      await services.empStats.backfill();
-      console.log("Updated EMP Backfill");
-
-      await services.lspStats.backfill();
-      console.log("Updated LSP Backfill");
-    }
-  }
-
-  await updatePricesProfiled();
-
   // wait update rate before running loops, since all state was just updated on init
   await new Promise((res) => setTimeout(res, updateRateS * 1000));
 
@@ -273,9 +167,6 @@ export default async (env: ProcessEnv) => {
 
   // main update loop for all state, executes immediately and waits for updateRateS
   utils.loop(updateContractsStateProfiled, updateRateS * 1000);
-
-  // coingeckos prices don't update very fast, so set it on an interval every few minutes
-  utils.loop(updatePricesProfiled, priceUpdateRateS * 1000);
 
   async function detectContractsProfiled() {
     const end = profile("Detecting New Contracts");
@@ -307,10 +198,5 @@ export default async (env: ProcessEnv) => {
     )
       .catch(console.error)
       .finally(end);
-  }
-
-  async function updatePricesProfiled() {
-    const end = profile("Update all prices");
-    await updatePrices().catch(console.error).finally(end);
   }
 };

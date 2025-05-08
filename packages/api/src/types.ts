@@ -1,14 +1,14 @@
 import type uma from "@uma/sdk";
 import type { ethers } from "ethers";
 import type {
-  empStats,
-  empStatsHistory,
+  // empStats,
+  // empStatsHistory,
   lsps,
   appStats,
   registeredContracts,
   addresses,
-  priceSamples,
-  tvl,
+  // priceSamples,
+  // tvl,
 } from "./tables";
 import type Zrx from "./libs/zrx";
 import type * as services from "./services";
@@ -52,70 +52,14 @@ export type AppState = {
     active: lsps.Table;
     expired: lsps.Table;
   };
-  prices: {
-    usd: {
-      latest: priceSamples.Table;
-      history: {
-        [key: string]: uma.tables.historicalPrices.Table;
-      };
-    };
-  };
-  synthPrices: {
-    latest: priceSamples.Table;
-    history: {
-      [empAddress: string]: uma.tables.historicalPrices.Table;
-    };
-  };
-  marketPrices: {
-    // note this is in usdc since these are fetched from amms using usdc as the quote currency
-    usdc: {
-      latest: priceSamples.Table;
-      history: empStatsHistory.Table;
-    };
-  };
   erc20s: uma.tables.erc20s.Table;
-  stats: {
-    emp: {
-      usd: {
-        latest: {
-          tvl: empStats.Table;
-          tvm: empStats.Table;
-        };
-        history: {
-          tvl: empStatsHistory.Table;
-          tvm: empStatsHistory.Table;
-        };
-      };
-    };
-    lsp: {
-      usd: {
-        latest: {
-          tvl: empStats.Table;
-          tvm: empStats.Table;
-        };
-        history: {
-          tvl: empStatsHistory.Table;
-        };
-      };
-    };
-    global: {
-      usd: {
-        latest: {
-          tvl: tvl.Table;
-        };
-        history: {
-          tvl: empStatsHistory.Table;
-        };
-      };
-    };
-  };
   registeredEmps: registeredContracts.Table;
   registeredLsps: registeredContracts.Table;
-  appStats: appStats.Table;
   collateralAddresses: addresses.Table;
   syntheticAddresses: addresses.Table;
   longAddresses: addresses.Table;
   shortAddresses: addresses.Table;
+  appStats: appStats.Table;
 };
 
 export type AppClients = {
@@ -132,17 +76,10 @@ export type AppServices = {
   emps: services.EmpState;
   lsps: services.LspState;
   erc20s: services.Erc20s;
-  collateralPrices: services.CollateralPrices;
-  syntheticPrices: services.SyntheticPrices;
-  marketPrices: services.MarketPrices;
-  empStats: services.stats.Emp;
-  lspStats: services.stats.Lsp;
-  globalStats: services.stats.Global;
 };
 
 export type OrchestratorServices = {
   contracts: services.Contracts;
-  prices: services.Prices;
 };
 
 export type ChainId = number;
