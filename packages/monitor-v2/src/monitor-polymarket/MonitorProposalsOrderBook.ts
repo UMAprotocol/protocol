@@ -64,7 +64,7 @@ async function processProposal(proposal: OptimisticPriceRequest, params: Monitor
       }
 
       // Process sports-specific market data.
-      const sportsMarketData: Market = await getSportsMarketData(params, questionID);
+      const sportsMarketData: Market = await getSportsMarketData(params, marketInfo.questionID);
       scores = [
         decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 0),
         decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 1),

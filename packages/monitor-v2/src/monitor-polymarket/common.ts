@@ -56,6 +56,7 @@ interface PolymarketMarketGraphql {
   outcomePrices: string;
   volumeNum: number;
   clobTokenIds: string;
+  questionID: string;
 }
 
 export interface PolymarketMarketGraphqlProcessed {
@@ -64,6 +65,7 @@ export interface PolymarketMarketGraphqlProcessed {
   outcomePrices: [string, string];
   clobTokenIds: [string, string];
   question: string;
+  questionID: string;
 }
 
 export interface PolymarketTradeInformation {
@@ -229,6 +231,7 @@ export const getPolymarketMarketInformation = async (
         outcomes
         outcomePrices
         question
+        questionID
       }
     }
     `;
