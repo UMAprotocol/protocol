@@ -9,16 +9,7 @@ import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels, AppClients } from "../../types";
-import {
-  addresses,
-  appStats,
-  empStats,
-  empStatsHistory,
-  lsps,
-  priceSamples,
-  registeredContracts,
-  tvl,
-} from "../../tables";
+import { addresses, appStats, lsps, registeredContracts } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -59,58 +50,7 @@ export default async (env: ProcessEnv) => {
       active: tables.emps.Table("Active Emp"),
       expired: tables.emps.Table("Expired Emp"),
     },
-    prices: {
-      usd: {
-        latest: priceSamples.Table("Latest Usd Prices"),
-        history: {},
-      },
-    },
-    synthPrices: {
-      latest: priceSamples.Table("Latest Synth Prices"),
-      history: {},
-    },
-    marketPrices: {
-      usdc: {
-        latest: priceSamples.Table("Latest USDC Market Prices"),
-        history: empStatsHistory.Table("Market Price"),
-      },
-    },
     erc20s: tables.erc20s.Table(),
-    stats: {
-      emp: {
-        usd: {
-          latest: {
-            tvm: empStats.Table("Latest Tvm"),
-            tvl: empStats.Table("Latest Tvl"),
-          },
-          history: {
-            tvm: empStatsHistory.Table("Tvm History"),
-            tvl: empStatsHistory.Table("Tvl History"),
-          },
-        },
-      },
-      lsp: {
-        usd: {
-          latest: {
-            tvl: empStats.Table("Latest Tvl"),
-            tvm: empStats.Table("Latest Tvm"),
-          },
-          history: {
-            tvl: empStatsHistory.Table("Tvl History"),
-          },
-        },
-      },
-      global: {
-        usd: {
-          latest: {
-            tvl: tvl.Table("Latest Usd Global Tvl"),
-          },
-          history: {
-            tvl: empStatsHistory.Table("Tvl Global History"),
-          },
-        },
-      },
-    },
     registeredEmps: registeredContracts.Table("Registered Emps"),
     registeredLsps: registeredContracts.Table("Registered Lsps"),
     collateralAddresses: addresses.Table("Collateral Addresses"),
@@ -142,18 +82,13 @@ export default async (env: ProcessEnv) => {
       { tables: appState, appClients },
       (event, data) => serviceEvents.emit("empRegistry", event, data)
     ),
-    collateralPrices: Services.CollateralPrices({ debug, network: networkChainId }, { tables: appState, appClients }),
     erc20s: Services.Erc20s({ debug }, { tables: appState, appClients }),
-    empStats: Services.stats.Emp({ debug }, appState),
-    marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
     lspCreator: await Services.MultiLspCreator(
       { debug, addresses: lspCreatorAddresses, network: networkChainId },
       { tables: appState, appClients },
       (event, data) => serviceEvents.emit("multiLspCreator", event, data)
     ),
     lsps: Services.LspState({ debug }, { tables: appState, appClients }),
-    lspStats: Services.stats.Lsp({ debug }, appState),
-    globalStats: Services.stats.Global({ debug }, appState),
   };
 
   const initBlock = await provider.getBlock("latest");
@@ -173,15 +108,6 @@ export default async (env: ProcessEnv) => {
 
   await services.erc20s.update();
   console.log("Updated tokens");
-
-  await services.collateralPrices.update();
-  console.log("Updated Collateral Prices");
-
-  await services.lspStats.update();
-  console.log("Updated LSP Stats");
-
-  await services.globalStats.update();
-  console.log("Updated Global Stats");
 
   // services consuming data
   const channels: Channels = [
@@ -213,14 +139,6 @@ export default async (env: ProcessEnv) => {
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
     await appState.appStats.setLastBlockUpdate(endBlock);
-  }
-
-  // separate out price updates into a different loop to query every few minutes
-  async function updatePrices() {
-    await services.collateralPrices.update();
-    await services.marketPrices.update();
-    await services.lspStats.update();
-    await services.globalStats.update();
   }
 
   // wait update rate before running loops, since all state was just updated on init
@@ -290,11 +208,5 @@ export default async (env: ProcessEnv) => {
         .catch(console.error)
         .finally(end);
     }, updateRateS * 1000);
-
-    // coingeckos prices don't update very fast, so set it on an interval every few minutes
-    utils.loop(async () => {
-      const end = profile("Update all prices");
-      await updatePrices().catch(console.error).finally(end);
-    }, priceUpdateRateS * 1000);
   }
 };

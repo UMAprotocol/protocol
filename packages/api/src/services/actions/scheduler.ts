@@ -14,10 +14,6 @@ function Handlers(config: Config, dependencies: Dependencies) {
       await services.contracts.detect();
       await services.contracts.update();
     },
-    async runPrices() {
-      const { services } = dependencies;
-      await services.prices.update();
-    },
   };
 
   // list all available actions
