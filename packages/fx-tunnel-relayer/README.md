@@ -6,6 +6,7 @@ This bot is specific to the Polygon-Ethereum communication layer whose architect
 
 - `yarn build` to compile code.
 - Set environment variables including required `CUSTOM_NODE_URL` and `POLYGON_CUSTOM_NODE_URL` values which correspond to Ethereum and Polygon nodes respectively.
+- Optionally set SKIP_THRESHOLD_SECONDS (seconds to skip relay when close to end of phase; default 14400 = 4 hours).
 - `node ./dist/src/index.js --network mainnet_mnemonic` or `ts-node ./src/index.js --network mainnet_mnemonic`.
 
 # Why is a bot needed to relay messages from Polygon to Ethereum?

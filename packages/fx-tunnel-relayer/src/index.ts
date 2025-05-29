@@ -1,18 +1,30 @@
-import winston from "winston";
-import Web3 from "web3";
-import retry from "async-retry";
-import { config } from "dotenv";
 import MaticJs from "@maticnetwork/maticjs";
 import { Web3ClientPlugin } from "@maticnetwork/maticjs-web3";
 import { averageBlockTimeSeconds, getWeb3, getWeb3ByChainId } from "@uma/common";
-import { getAddress, getAbi } from "@uma/contracts-node";
+import { getAbi, getAddress } from "@uma/contracts-node";
 import { GasEstimator, Logger, delay } from "@uma/financial-templates-lib";
+import retry from "async-retry";
+import { config } from "dotenv";
+import Web3 from "web3";
+import winston from "winston";
 
+import { SKIP_THRESHOLD_SECONDS } from "./constants";
 import { Relayer } from "./Relayer";
 import { RelayerConfig } from "./RelayerConfig";
+import { isTooCloseToRoundEnd, secondsUntilRoundEnd } from "./timeUtils";
 config();
 
 export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
+  const timeRemaining = secondsUntilRoundEnd();
+  const skipThreshold = Number(process.env.SKIP_THRESHOLD_SECONDS) || SKIP_THRESHOLD_SECONDS;
+  if (isTooCloseToRoundEnd(timeRemaining, skipThreshold)) {
+    logger.debug({
+      at: "run",
+      message: `Skipping relay: only ${timeRemaining}s left (< ${skipThreshold}s)`,
+    });
+    return;
+  }
+
   try {
     const config = new RelayerConfig(process.env);
 
