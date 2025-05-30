@@ -15,7 +15,11 @@ export function createConsoleTransport(): winston.transports.ConsoleTransportIns
 
         // This slice changes a timestamp formatting from `2020-03-25T10:50:57.168Z` -> `2020-03-25 10:50:57`
         const ts = timestamp.slice(0, 19).replace("T", " ");
-        let log = `${ts} [${level}]: ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ""}`;
+        let log = `${ts} [${level}]: ${
+          Object.keys(args).length
+            ? JSON.stringify(args, (key, value) => (typeof value === "bigint" ? value.toString() : value), 2)
+            : ""
+        }`;
 
         // Winston does not properly log Error objects like console.error() does, so this formatter will search for the Error object
         // in the "error" property of "info", and add the error stack to the log.
