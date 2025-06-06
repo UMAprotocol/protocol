@@ -186,6 +186,20 @@ class SlackHook extends Transport {
       // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
       // different slack channels depending on the context of the log.
       const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
+      // Exit early if we do not have a valid slack webhook URL, which may happen when we wish to suppress specific
+      // notification paths.
+      const isValidURL = (_url: string) => {
+        let url;
+        try {
+          url = new URL(_url);
+        } catch {
+          return false;
+        }
+        return url.protocol === "http:" || url.protocol === "https:";
+      };
+      if (!isValidURL(webhookUrl)) {
+        return;
+      }
 
       const payload: { blocks?: Block[]; text?: string; mrkdwn?: boolean } = { mrkdwn: this.mrkdwn };
       const layout = this.formatter(info);
