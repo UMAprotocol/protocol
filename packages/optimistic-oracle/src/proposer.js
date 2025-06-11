@@ -165,14 +165,7 @@ class OptimisticOracleProposer {
   // Returns true if the price request should be ignored by the OO proposer + disputer for any reason, False otherwise.
   async _shouldIgnorePriceRequest(priceRequest) {
     // Ignore any identifier on the blacklist:
-    if (this.ignoredIdentifiers.includes(priceRequest.identifier)) {
-      this.logger.debug({
-        at: "OptimisticOracleProposer#Proposer",
-        message: "Identifier is blacklisted",
-        identifier: priceRequest.identifier,
-      });
-      return true;
-    }
+    if (this.ignoredIdentifiers.includes(priceRequest.identifier)) return true;
 
     // If the price request is an expiry price request for a specific type of EMP
     // whose price resolution is self-referential pre-expiry and diferent post-expiry,
