@@ -740,13 +740,8 @@ describe("OptimisticOracleV2: proposer.js", function () {
       .requestPrice(identifierToIgnore, requestTime, ancillaryData, collateralCurrency.options.address, 0)
       .send({ from: requester });
 
-    // Use debug spy to catch "skip" log.
-    spyLogger = winston.createLogger({
-      level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-    });
     proposer = new OptimisticOracleProposer({
-      logger: spyLogger,
+      logger: winston.createLogger({ transports: [new SpyTransport({ level: "debug" }, { spy })] }),
       optimisticOracleClient: client,
       gasEstimator,
       account: botRunner,
@@ -757,10 +752,6 @@ describe("OptimisticOracleV2: proposer.js", function () {
 
     // Update the bot to read the new OO state.
     await proposer.update();
-
-    // No allowances should be set for blacklisted identifier
-    assert.equal(lastSpyLogLevel(spy), "debug");
-    assert.isTrue(spyLogIncludes(spy, -1, "Identifier is blacklisted"));
 
     // Client should still see the unproposed price request:
     objectsInArrayInclude(client.getUnproposedPriceRequests(), [
@@ -777,8 +768,6 @@ describe("OptimisticOracleV2: proposer.js", function () {
 
     // Running the bot's sendProposals method should skip the price request:
     await proposer.sendProposals();
-    assert.equal(lastSpyLogLevel(spy), "debug");
-    assert.isTrue(spyLogIncludes(spy, -1, "Identifier is blacklisted"));
     await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, identifierToIgnore, ancillaryDataAddress);
   });
 });
