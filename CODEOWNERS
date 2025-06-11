@@ -3,7 +3,6 @@
 # Note: CODEOWNERS are automatically requested for review on relevant PRs.
 # Order is important; the last matching pattern takes the most
 # precedence.
-
 # These owners will be the default owners for everything in
 # the repo unless a later match takes precedence.
-*       @mrice32 @chrismaree @md0x @Reinis-FRP @daywiss
+* @mrice32 @chrismaree @md0x @Reinis-FRP
