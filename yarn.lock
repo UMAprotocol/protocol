@@ -4451,11 +4451,18 @@
     picomatch "^2.2.2"
 
 "@safe-global/safe-deployments@^1.21.1":
-  version "1.21.1"
-  resolved "https://registry.yarnpkg.com/@safe-global/safe-deployments/-/safe-deployments-1.21.1.tgz#28849ab9441855eb10c50f3ae835f34ec69dede4"
-  integrity sha512-W5+EGdidRupGvMCHBaV3iNvcfqwzjOZcYWlMndCTo/JSHfe1az79AqOyKVSKK5AyEDt5iUlH8tTjmk8vTuQDwA==
+  version "1.37.31"
+  resolved "https://registry.yarnpkg.com/@safe-global/safe-deployments/-/safe-deployments-1.37.31.tgz#582120fb2468a0f3bb284f0d3c6c94bb61b151f7"
+  integrity sha512-9ab33ttfSTiWCYKwI7n7eky9bNPQD0f21cCTu/nn4+OwjZvYUrcYfmxNvjXy3JERDToHbalAZ1KHUjfA0teN4A==
   dependencies:
-    semver "^7.3.7"
+    semver "^7.6.2"
+
+"@safe-global/types-kit@^2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@safe-global/types-kit/-/types-kit-2.0.1.tgz#f2334a33fa430beceba017bd7dbb112269f61f30"
+  integrity sha512-4xKjTBlyFSIKziqvjrGMBAgs7Z2+s/5A2wjAXg2gBA1BuvV6w1THk1Y/WMZg8+6/PlRaVMVo4LoSNMRSsZZhjw==
+  dependencies:
+    abitype "^1.0.2"
 
 "@sapphire/async-queue@^1.5.0":
   version "1.5.0"
@@ -6003,6 +6010,11 @@ abbrev@1.0.x:
   dependencies:
     web3-eth-abi "^1.2.1"
     web3-utils "^1.2.1"
+
+abitype@^1.0.2:
+  version "1.0.8"
+  resolved "https://registry.yarnpkg.com/abitype/-/abitype-1.0.8.tgz#3554f28b2e9d6e9f35eb59878193eabd1b9f46ba"
+  integrity sha512-ZeiI6h3GnW06uYDLx0etQtX/p8E24UaHHBj57RSjK7YBFe7iuVn07EDpOeP451D06sF27VOz9JJPlIKJmXgkEg==
 
 abort-controller@^3.0.0:
   version "3.0.0"
@@ -21419,12 +21431,17 @@ semver@7.3.7:
   dependencies:
     lru-cache "^6.0.0"
 
-semver@7.x, semver@^7.0.0, semver@^7.1.1, semver@^7.1.2, semver@^7.1.3, semver@^7.2.1, semver@^7.3.2, semver@^7.3.4, semver@^7.3.5, semver@^7.3.7:
+semver@7.x, semver@^7.0.0, semver@^7.1.1, semver@^7.1.2, semver@^7.1.3, semver@^7.2.1, semver@^7.3.2, semver@^7.3.4, semver@^7.3.5:
   version "7.3.8"
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.3.8.tgz#07a78feafb3f7b32347d725e33de7e2a2df67798"
   integrity sha512-NB1ctGL5rlHrPJtFDVIVzTyQylMLu9N9VICA6HSFJo8MCGVTMW6gfpicwKmmK/dAjTOrqu5l63JJOpDSrAis3A==
   dependencies:
     lru-cache "^6.0.0"
+
+semver@^7.6.2:
+  version "7.7.1"
+  resolved "https://registry.yarnpkg.com/semver/-/semver-7.7.1.tgz#abd5098d82b18c6c81f6074ff2647fd3e7220c9f"
+  integrity sha512-hlq8tAfn0m/61p4BVRcPzIGr6LKiMwo4VM6dGi6pt4qcRkmNzTcWq6eCEjEh+qXjkMDvPlOFFSGwQjoEa6gyMA==
 
 semver@~5.4.1:
   version "5.4.1"
@@ -23341,6 +23358,25 @@ ts-node@^10.1.0:
     v8-compile-cache-lib "^3.0.1"
     yn "3.1.1"
 
+ts-node@^10.9.2:
+  version "10.9.2"
+  resolved "https://registry.yarnpkg.com/ts-node/-/ts-node-10.9.2.tgz#70f021c9e185bccdca820e26dc413805c101c71f"
+  integrity sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==
+  dependencies:
+    "@cspotcode/source-map-support" "^0.8.0"
+    "@tsconfig/node10" "^1.0.7"
+    "@tsconfig/node12" "^1.0.7"
+    "@tsconfig/node14" "^1.0.0"
+    "@tsconfig/node16" "^1.0.2"
+    acorn "^8.4.1"
+    acorn-walk "^8.1.1"
+    arg "^4.1.0"
+    create-require "^1.1.0"
+    diff "^4.0.1"
+    make-error "^1.1.1"
+    v8-compile-cache-lib "^3.0.1"
+    yn "3.1.1"
+
 ts-pnp@^1.1.6:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/ts-pnp/-/ts-pnp-1.2.0.tgz#a500ad084b0798f1c3071af391e65912c86bca92"
@@ -23629,6 +23665,11 @@ typescript@^4.9.5:
   version "4.9.5"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.9.5.tgz#095979f9bcc0d09da324d58d03ce8f8374cbe65a"
   integrity sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==
+
+typescript@^5.8.3:
+  version "5.8.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.8.3.tgz#92f8a3e5e3cf497356f4178c34cd65a7f5e8440e"
+  integrity sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==
 
 typewise-core@^1.2, typewise-core@^1.2.0:
   version "1.2.0"

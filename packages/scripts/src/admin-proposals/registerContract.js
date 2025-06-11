@@ -8,6 +8,7 @@
 // - Verify: Add --verify flag to Propose command.
 
 require("dotenv").config();
+const isEqual = require("lodash.isequal");
 const assert = require("assert");
 const Web3 = require("web3");
 const { utf8ToHex, toChecksumAddress } = Web3.utils;
@@ -424,10 +425,10 @@ async function run() {
               fromBlock: 0,
             }
           );
-          const relayedRegisterContractEvent = relayedTransactions.find(
-            (e) =>
-              e.returnValues.calls ===
-              [{ to: contractsByNetId[network.chainId].registry.options.address, data: registerContractData }]
+          const relayedRegisterContractEvent = relayedTransactions.find((e) =>
+            isEqual(e.returnValues.calls, [
+              { to: contractsByNetId[network.chainId].registry.options.address, data: registerContractData },
+            ])
           );
           // It's hard to test whether the addMember and removeMember transactions were relayed as well, since those
           // governance transactions could have been executed many blocks before and after the registerContract
@@ -442,10 +443,10 @@ async function run() {
             }
           );
           assert(
-            beforeRelayedRegistryTransactions.find(
-              (e) =>
-                e.returnValues.calls ===
-                [{ to: contractsByNetId[network.chainId].registry.options.address, data: addMemberData }]
+            beforeRelayedRegistryTransactions.find((e) =>
+              isEqual(e.returnValues.calls, [
+                { to: contractsByNetId[network.chainId].registry.options.address, data: addMemberData },
+              ])
             ),
             "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
           );
@@ -458,10 +459,10 @@ async function run() {
             }
           );
           assert(
-            afterRelayedRegistryTransactions.find(
-              (e) =>
-                e.returnValues.calls ===
-                [{ to: contractsByNetId[network.chainId].registry.options.address, data: removeMemberData }]
+            afterRelayedRegistryTransactions.find((e) =>
+              isEqual(e.returnValues.calls, [
+                { to: contractsByNetId[network.chainId].registry.options.address, data: removeMemberData },
+              ])
             ),
             "Could not find RelayedGovernanceRequest matching expected relayed removeMemberData transaction"
           );
