@@ -111,6 +111,7 @@ export interface OptimisticPriceRequest {
   requestLogIndex: number;
   requester: string;
   proposer: string;
+  identifier: string;
   ancillaryData: string;
   proposalBlockNumber: number;
   proposedPrice: BigNumber;
@@ -222,6 +223,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
           requestLogIndex: event.logIndex,
           requester: event.args.requester,
           proposer: event.args.proposer,
+          identifier: event.args.identifier,
           requestTimestamp: event.args.timestamp,
           ancillaryData: event.args.ancillaryData,
           proposalBlockNumber: event.blockNumber,
@@ -246,7 +248,7 @@ export const extractInitializerFromAncillaryData = (ancillaryData: string): stri
   return null;
 };
 
-// Get reward amount from RequestPrice event for a given proposal
+// Get reward amount from contract's requests mapping via eth_call
 export const getRewardForProposal = async (
   params: MonitoringParams,
   proposal: OptimisticPriceRequest,
@@ -257,26 +259,17 @@ export const getRewardForProposal = async (
     params.provider
   );
 
-  // Look for RequestPrice event that matches this proposal
-  const requestEvents = await paginatedEventQuery(
-    oo,
-    oo.filters.RequestPrice(proposal.requester, null, null, null, null, null, null),
-    {
-      fromBlock: Math.max(0, proposal.proposalBlockNumber - 1000), // Look back some blocks before proposal
-      toBlock: proposal.proposalBlockNumber,
-      maxBlockLookBack: 1000,
-    }
+  // Calculate the request ID as done in the contract: keccak256(abi.encode(requester, identifier, timestamp, ancillaryData))
+  const requestId = ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      ["address", "bytes32", "uint256", "bytes"],
+      [proposal.requester, proposal.identifier, proposal.requestTimestamp, proposal.ancillaryData]
+    )
   );
 
-  // Find the matching request event
-  const matchingRequest = requestEvents.find(
-    (event: any) =>
-      event.args?.requester.toLowerCase() === proposal.requester.toLowerCase() &&
-      event.args?.timestamp.eq(proposal.requestTimestamp) &&
-      event.args?.ancillaryData === proposal.ancillaryData
-  );
-
-  return matchingRequest?.args?.reward || BigNumber.from(0);
+  // Use eth_call to read from the requests mapping directly - this is much more efficient than event queries
+  const request = await oo.requests(requestId);
+  return request.reward;
 };
 
 // Check if a proposal should be ignored based on 3rd party criteria

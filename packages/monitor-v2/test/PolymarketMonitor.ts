@@ -353,6 +353,7 @@ describe("PolymarketNotifier", function () {
       proposalHash: "0xmockproposal",
       requester: params.ctfAdapterAddress,
       proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
       proposedPrice: ONE,
       requestTimestamp: ethers.BigNumber.from(Date.now()),
       proposalBlockNumber: 12345,
@@ -398,6 +399,7 @@ describe("PolymarketNotifier", function () {
       proposalHash: "0xmockproposal2",
       requester: params.ctfAdapterAddress,
       proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
       proposedPrice: ONE,
       requestTimestamp: ethers.BigNumber.from(Date.now()),
       proposalBlockNumber: 12345,
@@ -518,6 +520,8 @@ describe("PolymarketNotifier", function () {
       const sportsProposal: OptimisticPriceRequest = {
         proposalHash: "0xvalidsports",
         requester: params.ctfSportsOracleAddress,
+        proposer: await deployer.getAddress(),
+        identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
         proposedPrice,
         requestTimestamp: ethers.BigNumber.from(Date.now()),
         proposalBlockNumber: 12345,
