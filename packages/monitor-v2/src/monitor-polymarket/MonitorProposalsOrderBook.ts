@@ -26,6 +26,7 @@ import {
   ONE_SCALED,
   OptimisticPriceRequest,
   retryAsync,
+  shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
   POLYGON_BLOCKS_PER_HOUR,
 } from "./common";
@@ -39,17 +40,46 @@ function getThresholds() {
   };
 }
 
-async function processProposal(proposal: OptimisticPriceRequest, params: MonitoringParams, logger: typeof Logger) {
+async function processProposal(
+  proposal: OptimisticPriceRequest,
+  params: MonitoringParams,
+  logger: typeof Logger,
+  version: "v1" | "v2"
+) {
   const networker = new Networker(logger);
   const isSportsMarket = proposal.requester === params.ctfSportsOracleAddress;
   const questionID = calculatePolymarketQuestionID(proposal.ancillaryData);
 
   // Retry fetching market information per configuration.
-  const markets = await retryAsync(
-    () => getPolymarketMarketInformation(logger, params, questionID),
-    params.retryAttempts,
-    params.retryDelayMs
-  );
+  let markets;
+  try {
+    markets = await retryAsync(
+      () => getPolymarketMarketInformation(logger, params, questionID),
+      params.retryAttempts,
+      params.retryDelayMs
+    );
+  } catch (error) {
+    // Check if this is the specific "No market found" error for 3rd party proposals
+    if (error instanceof Error && error.message.includes(`No market found for question ID: ${questionID}`)) {
+      // Apply 3rd party proposal filtering logic
+      const shouldIgnore = await shouldIgnoreThirdPartyProposal(params, proposal, version);
+
+      if (shouldIgnore) {
+        // Ignore this proposal - log for debugging but don't alert
+        logger.info({
+          at: "PolymarketMonitor",
+          message: "Ignoring 3rd party Polymarket proposal based on filtering criteria",
+          questionID,
+          proposalHash: proposal.proposalHash,
+          requester: proposal.requester,
+        });
+        return { notified: false, notifiedProposal: null };
+      }
+      // If <2 criteria met, let the error bubble up to trigger alert
+    }
+    // Re-throw the error to maintain existing behavior for other error types
+    throw error;
+  }
 
   for (const marketInfo of markets) {
     let scores: [ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(0), ethers.BigNumber.from(0)];
@@ -181,7 +211,9 @@ export async function monitorTransactionsProposedOrderBook(
     }
 
     try {
-      const { notified } = await processProposal(proposal, params, logger);
+      // Determine version based on which proposals array this came from
+      const version = proposalsV2.includes(proposal) ? "v2" : "v1";
+      const { notified } = await processProposal(proposal, params, logger, version);
       if (notified) {
         notifiedProposals.push(proposal);
       }

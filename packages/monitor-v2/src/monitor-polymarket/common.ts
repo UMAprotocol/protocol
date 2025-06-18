@@ -31,6 +31,21 @@ export const ONE_SCALED = ethers.utils.parseUnits("1", 18);
 
 export const POLYGON_BLOCKS_PER_HOUR = 1800;
 
+// Polymarket initializer whitelist for checking 3rd party proposals
+const POLYMARKET_INITIALIZER_WHITELIST = [
+  "0x91430CaD2d3975766499717fA0D66A78D814E5c5",
+  "0xCD2CCA82e43Ca9E21d48564bB18897273Ada4a69",
+  "0x3162A9c12624DD2D4491fEA90FEb7AbBB481D7FC",
+  "0x70A66740774e7CA5739a454C60d72f2b0B7a0570",
+  "0x4ae84763ae13F0381CA6dA06B804EF9E64CE6B59",
+  "0xE4D717ae9467Be8ED8bD84A0e03a279e7150d459",
+  "0x91190A80eE09B55200f1622012eAf494Cc25a6a3",
+  "0x8A667535eB42F942186C30E70c72483612E0854b",
+  "0x084EA0bAC17aD8a23A84F596b4adcA432aa118A3",
+  "0x9E2ad3FB89B6357b601932B673f77B371ff91871",
+  "0xC789d2C42502A2548eEF3eDBe84dFe9ED233403A",
+].map((addr) => addr.toLowerCase());
+
 export interface MonitoringParams {
   binaryAdapterAddress: string;
   ctfAdapterAddress: string;
@@ -95,6 +110,7 @@ export interface OptimisticPriceRequest {
   requestTimestamp: BigNumber;
   requestLogIndex: number;
   requester: string;
+  proposer: string;
   ancillaryData: string;
   proposalBlockNumber: number;
   proposedPrice: BigNumber;
@@ -205,6 +221,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
           requestHash: event.transactionHash,
           requestLogIndex: event.logIndex,
           requester: event.args.requester,
+          proposer: event.args.proposer,
           requestTimestamp: event.args.timestamp,
           ancillaryData: event.args.ancillaryData,
           proposalBlockNumber: event.blockNumber,
@@ -216,6 +233,79 @@ export const getPolymarketProposedPriceRequestsOO = async (
         };
       })
   );
+};
+
+// Extract initializer (last 20 bytes) from ancillary data
+export const extractInitializerFromAncillaryData = (ancillaryData: string): string | null => {
+  // Ancillary data should end with 20 bytes (40 hex chars) representing the initializer address
+  if (ancillaryData.length >= 42) {
+    // 0x + 40 chars minimum
+    const lastBytes = ancillaryData.slice(-40);
+    return "0x" + lastBytes;
+  }
+  return null;
+};
+
+// Get reward amount from RequestPrice event for a given proposal
+export const getRewardForProposal = async (
+  params: MonitoringParams,
+  proposal: OptimisticPriceRequest,
+  version: "v1" | "v2"
+): Promise<BigNumber> => {
+  const oo = await getContractInstanceWithProvider<OptimisticOracleEthers | OptimisticOracleV2Ethers>(
+    version == "v1" ? "OptimisticOracle" : "OptimisticOracleV2",
+    params.provider
+  );
+
+  // Look for RequestPrice event that matches this proposal
+  const requestEvents = await paginatedEventQuery(
+    oo,
+    oo.filters.RequestPrice(proposal.requester, null, null, null, null, null, null),
+    {
+      fromBlock: Math.max(0, proposal.proposalBlockNumber - 1000), // Look back some blocks before proposal
+      toBlock: proposal.proposalBlockNumber,
+      maxBlockLookBack: 1000,
+    }
+  );
+
+  // Find the matching request event
+  const matchingRequest = requestEvents.find(
+    (event: any) =>
+      event.args?.requester.toLowerCase() === proposal.requester.toLowerCase() &&
+      event.args?.timestamp.eq(proposal.requestTimestamp) &&
+      event.args?.ancillaryData === proposal.ancillaryData
+  );
+
+  return matchingRequest?.args?.reward || BigNumber.from(0);
+};
+
+// Check if a proposal should be ignored based on 3rd party criteria
+export const shouldIgnoreThirdPartyProposal = async (
+  params: MonitoringParams,
+  proposal: OptimisticPriceRequest,
+  version: "v1" | "v2"
+): Promise<boolean> => {
+  let criteriaCount = 0;
+
+  // 1. Check if reward is 0
+  const reward = await getRewardForProposal(params, proposal, version);
+  if (reward.eq(0)) {
+    criteriaCount++;
+  }
+
+  // 2. Check if initializer is not on whitelist
+  const initializer = extractInitializerFromAncillaryData(proposal.ancillaryData);
+  if (initializer && !POLYMARKET_INITIALIZER_WHITELIST.includes(initializer.toLowerCase())) {
+    criteriaCount++;
+  }
+
+  // 3. Check if initializer matches proposer (already available in proposal data)
+  if (initializer && initializer.toLowerCase() === proposal.proposer.toLowerCase()) {
+    criteriaCount++;
+  }
+
+  // Return true if >= 2 criteria are met (should ignore)
+  return criteriaCount >= 2;
 };
 
 export const getPolymarketMarketInformation = async (
