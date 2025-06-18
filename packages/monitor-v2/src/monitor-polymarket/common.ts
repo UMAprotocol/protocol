@@ -184,7 +184,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
   const disputedRequestIds = new Set(
     disputeEvents.map((event) =>
       ethers.utils.keccak256(
-        ethers.utils.defaultAbiCoder.encode(
+        ethers.utils.solidityPack(
           ["address", "bytes32", "uint256", "bytes"],
           [event.args.requester, event.args.identifier, event.args.timestamp, event.args.ancillaryData]
         )
@@ -207,7 +207,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
       })
       .filter((event) => {
         const requestId = ethers.utils.keccak256(
-          ethers.utils.defaultAbiCoder.encode(
+          ethers.utils.solidityPack(
             ["address", "bytes32", "uint256", "bytes"],
             [event.args.requester, event.args.identifier, event.args.timestamp, event.args.ancillaryData]
           )
@@ -259,9 +259,9 @@ export const getRewardForProposal = async (
     params.provider
   );
 
-  // Calculate the request ID as done in the contract: keccak256(abi.encode(requester, identifier, timestamp, ancillaryData))
+  // Calculate the request ID as done in the contract: keccak256(abi.encodePacked(requester, identifier, timestamp, ancillaryData))
   const requestId = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
+    ethers.utils.solidityPack(
       ["address", "bytes32", "uint256", "bytes"],
       [proposal.requester, proposal.identifier, proposal.requestTimestamp, proposal.ancillaryData]
     )
