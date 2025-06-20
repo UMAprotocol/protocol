@@ -31,20 +31,20 @@ export const ONE_SCALED = ethers.utils.parseUnits("1", 18);
 
 export const POLYGON_BLOCKS_PER_HOUR = 1800;
 
-// Polymarket initializer whitelist for checking 3rd party proposals
-const POLYMARKET_INITIALIZER_WHITELIST = [
-  "0x91430CaD2d3975766499717fA0D66A78D814E5c5",
-  "0xCD2CCA82e43Ca9E21d48564bB18897273Ada4a69",
-  "0x3162A9c12624DD2D4491fEA90FEb7AbBB481D7FC",
-  "0x70A66740774e7CA5739a454C60d72f2b0B7a0570",
-  "0x4ae84763ae13F0381CA6dA06B804EF9E64CE6B59",
-  "0xE4D717ae9467Be8ED8bD84A0e03a279e7150d459",
-  "0x91190A80eE09B55200f1622012eAf494Cc25a6a3",
-  "0x8A667535eB42F942186C30E70c72483612E0854b",
-  "0x084EA0bAC17aD8a23A84F596b4adcA432aa118A3",
-  "0x9E2ad3FB89B6357b601932B673f77B371ff91871",
-  "0xC789d2C42502A2548eEF3eDBe84dFe9ED233403A",
-].map((addr) => addr.toLowerCase());
+// Get Polymarket initializer whitelist from env
+const getPolymarketInitializerWhitelist = (): string[] => {
+  const envWhitelist = process.env.POLYMARKET_INITIALIZER_WHITELIST;
+  if (envWhitelist) {
+    const parsed = JSON.parse(envWhitelist);
+    if (Array.isArray(parsed)) {
+      return parsed.map((addr) => addr.toString().toLowerCase());
+    }
+    throw new Error("POLYMARKET_INITIALIZER_WHITELIST must be a JSON array");
+  }
+
+  console.log("POLYMARKET_INITIALIZER_WHITELIST not provided, using empty whitelist");
+  return [];
+};
 
 export interface MonitoringParams {
   binaryAdapterAddress: string;
@@ -239,12 +239,13 @@ export const getPolymarketProposedPriceRequestsOO = async (
 
 // Extract initializer (last 20 bytes) from ancillary data
 export const extractInitializerFromAncillaryData = (ancillaryData: string): string | null => {
-  // Ancillary data should end with 20 bytes (40 hex chars) representing the initializer address
-  if (ancillaryData.length >= 42) {
-    // 0x + 40 chars minimum
-    const lastBytes = ancillaryData.slice(-40);
-    return "0x" + lastBytes;
+  // Check if ancillary data ends with "initializer:0x..." pattern
+  const initializerMatch = ancillaryData.match(/initializer:(0x[0-9a-fA-F]{40})$/);
+  if (initializerMatch) {
+    return initializerMatch[1];
   }
+
+  // If no initializer key found, return null
   return null;
 };
 
@@ -286,9 +287,12 @@ export const shouldIgnoreThirdPartyProposal = async (
     criteriaCount++;
   }
 
-  // 2. Check if initializer is not on whitelist
-  const initializer = extractInitializerFromAncillaryData(proposal.ancillaryData);
-  if (initializer && !POLYMARKET_INITIALIZER_WHITELIST.includes(initializer.toLowerCase())) {
+  // 2. Check if initializer is not on whitelist (only if whitelist is configured)
+  // Decode hex ancillary data to string first
+  const ancillaryDataString = ethers.utils.toUtf8String(proposal.ancillaryData);
+  const initializer = extractInitializerFromAncillaryData(ancillaryDataString);
+  const whitelist = getPolymarketInitializerWhitelist();
+  if (initializer && whitelist.length > 0 && !whitelist.includes(initializer.toLowerCase())) {
     criteriaCount++;
   }
 
