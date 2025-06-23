@@ -165,6 +165,8 @@ describe("PolymarketNotifier", function () {
   }
 
   it("It should notify if there are orders over the threshold", async function () {
+    const params = await createMonitoringParams();
+
     const orders: [MarketOrderbook, MarketOrderbook] = [
       {
         bids: [],
@@ -181,6 +183,28 @@ describe("PolymarketNotifier", function () {
       },
     ];
 
+    // Create a mock proposal
+    const mockProposal: OptimisticPriceRequest = {
+      proposalHash: "0xordertest",
+      requester: params.ctfAdapterAddress,
+      proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 12345,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequesthash",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+      proposalLogIndex: 0,
+    };
+
+    // Mock getPolymarketProposedPriceRequestsOO to return our mock proposal
+    sandbox.stub(commonModule, "getPolymarketProposedPriceRequestsOO").callsFake(async (params, version) => {
+      return version === "v2" ? [mockProposal] : [];
+    });
+
     mockFunctionWithReturnValue("getPolymarketOrderBook", orders);
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
@@ -191,7 +215,7 @@ describe("PolymarketNotifier", function () {
     // Call monitorTransactionsProposedOrderBook for the block when the assertion was made.
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
+    await monitorTransactionsProposedOrderBook(spyLogger, params);
 
     // The spy should have been called as the order book is not empty.
     assert.equal(spy.callCount, 1);
@@ -345,6 +369,104 @@ describe("PolymarketNotifier", function () {
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
 
+  it("It should ignore 3rd party proposals when 'No market found' error occurs and >=2 criteria are met", async function () {
+    const params = await createMonitoringParams();
+    const proposerAddress = await deployer.getAddress();
+
+    // Create ancillary data with initializer that matches proposer (to trigger criteria 3)
+    const ancillaryDataWithInitializer = `q:"Really hard question, maybe 100, maybe 90?" initializer:${proposerAddress}`;
+    const ancillaryDataHex = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(ancillaryDataWithInitializer));
+
+    // Create a mock proposal
+    const mockProposal: OptimisticPriceRequest = {
+      proposalHash: "0xmockproposal",
+      requester: params.ctfAdapterAddress,
+      proposer: proposerAddress,
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 12345,
+      ancillaryData: ancillaryDataHex,
+      requestHash: "0xrequesthash",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+      proposalLogIndex: 0,
+    };
+
+    // Mock getPolymarketProposedPriceRequestsOO to return our mock proposal only for v2
+    sandbox.stub(commonModule, "getPolymarketProposedPriceRequestsOO").callsFake(async (params, version) => {
+      return version === "v2" ? [mockProposal] : [];
+    });
+
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+    // Calculate the actual questionID that will be generated from our ancillary data
+    const expectedQuestionID = ethers.utils.keccak256(ancillaryDataHex);
+    mockFunctionThrowsError("getPolymarketMarketInformation", `No market found for question ID: ${expectedQuestionID}`);
+
+    // Mock getRewardForProposal to return 0 (criteria 1 met)
+    mockFunctionWithReturnValue("getRewardForProposal", ethers.BigNumber.from(0));
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+    // Should only have an info log for ignoring the proposal, no error notifications
+    assert.equal(spy.callCount, 1);
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Ignoring 3rd party Polymarket proposal based on filtering criteria");
+    assert.equal(spyLogLevel(spy, 0), "info");
+  });
+
+  it("It should still notify when 'No market found' error occurs but <2 criteria are met", async function () {
+    const params = await createMonitoringParams();
+
+    // Create a mock proposal
+    const mockProposal: OptimisticPriceRequest = {
+      proposalHash: "0xmockproposal2",
+      requester: params.ctfAdapterAddress,
+      proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 12345,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequesthash2",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+      proposalLogIndex: 0,
+    };
+
+    // Mock getPolymarketProposedPriceRequestsOO to return our mock proposal only for v2
+    sandbox.stub(commonModule, "getPolymarketProposedPriceRequestsOO").callsFake(async (params, version) => {
+      return version === "v2" ? [mockProposal] : [];
+    });
+
+    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+    // Calculate the actual questionID that will be generated from our ancillary data
+    const expectedQuestionID = ethers.utils.keccak256(ethers.utils.hexlify(ancillaryData));
+    mockFunctionThrowsError("getPolymarketMarketInformation", `No market found for question ID: ${expectedQuestionID}`);
+
+    // Mock getRewardForProposal to return non-zero (criteria 1 NOT met)
+    mockFunctionWithReturnValue("getRewardForProposal", ethers.BigNumber.from(100));
+
+    const spy = sinon.spy();
+    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+    // Should still get the normal error notification
+    assert.equal(spy.callCount, 1);
+    assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
+    assert.equal(spy.getCall(0).lastArg.message, "Failed to verify proposed market, please verify manually! 🚨");
+    assert.equal(spyLogLevel(spy, 0), "error");
+    assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
+  });
+
   it("It should not notify if already notified", async function () {
     sandbox.restore();
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
@@ -427,6 +549,8 @@ describe("PolymarketNotifier", function () {
       const sportsProposal: OptimisticPriceRequest = {
         proposalHash: "0xvalidsports",
         requester: params.ctfSportsOracleAddress,
+        proposer: await deployer.getAddress(),
+        identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
         proposedPrice,
         requestTimestamp: ethers.BigNumber.from(Date.now()),
         proposalBlockNumber: 12345,
