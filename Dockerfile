@@ -34,6 +34,7 @@ RUN git clone -b fusmanii/yarn-upgrade-second-attempt https://github.com/across-
 RUN npx -y only-allow npm
 
 # Install depdencies.
+RUN corepack enable
 RUN yarn install --frozen-lockfile && yarn build
 
 # Set back the working directory to the protocol directory to default to that package.
