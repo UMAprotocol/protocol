@@ -27,6 +27,8 @@ WORKDIR /across-relayer
 
 # Clode the relayer code and copy it to the across-relayer directory. Remove the package directory.
 RUN git clone https://github.com/across-protocol/relayer-v2.git .
+# Temporary test branch
+RUN git clone -b address-staging https://github.com/across-protocol/relayer.git .
 
 # This command fix a concurrency issue when the package was not found.
 RUN npx -y only-allow npm
