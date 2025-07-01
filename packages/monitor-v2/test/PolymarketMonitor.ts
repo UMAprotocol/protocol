@@ -372,9 +372,10 @@ describe("PolymarketNotifier", function () {
   it("It should ignore 3rd party proposals when 'No market found' error occurs and >=2 criteria are met", async function () {
     const params = await createMonitoringParams();
     const proposerAddress = await deployer.getAddress();
+    const initializerAddress = proposerAddress.slice(2).toLowerCase(); // There is no 0x prefix in the ancillary data.
 
     // Create ancillary data with initializer that matches proposer (to trigger criteria 3)
-    const ancillaryDataWithInitializer = `q:"Really hard question, maybe 100, maybe 90?" initializer:${proposerAddress}`;
+    const ancillaryDataWithInitializer = `q:"Really hard question, maybe 100, maybe 90?" initializer:${initializerAddress}`;
     const ancillaryDataHex = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(ancillaryDataWithInitializer));
 
     // Create a mock proposal
