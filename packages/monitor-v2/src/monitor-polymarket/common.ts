@@ -237,12 +237,12 @@ export const getPolymarketProposedPriceRequestsOO = async (
   );
 };
 
-// Extract initializer (last 20 bytes) from ancillary data
+// Extract initializer address from ancillary data
 export const extractInitializerFromAncillaryData = (ancillaryData: string): string | null => {
-  // Check if ancillary data ends with "initializer:0x..." pattern
-  const initializerMatch = ancillaryData.match(/initializer:(0x[0-9a-fA-F]{40})$/);
+  // Check if ancillary data ends with "initializer:..." pattern (there is no 0x prefix)
+  const initializerMatch = ancillaryData.match(/initializer:([0-9a-fA-F]{40})$/);
   if (initializerMatch) {
-    return initializerMatch[1];
+    return "0x" + initializerMatch[1];
   }
 
   // If no initializer key found, return null
