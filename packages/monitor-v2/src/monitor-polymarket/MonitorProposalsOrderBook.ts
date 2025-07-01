@@ -202,24 +202,28 @@ export async function monitorTransactionsProposedOrderBook(
   const proposals = [...proposalsV2, ...proposalsV1];
 
   console.log(`Checking proposal price for ${proposals.length} markets...`);
-  await Promise.all(
+  const alreadyHandled = new Set(Object.keys(pastNotifiedProposals));
+
+  await Promise.allSettled(
     proposals.map(async (proposal) => {
-      // Skip if we have already handled this proposal
-      if (Object.keys(pastNotifiedProposals).includes(getProposalKeyToStore(proposal))) {
-        return;
-      }
+      const key = getProposalKeyToStore(proposal);
+      if (alreadyHandled.has(key)) return; // early-exit
+
+      const persist = async () => {
+        try {
+          await storeNotifiedProposals([proposal]);
+        } catch (err) {
+          logger.error(`Failed to persist notified proposal ${key}:`, err);
+        }
+      };
 
       try {
         const version: "v1" | "v2" = proposalsV2.includes(proposal) ? "v2" : "v1";
         const { notified } = await processProposal(proposal, params, logger, version);
-
-        if (notified) {
-          await storeNotifiedProposals([proposal]);
-        }
+        if (notified) await persist();
       } catch (error) {
-        // Log and still persist so we don’t re-process the faulty proposal
         await logFailedMarketProposalVerification(logger, params.chainId, proposal, error as Error);
-        await storeNotifiedProposals([proposal]);
+        await persist(); // ensure we don’t re-process it again
       }
     })
   );
