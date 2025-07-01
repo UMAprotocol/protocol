@@ -202,27 +202,26 @@ export async function monitorTransactionsProposedOrderBook(
   const proposals = [...proposalsV2, ...proposalsV1];
 
   console.log(`Checking proposal price for ${proposals.length} markets...`);
-  const notifiedProposals = [];
-
-  for (const proposal of proposals) {
-    // Skip proposals that have already been processed.
-    if (Object.keys(pastNotifiedProposals).includes(getProposalKeyToStore(proposal))) {
-      continue;
-    }
-
-    try {
-      // Determine version based on which proposals array this came from
-      const version = proposalsV2.includes(proposal) ? "v2" : "v1";
-      const { notified } = await processProposal(proposal, params, logger, version);
-      if (notified) {
-        notifiedProposals.push(proposal);
+  await Promise.all(
+    proposals.map(async (proposal) => {
+      // Skip if we have already handled this proposal
+      if (Object.keys(pastNotifiedProposals).includes(getProposalKeyToStore(proposal))) {
+        return;
       }
-    } catch (error) {
-      await logFailedMarketProposalVerification(logger, params.chainId, proposal, error as Error);
-      notifiedProposals.push(proposal);
-    }
-  }
 
-  await storeNotifiedProposals(notifiedProposals);
+      try {
+        const version: "v1" | "v2" = proposalsV2.includes(proposal) ? "v2" : "v1";
+        const { notified } = await processProposal(proposal, params, logger, version);
+
+        if (notified) {
+          await storeNotifiedProposals([proposal]);
+        }
+      } catch (error) {
+        // Log and still persist so we don’t re-process the faulty proposal
+        await logFailedMarketProposalVerification(logger, params.chainId, proposal, error as Error);
+        await storeNotifiedProposals([proposal]);
+      }
+    })
+  );
   console.log("All proposals have been checked!");
 }
