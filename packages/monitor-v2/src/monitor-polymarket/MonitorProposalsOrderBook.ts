@@ -202,27 +202,30 @@ export async function monitorTransactionsProposedOrderBook(
   const proposals = [...proposalsV2, ...proposalsV1];
 
   console.log(`Checking proposal price for ${proposals.length} markets...`);
-  const notifiedProposals = [];
+  const alreadyHandled = new Set(Object.keys(pastNotifiedProposals));
 
-  for (const proposal of proposals) {
-    // Skip proposals that have already been processed.
-    if (Object.keys(pastNotifiedProposals).includes(getProposalKeyToStore(proposal))) {
-      continue;
-    }
+  await Promise.allSettled(
+    proposals.map(async (proposal) => {
+      const key = getProposalKeyToStore(proposal);
+      if (alreadyHandled.has(key)) return; // early-exit
 
-    try {
-      // Determine version based on which proposals array this came from
-      const version = proposalsV2.includes(proposal) ? "v2" : "v1";
-      const { notified } = await processProposal(proposal, params, logger, version);
-      if (notified) {
-        notifiedProposals.push(proposal);
+      const persist = async () => {
+        try {
+          await storeNotifiedProposals([proposal]);
+        } catch (err) {
+          logger.error(`Failed to persist notified proposal ${key}:`, err);
+        }
+      };
+
+      try {
+        const version: "v1" | "v2" = proposalsV2.includes(proposal) ? "v2" : "v1";
+        const { notified } = await processProposal(proposal, params, logger, version);
+        if (notified) await persist();
+      } catch (error) {
+        await logFailedMarketProposalVerification(logger, params.chainId, proposal, error as Error);
+        await persist(); // ensure we don’t re-process it again
       }
-    } catch (error) {
-      await logFailedMarketProposalVerification(logger, params.chainId, proposal, error as Error);
-      notifiedProposals.push(proposal);
-    }
-  }
-
-  await storeNotifiedProposals(notifiedProposals);
+    })
+  );
   console.log("All proposals have been checked!");
 }
