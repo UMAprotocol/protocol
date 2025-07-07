@@ -1,17 +1,15 @@
 import { getRetryProvider, paginatedEventQuery as umaPaginatedEventQuery } from "@uma/common";
+import { createHttpClient } from "@uma/toolkit";
 export const paginatedEventQuery = umaPaginatedEventQuery;
 
-import { NetworkerInterface } from "@uma/financial-templates-lib";
-
 import type { Provider } from "@ethersproject/abstract-provider";
-import { GraphQLClient } from "graphql-request";
 
 import { BigNumber, Event, ethers } from "ethers";
 
 import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import {
-  ProposePriceEvent,
   DisputePriceEvent,
+  ProposePriceEvent,
 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 
@@ -64,6 +62,7 @@ export interface MonitoringParams {
   retryDelayMs: number;
   checkBeforeExpirationSeconds: number;
   fillEventsLookbackSeconds: number;
+  httpClient: ReturnType<typeof createHttpClient>;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -322,16 +321,19 @@ export const getPolymarketMarketInformation = async (
       }
     }
     `;
+  const { data } = await params.httpClient.post<{
+    data: { markets: PolymarketMarketGraphql[] };
+  }>(
+    params.graphqlEndpoint,
+    { query },
+    {
+      headers: {
+        authorization: `Bearer ${params.polymarketApiKey}`,
+      },
+    }
+  );
 
-  const graphQLClient = new GraphQLClient(params.graphqlEndpoint, {
-    headers: {
-      authorization: `Bearer ${params.polymarketApiKey}`,
-    },
-  });
-
-  const { markets } = (await graphQLClient.request(query)) as {
-    markets: PolymarketMarketGraphql[];
-  };
+  const { markets } = data.data;
 
   logger.info({
     at: "PolymarketMonitor",
@@ -423,8 +425,7 @@ export const calculatePolymarketQuestionID = (ancillaryData: string): string => 
 
 export const getPolymarketOrderBook = async (
   params: MonitoringParams,
-  clobTokenIds: [string, string],
-  networker: NetworkerInterface
+  clobTokenIds: [string, string]
 ): Promise<[MarketOrderbook, MarketOrderbook]> => {
   const [marketOne, marketTwo] = clobTokenIds;
   const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
@@ -433,13 +434,13 @@ export const getPolymarketOrderBook = async (
   // TODO: defaulting to [] is a temporary fix to handle the case where the API returns an error.
   // This means we just assume there are no orders on that side. We don't expect this to happen, but it
   // does occasionally. We should get to the bottom of this.
-  const { bids: outcome1Bids = [], asks: outcome1Asks = [] } = (await networker.getJson(apiUrlOne, {
-    method: "get",
-  })) as PolymarketOrderBook;
+  const { bids: outcome1Bids = [], asks: outcome1Asks = [] } = (
+    await params.httpClient.get<PolymarketOrderBook>(apiUrlOne)
+  ).data;
 
-  const { bids: outcome2Bids = [], asks: outcome2Asks = [] } = (await networker.getJson(apiUrlTwo, {
-    method: "get",
-  })) as PolymarketOrderBook;
+  const { bids: outcome2Bids = [], asks: outcome2Asks = [] } = (
+    await params.httpClient.get<PolymarketOrderBook>(apiUrlTwo)
+  ).data;
 
   const stringToNumber = (
     orders: {
@@ -639,6 +640,21 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     ? Number(env.CHECK_BEFORE_EXPIRATION_SECONDS)
     : 1800; // default to 30 minutes
   const fillEventsLookbackSeconds = env.FILL_EVENTS_LOOKBACK_SECONDS ? Number(env.FILL_EVENTS_LOOKBACK_SECONDS) : 1800; // default to 30 minutes
+
+  const maxConcurrentRequests = env.MAX_CONCURRENT_REQUESTS ? Number(env.MAX_CONCURRENT_REQUESTS) : 5;
+  const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
+
+  // Rate limit and retry with exponential backoff and jitter to handle rate limiting and errors from the APIs.
+  const httpClient = createHttpClient({
+    axios: { timeout: 10_000 },
+    rateLimit: { maxConcurrent: maxConcurrentRequests, minTime: minTimeBetweenRequests },
+    retry: {
+      retries: retryAttempts,
+      baseDelayMs: retryDelayMs,
+      retryCondition: () => true, // Retry on all errors
+    },
+  });
+
   return {
     binaryAdapterAddress,
     ctfAdapterAddress,
@@ -657,6 +673,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     retryDelayMs,
     checkBeforeExpirationSeconds,
     fillEventsLookbackSeconds,
+    httpClient,
   };
 };
 

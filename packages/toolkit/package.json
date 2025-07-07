@@ -1,0 +1,48 @@
+{
+  "name": "@uma/toolkit",
+  "version": "1.0.0",
+  "description": "Shared helpers for the UMA stack",
+  "keywords": [],
+  "author": "UMA Team",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "directories": {
+    "lib": "dist"
+  },
+  "publishConfig": {
+    "registry": "https://registry.yarnpkg.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "test": "jest"
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
+  },
+  "homepage": "https://github.com/UMAprotocol/protocol#readme",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "axios-mock-adapter": "^2.1.0",
+    "jest": "^30.0.4",
+    "nock": "^14.0.5",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.4.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "axios-retry": "^4.5.0",
+    "bottleneck": "^2.19.5"
+  }
+}
