@@ -644,9 +644,11 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const maxConcurrentRequests = env.MAX_CONCURRENT_REQUESTS ? Number(env.MAX_CONCURRENT_REQUESTS) : 5;
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
 
+  const httpTimeout = env.HTTP_TIMEOUT ? Number(env.HTTP_TIMEOUT) : 10_000;
+
   // Rate limit and retry with exponential backoff and jitter to handle rate limiting and errors from the APIs.
   const httpClient = createHttpClient({
-    axios: { timeout: 10_000 },
+    axios: { timeout: httpTimeout },
     rateLimit: { maxConcurrent: maxConcurrentRequests, minTime: minTimeBetweenRequests },
     retry: {
       retries: retryAttempts,
