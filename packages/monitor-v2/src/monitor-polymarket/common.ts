@@ -44,6 +44,11 @@ const getPolymarketInitializerWhitelist = (): string[] => {
   return [];
 };
 
+interface GraphQLResponse<T> {
+  data?: T;
+  errors?: { message: string }[];
+}
+
 export interface MonitoringParams {
   binaryAdapterAddress: string;
   ctfAdapterAddress: string;
@@ -321,17 +326,21 @@ export const getPolymarketMarketInformation = async (
       }
     }
     `;
-  const { data } = await params.httpClient.post<{
-    data: { markets: PolymarketMarketGraphql[] };
-  }>(
+  const { data } = await params.httpClient.post<GraphQLResponse<{ markets: PolymarketMarketGraphql[] }>>(
     params.graphqlEndpoint,
     { query },
     {
-      headers: {
-        authorization: `Bearer ${params.polymarketApiKey}`,
-      },
+      headers: { authorization: `Bearer ${params.polymarketApiKey}` },
     }
   );
+
+  if (data.errors?.length) {
+    throw new Error(data.errors.map((e) => e.message).join("; "));
+  }
+
+  if (!data.data?.markets) {
+    throw new Error("No markets found");
+  }
 
   const { markets } = data.data;
 
