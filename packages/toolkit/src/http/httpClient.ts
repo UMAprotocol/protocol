@@ -21,6 +21,8 @@ export interface RetryOptions {
   baseDelayMs?: number;
   /** Max jitter added to each back-off (default = 1000) */
   maxJitterMs?: number;
+  /** Hard ceiling for the final delay (ms). Default = 10 000 ms */
+  maxDelayMs?: number;
 }
 
 export interface HttpClientOptions {
@@ -48,7 +50,7 @@ export function createHttpClient(opts: HttpClientOptions = {}): AxiosInstance {
 
   instance.interceptors.request.use((cfg) => limiter.schedule(async () => cfg));
 
-  const { retries = 3, retryCondition, baseDelayMs = 100, maxJitterMs = 1000 } = opts.retry ?? {};
+  const { retries = 3, retryCondition, baseDelayMs = 100, maxJitterMs = 1000, maxDelayMs = 10_000 } = opts.retry ?? {};
 
   axiosRetry(instance, {
     retries,
@@ -63,14 +65,12 @@ export function createHttpClient(opts: HttpClientOptions = {}): AxiosInstance {
       const jitter = Math.floor(Math.random() * maxJitterMs);
 
       const h = err.response?.headers?.["retry-after"];
-      const ra =
-        h == null
-          ? 0
-          : /^\d+$/.test(h as string) // seconds
-          ? Number(h) * 1000
-          : Math.max(Date.parse(h as string) - Date.now(), 0);
+      const retryAfter =
+        h === undefined ? 0 : isNaN(Date.parse(h as string)) ? 0 : Math.max(Date.parse(h as string) - Date.now(), 0);
 
-      return ra ? Math.max(ra, base + jitter) : base + jitter;
+      const delay = retryAfter ? Math.max(retryAfter, base + jitter) : base + jitter;
+
+      return Math.min(delay, maxDelayMs);
     },
   });
 
