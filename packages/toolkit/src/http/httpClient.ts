@@ -65,11 +65,19 @@ export function createHttpClient(opts: HttpClientOptions = {}): AxiosInstance {
       const jitter = Math.floor(Math.random() * maxJitterMs);
 
       const h = err.response?.headers?.["retry-after"];
-      const retryAfter =
-        h === undefined ? 0 : isNaN(Date.parse(h as string)) ? 0 : Math.max(Date.parse(h as string) - Date.now(), 0);
+      let retryAfter = 0;
+
+      if (h !== undefined) {
+        if (/^\d+$/.test(h as string)) {
+          // plain integer seconds
+          retryAfter = Number(h) * 1000;
+        } else {
+          const parsed = Date.parse(h as string);
+          if (!isNaN(parsed)) retryAfter = Math.max(parsed - Date.now(), 0);
+        }
+      }
 
       const delay = retryAfter ? Math.max(retryAfter, base + jitter) : base + jitter;
-
       return Math.min(delay, maxDelayMs);
     },
   });
