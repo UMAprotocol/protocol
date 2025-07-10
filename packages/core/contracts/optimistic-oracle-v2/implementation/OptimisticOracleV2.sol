@@ -123,7 +123,7 @@ contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
         bytes memory ancillaryData,
         IERC20 currency,
         uint256 reward
-    ) external override nonReentrant() returns (uint256 totalBond) {
+    ) public virtual override nonReentrant() returns (uint256 totalBond) {
         require(_getState(msg.sender, identifier, timestamp, ancillaryData) == State.Invalid, "requestPrice: Invalid");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
@@ -308,7 +308,7 @@ contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData,
         int256 proposedPrice
-    ) public override nonReentrant() returns (uint256 totalBond) {
+    ) public virtual override nonReentrant() returns (uint256 totalBond) {
         require(proposer != address(0), "proposer address must be non 0");
         require(
             _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
@@ -576,7 +576,7 @@ contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) private pure returns (bytes32) {
+    ) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(requester, identifier, timestamp, ancillaryData));
     }
 
@@ -643,7 +643,7 @@ contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) private view returns (Request storage) {
+    ) internal view returns (Request storage) {
         return requests[_getId(requester, identifier, timestamp, ancillaryData)];
     }
 
@@ -652,7 +652,7 @@ contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
         return request.requestSettings.bond.div(2);
     }
 
-    function _validateLiveness(uint256 _liveness) private pure {
+    function _validateLiveness(uint256 _liveness) internal pure {
         require(_liveness < 5200 weeks, "Liveness too large");
         require(_liveness > 0, "Liveness cannot be 0");
     }
