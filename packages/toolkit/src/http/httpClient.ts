@@ -77,7 +77,7 @@ export function createHttpClient(opts: HttpClientOptions = {}): AxiosInstance {
         }
       }
 
-      const delay = retryAfter ? Math.max(retryAfter, base + jitter) : base + jitter;
+      const delay = retryAfter || base + jitter;
       return Math.min(delay, maxDelayMs);
     },
   });
