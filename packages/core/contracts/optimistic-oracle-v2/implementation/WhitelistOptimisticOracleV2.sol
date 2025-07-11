@@ -1,0 +1,275 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
+import "../../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
+import "../../data-verification-mechanism/implementation/Constants.sol";
+
+import "../interfaces/OptimisticOracleV2Interface.sol";
+
+import "../../common/implementation/Testable.sol";
+import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/AncillaryData.sol";
+import "../../common/implementation/AddressWhitelist.sol";
+import "./OptimisticOracleV2.sol";
+
+/**
+ * @title Optimistic Oracle.
+ * @notice Pre-DVM escalation contract that allows faster settlement.
+ */
+contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
+    using SafeMath for uint256;
+    using SafeERC20 for IERC20;
+    using Address for address;
+
+    // Default whitelist for proposers.
+    AddressWhitelistInterface public defaultProposerWhitelist;
+    AddressWhitelistInterface public requesterWhitelist;
+
+    mapping(bytes32 => AddressWhitelistInterface) public customProposerWhitelists;
+
+    /**
+     * @notice Constructor.
+     * @param _liveness default liveness applied to each price request.
+     * @param _finderAddress finder to use to get addresses of DVM contracts.
+     * @param _timerAddress address of the timer contract. Should be 0x0 in prod.
+     * @param _defaultProposerWhitelist address of the default whitelist.
+     * @param _requesterWhitelist address of the requester whitelist.
+     * @param _admin address of the admin.
+     */
+    constructor(
+        uint256 _liveness,
+        address _finderAddress,
+        address _timerAddress,
+        address _defaultProposerWhitelist,
+        address _requesterWhitelist,
+        address _admin
+    ) OptimisticOracleV2(_liveness, _finderAddress, _timerAddress) {
+        defaultProposerWhitelist = AddressWhitelistInterface(_defaultProposerWhitelist);
+        requesterWhitelist = AddressWhitelistInterface(_requesterWhitelist);
+        _transferOwnership(_admin);
+    }
+
+    /**
+     * @notice Requests a new price.
+     * @param identifier price identifier being requested.
+     * @param timestamp timestamp of the price being requested.
+     * @param ancillaryData ancillary data representing additional args being passed with the price request.
+     * @param currency ERC20 token used for payment of rewards and fees. Must be approved for use with the DVM.
+     * @param reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
+     *               which could make sense if the contract requests and proposes the value in the same call or
+     *               provides its own reward system.
+     * @return totalBond default bond (final fee) + final fee that the proposer and disputer will be required to pay.
+     * This can be changed with a subsequent call to setBond().
+     */
+    function requestPrice(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        IERC20 currency,
+        uint256 reward
+    ) public override returns (uint256 totalBond) {
+        require(requesterWhitelist.isOnWhitelist(address(msg.sender)), "Requester not whitelisted");
+        return super.requestPrice(identifier, timestamp, ancillaryData, currency, reward);
+    }
+
+    /**
+     * @notice Set the proposal bond associated with a price request.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param bond custom bond amount to set.
+     * @return totalBond new bond + final fee that the proposer and disputer will be required to pay. This can be
+     * changed again with a subsequent call to setBond().
+     */
+    function ownerSetBond(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        uint256 bond
+    ) external nonReentrant() onlyOwner() returns (uint256 totalBond) {
+        require(_getState(requester, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
+        Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
+        request.requestSettings.bond = bond;
+
+        // Total bond is the final fee + the newly set bond.
+        return bond.add(request.finalFee);
+    }
+
+    /**
+     * @notice Sets the request to refund the reward if the proposal is disputed. This can help to "hedge" the caller
+     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the other's
+     * bond, so there is still profit to be made even if the reward is refunded.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     */
+    function ownerSetRefundOnDispute(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external nonReentrant() onlyOwner() {
+        require(
+            _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
+            "setRefundOnDispute: Requested"
+        );
+        _getRequest(requester, identifier, timestamp, ancillaryData).requestSettings.refundOnDispute = true;
+    }
+
+    /**
+     * @notice Sets a custom liveness value for the request. Liveness is the amount of time a proposal must wait before
+     * being auto-resolved.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param customLiveness new custom liveness.
+     */
+    function ownerSetCustomLiveness(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        uint256 customLiveness
+    ) external nonReentrant() onlyOwner() {
+        require(
+            _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
+            "setCustomLiveness: Requested"
+        );
+        _validateLiveness(customLiveness);
+        _getRequest(requester, identifier, timestamp, ancillaryData).requestSettings.customLiveness = customLiveness;
+    }
+
+    /**
+     * @notice Sets the request to be an "event-based" request.
+     * @dev Calling this method has a few impacts on the request:
+     *
+     * 1. The timestamp at which the request is evaluated is the time of the proposal, not the timestamp associated
+     *    with the request.
+     *
+     * 2. The proposer cannot propose the "too early" value (TOO_EARLY_RESPONSE). This is to ensure that a proposer who
+     *    prematurely proposes a response loses their bond.
+     *
+     * 3. RefundoOnDispute is automatically set, meaning disputes trigger the reward to be automatically refunded to
+     *    the requesting contract.
+     *
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     */
+    function ownerSetEventBased(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external nonReentrant() onlyOwner() {
+        require(
+            _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
+            "setEventBased: Requested"
+        );
+        Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
+        request.requestSettings.eventBased = true;
+        request.requestSettings.refundOnDispute = true;
+    }
+
+    /**
+     * @notice Sets which callbacks should be enabled for the request.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param callbackOnPriceProposed whether to enable the callback onPriceProposed.
+     * @param callbackOnPriceDisputed whether to enable the callback onPriceDisputed.
+     * @param callbackOnPriceSettled whether to enable the callback onPriceSettled.
+     */
+    function ownerSetCallbacks(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        bool callbackOnPriceProposed,
+        bool callbackOnPriceDisputed,
+        bool callbackOnPriceSettled
+    ) external nonReentrant() onlyOwner() {
+        require(
+            _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
+            "setCallbacks: Requested"
+        );
+        Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
+        request.requestSettings.callbackOnPriceProposed = callbackOnPriceProposed;
+        request.requestSettings.callbackOnPriceDisputed = callbackOnPriceDisputed;
+        request.requestSettings.callbackOnPriceSettled = callbackOnPriceSettled;
+    }
+
+    /**
+     * @notice Sets the proposer whitelist for a request.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param whitelist address of the whitelist to set.
+     */
+    function ownerSetProposerWhitelist(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        address whitelist
+    ) external nonReentrant() onlyOwner() {
+        customProposerWhitelists[_getId(requester, identifier, timestamp, ancillaryData)] = AddressWhitelistInterface(
+            whitelist
+        );
+    }
+
+    /**
+     * @notice Sets the requester whitelist.
+     * @param whitelist address of the whitelist to set.
+     */
+    function ownerSetRequesterWhitelist(address whitelist) external nonReentrant() onlyOwner() {
+        requesterWhitelist = AddressWhitelistInterface(whitelist);
+    }
+
+    /**
+     * @notice Proposes a price value on another address' behalf. Note: this address will receive any rewards that come
+     * from this proposal. However, any bonds are pulled from the caller.
+     * @param proposer address to set as the proposer.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param proposedPrice price being proposed.
+     * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
+     * the proposer once settled if the proposal is correct.
+     */
+    function proposePriceFor(
+        address proposer,
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        int256 proposedPrice
+    ) public override returns (uint256 totalBond) {
+        AddressWhitelistInterface whitelist =
+            customProposerWhitelists[_getId(requester, identifier, timestamp, ancillaryData)];
+        if (address(whitelist) == address(0)) {
+            whitelist = defaultProposerWhitelist;
+        }
+
+        require(whitelist.isOnWhitelist(proposer) || msg.sender == owner(), "Proposer not whitelisted");
+        return super.proposePriceFor(proposer, requester, identifier, timestamp, ancillaryData, proposedPrice);
+    }
+}
