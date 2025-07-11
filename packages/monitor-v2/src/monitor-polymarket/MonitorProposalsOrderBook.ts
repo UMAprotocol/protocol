@@ -1,4 +1,3 @@
-import { Networker } from "@uma/financial-templates-lib";
 import { ethers } from "ethers";
 import { tryHexToUtf8String } from "../utils/contracts";
 import {
@@ -25,7 +24,6 @@ import {
   MultipleValuesQuery,
   ONE_SCALED,
   OptimisticPriceRequest,
-  retryAsync,
   shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
   POLYGON_BLOCKS_PER_HOUR,
@@ -46,18 +44,12 @@ async function processProposal(
   logger: typeof Logger,
   version: "v1" | "v2"
 ) {
-  const networker = new Networker(logger);
   const isSportsMarket = proposal.requester === params.ctfSportsOracleAddress;
   const questionID = calculatePolymarketQuestionID(proposal.ancillaryData);
 
-  // Retry fetching market information per configuration.
   let markets;
   try {
-    markets = await retryAsync(
-      () => getPolymarketMarketInformation(logger, params, questionID),
-      params.retryAttempts,
-      params.retryDelayMs
-    );
+    markets = await getPolymarketMarketInformation(logger, params, questionID);
   } catch (error) {
     // Check if this is the specific "No market found" error for 3rd party proposals
     if (error instanceof Error && error.message.includes(`No market found for question ID: ${questionID}`)) {
@@ -119,7 +111,7 @@ async function processProposal(
     }
 
     const thresholds = getThresholds();
-    const orderBook = await getPolymarketOrderBook(params, marketInfo.clobTokenIds, networker);
+    const orderBook = await getPolymarketOrderBook(params, marketInfo.clobTokenIds);
     // We only want to look back fillEventsLookbackSeconds seconds, but no older than startBlockNumber
     const currentBlockNumber = await params.provider.getBlockNumber();
     const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
