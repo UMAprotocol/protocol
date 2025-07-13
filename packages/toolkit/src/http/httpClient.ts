@@ -17,6 +17,8 @@ export interface RetryOptions {
    * If omitted we retry on network errors, 429 and 5xx.
    */
   retryCondition?: (err: AxiosError) => boolean;
+  /** Reset per-attempt timeout instead of using one global timer (default = false) */
+  shouldResetTimeout?: boolean;
   /** First back-off delay (ms) before jitter (default = 100) */
   baseDelayMs?: number;
   /** Max jitter added to each back-off (default = 1000) */
@@ -54,6 +56,7 @@ export function createHttpClient(opts: HttpClientOptions = {}): AxiosInstance {
 
   axiosRetry(instance, {
     retries,
+    shouldResetTimeout: opts.retry?.shouldResetTimeout ?? false,
     retryCondition:
       retryCondition ??
       ((err) => {

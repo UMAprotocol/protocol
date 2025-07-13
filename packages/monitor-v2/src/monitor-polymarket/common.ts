@@ -655,6 +655,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const httpTimeout = env.HTTP_TIMEOUT ? Number(env.HTTP_TIMEOUT) : 10_000;
 
+  const shouldResetTimeout = env.SHOULD_RESET_TIMEOUT !== "false";
+
   // Rate limit and retry with exponential backoff and jitter to handle rate limiting and errors from the APIs.
   const httpClient = createHttpClient({
     axios: { timeout: httpTimeout },
@@ -662,7 +664,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     retry: {
       retries: retryAttempts,
       baseDelayMs: retryDelayMs,
-      retryCondition: () => true, // Retry on all errors
+      shouldResetTimeout,
     },
   });
 
