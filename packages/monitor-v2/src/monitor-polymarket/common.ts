@@ -1,5 +1,6 @@
 import { getRetryProvider, paginatedEventQuery as umaPaginatedEventQuery } from "@uma/common";
 import { createHttpClient } from "@uma/toolkit";
+import { AxiosError, AxiosInstance } from "axios";
 export const paginatedEventQuery = umaPaginatedEventQuery;
 
 import type { Provider } from "@ethersproject/abstract-provider";
@@ -94,7 +95,7 @@ export interface PolymarketTradeInformation {
   timestamp: number;
 }
 
-interface PolymarketOrderBook {
+export interface PolymarketOrderBook {
   market: string;
   asset_id: string;
   bids: { price: string; size: string }[];
@@ -432,6 +433,30 @@ export const calculatePolymarketQuestionID = (ancillaryData: string): string => 
   return ethers.utils.keccak256(ancillaryData);
 };
 
+export async function getOrFallback<T>(
+  client: AxiosInstance,
+  url: string,
+  fallback: T,
+  opts?: {
+    statusCode?: number;
+    errorMessage?: string;
+  }
+): Promise<T> {
+  try {
+    const resp = await client.get<T>(url);
+    return resp.data;
+  } catch (err) {
+    const axiosErr = err as AxiosError<{ error?: string }>;
+    const statusMatches = opts?.statusCode ? axiosErr.response?.status === opts.statusCode : false;
+    const messageMatches = opts?.errorMessage != null ? axiosErr.response?.data?.error === opts.errorMessage : false;
+
+    if (statusMatches && (opts?.errorMessage == null || messageMatches)) {
+      return fallback;
+    }
+    throw err;
+  }
+}
+
 export const getPolymarketOrderBook = async (
   params: MonitoringParams,
   clobTokenIds: [string, string]
@@ -440,16 +465,26 @@ export const getPolymarketOrderBook = async (
   const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
   const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
 
-  // TODO: defaulting to [] is a temporary fix to handle the case where the API returns an error.
-  // This means we just assume there are no orders on that side. We don't expect this to happen, but it
-  // does occasionally. We should get to the bottom of this.
-  const { bids: outcome1Bids = [], asks: outcome1Asks = [] } = (
-    await params.httpClient.get<PolymarketOrderBook>(apiUrlOne)
-  ).data;
+  // Default to [] if the API returns an a 404 error with the message "No orderbook exists for the requested token id"
+  const outcome1Data = await getOrFallback(
+    params.httpClient,
+    apiUrlOne,
+    { bids: [], asks: [] },
+    {
+      statusCode: 404,
+      errorMessage: "No orderbook exists for the requested token id",
+    }
+  );
 
-  const { bids: outcome2Bids = [], asks: outcome2Asks = [] } = (
-    await params.httpClient.get<PolymarketOrderBook>(apiUrlTwo)
-  ).data;
+  const outcome2Data = await getOrFallback(
+    params.httpClient,
+    apiUrlTwo,
+    { bids: [], asks: [] },
+    {
+      statusCode: 404,
+      errorMessage: "No orderbook exists for the requested token id",
+    }
+  );
 
   const stringToNumber = (
     orders: {
@@ -467,12 +502,12 @@ export const getPolymarketOrderBook = async (
 
   return [
     {
-      bids: stringToNumber(outcome1Bids),
-      asks: stringToNumber(outcome1Asks),
+      bids: stringToNumber(outcome1Data.bids),
+      asks: stringToNumber(outcome1Data.asks),
     },
     {
-      bids: stringToNumber(outcome2Bids),
-      asks: stringToNumber(outcome2Asks),
+      bids: stringToNumber(outcome2Data.bids),
+      asks: stringToNumber(outcome2Data.asks),
     },
   ];
 };
