@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.9.2...@uma/monitor-v2@1.10.0) (2025-07-15)
+
+### Bug Fixes
+
+- **pm-notifier:** add fallback function for markets without orderbook activity ([#4843](https://github.com/UMAprotocol/protocol/issues/4843)) ([bfb37a6](https://github.com/UMAprotocol/protocol/commit/bfb37a61501db35e60a32dde2b06e70f02777d6c))
+- **pm-notifier:** process proposals in parallel and persist each notification immediately ([#4838](https://github.com/UMAprotocol/protocol/issues/4838)) ([ac34f78](https://github.com/UMAprotocol/protocol/commit/ac34f785b390f5a3644cbe871e78ece72a4f22f9))
+- ignore 3rd party proposals that are made through PMs contracts ([#4834](https://github.com/UMAprotocol/protocol/issues/4834)) ([2bffc30](https://github.com/UMAprotocol/protocol/commit/2bffc301611ac355dd88bc45889a07d6c8376c45))
+- no 0x prefix for initializer in ancillary data ([#4837](https://github.com/UMAprotocol/protocol/issues/4837)) ([e91ce65](https://github.com/UMAprotocol/protocol/commit/e91ce6517dd43787c2c2a266785a05aea19dea89))
+- use correct questionId when fetching market data for sports markets ([#4827](https://github.com/UMAprotocol/protocol/issues/4827)) ([66e60da](https://github.com/UMAprotocol/protocol/commit/66e60da3ca6b18cdd9c4ca30c0a3ae62974d4c4a))
+- **monitor-v2:** ignore disputed requests for alerts ([#4813](https://github.com/UMAprotocol/protocol/issues/4813)) ([2333faa](https://github.com/UMAprotocol/protocol/commit/2333faa6a2c365919d7e13b333ecea63f422fda2))
+- **polymarket-notifier:** fix proposal timestamp ([#4822](https://github.com/UMAprotocol/protocol/issues/4822)) ([996a748](https://github.com/UMAprotocol/protocol/commit/996a748ae8f0f7ea56059b6b18f9e1b312838777))
+- support multiple safes in osnap automated proposals ([#4821](https://github.com/UMAprotocol/protocol/issues/4821)) ([0b02b6a](https://github.com/UMAprotocol/protocol/commit/0b02b6aba2122e47458280f4ef9aa85619480b7e))
+
+### Features
+
+- **pm-notifier:** add retry backoff jitter http client ([#4840](https://github.com/UMAprotocol/protocol/issues/4840)) ([69c3892](https://github.com/UMAprotocol/protocol/commit/69c38925b6feff6486cad195adfa1fb82a5638d4))
+- **polymarket-notifier:** configurable time-based look-back for OrderFilled events ([#4823](https://github.com/UMAprotocol/protocol/issues/4823)) ([a0ce8ec](https://github.com/UMAprotocol/protocol/commit/a0ce8ece5d756bea2fa114b7de94831c692eede0))
+- compress all bridged ancillary data ([#4816](https://github.com/UMAprotocol/protocol/issues/4816)) ([177e907](https://github.com/UMAprotocol/protocol/commit/177e907a0c010a0b747bdcd05d85de67be9aef47))
+- **monitoring:** add gas mutiplier to oov3 settlement bot ([#4804](https://github.com/UMAprotocol/protocol/issues/4804)) ([f8c28cd](https://github.com/UMAprotocol/protocol/commit/f8c28cde232a75ea57bc29f68bb353b52cc36920))
+- **polymarket-notifier:** make expiration check delay configurable ([#4808](https://github.com/UMAprotocol/protocol/issues/4808)) ([950a26a](https://github.com/UMAprotocol/protocol/commit/950a26ad2d5a7f6a1bd657a8fa5208195dbbe737))
+- **polymarket-notifier:** update the notifier to support sports markets ([#4806](https://github.com/UMAprotocol/protocol/issues/4806)) ([50cdd24](https://github.com/UMAprotocol/protocol/commit/50cdd247c29392a061f5ad8cf1382dc4c9185ac5))
+
 ## [1.9.2](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.9.0...@uma/monitor-v2@1.9.2) (2024-10-28)
 
 **Note:** Version bump only for package @uma/monitor-v2

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.45...@uma/fx-tunnel-relayer@1.4.0) (2025-07-15)
+
+### Features
+
+- **relayer:** skip relay when close to phase end ([#4829](https://github.com/UMAprotocol/protocol/issues/4829)) ([88ed58a](https://github.com/UMAprotocol/protocol/commit/88ed58ad6b713ad7c60633b9194fc35023c932fb))
+- compress all bridged ancillary data ([#4816](https://github.com/UMAprotocol/protocol/issues/4816)) ([177e907](https://github.com/UMAprotocol/protocol/commit/177e907a0c010a0b747bdcd05d85de67be9aef47))
+
 ## [1.3.45](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.43...@uma/fx-tunnel-relayer@1.3.45) (2024-10-28)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer
