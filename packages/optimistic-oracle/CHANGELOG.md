@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [2.16.11](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.16.10...@uma/optimistic-oracle@2.16.11) (2025-07-15)
 
-
 ### Bug Fixes
 
-* drop debug logs for blacklisted identifiers ([#4833](https://github.com/UMAprotocol/protocol/issues/4833)) ([bfbe0fc](https://github.com/UMAprotocol/protocol/commit/bfbe0fc6550792d2af22f41e6ad36b5d7b646cc3))
-
-
-
-
+- drop debug logs for blacklisted identifiers ([#4833](https://github.com/UMAprotocol/protocol/issues/4833)) ([bfbe0fc](https://github.com/UMAprotocol/protocol/commit/bfbe0fc6550792d2af22f41e6ad36b5d7b646cc3))
 
 ## [2.16.10](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.16.8...@uma/optimistic-oracle@2.16.10) (2024-10-28)
 

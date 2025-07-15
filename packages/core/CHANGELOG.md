@@ -5,19 +5,14 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.62.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.61.0...@uma/core@2.62.0) (2025-07-15)
 
-
 ### Features
 
-* add story deployments ([#4803](https://github.com/UMAprotocol/protocol/issues/4803)) ([68a7f3b](https://github.com/UMAprotocol/protocol/commit/68a7f3bb021a448c19681860c228ac58b87fc69e))
-* compress all bridged ancillary data ([#4816](https://github.com/UMAprotocol/protocol/issues/4816)) ([177e907](https://github.com/UMAprotocol/protocol/commit/177e907a0c010a0b747bdcd05d85de67be9aef47))
-* deploy smart contracts to Story's Odyssey Testnet ([#4792](https://github.com/UMAprotocol/protocol/issues/4792)) ([eb88c9b](https://github.com/UMAprotocol/protocol/commit/eb88c9b011bf927ba35e54758ab97fad536873aa))
-* oracle bridge upgrade on admin networks ([#4817](https://github.com/UMAprotocol/protocol/issues/4817)) ([a739296](https://github.com/UMAprotocol/protocol/commit/a7392968dd4f21b773d28e1132f2e8bc421dd70c))
-* **gas-rebates:** gas rebates february 2025 ([#4807](https://github.com/UMAprotocol/protocol/issues/4807)) ([3d7b998](https://github.com/UMAprotocol/protocol/commit/3d7b99834cc830c459679c15c1f5257e0313e6d6))
-* deploy to illiad ([#4786](https://github.com/UMAprotocol/protocol/issues/4786)) ([c8ade06](https://github.com/UMAprotocol/protocol/commit/c8ade06d2fcded583bc6632b64d8ad864b05b953))
-
-
-
-
+- add story deployments ([#4803](https://github.com/UMAprotocol/protocol/issues/4803)) ([68a7f3b](https://github.com/UMAprotocol/protocol/commit/68a7f3bb021a448c19681860c228ac58b87fc69e))
+- compress all bridged ancillary data ([#4816](https://github.com/UMAprotocol/protocol/issues/4816)) ([177e907](https://github.com/UMAprotocol/protocol/commit/177e907a0c010a0b747bdcd05d85de67be9aef47))
+- deploy smart contracts to Story's Odyssey Testnet ([#4792](https://github.com/UMAprotocol/protocol/issues/4792)) ([eb88c9b](https://github.com/UMAprotocol/protocol/commit/eb88c9b011bf927ba35e54758ab97fad536873aa))
+- oracle bridge upgrade on admin networks ([#4817](https://github.com/UMAprotocol/protocol/issues/4817)) ([a739296](https://github.com/UMAprotocol/protocol/commit/a7392968dd4f21b773d28e1132f2e8bc421dd70c))
+- **gas-rebates:** gas rebates february 2025 ([#4807](https://github.com/UMAprotocol/protocol/issues/4807)) ([3d7b998](https://github.com/UMAprotocol/protocol/commit/3d7b99834cc830c459679c15c1f5257e0313e6d6))
+- deploy to illiad ([#4786](https://github.com/UMAprotocol/protocol/issues/4786)) ([c8ade06](https://github.com/UMAprotocol/protocol/commit/c8ade06d2fcded583bc6632b64d8ad864b05b953))
 
 # [2.61.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.59.1...@uma/core@2.61.0) (2024-10-28)
 

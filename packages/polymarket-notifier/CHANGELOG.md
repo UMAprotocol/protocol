@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/polymarket-notifier
 
-
-
-
-
 ## [1.4.10](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.4.8...@uma/polymarket-notifier@1.4.10) (2024-10-28)
 
 **Note:** Version bump only for package @uma/polymarket-notifier

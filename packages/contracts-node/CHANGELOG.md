@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/contracts-node
 
-
-
-
-
 ## [0.4.25](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.4.23...@uma/contracts-node@0.4.25) (2024-10-28)
 
 **Note:** Version bump only for package @uma/contracts-node
