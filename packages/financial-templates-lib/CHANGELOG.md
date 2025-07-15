@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.37.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.36.3...@uma/financial-templates-lib@2.37.0) (2025-07-15)
+
+
+### Features
+
+* add story deployments ([#4803](https://github.com/UMAprotocol/protocol/issues/4803)) ([68a7f3b](https://github.com/UMAprotocol/protocol/commit/68a7f3bb021a448c19681860c228ac58b87fc69e))
+
+
+
+
+
 ## [2.36.3](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.36.1...@uma/financial-templates-lib@2.36.3) (2024-10-28)
 
 **Note:** Version bump only for package @uma/financial-templates-lib

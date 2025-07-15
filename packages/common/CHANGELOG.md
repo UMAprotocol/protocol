@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.38.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.37.3...@uma/common@2.38.0) (2025-07-15)
+
+
+### Features
+
+* **networks:** update story mainnet urls ([#4805](https://github.com/UMAprotocol/protocol/issues/4805)) ([f8e4ed9](https://github.com/UMAprotocol/protocol/commit/f8e4ed9d64531e2696f243ab3b0c18e35b252387))
+* add story deployments ([#4803](https://github.com/UMAprotocol/protocol/issues/4803)) ([68a7f3b](https://github.com/UMAprotocol/protocol/commit/68a7f3bb021a448c19681860c228ac58b87fc69e))
+* deploy smart contracts to Story's Odyssey Testnet ([#4792](https://github.com/UMAprotocol/protocol/issues/4792)) ([eb88c9b](https://github.com/UMAprotocol/protocol/commit/eb88c9b011bf927ba35e54758ab97fad536873aa))
+* deploy to illiad ([#4786](https://github.com/UMAprotocol/protocol/issues/4786)) ([c8ade06](https://github.com/UMAprotocol/protocol/commit/c8ade06d2fcded583bc6632b64d8ad864b05b953))
+
+
+
+
+
 ## [2.37.3](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.37.1...@uma/common@2.37.3) (2024-10-28)
 
 **Note:** Version bump only for package @uma/common

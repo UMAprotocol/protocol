@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.32.3...@uma/scripts@1.33.0) (2025-07-15)
+
+
+### Bug Fixes
+
+* funding proposal script ([#4814](https://github.com/UMAprotocol/protocol/issues/4814)) ([9dcde67](https://github.com/UMAprotocol/protocol/commit/9dcde674e3e7a99a0396f105f4e5f3e04722a74d))
+
+
+### Features
+
+* oracle bridge upgrade on admin networks ([#4817](https://github.com/UMAprotocol/protocol/issues/4817)) ([a739296](https://github.com/UMAprotocol/protocol/commit/a7392968dd4f21b773d28e1132f2e8bc421dd70c))
+* **admin-scripts:** admin proposal to set gat and spat ([#4818](https://github.com/UMAprotocol/protocol/issues/4818)) ([d99fa60](https://github.com/UMAprotocol/protocol/commit/d99fa608c04c4b4b142b5f410abf61b62629c22c))
+* compress all bridged ancillary data ([#4816](https://github.com/UMAprotocol/protocol/issues/4816)) ([177e907](https://github.com/UMAprotocol/protocol/commit/177e907a0c010a0b747bdcd05d85de67be9aef47))
+* **admin-scripts:** add blast to identifier proposal scripts ([#4796](https://github.com/UMAprotocol/protocol/issues/4796)) ([9f69d25](https://github.com/UMAprotocol/protocol/commit/9f69d2507f7cbba4d14def7451ef9dfda9ba53be))
+
+
+
+
+
 ## [1.32.3](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.32.1...@uma/scripts@1.32.3) (2024-10-28)
 
 **Note:** Version bump only for package @uma/scripts

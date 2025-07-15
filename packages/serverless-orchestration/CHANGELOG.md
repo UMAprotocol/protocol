@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.16.3...@uma/serverless-orchestration@2.17.0) (2025-07-15)
+
+
+### Bug Fixes
+
+* **serverless:** Enable shell on spawn ([#4810](https://github.com/UMAprotocol/protocol/issues/4810)) ([8ada65b](https://github.com/UMAprotocol/protocol/commit/8ada65b419d75d738b8088704ca5a86bb9b310ee))
+
+
+### Features
+
+* remove command splitting ([#4811](https://github.com/UMAprotocol/protocol/issues/4811)) ([384088e](https://github.com/UMAprotocol/protocol/commit/384088e6cc91e4a1db5626717fc22e38748729fb))
+* remove logs from serverless spoke response ([#4809](https://github.com/UMAprotocol/protocol/issues/4809)) ([f6e48a2](https://github.com/UMAprotocol/protocol/commit/f6e48a2e183e1015bb1e7b855997caaa449c54bc))
+
+
+
+
+
 ## [2.16.3](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.16.1...@uma/serverless-orchestration@2.16.3) (2024-10-28)
 
 ### Bug Fixes

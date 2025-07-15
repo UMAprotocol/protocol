@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.27.0...@uma/affiliates@1.28.0) (2025-07-15)
+
+
+### Features
+
+* **gas-rebates:** gas rebates february 2025 ([#4807](https://github.com/UMAprotocol/protocol/issues/4807)) ([3d7b998](https://github.com/UMAprotocol/protocol/commit/3d7b99834cc830c459679c15c1f5257e0313e6d6))
+* **gas-rebates:** gas rebates march 2025 ([#4812](https://github.com/UMAprotocol/protocol/issues/4812)) ([f01fdb1](https://github.com/UMAprotocol/protocol/commit/f01fdb15872487885c61d5e6d73072d83a7cea5a))
+* **gas-rebates:** run april 2025 gas rebates ([#4824](https://github.com/UMAprotocol/protocol/issues/4824)) ([6d9e01b](https://github.com/UMAprotocol/protocol/commit/6d9e01b2deca2c661be198f1cbc6a25c6b2ef48f))
+* **gas-rebates:** run may 2025 gas rebates ([#4831](https://github.com/UMAprotocol/protocol/issues/4831)) ([39808d7](https://github.com/UMAprotocol/protocol/commit/39808d73d8b02227e65d0ea4c04a88d1db87b51e))
+* **gas-rebates:** update gas rebate scripts with new rules ([#4801](https://github.com/UMAprotocol/protocol/issues/4801)) ([5c3135e](https://github.com/UMAprotocol/protocol/commit/5c3135e207deb25c1fb07436534fa523716b4adf))
+* gas rebates december 2024 ([#4795](https://github.com/UMAprotocol/protocol/issues/4795)) ([33dc4f4](https://github.com/UMAprotocol/protocol/commit/33dc4f4da6b981239ab79c6aaab367a82da9497a))
+* gas rebates jan 2025 ([#4800](https://github.com/UMAprotocol/protocol/issues/4800)) ([f6bf7d6](https://github.com/UMAprotocol/protocol/commit/f6bf7d6876ffa6cfaf13621b25cf23160e8a4b67))
+* gas rebates november 2024 ([#4793](https://github.com/UMAprotocol/protocol/issues/4793)) ([e526e5a](https://github.com/UMAprotocol/protocol/commit/e526e5a1caf68ae7be706f6ef9c996660429282a))
+* gas rebates october 2024 ([#4791](https://github.com/UMAprotocol/protocol/issues/4791)) ([0ec536d](https://github.com/UMAprotocol/protocol/commit/0ec536dc35a06f92d2814200a6b1b5794eb622c7))
+
+
+
+
+
 # [1.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.25.0...@uma/affiliates@1.27.0) (2024-10-28)
 
 ### Features
