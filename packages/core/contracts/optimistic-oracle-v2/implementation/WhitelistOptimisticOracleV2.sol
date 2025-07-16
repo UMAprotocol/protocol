@@ -62,6 +62,24 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
     }
 
     /**
+     * @notice Adds a request manager.
+     * @dev Only callable by the owner (checked in grantRole of AccessControl).
+     * @param requestManager address of the request manager to set.
+     */
+    function addRequestManager(address requestManager) external nonReentrant() {
+        grantRole(REQUEST_MANAGER, requestManager);
+    }
+
+    /**
+     * @notice Removes a request manager.
+     * @dev Only callable by the owner (checked in revokeRole of AccessControl).
+     * @param requestManager address of the request manager to remove.
+     */
+    function removeRequestManager(address requestManager) external nonReentrant() {
+        revokeRole(REQUEST_MANAGER, requestManager);
+    }
+
+    /**
      * @notice Requests a new price.
      * @param identifier price identifier being requested.
      * @param timestamp timestamp of the price being requested.
