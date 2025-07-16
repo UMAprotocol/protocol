@@ -110,28 +110,6 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
     }
 
     /**
-     * @notice Sets the request to refund the reward if the proposal is disputed. This can help to "hedge" the caller
-     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the other's
-     * bond, so there is still profit to be made even if the reward is refunded.
-     * @param requester sender of the initial price request.
-     * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identify the existing request.
-     * @param ancillaryData ancillary data of the price being requested.
-     */
-    function requestManagerSetRefundOnDispute(
-        address requester,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData
-    ) external nonReentrant() onlyRequestManager() {
-        require(
-            _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
-            "setRefundOnDispute: Requested"
-        );
-        _getRequest(requester, identifier, timestamp, ancillaryData).requestSettings.refundOnDispute = true;
-    }
-
-    /**
      * @notice Sets a custom liveness value for the request. Liveness is the amount of time a proposal must wait before
      * being auto-resolved.
      * @param requester sender of the initial price request.
@@ -153,68 +131,6 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
         );
         _validateLiveness(customLiveness);
         _getRequest(requester, identifier, timestamp, ancillaryData).requestSettings.customLiveness = customLiveness;
-    }
-
-    /**
-     * @notice Sets the request to be an "event-based" request.
-     * @dev Calling this method has a few impacts on the request:
-     *
-     * 1. The timestamp at which the request is evaluated is the time of the proposal, not the timestamp associated
-     *    with the request.
-     *
-     * 2. The proposer cannot propose the "too early" value (TOO_EARLY_RESPONSE). This is to ensure that a proposer who
-     *    prematurely proposes a response loses their bond.
-     *
-     * 3. RefundoOnDispute is automatically set, meaning disputes trigger the reward to be automatically refunded to
-     *    the requesting contract.
-     *
-     * @param requester sender of the initial price request.
-     * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identify the existing request.
-     * @param ancillaryData ancillary data of the price being requested.
-     */
-    function requestManagerSetEventBased(
-        address requester,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData
-    ) external nonReentrant() onlyRequestManager() {
-        require(
-            _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
-            "setEventBased: Requested"
-        );
-        Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
-        request.requestSettings.eventBased = true;
-        request.requestSettings.refundOnDispute = true;
-    }
-
-    /**
-     * @notice Sets which callbacks should be enabled for the request.
-     * @param requester sender of the initial price request.
-     * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identify the existing request.
-     * @param ancillaryData ancillary data of the price being requested.
-     * @param callbackOnPriceProposed whether to enable the callback onPriceProposed.
-     * @param callbackOnPriceDisputed whether to enable the callback onPriceDisputed.
-     * @param callbackOnPriceSettled whether to enable the callback onPriceSettled.
-     */
-    function requestManagerSetCallbacks(
-        address requester,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData,
-        bool callbackOnPriceProposed,
-        bool callbackOnPriceDisputed,
-        bool callbackOnPriceSettled
-    ) external nonReentrant() onlyRequestManager() {
-        require(
-            _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
-            "setCallbacks: Requested"
-        );
-        Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
-        request.requestSettings.callbackOnPriceProposed = callbackOnPriceProposed;
-        request.requestSettings.callbackOnPriceDisputed = callbackOnPriceDisputed;
-        request.requestSettings.callbackOnPriceSettled = callbackOnPriceSettled;
     }
 
     /**
