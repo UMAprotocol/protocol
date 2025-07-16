@@ -1,26 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
-import "../../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
-import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
-import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
-import "../../data-verification-mechanism/implementation/Constants.sol";
+import { AddressWhitelistInterface } from "../../common/interfaces/AddressWhitelistInterface.sol";
 
-import "../interfaces/OptimisticOracleV2Interface.sol";
-
-import "../../common/implementation/Testable.sol";
-import "../../common/implementation/Lockable.sol";
-import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/AncillaryData.sol";
-import "../../common/implementation/AddressWhitelist.sol";
-import "./OptimisticOracleV2.sol";
+import { OptimisticOracleV2 } from "./OptimisticOracleV2.sol";
 
 /**
  * @title Optimistic Oracle.
@@ -28,8 +15,6 @@ import "./OptimisticOracleV2.sol";
  */
 contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
-    using Address for address;
 
     // Default whitelist for proposers.
     AddressWhitelistInterface public defaultProposerWhitelist;
