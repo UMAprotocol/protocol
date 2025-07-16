@@ -153,20 +153,19 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
 
     /**
      * @notice Sets the proposer whitelist for a request.
+     * @dev This can also be set in advance of the request as the timestamp is omitted from the mapping key derivation.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param whitelist address of the whitelist to set.
      */
     function requestManagerSetProposerWhitelist(
         address requester,
         bytes32 identifier,
-        uint256 timestamp,
         bytes memory ancillaryData,
         address whitelist
     ) external nonReentrant() onlyRequestManager() {
-        customProposerWhitelists[_getId(requester, identifier, timestamp, ancillaryData)] = AddressWhitelistInterface(
+        customProposerWhitelists[_getId(requester, identifier, 0, ancillaryData)] = AddressWhitelistInterface(
             whitelist
         );
     }
@@ -190,6 +189,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
     /**
      * @notice Proposes a price value on another address' behalf. Note: this address will receive any rewards that come
      * from this proposal. However, any bonds are pulled from the caller.
+     * @dev Timestamp is omitted from the whitelist key derivation, so it would also apply for repeated requests.
      * @param proposer address to set as the proposer.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
@@ -207,8 +207,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
         bytes memory ancillaryData,
         int256 proposedPrice
     ) public override returns (uint256 totalBond) {
-        AddressWhitelistInterface whitelist =
-            customProposerWhitelists[_getId(requester, identifier, timestamp, ancillaryData)];
+        AddressWhitelistInterface whitelist = customProposerWhitelists[_getId(requester, identifier, 0, ancillaryData)];
         if (address(whitelist) == address(0)) {
             whitelist = defaultProposerWhitelist;
         }
