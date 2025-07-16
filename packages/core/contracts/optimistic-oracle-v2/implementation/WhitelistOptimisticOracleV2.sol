@@ -24,6 +24,8 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
 
     mapping(bytes32 => AddressWhitelistInterface) public customProposerWhitelists;
 
+    uint256 public maximumBond;
+
     /**
      * @notice Constructor.
      * @param _liveness default liveness applied to each price request.
@@ -31,6 +33,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
      * @param _timerAddress address of the timer contract. Should be 0x0 in prod.
      * @param _defaultProposerWhitelist address of the default whitelist.
      * @param _requesterWhitelist address of the requester whitelist.
+     * @param _maximumBond maximum bond that can be overridden for a request.
      * @param _admin address of the admin.
      */
     constructor(
@@ -39,10 +42,12 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
         address _timerAddress,
         address _defaultProposerWhitelist,
         address _requesterWhitelist,
+        uint256 _maximumBond,
         address _admin
     ) OptimisticOracleV2(_liveness, _finderAddress, _timerAddress) AccessControlDefaultAdminRules(3 days, _admin) {
         defaultProposerWhitelist = AddressWhitelistInterface(_defaultProposerWhitelist);
         requesterWhitelist = AddressWhitelistInterface(_requesterWhitelist);
+        maximumBond = _maximumBond;
     }
 
     /**
@@ -77,6 +82,15 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
      */
     function removeRequestManager(address requestManager) external nonReentrant() {
         revokeRole(REQUEST_MANAGER, requestManager);
+    }
+
+    /**
+     * @notice Sets the maximum bond that can be set for a request.
+     * @dev This can be used to limit the bond amount that can be set by request managers.
+     * @param _maximumBond new maximum bond amount.
+     */
+    function setMaximumBond(uint256 _maximumBond) external nonReentrant() onlyOwner() {
+        maximumBond = _maximumBond;
     }
 
     /**
@@ -120,6 +134,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
         uint256 bond
     ) external nonReentrant() onlyRequestManager() returns (uint256 totalBond) {
         require(_getState(requester, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
+        _validateBond(bond);
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
         request.requestSettings.bond = bond;
 
@@ -214,5 +229,14 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
 
         require(whitelist.isOnWhitelist(proposer) || msg.sender == owner(), "Proposer not whitelisted");
         return super.proposePriceFor(proposer, requester, identifier, timestamp, ancillaryData, proposedPrice);
+    }
+
+    /**
+     * @notice Validates the bond amount.
+     * @dev Reverts if the bond exceeds the maximum bond amount (controllable by the owner).
+     * @param bond the bond amount to validate.
+     */
+    function _validateBond(uint256 bond) internal view {
+        require(bond <= maximumBond, "Bond exceeds maximum bond");
     }
 }
