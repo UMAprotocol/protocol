@@ -265,3 +265,49 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
         super._validateLiveness(liveness);
     }
 }
+
+/*
+ * @title AllowAllList
+ * @notice A whitelist that allows all addresses.
+ * This can be used to effectively disable whitelist restrictions the WhitelistOptimisticOracleV2.
+ */
+contract AllowAllList is AddressWhitelistInterface {
+    /**
+     * @notice Checks whether an address is on the whitelist.
+     * @param elementToCheck address to check.
+     * @return true, as all addresses are considered whitelisted.
+     */
+    function isOnWhitelist(address elementToCheck) external pure returns (bool) {
+        elementToCheck; // Silence unused variable warning
+        return true;
+    }
+
+    /**
+     * @notice Adds an address to the whitelist.
+     * @dev This function is not supported in this contract.
+     * @param newElement address to add to the whitelist.
+     */
+    function addToWhitelist(address newElement) external pure {
+        newElement; // Silence unused variable warning
+        revert("Not supported");
+    }
+
+    /**
+     * @notice Removes an address from the whitelist.
+     * @dev This function is not supported in this contract.
+     * @param elementToRemove address to remove from the whitelist.
+     */
+    function removeFromWhitelist(address elementToRemove) external pure {
+        elementToRemove; // Silence unused variable warning
+        revert("Not supported");
+    }
+
+    /**
+     * @notice Gets all addresses that are currently included in the whitelist.
+     * @dev This function is not supported in this contract.
+     * @return activeWhitelist the list of addresses on the whitelist (always reverts in this contract).
+     */
+    function getWhitelist() external pure returns (address[] memory) {
+        revert("Not supported");
+    }
+}
