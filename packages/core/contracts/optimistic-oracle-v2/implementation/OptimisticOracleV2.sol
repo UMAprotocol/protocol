@@ -652,7 +652,7 @@ contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
         return request.requestSettings.bond.div(2);
     }
 
-    function _validateLiveness(uint256 _liveness) internal pure {
+    function _validateLiveness(uint256 _liveness) internal view virtual {
         require(_liveness < 5200 weeks, "Liveness too large");
         require(_liveness > 0, "Liveness cannot be 0");
     }

@@ -24,7 +24,9 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
 
     mapping(bytes32 => AddressWhitelistInterface) public customProposerWhitelists;
 
+    // Owner controlled bounds limiting the changes that can be made by request managers.
     uint256 public maximumBond;
+    uint256 public minimumLiveness;
 
     /**
      * @notice Constructor.
@@ -34,6 +36,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
      * @param _defaultProposerWhitelist address of the default whitelist.
      * @param _requesterWhitelist address of the requester whitelist.
      * @param _maximumBond maximum bond that can be overridden for a request.
+     * @param _minimumLiveness minimum liveness that can be overridden for a request.
      * @param _admin address of the admin.
      */
     constructor(
@@ -43,11 +46,13 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
         address _defaultProposerWhitelist,
         address _requesterWhitelist,
         uint256 _maximumBond,
+        uint256 _minimumLiveness,
         address _admin
     ) OptimisticOracleV2(_liveness, _finderAddress, _timerAddress) AccessControlDefaultAdminRules(3 days, _admin) {
         defaultProposerWhitelist = AddressWhitelistInterface(_defaultProposerWhitelist);
         requesterWhitelist = AddressWhitelistInterface(_requesterWhitelist);
         maximumBond = _maximumBond;
+        minimumLiveness = _minimumLiveness;
     }
 
     /**
@@ -91,6 +96,15 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
      */
     function setMaximumBond(uint256 _maximumBond) external nonReentrant() onlyOwner() {
         maximumBond = _maximumBond;
+    }
+
+    /**
+     * @notice Sets the minimum liveness that can be set for a request.
+     * @dev This can be used to limit the liveness period that can be set by request managers.
+     * @param _minimumLiveness new minimum liveness period.
+     */
+    function setMinimumLiveness(uint256 _minimumLiveness) external nonReentrant() onlyOwner() {
+        minimumLiveness = _minimumLiveness;
     }
 
     /**
@@ -238,5 +252,16 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
      */
     function _validateBond(uint256 bond) internal view {
         require(bond <= maximumBond, "Bond exceeds maximum bond");
+    }
+
+    /**
+     * @notice Validates the liveness period.
+     * @dev Reverts if the liveness period is less than the minimum liveness (controllable by the owner) or above the
+     * maximum liveness (which is set in the parent contract).
+     * @param liveness the liveness period to validate.
+     */
+    function _validateLiveness(uint256 liveness) internal view override {
+        require(liveness >= minimumLiveness, "Liveness is less than minimum");
+        super._validateLiveness(liveness);
     }
 }
