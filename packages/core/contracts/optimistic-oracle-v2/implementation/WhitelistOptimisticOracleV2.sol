@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControlDefaultAdminRules } from "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
@@ -13,8 +13,10 @@ import { OptimisticOracleV2 } from "./OptimisticOracleV2.sol";
  * @title Optimistic Oracle.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
+contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefaultAdminRules {
     using SafeMath for uint256;
+
+    bytes32 public constant REQUEST_MANAGER = keccak256("REQUEST_MANAGER");
 
     // Default whitelist for proposers.
     AddressWhitelistInterface public defaultProposerWhitelist;
@@ -38,10 +40,25 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
         address _defaultProposerWhitelist,
         address _requesterWhitelist,
         address _admin
-    ) OptimisticOracleV2(_liveness, _finderAddress, _timerAddress) {
+    ) OptimisticOracleV2(_liveness, _finderAddress, _timerAddress) AccessControlDefaultAdminRules(3 days, _admin) {
         defaultProposerWhitelist = AddressWhitelistInterface(_defaultProposerWhitelist);
         requesterWhitelist = AddressWhitelistInterface(_requesterWhitelist);
-        _transferOwnership(_admin);
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        _checkRole(DEFAULT_ADMIN_ROLE);
+        _;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the request manager.
+     */
+    modifier onlyRequestManager() {
+        _checkRole(REQUEST_MANAGER);
+        _;
     }
 
     /**
@@ -77,13 +94,13 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
      * @return totalBond new bond + final fee that the proposer and disputer will be required to pay. This can be
      * changed again with a subsequent call to setBond().
      */
-    function ownerSetBond(
+    function requestManagerSetBond(
         address requester,
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 bond
-    ) external nonReentrant() onlyOwner() returns (uint256 totalBond) {
+    ) external nonReentrant() onlyRequestManager() returns (uint256 totalBond) {
         require(_getState(requester, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
         request.requestSettings.bond = bond;
@@ -101,12 +118,12 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
      * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      */
-    function ownerSetRefundOnDispute(
+    function requestManagerSetRefundOnDispute(
         address requester,
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external nonReentrant() onlyOwner() {
+    ) external nonReentrant() onlyRequestManager() {
         require(
             _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
             "setRefundOnDispute: Requested"
@@ -123,13 +140,13 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
      * @param ancillaryData ancillary data of the price being requested.
      * @param customLiveness new custom liveness.
      */
-    function ownerSetCustomLiveness(
+    function requestManagerSetCustomLiveness(
         address requester,
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 customLiveness
-    ) external nonReentrant() onlyOwner() {
+    ) external nonReentrant() onlyRequestManager() {
         require(
             _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
             "setCustomLiveness: Requested"
@@ -156,12 +173,12 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
      * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      */
-    function ownerSetEventBased(
+    function requestManagerSetEventBased(
         address requester,
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external nonReentrant() onlyOwner() {
+    ) external nonReentrant() onlyRequestManager() {
         require(
             _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
             "setEventBased: Requested"
@@ -181,7 +198,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
      * @param callbackOnPriceDisputed whether to enable the callback onPriceDisputed.
      * @param callbackOnPriceSettled whether to enable the callback onPriceSettled.
      */
-    function ownerSetCallbacks(
+    function requestManagerSetCallbacks(
         address requester,
         bytes32 identifier,
         uint256 timestamp,
@@ -189,7 +206,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
         bool callbackOnPriceProposed,
         bool callbackOnPriceDisputed,
         bool callbackOnPriceSettled
-    ) external nonReentrant() onlyOwner() {
+    ) external nonReentrant() onlyRequestManager() {
         require(
             _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
             "setCallbacks: Requested"
@@ -208,13 +225,13 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
      * @param ancillaryData ancillary data of the price being requested.
      * @param whitelist address of the whitelist to set.
      */
-    function ownerSetProposerWhitelist(
+    function requestManagerSetProposerWhitelist(
         address requester,
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData,
         address whitelist
-    ) external nonReentrant() onlyOwner() {
+    ) external nonReentrant() onlyRequestManager() {
         customProposerWhitelists[_getId(requester, identifier, timestamp, ancillaryData)] = AddressWhitelistInterface(
             whitelist
         );
