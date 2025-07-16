@@ -274,6 +274,40 @@ contract WhitelistOptimisticOracleV2 is
     }
 
     /**
+     * @notice Gets the custom proposer whitelist for a request.
+     * @dev This omits the timestamp from the key derivation, so the whitelist might have been set in advance of the
+     * request.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return AddressWhitelistInterface the custom proposer whitelist for the request or zero address if not set.
+     */
+    function getCustomProposerWhitelist(
+        address requester,
+        bytes32 identifier,
+        bytes memory ancillaryData
+    ) external view returns (AddressWhitelistInterface) {
+        return customProposerWhitelists[_getId(requester, identifier, 0, ancillaryData)];
+    }
+
+    /**
+     * @notice Gets the internal request ID for a price request (without timestamp).
+     * @dev This is just a helper function that offchain systems can use for tracking the indexed
+     * CustomProposerWhitelistSet events.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return bytes32 the request ID for the advance request.
+     */
+    function getAdvanceRequestId(
+        address requester,
+        bytes32 identifier,
+        bytes memory ancillaryData
+    ) external pure returns (bytes32) {
+        return _getId(requester, identifier, 0, ancillaryData);
+    }
+
+    /**
      * @notice Sets the default proposer whitelist.
      * @param whitelist address of the whitelist to set.
      */
