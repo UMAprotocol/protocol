@@ -134,6 +134,24 @@ contract WhitelistOptimisticOracleV2 is
     }
 
     /**
+     * @notice Sets the default proposer whitelist.
+     * @dev Only callable by the owner.
+     * @param whitelist address of the whitelist to set.
+     */
+    function setDefaultProposerWhitelist(address whitelist) external nonReentrant() onlyOwner() {
+        _setDefaultProposerWhitelist(whitelist);
+    }
+
+    /**
+     * @notice Sets the requester whitelist.
+     * @dev Only callable by the owner.
+     * @param whitelist address of the whitelist to set.
+     */
+    function setRequesterWhitelist(address whitelist) external nonReentrant() onlyOwner() {
+        _setRequesterWhitelist(whitelist);
+    }
+
+    /**
      * @notice Requests a new price.
      * @param identifier price identifier being requested.
      * @param timestamp timestamp of the price being requested.
@@ -226,24 +244,6 @@ contract WhitelistOptimisticOracleV2 is
     }
 
     /**
-     * @notice Sets the default proposer whitelist.
-     * @dev Only callable by the owner.
-     * @param whitelist address of the whitelist to set.
-     */
-    function ownerSetProposerWhitelist(address whitelist) external nonReentrant() onlyOwner() {
-        _setDefaultProposerWhitelist(whitelist);
-    }
-
-    /**
-     * @notice Sets the requester whitelist.
-     * @dev Only callable by the owner.
-     * @param whitelist address of the whitelist to set.
-     */
-    function ownerSetRequesterWhitelist(address whitelist) external nonReentrant() onlyOwner() {
-        _setRequesterWhitelist(whitelist);
-    }
-
-    /**
      * @notice Proposes a price value on another address' behalf. Note: this address will receive any rewards that come
      * from this proposal. However, any bonds are pulled from the caller.
      * @dev Timestamp is omitted from the whitelist key derivation, so it would also apply for repeated requests.
@@ -308,24 +308,6 @@ contract WhitelistOptimisticOracleV2 is
     }
 
     /**
-     * @notice Sets the default proposer whitelist.
-     * @param whitelist address of the whitelist to set.
-     */
-    function _setDefaultProposerWhitelist(address whitelist) internal {
-        defaultProposerWhitelist = AddressWhitelistInterface(whitelist);
-        emit DefaultProposerWhitelistUpdated(whitelist);
-    }
-
-    /**
-     * @notice Sets the requester whitelist.
-     * @param whitelist address of the whitelist to set.
-     */
-    function _setRequesterWhitelist(address whitelist) internal {
-        requesterWhitelist = AddressWhitelistInterface(whitelist);
-        emit RequesterWhitelistUpdated(whitelist);
-    }
-
-    /**
      * @notice Sets the maximum bond that can be set for a request.
      * @dev This can be used to limit the bond amount that can be set by request managers.
      * @param _maximumBond new maximum bond amount.
@@ -343,6 +325,24 @@ contract WhitelistOptimisticOracleV2 is
     function _setMinimumLiveness(uint256 _minimumLiveness) internal {
         minimumLiveness = _minimumLiveness;
         emit MinimumLivenessUpdated(_minimumLiveness);
+    }
+
+    /**
+     * @notice Sets the default proposer whitelist.
+     * @param whitelist address of the whitelist to set.
+     */
+    function _setDefaultProposerWhitelist(address whitelist) internal {
+        defaultProposerWhitelist = AddressWhitelistInterface(whitelist);
+        emit DefaultProposerWhitelistUpdated(whitelist);
+    }
+
+    /**
+     * @notice Sets the requester whitelist.
+     * @param whitelist address of the whitelist to set.
+     */
+    function _setRequesterWhitelist(address whitelist) internal {
+        requesterWhitelist = AddressWhitelistInterface(whitelist);
+        emit RequesterWhitelistUpdated(whitelist);
     }
 
     /**
