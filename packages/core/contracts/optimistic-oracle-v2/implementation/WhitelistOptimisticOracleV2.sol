@@ -221,6 +221,14 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, Ownable {
     }
 
     /**
+     * @notice Sets the default proposer whitelist.
+     * @param whitelist address of the whitelist to set.
+     */
+    function ownerSetProposerWhitelist(address whitelist) external nonReentrant() onlyOwner() {
+        defaultProposerWhitelist = AddressWhitelistInterface(whitelist);
+    }
+
+    /**
      * @notice Sets the requester whitelist.
      * @param whitelist address of the whitelist to set.
      */
