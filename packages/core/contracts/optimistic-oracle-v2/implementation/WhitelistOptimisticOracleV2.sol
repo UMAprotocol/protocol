@@ -9,11 +9,31 @@ import { AddressWhitelistInterface } from "../../common/interfaces/AddressWhitel
 
 import { OptimisticOracleV2 } from "./OptimisticOracleV2.sol";
 
+abstract contract WhitelistOptimisticOracleV2Events {
+    event RequestManagerAdded(address indexed requestManager);
+    event RequestManagerRemoved(address indexed requestManager);
+    event MaximumBondUpdated(uint256 newMaximumBond);
+    event MinimumLivenessUpdated(uint256 newMinimumLiveness);
+    event DefaultProposerWhitelistUpdated(address indexed newWhitelist);
+    event RequesterWhitelistUpdated(address indexed newWhitelist);
+    event CustomProposerWhitelistSet(
+        bytes32 indexed requestId,
+        address requester,
+        bytes32 indexed identifier,
+        bytes ancillaryData,
+        address indexed newWhitelist
+    );
+}
+
 /**
- * @title Optimistic Oracle.
+ * @title Optimistic Oracle V2 with whitelist restrictions.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefaultAdminRules {
+contract WhitelistOptimisticOracleV2 is
+    WhitelistOptimisticOracleV2Events,
+    OptimisticOracleV2,
+    AccessControlDefaultAdminRules
+{
     using SafeMath for uint256;
 
     bytes32 public constant REQUEST_MANAGER = keccak256("REQUEST_MANAGER");
@@ -49,10 +69,10 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
         uint256 _minimumLiveness,
         address _admin
     ) OptimisticOracleV2(_liveness, _finderAddress, _timerAddress) AccessControlDefaultAdminRules(3 days, _admin) {
-        defaultProposerWhitelist = AddressWhitelistInterface(_defaultProposerWhitelist);
-        requesterWhitelist = AddressWhitelistInterface(_requesterWhitelist);
-        maximumBond = _maximumBond;
-        minimumLiveness = _minimumLiveness;
+        _setDefaultProposerWhitelist(_defaultProposerWhitelist);
+        _setRequesterWhitelist(_requesterWhitelist);
+        _setMaximumBond(_maximumBond);
+        _setMinimumLiveness(_minimumLiveness);
     }
 
     /**
@@ -78,6 +98,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
      */
     function addRequestManager(address requestManager) external nonReentrant() {
         grantRole(REQUEST_MANAGER, requestManager);
+        emit RequestManagerAdded(requestManager);
     }
 
     /**
@@ -87,24 +108,25 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
      */
     function removeRequestManager(address requestManager) external nonReentrant() {
         revokeRole(REQUEST_MANAGER, requestManager);
+        emit RequestManagerRemoved(requestManager);
     }
 
     /**
      * @notice Sets the maximum bond that can be set for a request.
-     * @dev This can be used to limit the bond amount that can be set by request managers.
+     * @dev This can be used to limit the bond amount that can be set by request managers, callable by the owner.
      * @param _maximumBond new maximum bond amount.
      */
     function setMaximumBond(uint256 _maximumBond) external nonReentrant() onlyOwner() {
-        maximumBond = _maximumBond;
+        _setMaximumBond(_maximumBond);
     }
 
     /**
      * @notice Sets the minimum liveness that can be set for a request.
-     * @dev This can be used to limit the liveness period that can be set by request managers.
+     * @dev This can be used to limit the liveness period that can be set by request managers, callable by the owner.
      * @param _minimumLiveness new minimum liveness period.
      */
     function setMinimumLiveness(uint256 _minimumLiveness) external nonReentrant() onlyOwner() {
-        minimumLiveness = _minimumLiveness;
+        _setMinimumLiveness(_minimumLiveness);
     }
 
     /**
@@ -194,25 +216,27 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
         bytes memory ancillaryData,
         address whitelist
     ) external nonReentrant() onlyRequestManager() {
-        customProposerWhitelists[_getId(requester, identifier, 0, ancillaryData)] = AddressWhitelistInterface(
-            whitelist
-        );
+        bytes32 requestId = _getId(requester, identifier, 0, ancillaryData);
+        customProposerWhitelists[requestId] = AddressWhitelistInterface(whitelist);
+        emit CustomProposerWhitelistSet(requestId, requester, identifier, ancillaryData, whitelist);
     }
 
     /**
      * @notice Sets the default proposer whitelist.
+     * @dev Only callable by the owner.
      * @param whitelist address of the whitelist to set.
      */
     function ownerSetProposerWhitelist(address whitelist) external nonReentrant() onlyOwner() {
-        defaultProposerWhitelist = AddressWhitelistInterface(whitelist);
+        _setDefaultProposerWhitelist(whitelist);
     }
 
     /**
      * @notice Sets the requester whitelist.
+     * @dev Only callable by the owner.
      * @param whitelist address of the whitelist to set.
      */
     function ownerSetRequesterWhitelist(address whitelist) external nonReentrant() onlyOwner() {
-        requesterWhitelist = AddressWhitelistInterface(whitelist);
+        _setRequesterWhitelist(whitelist);
     }
 
     /**
@@ -246,6 +270,44 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
     }
 
     /**
+     * @notice Sets the default proposer whitelist.
+     * @param whitelist address of the whitelist to set.
+     */
+    function _setDefaultProposerWhitelist(address whitelist) internal {
+        defaultProposerWhitelist = AddressWhitelistInterface(whitelist);
+        emit DefaultProposerWhitelistUpdated(whitelist);
+    }
+
+    /**
+     * @notice Sets the requester whitelist.
+     * @param whitelist address of the whitelist to set.
+     */
+    function _setRequesterWhitelist(address whitelist) internal {
+        requesterWhitelist = AddressWhitelistInterface(whitelist);
+        emit RequesterWhitelistUpdated(whitelist);
+    }
+
+    /**
+     * @notice Sets the maximum bond that can be set for a request.
+     * @dev This can be used to limit the bond amount that can be set by request managers.
+     * @param _maximumBond new maximum bond amount.
+     */
+    function _setMaximumBond(uint256 _maximumBond) internal {
+        maximumBond = _maximumBond;
+        emit MaximumBondUpdated(_maximumBond);
+    }
+
+    /**
+     * @notice Sets the minimum liveness that can be set for a request.
+     * @dev This can be used to limit the liveness period that can be set by request managers.
+     * @param _minimumLiveness new minimum liveness period.
+     */
+    function _setMinimumLiveness(uint256 _minimumLiveness) internal {
+        minimumLiveness = _minimumLiveness;
+        emit MinimumLivenessUpdated(_minimumLiveness);
+    }
+
+    /**
      * @notice Validates the bond amount.
      * @dev Reverts if the bond exceeds the maximum bond amount (controllable by the owner).
      * @param bond the bond amount to validate.
@@ -267,7 +329,7 @@ contract WhitelistOptimisticOracleV2 is OptimisticOracleV2, AccessControlDefault
 }
 
 /*
- * @title AllowAllList
+ * @title Allow-all contract.
  * @notice A whitelist that allows all addresses.
  * This can be used to effectively disable whitelist restrictions the WhitelistOptimisticOracleV2.
  */
