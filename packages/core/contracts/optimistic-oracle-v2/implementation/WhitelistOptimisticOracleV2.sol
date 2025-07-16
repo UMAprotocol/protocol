@@ -299,7 +299,7 @@ contract WhitelistOptimisticOracleV2 is
      * @param ancillaryData ancillary data of the price being requested.
      * @return bytes32 the request ID for the advance request.
      */
-    function getAdvanceRequestId(
+    function getInternalRequestId(
         address requester,
         bytes32 identifier,
         bytes memory ancillaryData
