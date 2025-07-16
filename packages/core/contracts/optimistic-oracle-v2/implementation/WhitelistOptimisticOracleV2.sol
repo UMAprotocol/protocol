@@ -9,6 +9,10 @@ import { AddressWhitelistInterface } from "../../common/interfaces/AddressWhitel
 
 import { OptimisticOracleV2 } from "./OptimisticOracleV2.sol";
 
+/**
+ * @title Events emitted by the WhitelistOptimisticOracleV2 contract.
+ * @notice Contains events for request manager management, bond and liveness updates, and whitelists.
+ */
 abstract contract WhitelistOptimisticOracleV2Events {
     event RequestManagerAdded(address indexed requestManager);
     event RequestManagerRemoved(address indexed requestManager);
