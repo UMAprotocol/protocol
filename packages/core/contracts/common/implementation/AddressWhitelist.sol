@@ -53,7 +53,7 @@ contract AddressWhitelist is AddressWhitelistInterface, Ownable, Lockable {
      * @param elementToCheck the address to check.
      * @return True if `elementToCheck` is on the whitelist, or False.
      */
-    function isOnWhitelist(address elementToCheck) external view override nonReentrantView() returns (bool) {
+    function isOnWhitelist(address elementToCheck) public view virtual override nonReentrantView() returns (bool) {
         return whitelist[elementToCheck] == Status.In;
     }
 
