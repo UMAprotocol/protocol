@@ -139,7 +139,6 @@ contract WhitelistOptimisticOracleV2 is
      * @param whitelist address of the whitelist to set.
      */
     function setDefaultProposerWhitelist(address whitelist) external nonReentrant() onlyOwner() {
-        require(whitelist != address(0), "Whitelist cannot be zero address");
         _setDefaultProposerWhitelist(whitelist);
     }
 
@@ -149,7 +148,6 @@ contract WhitelistOptimisticOracleV2 is
      * @param whitelist address of the whitelist to set.
      */
     function setRequesterWhitelist(address whitelist) external nonReentrant() onlyOwner() {
-        require(whitelist != address(0), "Whitelist cannot be zero address");
         _setRequesterWhitelist(whitelist);
     }
 
@@ -355,6 +353,7 @@ contract WhitelistOptimisticOracleV2 is
      * @param whitelist address of the whitelist to set.
      */
     function _setDefaultProposerWhitelist(address whitelist) internal {
+        require(whitelist != address(0), "Whitelist cannot be zero address");
         defaultProposerWhitelist = DisableableAddressWhitelistInterface(whitelist);
         emit DefaultProposerWhitelistUpdated(whitelist);
     }
@@ -364,6 +363,7 @@ contract WhitelistOptimisticOracleV2 is
      * @param whitelist address of the whitelist to set.
      */
     function _setRequesterWhitelist(address whitelist) internal {
+        require(whitelist != address(0), "Whitelist cannot be zero address");
         requesterWhitelist = DisableableAddressWhitelistInterface(whitelist);
         emit RequesterWhitelistUpdated(whitelist);
     }
