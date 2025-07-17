@@ -269,7 +269,7 @@ contract WhitelistOptimisticOracleV2 is
         DisableableAddressWhitelistInterface whitelist =
             _getEffectiveProposerWhitelist(requester, identifier, ancillaryData);
 
-        require(whitelist.isOnWhitelist(proposer) || msg.sender == owner(), "Proposer not whitelisted");
+        require(whitelist.isOnWhitelist(proposer), "Proposer not whitelisted");
         return super.proposePriceFor(proposer, requester, identifier, timestamp, ancillaryData, proposedPrice);
     }
 
