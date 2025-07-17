@@ -17,7 +17,7 @@ contract DisableableAddressWhitelist is AddressWhitelist, DisableableAddressWhit
      * @notice Disables or enables the whitelist restrictions.
      * @param enforced True to enforce the whitelist, False to disable it.
      */
-    function setWhitelistEnforcement(bool enforced) external onlyOwner() {
+    function setWhitelistEnforcement(bool enforced) external nonReentrant() onlyOwner() {
         isEnforced = enforced;
         emit WhitelistEnforcementSet(enforced);
     }
@@ -31,6 +31,7 @@ contract DisableableAddressWhitelist is AddressWhitelist, DisableableAddressWhit
         public
         view
         override(AddressWhitelist, AddressWhitelistInterface)
+        nonReentrantView()
         returns (bool)
     {
         return !isEnforced || super.isOnWhitelist(elementToCheck);
