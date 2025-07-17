@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import { AccessControlDefaultAdminRules } from "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import { DisableableAddressWhitelistInterface } from "../../common/interfaces/DisableableAddressWhitelistInterface.sol";
 
@@ -38,8 +37,6 @@ contract WhitelistOptimisticOracleV2 is
     OptimisticOracleV2,
     AccessControlDefaultAdminRules
 {
-    using SafeMath for uint256;
-
     bytes32 public constant REQUEST_MANAGER = keccak256("REQUEST_MANAGER");
 
     // Default whitelist for proposers.
@@ -197,7 +194,7 @@ contract WhitelistOptimisticOracleV2 is
         request.requestSettings.bond = bond;
 
         // Total bond is the final fee + the newly set bond.
-        return bond.add(request.finalFee);
+        return bond + request.finalFee;
     }
 
     /**
