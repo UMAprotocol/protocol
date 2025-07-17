@@ -5,7 +5,7 @@ import { monitorTransactionsProposedOrderBook } from "./MonitorProposalsOrderBoo
 const logger = Logger;
 
 async function main() {
-  const params = await initMonitoringParams(process.env);
+  const params = await initMonitoringParams(process.env, logger);
 
   logger.debug({
     at: "PolymarketMonitor",

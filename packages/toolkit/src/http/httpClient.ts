@@ -17,6 +17,11 @@ export interface RetryOptions {
    * If omitted we retry on network errors, 429 and 5xx.
    */
   retryCondition?: (err: AxiosError) => boolean;
+  /**
+   * Callback that is called when a request is retried.
+   * This can be used to log the retry attempt.
+   */
+  onRetry?: (retryCount: number, err: AxiosError, config: AxiosRequestConfig) => void;
   /** Reset per-attempt timeout instead of using one global timer (default = false) */
   shouldResetTimeout?: boolean;
   /** First back-off delay (ms) before jitter (default = 100) */
@@ -63,6 +68,7 @@ export function createHttpClient(opts: HttpClientOptions = {}): AxiosInstance {
         const st = err.response?.status ?? 0;
         return axiosRetry.isNetworkOrIdempotentRequestError(err) || st === 429 || st >= 500;
       }),
+    onRetry: opts.retry?.onRetry,
     retryDelay: (attempt, err) => {
       const base = baseDelayMs * 2 ** (attempt - 1);
       const jitter = Math.floor(Math.random() * maxJitterMs);

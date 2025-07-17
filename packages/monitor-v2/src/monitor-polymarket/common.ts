@@ -650,7 +650,10 @@ export const getNotifiedProposals = async (): Promise<{
   }, {});
 };
 
-export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
+export const initMonitoringParams = async (
+  env: NodeJS.ProcessEnv,
+  logger: typeof Logger
+): Promise<MonitoringParams> => {
   const binaryAdapterAddress = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
   const ctfAdapterAddress = "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74";
   const ctfAdapterAddressV2 = "0x2f5e3684cb1f318ec51b00edba38d79ac2c0aa9d";
@@ -700,6 +703,12 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
       retries: retryAttempts,
       baseDelayMs: retryDelayMs,
       shouldResetTimeout,
+      onRetry: (retryCount, err, config) => {
+        logger.debug({
+          at: "PolymarketMonitor",
+          message: `http-retry attempt #${retryCount} for ${config?.url} after ${err.code}:${err.message}`,
+        });
+      },
     },
   });
 
