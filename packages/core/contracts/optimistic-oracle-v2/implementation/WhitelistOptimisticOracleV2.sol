@@ -265,6 +265,7 @@ contract WhitelistOptimisticOracleV2 is
             _getEffectiveProposerWhitelist(requester, identifier, ancillaryData);
 
         require(whitelist.isOnWhitelist(proposer), "Proposer not whitelisted");
+        require(whitelist.isOnWhitelist(msg.sender), "Sender not whitelisted");
         return super.proposePriceFor(proposer, requester, identifier, timestamp, ancillaryData, proposedPrice);
     }
 
