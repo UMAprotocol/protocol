@@ -9,10 +9,10 @@ import { DisableableAddressWhitelistInterface } from "../../common/interfaces/Di
 import { OptimisticOracleV2 } from "./OptimisticOracleV2.sol";
 
 /**
- * @title Events emitted by the WhitelistOptimisticOracleV2 contract.
+ * @title Events emitted by the ManagedOptimisticOracleV2 contract.
  * @notice Contains events for request manager management, bond and liveness updates, and whitelists.
  */
-abstract contract WhitelistOptimisticOracleV2Events {
+abstract contract ManagedOptimisticOracleV2Events {
     event RequestManagerAdded(address indexed requestManager);
     event RequestManagerRemoved(address indexed requestManager);
     event MaximumBondUpdated(IERC20 indexed currency, uint256 newMaximumBond);
@@ -29,11 +29,11 @@ abstract contract WhitelistOptimisticOracleV2Events {
 }
 
 /**
- * @title Optimistic Oracle V2 with whitelist restrictions.
- * @notice Pre-DVM escalation contract that allows faster settlement.
+ * @title Managed Optimistic Oracle V2.
+ * @notice Pre-DVM escalation contract that allows faster settlement and management of price requests.
  */
-contract WhitelistOptimisticOracleV2 is
-    WhitelistOptimisticOracleV2Events,
+contract ManagedOptimisticOracleV2 is
+    ManagedOptimisticOracleV2Events,
     OptimisticOracleV2,
     AccessControlDefaultAdminRules
 {
