@@ -15,7 +15,7 @@ import { OptimisticOracleV2 } from "./OptimisticOracleV2.sol";
 abstract contract WhitelistOptimisticOracleV2Events {
     event RequestManagerAdded(address indexed requestManager);
     event RequestManagerRemoved(address indexed requestManager);
-    event MaximumBondUpdated(uint256 newMaximumBond);
+    event MaximumBondUpdated(IERC20 indexed currency, uint256 newMaximumBond);
     event MinimumLivenessUpdated(uint256 newMinimumLiveness);
     event DefaultProposerWhitelistUpdated(address indexed newWhitelist);
     event RequesterWhitelistUpdated(address indexed newWhitelist);
@@ -37,6 +37,11 @@ contract WhitelistOptimisticOracleV2 is
     OptimisticOracleV2,
     AccessControlDefaultAdminRules
 {
+    struct Bond {
+        IERC20 currency;
+        uint256 amount;
+    }
+
     bytes32 public constant REQUEST_MANAGER = keccak256("REQUEST_MANAGER");
 
     // Default whitelist for proposers.
@@ -46,7 +51,7 @@ contract WhitelistOptimisticOracleV2 is
     mapping(bytes32 => DisableableAddressWhitelistInterface) public customProposerWhitelists;
 
     // Owner controlled bounds limiting the changes that can be made by request managers.
-    uint256 public maximumBond;
+    mapping(IERC20 => uint256) public maximumBonds; // Maximum bonds for a given currency.
     uint256 public minimumLiveness;
 
     /**
@@ -56,7 +61,7 @@ contract WhitelistOptimisticOracleV2 is
      * @param _timerAddress address of the timer contract. Should be 0x0 in prod.
      * @param _defaultProposerWhitelist address of the default whitelist.
      * @param _requesterWhitelist address of the requester whitelist.
-     * @param _maximumBond maximum bond that can be overridden for a request.
+     * @param _maximumBonds array of maximum bonds for different currencies.
      * @param _minimumLiveness minimum liveness that can be overridden for a request.
      * @param _admin address of the admin.
      */
@@ -66,13 +71,15 @@ contract WhitelistOptimisticOracleV2 is
         address _timerAddress,
         address _defaultProposerWhitelist,
         address _requesterWhitelist,
-        uint256 _maximumBond,
+        Bond[] memory _maximumBonds,
         uint256 _minimumLiveness,
         address _admin
     ) OptimisticOracleV2(_liveness, _finderAddress, _timerAddress) AccessControlDefaultAdminRules(3 days, _admin) {
         _setDefaultProposerWhitelist(_defaultProposerWhitelist);
         _setRequesterWhitelist(_requesterWhitelist);
-        _setMaximumBond(_maximumBond);
+        for (uint256 i = 0; i < _maximumBonds.length; i++) {
+            _setMaximumBond(_maximumBonds[i].currency, _maximumBonds[i].amount);
+        }
         _setMinimumLiveness(_minimumLiveness);
     }
 
@@ -115,10 +122,11 @@ contract WhitelistOptimisticOracleV2 is
     /**
      * @notice Sets the maximum bond that can be set for a request.
      * @dev This can be used to limit the bond amount that can be set by request managers, callable by the owner.
-     * @param _maximumBond new maximum bond amount.
+     * @param currency the ERC20 token used for bonding proposals and disputes. Must be approved for use with the DVM.
+     * @param maximumBond new maximum bond amount.
      */
-    function setMaximumBond(uint256 _maximumBond) external nonReentrant() onlyOwner() {
-        _setMaximumBond(_maximumBond);
+    function setMaximumBond(IERC20 currency, uint256 maximumBond) external nonReentrant() onlyOwner() {
+        _setMaximumBond(currency, maximumBond);
     }
 
     /**
@@ -189,8 +197,8 @@ contract WhitelistOptimisticOracleV2 is
         uint256 bond
     ) external nonReentrant() onlyRequestManager() returns (uint256 totalBond) {
         require(_getState(requester, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
-        _validateBond(bond);
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
+        _validateBond(request.currency, bond);
         request.requestSettings.bond = bond;
 
         // Total bond is the final fee + the newly set bond.
@@ -329,11 +337,13 @@ contract WhitelistOptimisticOracleV2 is
     /**
      * @notice Sets the maximum bond that can be set for a request.
      * @dev This can be used to limit the bond amount that can be set by request managers.
-     * @param _maximumBond new maximum bond amount.
+     * @param currency the ERC20 token used for bonding proposals and disputes. Must be approved for use with the DVM.
+     * @param maximumBond new maximum bond amount for the given currency.
      */
-    function _setMaximumBond(uint256 _maximumBond) internal {
-        maximumBond = _maximumBond;
-        emit MaximumBondUpdated(_maximumBond);
+    function _setMaximumBond(IERC20 currency, uint256 maximumBond) internal {
+        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
+        maximumBonds[currency] = maximumBond;
+        emit MaximumBondUpdated(currency, maximumBond);
     }
 
     /**
@@ -369,10 +379,11 @@ contract WhitelistOptimisticOracleV2 is
     /**
      * @notice Validates the bond amount.
      * @dev Reverts if the bond exceeds the maximum bond amount (controllable by the owner).
+     * @param currency the ERC20 token used for bonding proposals and disputes. Must be approved for use with the DVM.
      * @param bond the bond amount to validate.
      */
-    function _validateBond(uint256 bond) internal view {
-        require(bond <= maximumBond, "Bond exceeds maximum bond");
+    function _validateBond(IERC20 currency, uint256 bond) internal view {
+        require(bond <= maximumBonds[currency], "Bond exceeds maximum bond");
     }
 
     /**
