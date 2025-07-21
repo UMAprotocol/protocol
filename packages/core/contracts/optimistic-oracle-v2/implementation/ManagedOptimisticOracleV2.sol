@@ -5,6 +5,7 @@ import { AccessControlDefaultAdminRules } from "@openzeppelin/contracts/access/A
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { DisableableAddressWhitelistInterface } from "../../common/interfaces/DisableableAddressWhitelistInterface.sol";
+import { MultiCaller } from "../../common/implementation/MultiCaller.sol";
 
 import { OptimisticOracleV2 } from "./OptimisticOracleV2.sol";
 
@@ -35,7 +36,8 @@ abstract contract ManagedOptimisticOracleV2Events {
 contract ManagedOptimisticOracleV2 is
     ManagedOptimisticOracleV2Events,
     OptimisticOracleV2,
-    AccessControlDefaultAdminRules
+    AccessControlDefaultAdminRules,
+    MultiCaller
 {
     struct Bond {
         IERC20 currency;
