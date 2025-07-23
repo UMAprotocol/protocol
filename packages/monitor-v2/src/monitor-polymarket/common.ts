@@ -1,6 +1,8 @@
 import { getRetryProvider, paginatedEventQuery as umaPaginatedEventQuery } from "@uma/common";
 import { createHttpClient } from "@uma/toolkit";
+import axiosRetry from "axios-retry";
 import { AxiosError, AxiosInstance } from "axios";
+
 export const paginatedEventQuery = umaPaginatedEventQuery;
 
 import type { Provider } from "@ethersproject/abstract-provider";
@@ -703,6 +705,11 @@ export const initMonitoringParams = async (
       retries: retryAttempts,
       baseDelayMs: retryDelayMs,
       shouldResetTimeout,
+      retryCondition: (err) =>
+        err.code === "ECONNABORTED" ||
+        axiosRetry.isNetworkOrIdempotentRequestError(err) ||
+        (err.response?.status ?? 0) >= 500 ||
+        err.response?.status === 429,
       onRetry: (retryCount, err, config) => {
         logger.debug({
           at: "PolymarketMonitor",

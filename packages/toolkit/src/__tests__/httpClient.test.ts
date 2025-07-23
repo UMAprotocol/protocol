@@ -71,4 +71,29 @@ describe("createHttpClient", () => {
       response: { status: 400, data: errorBody },
     });
   });
+
+  it("should respect minTime between requests", async () => {
+    const minTime = 200; // ms
+    const tolerance = 10; // allow clock drift (±10 ms)
+
+    const client = createHttpClient({
+      rateLimit: { maxConcurrent: 1, minTime },
+    });
+    const mock = new MockAdapter(client);
+
+    const sentAt: number[] = [];
+
+    mock.onGet("/throttle").reply(() => {
+      sentAt.push(performance.now());
+      return [200, { ok: true }];
+    });
+
+    await Promise.all([client.get("/throttle"), client.get("/throttle"), client.get("/throttle")]);
+
+    // Each request must start ≥ (minTime – tolerance) after the previous one
+    for (let i = 1; i < sentAt.length; i++) {
+      const gap = sentAt[i] - sentAt[i - 1];
+      expect(gap).toBeGreaterThanOrEqual(minTime - tolerance);
+    }
+  }, 10_000);
 });
