@@ -8,6 +8,7 @@ import {
   VotingTokenEthers,
 } from "@uma/contracts-node";
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
+import { createHttpClient } from "@uma/toolkit";
 import { assert } from "chai";
 import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
@@ -45,11 +46,12 @@ describe("PolymarketNotifier", function () {
 
   const marketInfo: PolymarketMarketGraphqlProcessed[] = [
     {
-      clobTokenIds: ["0x1234", "0x1234"],
+      clobTokenIds: ["0x1234", "0x1235"],
       volumeNum: 200_000,
       outcomes: ["Yes", "No"],
       outcomePrices: ["1", "0"],
       question: "Will NATO expand by June 30?",
+      questionID: "0x1234",
     },
   ];
 
@@ -63,6 +65,12 @@ describe("PolymarketNotifier", function () {
       asks: [],
     },
   ];
+
+  // helper to convert the old pair-of-books fixture into the new map shape
+  const asBooksRecord = (pair: [MarketOrderbook, MarketOrderbook]) => ({
+    [marketInfo[0].clobTokenIds[0]]: pair[0],
+    [marketInfo[0].clobTokenIds[1]]: pair[1],
+  });
 
   const emptyTradeInformation: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [[], []];
 
@@ -94,6 +102,8 @@ describe("PolymarketNotifier", function () {
       retryDelayMs: 1000,
       checkBeforeExpirationSeconds: Date.now() + 1000 * 60 * 60 * 24,
       fillEventsLookbackSeconds: 0,
+      httpClient: createHttpClient(),
+      orderBookBatchSize: 499,
     };
   };
 
@@ -138,7 +148,7 @@ describe("PolymarketNotifier", function () {
     getNotifiedProposalsStub = sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
     const storeNotifiedProposalsMock = sandbox.stub();
-    storeNotifiedProposalsMock.returns({});
+    storeNotifiedProposalsMock.returns(Promise.resolve());
     sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
 
     // Fund staker and stake tokens.
@@ -205,7 +215,7 @@ describe("PolymarketNotifier", function () {
       return version === "v2" ? [mockProposal] : [];
     });
 
-    mockFunctionWithReturnValue("getPolymarketOrderBook", orders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(orders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
@@ -229,7 +239,7 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should not notify if order book is empty", async function () {
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
@@ -253,7 +263,7 @@ describe("PolymarketNotifier", function () {
       ],
       [],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
@@ -293,7 +303,7 @@ describe("PolymarketNotifier", function () {
         },
       ],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
@@ -322,8 +332,8 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if there are proposals with high volume", async function () {
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo, volumeNum: 2_000_000 }]);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
@@ -344,7 +354,7 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if market polymarket information is not found", async function () {
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
     mockFunctionThrowsError("getPolymarketMarketInformation", "Market not found");
 
@@ -400,7 +410,7 @@ describe("PolymarketNotifier", function () {
       return version === "v2" ? [mockProposal] : [];
     });
 
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     // Calculate the actual questionID that will be generated from our ancillary data
@@ -446,7 +456,7 @@ describe("PolymarketNotifier", function () {
       return version === "v2" ? [mockProposal] : [];
     });
 
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     // Calculate the actual questionID that will be generated from our ancillary data
@@ -481,7 +491,7 @@ describe("PolymarketNotifier", function () {
         },
       ],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
@@ -516,8 +526,8 @@ describe("PolymarketNotifier", function () {
       [],
     ];
 
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo, volumeNum: 2_000_000 }]);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
@@ -592,7 +602,7 @@ describe("PolymarketNotifier", function () {
           asks: [],
         },
       ];
-      mockFunctionWithReturnValue("getPolymarketOrderBook", sportsOrderBook);
+      mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(sportsOrderBook));
       mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
       mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
 

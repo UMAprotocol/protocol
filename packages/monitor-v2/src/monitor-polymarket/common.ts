@@ -69,6 +69,7 @@ export interface MonitoringParams {
   checkBeforeExpirationSeconds: number;
   fillEventsLookbackSeconds: number;
   httpClient: ReturnType<typeof createHttpClient>;
+  orderBookBatchSize: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -177,13 +178,17 @@ export const getPolymarketProposedPriceRequestsOO = async (
   const proposeEvents = await paginatedEventQuery<ProposePriceEvent>(
     oo,
     oo.filters.ProposePrice(null, null, null, null, null, null, null, null),
-    searchConfig
+    searchConfig,
+    params.retryAttempts,
+    true // use queryFilterSafe
   );
 
   const disputeEvents = await paginatedEventQuery<DisputePriceEvent>(
     oo,
     oo.filters.DisputePrice(null, null, null, null, null, null, null),
-    searchConfig
+    searchConfig,
+    params.retryAttempts,
+    true // use queryFilterSafe
   );
 
   const disputedRequestIds = new Set(
@@ -407,7 +412,9 @@ export const getOrderFilledEvents = async (
   const events: Event[] = await paginatedEventQuery(
     ctfExchange,
     ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
-    searchConfig
+    searchConfig,
+    params.retryAttempts,
+    true // use queryFilterSafe
   );
 
   const outcomeTokenOne = await Promise.all(
@@ -457,60 +464,55 @@ export async function getOrFallback<T>(
   }
 }
 
-export const getPolymarketOrderBook = async (
+export interface BookParams {
+  token_id: string;
+}
+
+export async function getPolymarketOrderBooks(
   params: MonitoringParams,
-  clobTokenIds: [string, string]
-): Promise<[MarketOrderbook, MarketOrderbook]> => {
-  const [marketOne, marketTwo] = clobTokenIds;
-  const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
-  const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
+  tokenIds: string[]
+): Promise<Record<string, MarketOrderbook>> {
+  const batchSize = params.orderBookBatchSize;
+  const apiUrl = `${params.apiEndpoint}/books`;
 
-  // Default to [] if the API returns an a 404 error with the message "No orderbook exists for the requested token id"
-  const outcome1Data = await getOrFallback(
-    params.httpClient,
-    apiUrlOne,
-    { bids: [], asks: [] },
-    {
-      statusCode: 404,
-      errorMessage: "No orderbook exists for the requested token id",
-    }
-  );
-
-  const outcome2Data = await getOrFallback(
-    params.httpClient,
-    apiUrlTwo,
-    { bids: [], asks: [] },
-    {
-      statusCode: 404,
-      errorMessage: "No orderbook exists for the requested token id",
-    }
-  );
-
-  const stringToNumber = (
-    orders: {
-      price: string;
-      size: string;
-    }[]
-  ) => {
-    return orders.map((order) => {
-      return {
-        price: Number(order.price),
-        size: Number(order.size),
-      };
-    });
+  type RawOrderBook = {
+    asset_id: string;
+    bids: { price: string; size: string }[];
+    asks: { price: string; size: string }[];
   };
 
-  return [
-    {
-      bids: stringToNumber(outcome1Data.bids),
-      asks: stringToNumber(outcome1Data.asks),
-    },
-    {
-      bids: stringToNumber(outcome2Data.bids),
-      asks: stringToNumber(outcome2Data.asks),
-    },
-  ];
-};
+  const toNumeric = (orders: { price: string; size: string }[]) =>
+    orders.map((o) => ({ price: Number(o.price), size: Number(o.size) }));
+
+  // Split the clob IDs into batches that respect the limit.
+  const chunks: string[][] = [];
+  for (let i = 0; i < tokenIds.length; i += batchSize) {
+    chunks.push(tokenIds.slice(i, i + batchSize));
+  }
+
+  // Fire off every API call in parallel.
+  const chunkResults = await Promise.all(
+    chunks.map((ids) => {
+      const payload: BookParams[] = ids.map((token_id) => ({ token_id }));
+      return params.httpClient.post<RawOrderBook[]>(apiUrl, payload).then((res) => res.data);
+    })
+  );
+
+  // Consolidate all partial order books into one look-up map.
+  const map: Record<string, MarketOrderbook> = {};
+  for (const rawBooks of chunkResults) {
+    for (const ob of rawBooks) {
+      map[ob.asset_id] = { bids: toNumeric(ob.bids), asks: toNumeric(ob.asks) };
+    }
+  }
+
+  // Guarantee every requested ID appears, even if the API returned none.
+  for (const id of tokenIds) {
+    if (!map[id]) map[id] = { bids: [], asks: [] };
+  }
+
+  return map;
+}
 
 export async function getSportsMarketData(params: MonitoringParams, questionID: string): Promise<Market> {
   const umaSportsOracle = new ethers.Contract(params.ctfSportsOracleAddress, umaSportsOracleAbi, params.provider);
@@ -695,6 +697,8 @@ export const initMonitoringParams = async (
 
   const shouldResetTimeout = env.SHOULD_RESET_TIMEOUT !== "false";
 
+  const orderBookBatchSize = env.ORDER_BOOK_BATCH_SIZE ? Number(env.ORDER_BOOK_BATCH_SIZE) : 499;
+
   // Rate limit and retry with exponential backoff and jitter to handle rate limiting and errors from the APIs.
   const httpClient = createHttpClient({
     axios: { timeout: httpTimeout },
@@ -731,6 +735,7 @@ export const initMonitoringParams = async (
     checkBeforeExpirationSeconds,
     fillEventsLookbackSeconds,
     httpClient,
+    orderBookBatchSize,
   };
 };
 

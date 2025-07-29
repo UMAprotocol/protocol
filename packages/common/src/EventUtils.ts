@@ -19,11 +19,14 @@ export async function paginatedEventQuery<T extends Event>(
   contract: Contract,
   filter: EventFilter,
   searchConfig: EventSearchConfig,
-  retryCount = 0
+  retryCount = 0,
+  useQueryFilterSafe = false,
+  queryFilterSafeFn = queryFilterSafe
 ): Promise<Array<T>> {
+  const queryFilter = useQueryFilterSafe ? queryFilterSafeFn(contract) : contract.queryFilter;
   // If the max block look back is set to 0 then we dont need to do any pagination and can query over the whole range.
   if (searchConfig.maxBlockLookBack === 0)
-    return (await contract.queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;
+    return (await queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;
 
   // Compute the number of queries needed. If there is no maxBlockLookBack set then we can execute the whole query in
   // one go. Else, the number of queries is the range over which we are searching, divided by the maxBlockLookBack,
@@ -102,4 +105,44 @@ export function getPaginatedBlockRanges({
   }
 
   return ranges;
+}
+
+/**
+ * @dev This function is a wrapper around the queryFilter function that splits the query into smaller chunks if the query is too large.
+ * @param contract - The contract to query.
+ * @param filter - The filter to apply to the query.
+ * @param fromBlock - The block number to start the query from.
+ * @param toBlock - The block number to end the query at.
+ * @returns The filtered events.
+ */
+export function queryFilterSafe(contract: Contract) {
+  return async function <T extends Event = Event>(
+    filter: EventFilter,
+    fromBlock: number,
+    toBlock: number
+  ): Promise<T[]> {
+    try {
+      return (await contract.queryFilter(filter, fromBlock, toBlock)) as T[];
+    } catch (err: any) {
+      const msg = String(err?.message ?? err);
+
+      if (msg.includes("query returned more than")) {
+        if (fromBlock === toBlock)
+          throw new Error(
+            `Block ${fromBlock} alone returns more logs than provider can handle; further splitting impossible`
+          );
+
+        const mid = Math.floor((fromBlock + toBlock) / 2);
+
+        // Recursively split window
+        const [left, right] = await Promise.all([
+          queryFilterSafe(contract)<T>(filter, fromBlock, mid),
+          queryFilterSafe(contract)<T>(filter, mid + 1, toBlock),
+        ]);
+
+        return [...left, ...right];
+      }
+      throw err;
+    }
+  };
 }
