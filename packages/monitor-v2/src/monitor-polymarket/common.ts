@@ -5,7 +5,7 @@ export const paginatedEventQuery = umaPaginatedEventQuery;
 
 import type { Provider } from "@ethersproject/abstract-provider";
 
-import { BigNumber, Event, ethers } from "ethers";
+import { BigNumber, Contract, Event, EventFilter, ethers } from "ethers";
 
 import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import {
@@ -180,7 +180,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
     oo.filters.ProposePrice(null, null, null, null, null, null, null, null),
     searchConfig,
     params.retryAttempts,
-    true // use queryFilterSafe
+    queryFilterSafe
   );
 
   const disputeEvents = await paginatedEventQuery<DisputePriceEvent>(
@@ -188,7 +188,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
     oo.filters.DisputePrice(null, null, null, null, null, null, null),
     searchConfig,
     params.retryAttempts,
-    true // use queryFilterSafe
+    queryFilterSafe
   );
 
   const disputedRequestIds = new Set(
@@ -414,7 +414,7 @@ export const getOrderFilledEvents = async (
     ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
     searchConfig,
     params.retryAttempts,
-    true // use queryFilterSafe
+    queryFilterSafe
   );
 
   const outcomeTokenOne = await Promise.all(
@@ -764,4 +764,44 @@ export async function retryAsync<T>(fn: () => Promise<T>, retries: number, delay
 
   // Should never actually reach this, but for the sake of typescript
   throw new Error(`React a maximum of ${retries} retries.`);
+}
+
+/**
+ * @dev This function is a wrapper around the queryFilter function that splits the query into smaller chunks if the query is too large.
+ * @param contract - The contract to query.
+ * @param filter - The filter to apply to the query.
+ * @param fromBlock - The block number to start the query from.
+ * @param toBlock - The block number to end the query at.
+ * @returns The filtered events.
+ */
+export function queryFilterSafe(contract: Contract) {
+  return async function <T extends Event = Event>(
+    filter: EventFilter,
+    fromBlock: number,
+    toBlock: number
+  ): Promise<T[]> {
+    try {
+      return (await contract.queryFilter(filter, fromBlock, toBlock)) as T[];
+    } catch (err: any) {
+      const msg = String(err?.message ?? err);
+
+      if (msg.includes("query returned more than")) {
+        if (fromBlock === toBlock)
+          throw new Error(
+            `Block ${fromBlock} alone returns more logs than provider can handle; further splitting impossible`
+          );
+
+        const mid = Math.floor((fromBlock + toBlock) / 2);
+
+        // Recursively split window
+        const [left, right] = await Promise.all([
+          queryFilterSafe(contract)<T>(filter, fromBlock, mid),
+          queryFilterSafe(contract)<T>(filter, mid + 1, toBlock),
+        ]);
+
+        return [...left, ...right];
+      }
+      throw err;
+    }
+  };
 }
