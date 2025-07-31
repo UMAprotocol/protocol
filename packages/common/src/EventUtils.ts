@@ -22,9 +22,9 @@ export async function paginatedEventQuery<T extends Event>(
   retryCount = 0,
   queryFilterFn?: (
     contract: Contract
-  ) => <T extends Event = Event>(filter: EventFilter, fromBlock: number, toBlock: number) => Promise<T[]>
+  ) => <E extends Event = Event>(filter: EventFilter, fromBlock: number, toBlock: number) => Promise<E[]>
 ): Promise<Array<T>> {
-  const queryFilter = queryFilterFn ? queryFilterFn(contract) : contract.queryFilter;
+  const queryFilter = queryFilterFn ? queryFilterFn(contract) : contract.queryFilter.bind(contract);
   // If the max block look back is set to 0 then we dont need to do any pagination and can query over the whole range.
   if (searchConfig.maxBlockLookBack === 0)
     return (await queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;

@@ -258,12 +258,12 @@ export async function monitorTransactionsProposedOrderBook(
     // Fetch each market's orderbook individually
     await Promise.all(
       bundles.map(async (bundle) => {
-        const clobPair = bundle.markets[0].clobTokenIds as [string, string];
-
         try {
-          const [book0, book1] = await getPolymarketOrderBook(params, clobPair);
-          orderbookMap[clobPair[0]] = book0;
-          orderbookMap[clobPair[1]] = book1;
+          for (const market of bundle.markets) {
+            const [book0, book1] = await getPolymarketOrderBook(params, market.clobTokenIds as [string, string]);
+            orderbookMap[market.clobTokenIds[0]] = book0;
+            orderbookMap[market.clobTokenIds[1]] = book1;
+          }
           survivingBundles.push(bundle);
         } catch (pairErr) {
           await logErrorAndPersist(bundle.proposal, pairErr as Error);
