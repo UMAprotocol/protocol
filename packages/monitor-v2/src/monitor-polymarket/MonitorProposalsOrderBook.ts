@@ -12,6 +12,7 @@ import {
   getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarketInformation,
+  getPolymarketOrderBook,
   getPolymarketOrderBooks,
   getPolymarketProposedPriceRequestsOO,
   getProposalKeyToStore,
@@ -236,21 +237,53 @@ export async function monitorTransactionsProposedOrderBook(
         // If <2 criteria met, let the error bubble up to trigger alert
         await logErrorAndPersist(proposal, error as Error);
       }
-
-      const orderbookMap = await getPolymarketOrderBooks(params, [...tokenIds]);
-
-      await Promise.allSettled(
-        bundles.map(async ({ proposal, markets }) => {
-          try {
-            const alerted = await processProposal(proposal, markets, orderbookMap, params, logger);
-            if (alerted) await persistNotified(proposal, logger);
-          } catch (err) {
-            await logErrorAndPersist(proposal, err as Error);
-          }
-        })
-      );
-
-      console.log("All proposals have been checked!");
     })
   );
+
+  let orderbookMap: Record<string, MarketOrderbook> = {};
+  let activeBundles = bundles; // may shrink below
+
+  try {
+    // Fast path: single batched request
+    orderbookMap = await getPolymarketOrderBooks(params, [...tokenIds]);
+  } catch (bulkErr) {
+    logger.warn({
+      at: "PolymarketMonitor",
+      message: "Bulk order-book fetch failed – falling back to per-market fetches",
+      error: bulkErr,
+    });
+
+    const survivingBundles: typeof bundles = [];
+
+    // Fetch each market's orderbook individually
+    await Promise.all(
+      bundles.map(async (bundle) => {
+        const clobPair = bundle.markets[0].clobTokenIds as [string, string];
+
+        try {
+          const [book0, book1] = await getPolymarketOrderBook(params, clobPair);
+          orderbookMap[clobPair[0]] = book0;
+          orderbookMap[clobPair[1]] = book1;
+          survivingBundles.push(bundle);
+        } catch (pairErr) {
+          await logErrorAndPersist(bundle.proposal, pairErr as Error);
+        }
+      })
+    );
+
+    activeBundles = survivingBundles;
+  }
+
+  await Promise.allSettled(
+    activeBundles.map(async ({ proposal, markets }) => {
+      try {
+        const alerted = await processProposal(proposal, markets, orderbookMap, params, logger);
+        if (alerted) await persistNotified(proposal, logger);
+      } catch (err) {
+        await logErrorAndPersist(proposal, err as Error);
+      }
+    })
+  );
+
+  console.log("All proposals have been checked!");
 }

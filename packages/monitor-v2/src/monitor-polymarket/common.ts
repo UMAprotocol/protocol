@@ -464,6 +464,61 @@ export async function getOrFallback<T>(
   }
 }
 
+export const getPolymarketOrderBook = async (
+  params: MonitoringParams,
+  clobTokenIds: [string, string]
+): Promise<[MarketOrderbook, MarketOrderbook]> => {
+  const [marketOne, marketTwo] = clobTokenIds;
+  const apiUrlOne = params.apiEndpoint + `/book?token_id=${marketOne}`;
+  const apiUrlTwo = params.apiEndpoint + `/book?token_id=${marketTwo}`;
+
+  // Default to [] if the API returns an a 404 error with the message "No orderbook exists for the requested token id"
+  const outcome1Data = await getOrFallback(
+    params.httpClient,
+    apiUrlOne,
+    { bids: [], asks: [] },
+    {
+      statusCode: 404,
+      errorMessage: "No orderbook exists for the requested token id",
+    }
+  );
+
+  const outcome2Data = await getOrFallback(
+    params.httpClient,
+    apiUrlTwo,
+    { bids: [], asks: [] },
+    {
+      statusCode: 404,
+      errorMessage: "No orderbook exists for the requested token id",
+    }
+  );
+
+  const stringToNumber = (
+    orders: {
+      price: string;
+      size: string;
+    }[]
+  ) => {
+    return orders.map((order) => {
+      return {
+        price: Number(order.price),
+        size: Number(order.size),
+      };
+    });
+  };
+
+  return [
+    {
+      bids: stringToNumber(outcome1Data.bids),
+      asks: stringToNumber(outcome1Data.asks),
+    },
+    {
+      bids: stringToNumber(outcome2Data.bids),
+      asks: stringToNumber(outcome2Data.asks),
+    },
+  ];
+};
+
 export interface BookParams {
   token_id: string;
 }
