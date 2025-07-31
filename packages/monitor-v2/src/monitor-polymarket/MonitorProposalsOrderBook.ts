@@ -274,7 +274,7 @@ export async function monitorTransactionsProposedOrderBook(
     activeBundles = survivingBundles;
   }
 
-  await Promise.allSettled(
+  await Promise.all(
     activeBundles.map(async ({ proposal, markets }) => {
       try {
         const alerted = await processProposal(proposal, markets, orderbookMap, params, logger);
