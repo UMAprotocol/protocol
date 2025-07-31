@@ -838,8 +838,7 @@ export function queryFilterSafe(contract: Contract) {
     try {
       return (await contract.queryFilter(filter, fromBlock, toBlock)) as T[];
     } catch (err: any) {
-      const msg = String(err?.message ?? err);
-
+      const msg = String(err?.error?.message ?? err);
       if (msg.includes("query returned more than")) {
         if (fromBlock === toBlock)
           throw new Error(

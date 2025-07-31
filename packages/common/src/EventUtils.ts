@@ -37,7 +37,7 @@ export async function paginatedEventQuery<T extends Event>(
   try {
     return (
       (
-        await Promise.map(paginatedRanges, ([fromBlock, toBlock]) => contract.queryFilter(filter, fromBlock, toBlock), {
+        await Promise.map(paginatedRanges, ([fromBlock, toBlock]) => queryFilter(filter, fromBlock, toBlock), {
           concurrency: typeof searchConfig.concurrency == "number" ? searchConfig.concurrency : defaultConcurrency,
         })
       )
@@ -50,7 +50,7 @@ export async function paginatedEventQuery<T extends Event>(
   } catch (error) {
     if (retryCount < maxRetries) {
       await delay(retrySleepTime);
-      return await paginatedEventQuery(contract, filter, searchConfig, retryCount + 1);
+      return await paginatedEventQuery(contract, filter, searchConfig, retryCount + 1, queryFilterFn);
     } else throw error;
   }
 }
