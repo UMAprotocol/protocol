@@ -9,24 +9,27 @@ import {
   calculatePolymarketQuestionID,
   decodeMultipleQueryPriceAtIndex,
   decodeMultipleValuesQuery,
-  getProposalKeyToStore,
   getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarketInformation,
   getPolymarketOrderBook,
+  getPolymarketOrderBooks,
   getPolymarketProposedPriceRequestsOO,
+  getProposalKeyToStore,
   getSportsMarketData,
   getSportsPayouts,
   isUnresolvable,
   Logger,
   Market,
+  MarketOrderbook,
   MonitoringParams,
   MultipleValuesQuery,
   ONE_SCALED,
   OptimisticPriceRequest,
+  POLYGON_BLOCKS_PER_HOUR,
+  PolymarketMarketGraphqlProcessed,
   shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
-  POLYGON_BLOCKS_PER_HOUR,
 } from "./common";
 
 // Retrieve threshold values from environment variables.
@@ -34,154 +37,145 @@ function getThresholds() {
   return {
     asks: Number(process.env["THRESHOLD_ASKS"]) || 1,
     bids: Number(process.env["THRESHOLD_BIDS"]) || 0,
-    volume: Number(process.env["THRESHOLD_VOLUME"]) || 500000,
+    volume: Number(process.env["THRESHOLD_VOLUME"]) || 500_000,
   };
 }
 
-async function processProposal(
+const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
+
+function outcomeIndexes(
+  isSportsMarket: boolean,
   proposal: OptimisticPriceRequest,
-  params: MonitoringParams,
-  logger: typeof Logger,
-  version: "v1" | "v2"
-) {
-  const isSportsMarket = proposal.requester === params.ctfSportsOracleAddress;
-  const questionID = calculatePolymarketQuestionID(proposal.ancillaryData);
+  sportsMarket?: Market
+): { winner: number; loser: number; scores: [ethers.BigNumber, ethers.BigNumber]; mvq?: MultipleValuesQuery } {
+  if (isSportsMarket) {
+    if (isUnresolvable(proposal.proposedPrice))
+      return { winner: -1, loser: -1, scores: [ethers.constants.Zero, ethers.constants.Zero] };
 
-  let markets;
-  try {
-    markets = await getPolymarketMarketInformation(logger, params, questionID);
-  } catch (error) {
-    // Check if this is the specific "No market found" error for 3rd party proposals
-    if (error instanceof Error && error.message.includes(`No market found for question ID: ${questionID}`)) {
-      // Apply 3rd party proposal filtering logic
-      const shouldIgnore = await shouldIgnoreThirdPartyProposal(params, proposal, version);
+    const scores: [ethers.BigNumber, ethers.BigNumber] = [
+      decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 0),
+      decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 1),
+    ];
+    const payouts = getSportsPayouts(sportsMarket!, proposal.proposedPrice);
+    if (payouts[0] === payouts[1]) return { winner: -1, loser: -1, scores };
 
-      if (shouldIgnore) {
-        // Ignore this proposal - log for debugging but don't alert
-        logger.info({
-          at: "PolymarketMonitor",
-          message: "Ignoring 3rd party Polymarket proposal based on filtering criteria",
-          questionID,
-          proposalHash: proposal.proposalHash,
-          requester: proposal.requester,
-        });
-        return { notified: false, notifiedProposal: null };
-      }
-      // If <2 criteria met, let the error bubble up to trigger alert
-    }
-    // Re-throw the error to maintain existing behavior for other error types
-    throw error;
+    const winner = payouts[0] === 1 ? 0 : 1;
+    return {
+      winner,
+      loser: 1 - winner,
+      scores,
+      mvq: decodeMultipleValuesQuery(tryHexToUtf8String(proposal.ancillaryData)),
+    };
   }
 
-  for (const marketInfo of markets) {
-    let scores: [ethers.BigNumber, ethers.BigNumber] = [ethers.BigNumber.from(0), ethers.BigNumber.from(0)];
-    let multipleValuesQuery: MultipleValuesQuery | undefined;
-    let winnerOutcome: number;
-    let loserOutcome: number;
+  // Non-sports market logic.
+  // Ignore unresolvable prices where the orderbook doesn't provide relevant information.
+  if (!proposal.proposedPrice.eq(ethers.BigNumber.from(0)) && !proposal.proposedPrice.eq(ONE_SCALED)) {
+    return { winner: -1, loser: -1, scores: [ethers.constants.Zero, ethers.constants.Zero] }; // unresolvable
+  }
+  const winner = proposal.proposedPrice.eq(ONE_SCALED) ? 0 : 1;
+  return { winner, loser: 1 - winner, scores: [ethers.constants.Zero, ethers.constants.Zero] };
+}
 
-    if (isSportsMarket) {
-      // Skip if the proposed price is unresolvable.
-      if (isUnresolvable(proposal.proposedPrice)) {
-        continue;
-      }
+const persistNotified = async (proposal: OptimisticPriceRequest, logger: typeof Logger) =>
+  storeNotifiedProposals([proposal]).catch(() =>
+    logger.error({
+      at: "PolymarketMonitor",
+      message: "Failed to persist notified proposal",
+      proposal,
+    })
+  );
 
-      // Process sports-specific market data.
-      const sportsMarketData: Market = await getSportsMarketData(params, marketInfo.questionID);
-      scores = [
-        decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 0),
-        decodeMultipleQueryPriceAtIndex(proposal.proposedPrice, 1),
-      ];
-      multipleValuesQuery = decodeMultipleValuesQuery(tryHexToUtf8String(proposal.ancillaryData));
-      const payouts = getSportsPayouts(sportsMarketData, proposal.proposedPrice);
+export async function processProposal(
+  proposal: OptimisticPriceRequest,
+  markets: PolymarketMarketGraphqlProcessed[],
+  orderbooks: Record<string, MarketOrderbook>,
+  params: MonitoringParams,
+  logger: typeof Logger
+): Promise<boolean /* notified */> {
+  const thresholds = getThresholds();
+  const isSportsRequest = proposal.requester === params.ctfSportsOracleAddress;
 
-      // If both payouts are equal (a draw), skip further processing.
-      if (payouts[0] === payouts[1]) {
-        continue;
-      }
-      winnerOutcome = payouts[0] === 1 ? 0 : 1;
-      loserOutcome = 1 - winnerOutcome;
-    } else {
-      // Non-sports market logic.
-      // Ignore unresolvable prices where the orderbook doesn't provide relevant information.
-      if (!proposal.proposedPrice.eq(ethers.BigNumber.from(0)) && !proposal.proposedPrice.eq(ONE_SCALED)) {
-        continue;
-      }
-      winnerOutcome = proposal.proposedPrice.eq(ONE_SCALED) ? 0 : 1;
-      loserOutcome = 1 - winnerOutcome;
-    }
+  const currentBlock = await params.provider.getBlockNumber();
+  const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
 
-    const thresholds = getThresholds();
-    const orderBook = await getPolymarketOrderBook(params, marketInfo.clobTokenIds);
-    // We only want to look back fillEventsLookbackSeconds seconds, but no older than startBlockNumber
-    const currentBlockNumber = await params.provider.getBlockNumber();
-    const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
-    const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
-    const fromBlock = Math.max(Number(proposal.proposalBlockNumber), currentBlockNumber - lookbackBlocks);
-    const orderFilledEvents = await getOrderFilledEvents(params, marketInfo.clobTokenIds, fromBlock);
+  const checkMarket = async (market: PolymarketMarketGraphqlProcessed): Promise<boolean> => {
+    const outcome = isSportsRequest
+      ? outcomeIndexes(true, proposal, await getSportsMarketData(params, market.questionID))
+      : outcomeIndexes(false, proposal);
 
-    // Check the order book for concerning signals.
-    const sellingWinnerSide = orderBook[winnerOutcome].asks.find((ask) => ask.price < thresholds.asks);
-    const buyingLoserSide = orderBook[loserOutcome].bids.find((bid) => bid.price > thresholds.bids);
-    const soldWinnerSide = orderFilledEvents[winnerOutcome].filter(
-      (event) => event.type === "sell" && event.price < thresholds.asks
-    );
-    const boughtLoserSide = orderFilledEvents[loserOutcome].filter(
-      (event) => event.type === "buy" && event.price > thresholds.bids
-    );
+    if (outcome.winner === -1) return false; // draw / unresolvable
 
-    let notified = false;
+    const books: [MarketOrderbook, MarketOrderbook] = [
+      orderbooks[market.clobTokenIds[0]],
+      orderbooks[market.clobTokenIds[1]],
+    ];
 
-    // Log high volume proposals.
-    if (marketInfo.volumeNum > thresholds.volume) {
+    const sellingWinnerSide = books[outcome.winner].asks.find((a) => a.price < thresholds.asks);
+    const buyingLoserSide = books[outcome.loser].bids.find((b) => b.price > thresholds.bids);
+
+    const fromBlock = Math.max(Number(proposal.proposalBlockNumber), currentBlock - lookbackBlocks);
+    const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock);
+
+    const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
+    const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
+
+    let alerted = false;
+
+    if (market.volumeNum > thresholds.volume) {
       await logProposalHighVolume(
         logger,
-        { ...proposal, ...marketInfo, scores, multipleValuesQuery, isSportsMarket },
+        {
+          ...proposal,
+          ...market,
+          scores: outcome.scores,
+          multipleValuesQuery: outcome.mvq,
+          isSportsMarket: isSportsRequest,
+        },
         params
       );
-      notified = true;
+      alerted = true;
     }
 
-    // Log market sentiment discrepancies.
-    if (sellingWinnerSide || buyingLoserSide || soldWinnerSide.length > 0 || boughtLoserSide.length > 0) {
+    if (sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length) {
       await logMarketSentimentDiscrepancy(
         logger,
         {
           ...proposal,
-          ...marketInfo,
+          ...market,
           sellingWinnerSide,
           buyingLoserSide,
-          soldWinnerSide,
-          boughtLoserSide,
-          scores,
-          multipleValuesQuery,
-          isSportsMarket,
+          soldWinnerSide: soldWinner,
+          boughtLoserSide: boughtLoser,
+          scores: outcome.scores,
+          multipleValuesQuery: outcome.mvq,
+          isSportsMarket: isSportsRequest,
         },
         params
       );
-      notified = true;
+      alerted = true;
     }
 
-    if (notified) {
-      return {
-        notified,
-        notifiedProposal: {
-          txHash: proposal.proposalHash,
-          question: marketInfo.question,
-          proposedPrice: proposal.proposedPrice,
-          requestTimestamp: proposal.requestTimestamp,
-        },
-      };
-    }
+    return alerted;
+  };
+
+  const marketPromises = markets.map(checkMarket);
+
+  // Execute all market checks concurrently; Promise.any resolves when one returns true and throws if all return false.
+  try {
+    await Promise.any(marketPromises.map((proposal) => proposal.then((ok) => (ok ? true : Promise.reject()))));
+    return true; // at least one market alerted
+  } catch {
+    return false; // none of the markets alerted
   }
-  return { notified: false, notifiedProposal: null };
 }
 
 export async function monitorTransactionsProposedOrderBook(
   logger: typeof Logger,
   params: MonitoringParams
 ): Promise<void> {
-  const pastNotifiedProposals = await getNotifiedProposals();
-  const polymarketRequesters = [
+  const notifiedKeys = new Set(Object.keys(await getNotifiedProposals()));
+  const requesters = [
     params.ctfAdapterAddress,
     params.ctfAdapterAddressV2,
     params.binaryAdapterAddress,
@@ -189,35 +183,107 @@ export async function monitorTransactionsProposedOrderBook(
   ];
 
   // Merge proposals from v2 and v1.
-  const proposalsV2 = await getPolymarketProposedPriceRequestsOO(params, "v2", polymarketRequesters);
-  const proposalsV1 = await getPolymarketProposedPriceRequestsOO(params, "v1", polymarketRequesters);
-  const proposals = [...proposalsV2, ...proposalsV1];
+  const [v2, v1] = await Promise.all([
+    getPolymarketProposedPriceRequestsOO(params, "v2", requesters),
+    getPolymarketProposedPriceRequestsOO(params, "v1", requesters),
+  ]);
 
-  console.log(`Checking proposal price for ${proposals.length} markets...`);
-  const alreadyHandled = new Set(Object.keys(pastNotifiedProposals));
+  const allProposals = [
+    ...v2.map((proposal) => ({ proposal, version: "v2" as const })),
+    ...v1.map((proposal) => ({ proposal, version: "v1" as const })),
+  ] //
+    .filter(({ proposal }) => !notifiedKeys.has(getProposalKeyToStore(proposal)));
 
-  await Promise.allSettled(
-    proposals.map(async (proposal) => {
-      const key = getProposalKeyToStore(proposal);
-      if (alreadyHandled.has(key)) return; // early-exit
+  // Build bundles of proposals and their markets.
+  const bundles: {
+    proposal: OptimisticPriceRequest;
+    markets: PolymarketMarketGraphqlProcessed[];
+  }[] = [];
+  const tokenIds = new Set<string>();
 
-      const persist = async () => {
-        try {
-          await storeNotifiedProposals([proposal]);
-        } catch (err) {
-          logger.error(`Failed to persist notified proposal ${key}:`, err);
-        }
-      };
+  const logErrorAndPersist = async (proposal: OptimisticPriceRequest, err: Error) => {
+    await logFailedMarketProposalVerification(logger, params.chainId, proposal, err as Error);
+    await persistNotified(proposal, logger);
+  };
+
+  await Promise.all(
+    allProposals.map(async ({ proposal, version }) => {
+      const questionID = calculatePolymarketQuestionID(proposal.ancillaryData);
 
       try {
-        const version: "v1" | "v2" = proposalsV2.includes(proposal) ? "v2" : "v1";
-        const { notified } = await processProposal(proposal, params, logger, version);
-        if (notified) await persist();
+        const markets = await getPolymarketMarketInformation(logger, params, questionID);
+        markets.forEach((market) => {
+          tokenIds.add(market.clobTokenIds[0]);
+          tokenIds.add(market.clobTokenIds[1]);
+        });
+        bundles.push({ proposal, markets });
       } catch (error) {
-        await logFailedMarketProposalVerification(logger, params.chainId, proposal, error as Error);
-        await persist(); // ensure we don’t re-process it again
+        // Check if this is the specific "No market found" error for 3rd party proposals
+        if (error instanceof Error && error.message.includes(`No market found for question ID: ${questionID}`)) {
+          // Apply 3rd party proposal filtering logic
+          const shouldIgnore = await shouldIgnoreThirdPartyProposal(params, proposal, version);
+          if (shouldIgnore) {
+            // Ignore this proposal - log for debugging but don't alert
+            logger.info({
+              at: "PolymarketMonitor",
+              message: "Ignoring 3rd party Polymarket proposal based on filtering criteria",
+              questionID,
+              proposalHash: proposal.proposalHash,
+              requester: proposal.requester,
+            });
+            return;
+          }
+        }
+        // If <2 criteria met, let the error bubble up to trigger alert
+        await logErrorAndPersist(proposal, error as Error);
       }
     })
   );
+
+  let orderbookMap: Record<string, MarketOrderbook> = {};
+  let activeBundles = bundles; // may shrink below
+
+  try {
+    // Fast path: single batched request
+    orderbookMap = await getPolymarketOrderBooks(params, [...tokenIds]);
+  } catch (bulkErr) {
+    logger.warn({
+      at: "PolymarketMonitor",
+      message: "Bulk order-book fetch failed – falling back to per-market fetches",
+      error: bulkErr,
+    });
+
+    const survivingBundles: typeof bundles = [];
+
+    // Fetch each market's orderbook individually
+    await Promise.all(
+      bundles.map(async (bundle) => {
+        try {
+          for (const market of bundle.markets) {
+            const [book0, book1] = await getPolymarketOrderBook(params, market.clobTokenIds as [string, string]);
+            orderbookMap[market.clobTokenIds[0]] = book0;
+            orderbookMap[market.clobTokenIds[1]] = book1;
+          }
+          survivingBundles.push(bundle);
+        } catch (pairErr) {
+          await logErrorAndPersist(bundle.proposal, pairErr as Error);
+        }
+      })
+    );
+
+    activeBundles = survivingBundles;
+  }
+
+  await Promise.all(
+    activeBundles.map(async ({ proposal, markets }) => {
+      try {
+        const alerted = await processProposal(proposal, markets, orderbookMap, params, logger);
+        if (alerted) await persistNotified(proposal, logger);
+      } catch (err) {
+        await logErrorAndPersist(proposal, err as Error);
+      }
+    })
+  );
+
   console.log("All proposals have been checked!");
 }

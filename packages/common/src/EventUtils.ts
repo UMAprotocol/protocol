@@ -19,11 +19,15 @@ export async function paginatedEventQuery<T extends Event>(
   contract: Contract,
   filter: EventFilter,
   searchConfig: EventSearchConfig,
-  retryCount = 0
+  retryCount = 0,
+  queryFilterFn?: (
+    contract: Contract
+  ) => <E extends Event = Event>(filter: EventFilter, fromBlock: number, toBlock: number) => Promise<E[]>
 ): Promise<Array<T>> {
+  const queryFilter = queryFilterFn ? queryFilterFn(contract) : contract.queryFilter.bind(contract);
   // If the max block look back is set to 0 then we dont need to do any pagination and can query over the whole range.
   if (searchConfig.maxBlockLookBack === 0)
-    return (await contract.queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;
+    return (await queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;
 
   // Compute the number of queries needed. If there is no maxBlockLookBack set then we can execute the whole query in
   // one go. Else, the number of queries is the range over which we are searching, divided by the maxBlockLookBack,
@@ -33,7 +37,7 @@ export async function paginatedEventQuery<T extends Event>(
   try {
     return (
       (
-        await Promise.map(paginatedRanges, ([fromBlock, toBlock]) => contract.queryFilter(filter, fromBlock, toBlock), {
+        await Promise.map(paginatedRanges, ([fromBlock, toBlock]) => queryFilter(filter, fromBlock, toBlock), {
           concurrency: typeof searchConfig.concurrency == "number" ? searchConfig.concurrency : defaultConcurrency,
         })
       )
@@ -46,7 +50,7 @@ export async function paginatedEventQuery<T extends Event>(
   } catch (error) {
     if (retryCount < maxRetries) {
       await delay(retrySleepTime);
-      return await paginatedEventQuery(contract, filter, searchConfig, retryCount + 1);
+      return await paginatedEventQuery(contract, filter, searchConfig, retryCount + 1, queryFilterFn);
     } else throw error;
   }
 }
