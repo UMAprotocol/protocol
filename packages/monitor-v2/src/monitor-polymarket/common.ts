@@ -712,11 +712,12 @@ export const getNotifiedProposals = async (): Promise<{
 };
 
 export const parseEnvList = (env: NodeJS.ProcessEnv, key: string, defaultValue: string[]): string[] => {
-  if (!env[key]) return defaultValue;
+  const rawValue = env[key];
+  if (!rawValue) return defaultValue;
 
   let output: string[];
   try {
-    output = JSON.parse(env[key]);
+    output = JSON.parse(rawValue);
   } catch (error) {
     throw new Error(`${key} is not valid JSON.`);
   }

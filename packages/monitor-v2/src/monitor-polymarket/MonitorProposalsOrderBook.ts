@@ -182,11 +182,11 @@ export async function monitorTransactionsProposedOrderBook(
     params.ctfSportsOracleAddress,
   ];
 
-  const ooV2Promises = params.ooV2Addresses.map((oov2Address) =>
-    getPolymarketProposedPriceRequestsOO(params, "v2", requesters, oov2Address)
+  const ooV2Promises = params.ooV2Addresses.map((ooV2Address) =>
+    getPolymarketProposedPriceRequestsOO(params, "v2", requesters, ooV2Address)
   );
-  const ooV1Promises = params.ooV1Addresses.map((oov1Address) =>
-    getPolymarketProposedPriceRequestsOO(params, "v1", requesters, oov1Address)
+  const ooV1Promises = params.ooV1Addresses.map((ooV1Address) =>
+    getPolymarketProposedPriceRequestsOO(params, "v1", requesters, ooV1Address)
   );
   // Merge proposals from v2 and v1.
   const [v2, v1] = await Promise.all([
