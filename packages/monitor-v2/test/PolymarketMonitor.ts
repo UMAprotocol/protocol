@@ -5,6 +5,7 @@ import {
   FinderEthers,
   IdentifierWhitelistEthers,
   OptimisticOracleV2Ethers,
+  OptimisticOracleEthers,
   VotingTokenEthers,
 } from "@uma/contracts-node";
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
@@ -36,6 +37,7 @@ type CommonModuleFunctions = keyof typeof commonModule;
 describe("PolymarketNotifier", function () {
   let sandbox: sinon.SinonSandbox;
   let oov2: OptimisticOracleV2Ethers;
+  let oo: OptimisticOracleEthers;
   let deployer: Signer;
   let votingToken: VotingTokenEthers;
   let getNotifiedProposalsStub: sinon.SinonStub;
@@ -104,6 +106,8 @@ describe("PolymarketNotifier", function () {
       fillEventsLookbackSeconds: 0,
       httpClient: createHttpClient(),
       orderBookBatchSize: 499,
+      ooV2Addresses: [oov2.address],
+      ooV1Addresses: [oo.address],
     };
   };
 
@@ -123,11 +127,11 @@ describe("PolymarketNotifier", function () {
     votingToken = vt;
     const defaultLiveness = 7200; // 2 hours
 
-    const oo = (await (await getContractFactory("OptimisticOracle", deployer)).deploy(
+    oo = (await (await getContractFactory("OptimisticOracle", deployer)).deploy(
       defaultLiveness,
       finder.address,
       ZERO_ADDRESS
-    )) as OptimisticOracleV2Ethers;
+    )) as OptimisticOracleEthers;
     oov2 = (await (await getContractFactory("OptimisticOracleV2", deployer)).deploy(
       defaultLiveness,
       finder.address,

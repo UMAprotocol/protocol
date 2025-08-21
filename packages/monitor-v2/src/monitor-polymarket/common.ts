@@ -7,7 +7,7 @@ import type { Provider } from "@ethersproject/abstract-provider";
 
 import { BigNumber, Contract, Event, EventFilter, ethers } from "ethers";
 
-import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
+import { getAddress, OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import {
   DisputePriceEvent,
   ProposePriceEvent,
@@ -70,6 +70,8 @@ export interface MonitoringParams {
   fillEventsLookbackSeconds: number;
   httpClient: ReturnType<typeof createHttpClient>;
   orderBookBatchSize: number;
+  ooV2Addresses: string[];
+  ooV1Addresses: string[];
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -157,7 +159,8 @@ export type Market = {
 export const getPolymarketProposedPriceRequestsOO = async (
   params: MonitoringParams,
   version: "v1" | "v2",
-  requesterAddresses: string[]
+  requesterAddresses: string[],
+  ooAddress: string
 ): Promise<OptimisticPriceRequest[]> => {
   const currentBlockNumber = await params.provider.getBlockNumber();
   const oneDayInBlocks = POLYGON_BLOCKS_PER_HOUR * 24;
@@ -172,7 +175,8 @@ export const getPolymarketProposedPriceRequestsOO = async (
 
   const oo = await getContractInstanceWithProvider<OptimisticOracleEthers | OptimisticOracleV2Ethers>(
     version == "v1" ? "OptimisticOracle" : "OptimisticOracleV2",
-    params.provider
+    params.provider,
+    ooAddress
   );
 
   const proposeEvents = await paginatedEventQuery<ProposePriceEvent>(
@@ -707,6 +711,24 @@ export const getNotifiedProposals = async (): Promise<{
   }, {});
 };
 
+export const parseEnvList = (env: NodeJS.ProcessEnv, key: string, defaultValue: string[]): string[] => {
+  const rawValue = env[key];
+  if (!rawValue) return defaultValue;
+
+  let output: string[];
+  try {
+    output = JSON.parse(rawValue);
+  } catch (error) {
+    throw new Error(`${key} is not valid JSON.`);
+  }
+
+  if (!Array.isArray(output)) {
+    throw new Error(`${key} is valid JSON, but not an array.`);
+  }
+
+  return output;
+};
+
 export const initMonitoringParams = async (
   env: NodeJS.ProcessEnv,
   logger: typeof Logger
@@ -771,6 +793,9 @@ export const initMonitoringParams = async (
     },
   });
 
+  const ooV2Addresses = parseEnvList(env, "OOV2_ADDRESSES", [await getAddress("OptimisticOracleV2", chainId)]);
+  const ooV1Addresses = parseEnvList(env, "OOV1_ADDRESSES", [await getAddress("OptimisticOracle", chainId)]);
+
   return {
     binaryAdapterAddress,
     ctfAdapterAddress,
@@ -791,6 +816,8 @@ export const initMonitoringParams = async (
     fillEventsLookbackSeconds,
     httpClient,
     orderBookBatchSize,
+    ooV2Addresses,
+    ooV1Addresses,
   };
 };
 
