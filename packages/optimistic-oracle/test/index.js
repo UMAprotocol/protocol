@@ -28,6 +28,7 @@ describe("index.js", function () {
 
   let optimisticOracle;
   let optimisticOracleV2;
+  let optimisticOracleOverride;
   let skinnyOptimisticOracle;
   let finder;
   let timer;
@@ -45,6 +46,11 @@ describe("index.js", function () {
     });
 
     optimisticOracleV2 = await OptimisticOracleV2.new("120", finder.options.address, timer.options.address).send({
+      from: accounts[0],
+    });
+
+    // Deploy optimistic oracle for override without saving it to hardhat deployments.
+    optimisticOracleOverride = await OptimisticOracleV2.new("120", finder.options.address, timer.options.address).send({
       from: accounts[0],
     });
 
@@ -146,6 +152,36 @@ describe("index.js", function () {
     assert.isTrue(spyLogIncludes(spy, 0, "OptimisticOracle proposer started"));
     assert.isTrue(spyLogIncludes(spy, 0, optimisticOracleV2.options.address));
     assert.equal(spy.getCall(0).lastArg.optimisticOracleType, "OptimisticOracleV2");
+    assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
+  });
+
+  it("Works with optimisticOracleAddressOverride", async function () {
+    // We will create a new spy logger, listening for debug events because success logs are tagged with the
+    // debug level.
+    spy = sinon.spy();
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+    });
+
+    await Main.run({
+      logger: spyLogger,
+      web3,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      optimisticOracleAddressOverride: optimisticOracleOverride.options.address,
+    });
+
+    for (let i = 0; i < spy.callCount; i++) {
+      assert.notStrictEqual(spyLogLevel(spy, i), "error");
+    }
+
+    // The first log should indicate that the OO-Proposer runner started successfully
+    // and used the override address instead of auto-detecting.
+    assert.isTrue(spyLogIncludes(spy, 0, "OptimisticOracle proposer started"));
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticOracleOverride.options.address));
+    assert.equal(spy.getCall(0).lastArg.optimisticOracleType, "OptimisticOracle");
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });
 });
