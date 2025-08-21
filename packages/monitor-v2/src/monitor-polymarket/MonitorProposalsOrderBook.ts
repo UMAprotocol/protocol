@@ -184,8 +184,12 @@ export async function monitorTransactionsProposedOrderBook(
 
   // Merge proposals from v2 and v1.
   const [v2, v1] = await Promise.all([
-    getPolymarketProposedPriceRequestsOO(params, "v2", requesters),
-    getPolymarketProposedPriceRequestsOO(params, "v1", requesters),
+    params.ooV2Addresses.map((oov2Address) =>
+      getPolymarketProposedPriceRequestsOO(params, "v2", requesters, oov2Address)
+    ),
+    params.ooV1Addresses.map((oov1Address) =>
+      getPolymarketProposedPriceRequestsOO(params, "v1", requesters, oov1Address)
+    ),
   ]);
 
   const allProposals = [
