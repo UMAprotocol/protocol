@@ -87,12 +87,16 @@ describe("OptimisticOracleV2Bot", function () {
 
     await settleRequests(spyLogger, await createMonitoringParams());
 
-    assert.equal(spy.getCall(0).lastArg.at, "OOv2Bot");
-    assert.equal(spy.getCall(0).lastArg.message, "Price Request Settled ✅");
-    assert.equal(spyLogLevel(spy, 0), "warn");
-    assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(ancillaryData)));
-    assert.isTrue(spyLogIncludes(spy, 0, "Resolved Price"));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
+    const settledIndex = spy
+      .getCalls()
+      .findIndex((c) => c.lastArg?.message === "Price Request Settled ✅" && c.lastArg?.at === "OOv2Bot");
+    assert.isAbove(settledIndex, -1, "Expected a settlement log to be emitted");
+    assert.equal(spy.getCall(settledIndex).lastArg.at, "OOv2Bot");
+    assert.equal(spy.getCall(settledIndex).lastArg.message, "Price Request Settled ✅");
+    assert.equal(spyLogLevel(spy, settledIndex), "warn");
+    assert.isTrue(spyLogIncludes(spy, settledIndex, toUtf8String(ancillaryData)));
+    assert.isTrue(spyLogIncludes(spy, settledIndex, "Resolved Price"));
+    assert.equal(spy.getCall(settledIndex).lastArg.notificationPath, "optimistic-oracle");
 
     // Subsequent run should produce no logs.
     spy.resetHistory();
