@@ -60,11 +60,13 @@ export async function settleRequests(logger: typeof Logger, params: MonitoringPa
     (req): req is RequestPriceEvent => req !== null
   );
 
-  logger.debug({
-    at: "OOv2Bot",
-    message: "Settleable requests found",
-    count: setteableRequests.length,
-  });
+  if (setteableRequests.length > 0) {
+    logger.debug({
+      at: "OOv2Bot",
+      message: "Settleable requests found",
+      count: setteableRequests.length,
+    });
+  }
 
   const ooWithSigner = oo.connect(params.signer);
 

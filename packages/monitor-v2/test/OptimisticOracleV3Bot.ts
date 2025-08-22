@@ -89,14 +89,17 @@ describe("OptimisticOracleV3Bot", function () {
     await hardhatTime.increase(defaultLiveness);
     await settleAssertions(spyLogger, await createMonitoringParams());
 
-    // When calling monitoring module directly there should be only one log (index 0) with the assertion caught by spy.
-    assert.equal(spy.getCall(0).lastArg.at, "OOv3Bot");
-    assert.equal(spy.getCall(0).lastArg.message, "Assertion Settled ✅");
-    assert.equal(spyLogLevel(spy, 0), "warn");
-    assert.isTrue(spyLogIncludes(spy, 0, assertionMadeEvent.args.assertionId));
-    assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
-    assert.isTrue(spyLogIncludes(spy, 0, "Settlement Resolution: true"));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
+    const settledIndex = spy
+      .getCalls()
+      .findIndex((c) => c.lastArg?.message === "Assertion Settled ✅" && c.lastArg?.at === "OOv3Bot");
+    assert.isAbove(settledIndex, -1, "Expected a settlement log to be emitted");
+    assert.equal(spy.getCall(settledIndex).lastArg.at, "OOv3Bot");
+    assert.equal(spy.getCall(settledIndex).lastArg.message, "Assertion Settled ✅");
+    assert.equal(spyLogLevel(spy, settledIndex), "warn");
+    assert.isTrue(spyLogIncludes(spy, settledIndex, assertionMadeEvent.args.assertionId));
+    assert.isTrue(spyLogIncludes(spy, settledIndex, toUtf8String(claim)));
+    assert.isTrue(spyLogIncludes(spy, settledIndex, "Settlement Resolution: true"));
+    assert.equal(spy.getCall(settledIndex).lastArg.notificationPath, "optimistic-oracle");
 
     spy.resetHistory();
     await settleAssertions(spyLogger, await createMonitoringParams());
@@ -140,14 +143,17 @@ describe("OptimisticOracleV3Bot", function () {
 
     await settleAssertions(spyLogger, await createMonitoringParams());
 
-    // When calling monitoring module directly there should be only one log (index 0) with the assertion caught by spy.
-    assert.equal(spy.getCall(0).lastArg.at, "OOv3Bot");
-    assert.equal(spy.getCall(0).lastArg.message, "Assertion Settled ✅");
-    assert.equal(spyLogLevel(spy, 0), "warn");
-    assert.isTrue(spyLogIncludes(spy, 0, assertionMadeEvent.args.assertionId));
-    assert.isTrue(spyLogIncludes(spy, 0, toUtf8String(claim)));
-    assert.isTrue(spyLogIncludes(spy, 0, "Settlement Resolution: false"));
-    assert.equal(spy.getCall(0).lastArg.notificationPath, "optimistic-oracle");
+    const settledIndex = spy
+      .getCalls()
+      .findIndex((c) => c.lastArg?.message === "Assertion Settled ✅" && c.lastArg?.at === "OOv3Bot");
+    assert.isAbove(settledIndex, -1, "Expected a settlement log to be emitted");
+    assert.equal(spy.getCall(settledIndex).lastArg.at, "OOv3Bot");
+    assert.equal(spy.getCall(settledIndex).lastArg.message, "Assertion Settled ✅");
+    assert.equal(spyLogLevel(spy, settledIndex), "warn");
+    assert.isTrue(spyLogIncludes(spy, settledIndex, assertionMadeEvent.args.assertionId));
+    assert.isTrue(spyLogIncludes(spy, settledIndex, toUtf8String(claim)));
+    assert.isTrue(spyLogIncludes(spy, settledIndex, "Settlement Resolution: false"));
+    assert.equal(spy.getCall(settledIndex).lastArg.notificationPath, "optimistic-oracle");
 
     spy.resetHistory();
     await settleAssertions(spyLogger, await createMonitoringParams());

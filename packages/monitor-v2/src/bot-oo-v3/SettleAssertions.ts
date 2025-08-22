@@ -49,11 +49,13 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
     (assertion): assertion is AssertionMadeEvent => assertion !== null
   );
 
-  logger.debug({
-    at: "OOv3Bot",
-    message: "Settleable assertions found",
-    count: setteableAssertions.length,
-  });
+  if (setteableAssertions.length > 0) {
+    logger.debug({
+      at: "OOv3Bot",
+      message: "Settleable assertions found",
+      count: setteableAssertions.length,
+    });
+  }
 
   const ooWithSigner = oo.connect(params.signer);
 
