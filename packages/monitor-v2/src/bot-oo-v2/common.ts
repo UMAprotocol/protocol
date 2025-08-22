@@ -1,13 +1,13 @@
 import type { Provider } from "@ethersproject/abstract-provider";
 
-export { OptimisticOracleV3Ethers } from "@uma/contracts-node";
+export { OptimisticOracleV2Ethers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 export { computeEventSearch } from "../bot-utils/events";
 import { BaseMonitoringParams, initBaseMonitoringParams, startupLogLevel as baseStartup } from "../bot-utils/base";
 
 export interface BotModes {
-  settleAssertionsEnabled: boolean;
+  settleRequestsEnabled: boolean;
 }
 
 export interface MonitoringParams {
@@ -26,7 +26,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const base = await initBaseMonitoringParams(env);
 
   const botModes = {
-    settleAssertionsEnabled: env.SETTLEMENTS_ENABLED === "true",
+    settleRequestsEnabled: env.SETTLEMENTS_ENABLED === "true",
   };
 
   return {

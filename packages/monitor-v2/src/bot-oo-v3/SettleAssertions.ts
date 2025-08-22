@@ -4,20 +4,18 @@ import {
   AssertionSettledEvent,
 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV3";
 import { logSettleAssertion } from "./BotLogger";
+import { computeEventSearch } from "../bot-utils/events";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV3Ethers } from "./common";
 
 export async function settleAssertions(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
 
-  const currentBlock = await params.provider.getBlock("latest");
-
-  const fromBlock = await params.blockFinder.getBlockForTimestamp(currentBlock.timestamp - params.timeLookback);
-
-  const searchConfig = {
-    fromBlock: fromBlock.number,
-    toBlock: currentBlock.number,
-    maxBlockLookBack: params.maxBlockLookBack,
-  };
+  const searchConfig = await computeEventSearch(
+    params.provider,
+    params.blockFinder,
+    params.timeLookback,
+    params.maxBlockLookBack
+  );
 
   const assertions = await paginatedEventQuery<AssertionMadeEvent>(oo, oo.filters.AssertionMade(), searchConfig);
 
