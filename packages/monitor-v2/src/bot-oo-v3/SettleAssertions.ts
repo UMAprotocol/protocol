@@ -31,35 +31,75 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
     (assertion) => !assertionsSettledIds.has(assertion.args.assertionId)
   ) as AssertionMadeEvent[];
 
-  const setteableAssertions: AssertionMadeEvent[] = [];
-  for (const assertion of assertionsToSettle) {
+  const setteableAssertionsPromises = assertionsToSettle.map(async (assertion) => {
     try {
       await oo.callStatic.settleAndGetAssertionResult(assertion.args.assertionId);
-      setteableAssertions.push(assertion);
-      console.log(`Assertion ${assertion.args.assertionId} is setteable.`);
+      logger.debug({
+        at: "OOv3Bot",
+        message: "Assertion is settleable",
+        assertionId: assertion.args.assertionId,
+      });
+      return assertion;
     } catch (err) {
-      console.log(`Assertion ${assertion.args.assertionId} is not setteable yet.`);
+      return null;
     }
-  }
+  });
+
+  const setteableAssertions = (await Promise.all(setteableAssertionsPromises)).filter(
+    (assertion): assertion is AssertionMadeEvent => assertion !== null
+  );
+
+  logger.debug({
+    at: "OOv3Bot",
+    message: "Settleable assertions found",
+    count: setteableAssertions.length,
+  });
+
+  const ooWithSigner = oo.connect(params.signer);
 
   for (const assertion of setteableAssertions) {
-    const estimatedGas = await oo.estimateGas.settleAssertion(assertion.args.assertionId);
-    const gasLimit = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-    const tx = await oo.connect(params.signer).settleAssertion(assertion.args.assertionId, { gasLimit });
-    const receipt = await tx.wait();
-    const event = receipt.events?.find((e) => e.event === "AssertionSettled");
-    await logSettleAssertion(
-      logger,
-      {
-        tx: tx.hash,
+    let gasLimitOverride: any = undefined;
+    try {
+      const estimatedGas = await oo.estimateGas.settleAssertion(assertion.args.assertionId);
+      gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
+    } catch (error) {
+      logger.debug({
+        at: "OOv3Bot",
+        message: "Gas estimation failed; sending without override",
         assertionId: assertion.args.assertionId,
-        claim: assertion.args.claim,
-        bond: assertion.args.bond,
-        identifier: assertion.args.identifier,
-        currency: assertion.args.currency,
-        settlementResolution: event?.args?.settlementResolution,
-      },
-      params
-    );
+        error,
+      });
+    }
+
+    try {
+      const tx = await ooWithSigner.settleAssertion(
+        assertion.args.assertionId,
+        gasLimitOverride ? { gasLimit: gasLimitOverride } : {}
+      );
+      const receipt = await tx.wait();
+      const event = receipt.events?.find((e) => e.event === "AssertionSettled");
+      await logSettleAssertion(
+        logger,
+        {
+          tx: tx.hash,
+          assertionId: assertion.args.assertionId,
+          claim: assertion.args.claim,
+          bond: assertion.args.bond,
+          identifier: assertion.args.identifier,
+          currency: assertion.args.currency,
+          settlementResolution: event?.args?.settlementResolution,
+        },
+        params
+      );
+    } catch (error) {
+      logger.error({
+        at: "OOv3Bot",
+        message: "Assertion settlement failed",
+        assertionId: assertion.args.assertionId,
+        error,
+        notificationPath: "optimistic-oracle",
+      });
+      continue;
+    }
   }
 }

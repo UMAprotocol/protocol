@@ -39,47 +39,86 @@ export async function settleRequests(logger: typeof Logger, params: MonitoringPa
 
   const requestsToSettle = requests.filter((e) => !settledKeys.has(requestKey(e.args))) as RequestPriceEvent[];
 
-  const settleable: RequestPriceEvent[] = [];
-  for (const req of requestsToSettle) {
+  const setteableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
-      // Attempt a static call to determine settle-ability. Will revert if not ready.
       await oo.callStatic.settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData);
-      settleable.push(req);
-      console.log(
-        `Request ${requestKey(req.args)} is settleable for ${req.args.requester} ${req.args.identifier} ${
-          req.args.timestamp
-        }`
-      );
-    } catch (err) {
-      console.log(`Request ${requestKey(req.args)} not settleable yet.`);
-    }
-  }
-
-  for (const req of settleable) {
-    const estimatedGas = await oo.estimateGas.settle(
-      req.args.requester,
-      req.args.identifier,
-      req.args.timestamp,
-      req.args.ancillaryData
-    );
-    const gasLimit = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-    const tx = await oo
-      .connect(params.signer)
-      .settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData, { gasLimit });
-    const receipt = await tx.wait();
-    const event = receipt.events?.find((e) => e.event === "Settle");
-
-    await logSettleRequest(
-      logger,
-      {
-        tx: tx.hash,
+      logger.debug({
+        at: "OOv2Bot",
+        message: "Request is settleable",
+        requestKey: requestKey(req.args),
         requester: req.args.requester,
-        identifier: req.args.identifier,
-        timestamp: req.args.timestamp,
-        ancillaryData: req.args.ancillaryData,
-        price: (event?.args as SettleEvent["args"])?.price ?? ethers.constants.Zero,
-      },
-      params
-    );
+        identifier: ethers.utils.parseBytes32String(req.args.identifier),
+        timestamp: req.args.timestamp.toString(),
+      });
+      return req;
+    } catch (err) {
+      return null;
+    }
+  });
+
+  const setteableRequests = (await Promise.all(setteableRequestsPromises)).filter(
+    (req): req is RequestPriceEvent => req !== null
+  );
+
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Settleable requests found",
+    count: setteableRequests.length,
+  });
+
+  const ooWithSigner = oo.connect(params.signer);
+
+  for (const req of setteableRequests) {
+    let gasLimitOverride: any = undefined;
+    try {
+      const estimatedGas = await oo.estimateGas.settle(
+        req.args.requester,
+        req.args.identifier,
+        req.args.timestamp,
+        req.args.ancillaryData
+      );
+      gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
+    } catch (error) {
+      logger.debug({
+        at: "OOv2Bot",
+        message: "Gas estimation failed; sending without override",
+        requestKey: requestKey(req.args),
+        error,
+      });
+    }
+
+    try {
+      const tx = await ooWithSigner.settle(
+        req.args.requester,
+        req.args.identifier,
+        req.args.timestamp,
+        req.args.ancillaryData,
+        gasLimitOverride ? { gasLimit: gasLimitOverride } : {}
+      );
+      const receipt = await tx.wait();
+      const event = receipt.events?.find((e) => e.event === "Settle");
+
+      await logSettleRequest(
+        logger,
+        {
+          tx: tx.hash,
+          requester: req.args.requester,
+          identifier: req.args.identifier,
+          timestamp: req.args.timestamp,
+          ancillaryData: req.args.ancillaryData,
+          price: (event?.args as SettleEvent["args"])?.price ?? ethers.constants.Zero,
+        },
+        params
+      );
+    } catch (error) {
+      logger.error({
+        at: "OOv2Bot",
+        message: "Request settlement failed",
+        requestKey: requestKey(req.args),
+        error,
+        notificationPath: "optimistic-oracle",
+      });
+      continue;
+    }
   }
 }

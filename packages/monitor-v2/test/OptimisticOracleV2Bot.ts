@@ -14,7 +14,6 @@ import { hre, Signer, toUtf8Bytes, toUtf8String } from "./utils";
 
 const ethers = hre.ethers;
 
-// Create monitoring params similar to OOv3 tests.
 const createMonitoringParams = async (): Promise<MonitoringParams> => {
   // get hardhat signer
   const [signer] = await ethers.getSigners();
