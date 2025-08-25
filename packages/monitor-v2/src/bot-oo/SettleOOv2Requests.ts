@@ -3,23 +3,11 @@ import {
   RequestPriceEvent,
   SettleEvent,
 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
-import { logSettleRequest } from "./BotLogger";
-import { computeEventSearch } from "../bot-utils/events";
-import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV2Ethers } from "./common";
 import { ethers } from "ethers";
-
-const requestKey = (args: {
-  requester: string;
-  identifier: string;
-  timestamp: ethers.BigNumber;
-  ancillaryData: string;
-}) =>
-  ethers.utils.keccak256(
-    ethers.utils.solidityPack(
-      ["address", "bytes32", "uint256", "bytes"],
-      [args.requester, args.identifier, args.timestamp, args.ancillaryData]
-    )
-  );
+import { computeEventSearch } from "../bot-utils/events";
+import { logSettleRequest } from "./BotLogger";
+import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV2Ethers } from "./common";
+import { requestKey } from "./requestKey";
 
 export async function settleOOv2Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>("OptimisticOracleV2", params.provider);
@@ -39,7 +27,7 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
 
   const requestsToSettle = requests.filter((e) => !settledKeys.has(requestKey(e.args))) as RequestPriceEvent[];
 
-  const setteableRequestsPromises = requestsToSettle.map(async (req) => {
+  const settleableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
       await oo.callStatic.settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData);
       logger.debug({
@@ -56,21 +44,21 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
     }
   });
 
-  const setteableRequests = (await Promise.all(setteableRequestsPromises)).filter(
+  const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter(
     (req): req is RequestPriceEvent => req !== null
   );
 
-  if (setteableRequests.length > 0) {
+  if (settleableRequests.length > 0) {
     logger.debug({
       at: "OOv2Bot",
       message: "Settleable requests found",
-      count: setteableRequests.length,
+      count: settleableRequests.length,
     });
   }
 
   const ooWithSigner = oo.connect(params.signer);
 
-  for (const req of setteableRequests) {
+  for (const req of settleableRequests) {
     const estimatedGas = await oo.estimateGas.settle(
       req.args.requester,
       req.args.identifier,

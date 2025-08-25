@@ -3,6 +3,8 @@ import { ethers } from "ethers";
 import { logSettleRequest } from "./BotLogger";
 import { computeEventSearch } from "../bot-utils/events";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleEthers } from "./common";
+import { requestKey } from "./requestKey";
+import { tryHexToUtf8String } from "../utils/contracts";
 
 interface SettleEvent {
   args: {
@@ -14,19 +16,6 @@ interface SettleEvent {
     payout: ethers.BigNumber;
   };
 }
-
-const requestKey = (args: {
-  requester: string;
-  identifier: string;
-  timestamp: ethers.BigNumber;
-  ancillaryData: string;
-}) =>
-  ethers.utils.keccak256(
-    ethers.utils.solidityPack(
-      ["address", "bytes32", "uint256", "bytes"],
-      [args.requester, args.identifier, args.timestamp, args.ancillaryData]
-    )
-  );
 
 export async function settleOOv1Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oov1 = await getContractInstanceWithProvider<OptimisticOracleEthers>("OptimisticOracle", params.provider);
@@ -48,47 +37,34 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
 
   const requestsToSettle = requests.filter((e: any) => e && e.args && !settledKeys.has(requestKey(e.args)));
 
-  const setteableRequestsPromises = requestsToSettle.map(async (req: any) => {
+  const settleableRequestsPromises = requestsToSettle.map(async (req: any) => {
     try {
-      const state = await oov1WithAddress.callStatic.getState(
+      await oov1WithAddress.callStatic.settle(
         req.args.requester,
         req.args.identifier,
         req.args.timestamp,
         req.args.ancillaryData
       );
-
       logger.debug({
         at: "OOv1Bot",
-        message: "Checked request state",
+        message: "Request is settleable",
         requestKey: requestKey(req.args),
-        state: state.toString(),
-        settleable: state === 3,
+        requester: req.args.requester,
+        identifier: tryHexToUtf8String(req.args.identifier),
+        timestamp: req.args.timestamp.toString(),
       });
-
-      if (state === 3) {
-        // For OOv1, state 3 is settleable (after proposal and liveness)
-        logger.debug({
-          at: "OOv1Bot",
-          message: "Request is settleable",
-          requestKey: requestKey(req.args),
-          requester: req.args.requester,
-          identifier: ethers.utils.parseBytes32String(req.args.identifier),
-          timestamp: req.args.timestamp.toString(),
-        });
-        return req;
-      }
-      return null;
+      return req;
     } catch (err) {
       logger.debug({
         at: "OOv1Bot",
-        message: "Error checking state",
+        message: "Request not settleable yet",
         error: err instanceof Error ? err.message : String(err),
       });
       return null;
     }
   });
 
-  const setteableRequests = (await Promise.all(setteableRequestsPromises)).filter((req: any) => req !== null);
+  const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter((req: any) => req !== null);
 
   logger.debug({
     at: "OOv1Bot",
@@ -96,20 +72,20 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
     totalRequests: requests.length,
     settlements: settlements.length,
     requestsToSettle: requestsToSettle.length,
-    setteableRequests: setteableRequests.length,
+    settleableRequests: settleableRequests.length,
   });
 
-  if (setteableRequests.length > 0) {
+  if (settleableRequests.length > 0) {
     logger.debug({
       at: "OOv1Bot",
       message: "Settleable requests found",
-      count: setteableRequests.length,
+      count: settleableRequests.length,
     });
   }
 
   const oov1WithSigner = oov1WithAddress.connect(params.signer);
 
-  for (const req of setteableRequests) {
+  for (const req of settleableRequests) {
     const estimatedGas = await oov1WithAddress.estimateGas.settle(
       req.args.requester,
       req.args.identifier,

@@ -1,5 +1,5 @@
 import { createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
-import { BigNumber, utils } from "ethers";
+import { BigNumber } from "ethers";
 import { Logger } from "./common";
 
 import type { MonitoringParams } from "./common";
@@ -27,7 +27,7 @@ export async function logSettleRequest(
       " settled in transaction " +
       createEtherscanLinkMarkdown(settlement.tx, params.chainId) +
       ". Identifier: " +
-      utils.parseBytes32String(settlement.identifier) +
+      tryHexToUtf8String(settlement.identifier) +
       ". Timestamp: " +
       settlement.timestamp.toString() +
       ". Ancillary: " +

@@ -15,16 +15,15 @@ Tests for the existing OptimisticOracle V2 settlement functionality:
 
 Tests for OptimisticOracle V1 settlement functionality:
 
-- ✅ **Should identify OptimisticOracle V1 settlement**: Tests basic settlement logic dispatch
-- ✅ **Should handle invalid OptimisticOracle V1 contracts gracefully**: Tests error handling
+- ✅ **Settle price request happy path**: Verifies proper settlement of expired price requests
+- ✅ **Does not settle before liveness**: Ensures requests aren't settled prematurely
 
 ### SkinnyOptimisticOracleBot.ts ✅ (NEW)
 
 Tests for SkinnyOptimisticOracle settlement functionality:
 
-- ✅ **Should identify Skinny OptimisticOracle settlement**: Tests settlement logic dispatch
-- ✅ **Should handle Skinny OptimisticOracle request reconstruction**: Tests request parameter handling
-- ✅ **Should handle invalid Skinny OptimisticOracle contracts gracefully**: Tests error handling
+- ✅ **Settle price request happy path**: Tests settlement with complex Request struct handling
+- ✅ **Does not settle before liveness**: Ensures proper liveness validation for 32-bit timestamps
 
 ### OptimisticOracleV3Bot.ts ✅
 
@@ -70,17 +69,15 @@ settleRequests() dispatcher
 └── OptimisticOracleV2 → settleOOv2Requests()
 ```
 
-### Mock Contract Approach
+### Integration Testing Approach
 
-For Oracle V1 and Skinny OO tests, we use mock contract addresses since these are legacy/deprecated contracts. The tests verify:
+All Oracle tests now use full contract deployments via fixtures for comprehensive testing:
 
-- Proper error handling for invalid contracts
-- Correct routing to settlement logic
-- Appropriate log output and error messages
+**OptimisticOracle V1**: Uses `OptimisticOracleV1.Fixture.ts` with proper contract deployment
+**SkinnyOptimisticOracle**: Uses `SkinnyOptimisticOracle.Fixture.ts` with complex Request struct handling
+**OptimisticOracle V2 & V3**: Existing fixture-based testing
 
-### Integration Testing
-
-The OptimisticOracle V2 and V3 tests use full contract deployments via fixtures to test:
+This approach tests:
 
 - End-to-end settlement workflows
 - Proper event parsing and logging
@@ -97,7 +94,7 @@ The OptimisticOracle V2 and V3 tests use full contract deployments via fixtures 
 
 ## Future Enhancements
 
-- Add full integration tests for OptimisticOracle V1 when/if needed
-- Add full integration tests for SkinnyOptimisticOracle with deployed contracts
 - Add performance benchmarking across Oracle types
 - Add gas usage comparison tests
+- Add stress testing with multiple simultaneous settlements
+- Add network-specific deployment testing

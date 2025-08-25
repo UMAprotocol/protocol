@@ -1,41 +1,21 @@
-import type { Provider } from "@ethersproject/abstract-provider";
 import "@nomiclabs/hardhat-ethers";
 import { ExpandedERC20Ethers, TimerEthers } from "@uma/contracts-node";
-import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
-import { BlockFinder } from "@uma/sdk";
+import { spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
 import { assert } from "chai";
-import sinon from "sinon";
-import { BotModes, MonitoringParams, OracleType } from "../src/bot-oo/common";
+import { OracleType } from "../src/bot-oo/common";
 import { settleRequests } from "../src/bot-oo/SettleRequests";
 import { defaultLiveness, defaultOptimisticOracleV2Identifier } from "./constants";
 import { skinnyOptimisticOracleFixture, SkinnyOptimisticOracleEthers } from "./fixtures/SkinnyOptimisticOracle.Fixture";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { hre, Signer, toUtf8Bytes, toUtf8String } from "./utils";
+import { makeMonitoringParamsOO } from "./helpers/monitoring";
+import { makeSpyLogger } from "./helpers/logging";
+import { advanceTimerPastLiveness } from "./helpers/time";
 
 const ethers = hre.ethers;
 
-const createMonitoringParams = async (oracleType: OracleType, contractAddress: string): Promise<MonitoringParams> => {
-  // get hardhat signer
-  const [signer] = await ethers.getSigners();
-  const botModes: BotModes = {
-    settleRequestsEnabled: true,
-  };
-  return {
-    provider: ethers.provider as Provider,
-    chainId: (await ethers.provider.getNetwork()).chainId,
-    botModes,
-    signer,
-    timeLookback: 72 * 60 * 60,
-    maxBlockLookBack: 1000,
-    blockFinder: new BlockFinder(() => {
-      return { number: 0, timestamp: 0 } as any;
-    }),
-    pollingDelay: 0,
-    gasLimitMultiplier: 150,
-    oracleType,
-    contractAddress,
-  };
-};
+const createParams = (oracleType: OracleType, contractAddress: string) =>
+  makeMonitoringParamsOO(oracleType, contractAddress, { settleRequestsEnabled: true });
 
 describe("SkinnyOptimisticOracleBot", function () {
   let bondToken: ExpandedERC20Ethers;
@@ -109,16 +89,11 @@ describe("SkinnyOptimisticOracleBot", function () {
     ).wait();
 
     // Move timer forward to after liveness to allow settlement
-    const block = await ethers.provider.getBlock(proposeReceipt.blockNumber!);
-    await (await timer.setCurrentTime(block.timestamp + defaultLiveness)).wait();
+    await advanceTimerPastLiveness(timer, proposeReceipt.blockNumber!, defaultLiveness);
 
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
+    const { spy, logger } = makeSpyLogger();
 
-    await settleRequests(
-      spyLogger,
-      await createMonitoringParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address)
-    );
+    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
 
     const settledIndex = spy
       .getCalls()
@@ -133,10 +108,7 @@ describe("SkinnyOptimisticOracleBot", function () {
 
     // Subsequent run should produce no settlement logs (but may have debug logs).
     spy.resetHistory();
-    await settleRequests(
-      spyLogger,
-      await createMonitoringParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address)
-    );
+    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
 
     // Check that no settlement warning logs were generated
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
@@ -186,12 +158,8 @@ describe("SkinnyOptimisticOracleBot", function () {
         )
     ).wait();
 
-    const spy = sinon.spy();
-    const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
-    await settleRequests(
-      spyLogger,
-      await createMonitoringParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address)
-    );
+    const { spy, logger } = makeSpyLogger();
+    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
 
     // Check that no settlement warning logs were generated (but debug logs are OK).
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");

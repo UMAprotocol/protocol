@@ -1,11 +1,8 @@
-import type { Provider } from "@ethersproject/abstract-provider";
-import { Contract } from "ethers";
-
 export { OptimisticOracleEthers, OptimisticOracleV2Ethers, SkinnyOptimisticOracleEthers } from "@uma/contracts-node";
 export { Logger } from "@uma/financial-templates-lib";
-export { getContractInstanceWithProvider } from "../utils/contracts";
 export { computeEventSearch } from "../bot-utils/events";
-import { BaseMonitoringParams, initBaseMonitoringParams, startupLogLevel as baseStartup } from "../bot-utils/base";
+export { getContractInstanceWithProvider } from "../utils/contracts";
+import { BaseMonitoringParams, startupLogLevel as baseStartup, initBaseMonitoringParams } from "../bot-utils/base";
 
 export type OracleType = "OptimisticOracle" | "SkinnyOptimisticOracle" | "OptimisticOracleV2";
 
@@ -51,36 +48,4 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
 export const startupLogLevel = baseStartup;
 
-export const detectOracleType = async (contractAddress: string, provider: Provider): Promise<OracleType> => {
-  const contract = new Contract(contractAddress, [], provider);
-
-  try {
-    const code = await provider.getCode(contractAddress);
-    if (code === "0x") {
-      throw new Error(`No contract found at address ${contractAddress}`);
-    }
-
-    const hasRequestPrice = await contract.functions.requestPrice?.call?.({}).catch(() => false);
-
-    if (hasRequestPrice) {
-      const hasSettle = await contract.functions.settle?.call?.({}).catch(() => false);
-      if (hasSettle) {
-        try {
-          await contract.functions.defaultLiveness?.call?.({});
-          return "OptimisticOracleV2";
-        } catch {
-          try {
-            await contract.functions.liveness?.call?.({});
-            return "SkinnyOptimisticOracle";
-          } catch {
-            return "OptimisticOracle";
-          }
-        }
-      }
-    }
-
-    throw new Error(`Contract at ${contractAddress} does not appear to be a supported Oracle type`);
-  } catch (error) {
-    throw new Error(`Failed to detect Oracle type for ${contractAddress}: ${error}`);
-  }
-};
+// Note: Oracle type detection via empty ABI calls is unreliable. Keep explicit ORACLE_TYPE.
