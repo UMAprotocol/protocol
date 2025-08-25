@@ -21,7 +21,7 @@ const requestKey = (args: {
     )
   );
 
-export async function settleRequests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function settleOOv2Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>("OptimisticOracleV2", params.provider);
 
   const searchConfig = await computeEventSearch(
@@ -71,23 +71,13 @@ export async function settleRequests(logger: typeof Logger, params: MonitoringPa
   const ooWithSigner = oo.connect(params.signer);
 
   for (const req of setteableRequests) {
-    let gasLimitOverride: any = undefined;
-    try {
-      const estimatedGas = await oo.estimateGas.settle(
-        req.args.requester,
-        req.args.identifier,
-        req.args.timestamp,
-        req.args.ancillaryData
-      );
-      gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-    } catch (error) {
-      logger.debug({
-        at: "OOv2Bot",
-        message: "Gas estimation failed; sending without override",
-        requestKey: requestKey(req.args),
-        error,
-      });
-    }
+    const estimatedGas = await oo.estimateGas.settle(
+      req.args.requester,
+      req.args.identifier,
+      req.args.timestamp,
+      req.args.ancillaryData
+    );
+    const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
 
     try {
       const tx = await ooWithSigner.settle(
@@ -95,7 +85,7 @@ export async function settleRequests(logger: typeof Logger, params: MonitoringPa
         req.args.identifier,
         req.args.timestamp,
         req.args.ancillaryData,
-        gasLimitOverride ? { gasLimit: gasLimitOverride } : {}
+        { gasLimit: gasLimitOverride }
       );
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "Settle");

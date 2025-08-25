@@ -13,8 +13,10 @@ async function main() {
   const params = await initMonitoringParams(process.env);
 
   logger[startupLogLevel(params)]({
-    at: "OOv2Bot",
-    message: "Optimistic Oracle V2 Bot started 🤖",
+    at: "OracleBot",
+    message: `Optimistic Oracle Bot started 🤖`,
+    oracleType: params.oracleType,
+    oracleAddress: params.contractAddress,
     botModes: params.botModes,
   });
 
@@ -45,8 +47,8 @@ main().then(
   },
   async (error) => {
     logger.error({
-      at: "OOv2Bot",
-      message: "Optimistic Oracle V2 Bot execution error🚨",
+      at: "OracleBot",
+      message: "Optimistic Oracle Bot execution error🚨",
       error,
     });
     // Wait 5 seconds to allow logger to flush.

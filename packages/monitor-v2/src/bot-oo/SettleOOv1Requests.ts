@@ -1,0 +1,156 @@
+import { paginatedEventQuery } from "@uma/common";
+import { ethers } from "ethers";
+import { logSettleRequest } from "./BotLogger";
+import { computeEventSearch } from "../bot-utils/events";
+import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleEthers } from "./common";
+
+interface SettleEvent {
+  args: {
+    requester: string;
+    identifier: string;
+    timestamp: ethers.BigNumber;
+    ancillaryData: string;
+    price: ethers.BigNumber;
+    payout: ethers.BigNumber;
+  };
+}
+
+const requestKey = (args: {
+  requester: string;
+  identifier: string;
+  timestamp: ethers.BigNumber;
+  ancillaryData: string;
+}) =>
+  ethers.utils.keccak256(
+    ethers.utils.solidityPack(
+      ["address", "bytes32", "uint256", "bytes"],
+      [args.requester, args.identifier, args.timestamp, args.ancillaryData]
+    )
+  );
+
+export async function settleOOv1Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+  const oov1 = await getContractInstanceWithProvider<OptimisticOracleEthers>("OptimisticOracle", params.provider);
+  // Override with the test contract address
+  const oov1WithAddress = oov1.attach(params.contractAddress);
+
+  const searchConfig = await computeEventSearch(
+    params.provider,
+    params.blockFinder,
+    params.timeLookback,
+    params.maxBlockLookBack
+  );
+
+  const requests = await paginatedEventQuery(oov1WithAddress, oov1WithAddress.filters.RequestPrice(), searchConfig);
+
+  const settlements = await paginatedEventQuery(oov1WithAddress, oov1WithAddress.filters.Settle(), searchConfig);
+
+  const settledKeys = new Set(settlements.filter((e) => e && e.args).map((e: any) => requestKey(e.args)));
+
+  const requestsToSettle = requests.filter((e: any) => e && e.args && !settledKeys.has(requestKey(e.args)));
+
+  const setteableRequestsPromises = requestsToSettle.map(async (req: any) => {
+    try {
+      const state = await oov1WithAddress.callStatic.getState(
+        req.args.requester,
+        req.args.identifier,
+        req.args.timestamp,
+        req.args.ancillaryData
+      );
+
+      logger.debug({
+        at: "OOv1Bot",
+        message: "Checked request state",
+        requestKey: requestKey(req.args),
+        state: state.toString(),
+        settleable: state === 3,
+      });
+
+      if (state === 3) {
+        // For OOv1, state 3 is settleable (after proposal and liveness)
+        logger.debug({
+          at: "OOv1Bot",
+          message: "Request is settleable",
+          requestKey: requestKey(req.args),
+          requester: req.args.requester,
+          identifier: ethers.utils.parseBytes32String(req.args.identifier),
+          timestamp: req.args.timestamp.toString(),
+        });
+        return req;
+      }
+      return null;
+    } catch (err) {
+      logger.debug({
+        at: "OOv1Bot",
+        message: "Error checking state",
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+  });
+
+  const setteableRequests = (await Promise.all(setteableRequestsPromises)).filter((req: any) => req !== null);
+
+  logger.debug({
+    at: "OOv1Bot",
+    message: "Settlement processing",
+    totalRequests: requests.length,
+    settlements: settlements.length,
+    requestsToSettle: requestsToSettle.length,
+    setteableRequests: setteableRequests.length,
+  });
+
+  if (setteableRequests.length > 0) {
+    logger.debug({
+      at: "OOv1Bot",
+      message: "Settleable requests found",
+      count: setteableRequests.length,
+    });
+  }
+
+  const oov1WithSigner = oov1WithAddress.connect(params.signer);
+
+  for (const req of setteableRequests) {
+    const estimatedGas = await oov1WithAddress.estimateGas.settle(
+      req.args.requester,
+      req.args.identifier,
+      req.args.timestamp,
+      req.args.ancillaryData
+    );
+    const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
+
+    try {
+      const tx = await oov1WithSigner.settle(
+        req.args.requester,
+        req.args.identifier,
+        req.args.timestamp,
+        req.args.ancillaryData,
+        { gasLimit: gasLimitOverride }
+      );
+      const receipt = await tx.wait();
+      const event = receipt.events?.find((e: any) => e.event === "Settle");
+
+      await logSettleRequest(
+        logger,
+        {
+          tx: tx.hash,
+          requester: req.args.requester,
+          identifier: req.args.identifier,
+          timestamp: req.args.timestamp,
+          ancillaryData: req.args.ancillaryData,
+          price: ((event?.args as unknown) as SettleEvent["args"])?.price ?? ethers.constants.Zero,
+        },
+        params,
+        "OOv1Bot"
+      );
+    } catch (error) {
+      logger.error({
+        at: "OOv1Bot",
+        message: "Request settlement failed",
+        requestKey: requestKey(req.args),
+        error,
+        notificationPath: "optimistic-oracle",
+      });
+      continue;
+    }
+  }
+}

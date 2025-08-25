@@ -1,4 +1,4 @@
-# Optimistic Oracle V2 Bot
+# Optimistic Oracle Bot
 
 Optimistic Oracle V2 bot performs off-chain actions related to Optimistic Oracle V2 contracts, specifically settling price requests that have become settleable.
 

@@ -15,10 +15,11 @@ export async function logSettleRequest(
     ancillaryData: string;
     price: BigNumber;
   },
-  params: MonitoringParams
+  params: MonitoringParams,
+  botName = "OOv2Bot"
 ): Promise<void> {
   logger.warn({
-    at: "OOv2Bot",
+    at: botName,
     message: "Price Request Settled ✅",
     mrkdwn:
       "Request by " +
