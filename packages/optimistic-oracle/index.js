@@ -45,6 +45,7 @@ const OracleType = {
  * @param {String} optimisticOracleAddressOverride Optional override address of the OptimisticOracle Contract.
  * @param {Array} [ignoredIdentifiersPostExpiry] Array of identifiers to ignore post-expiry
  * @param {Array} [ignoredIdentifiers] Array of identifiers to ignore
+ * @param {Number} [optimisticOracleClientLookback] The amount of time in seconds that the client will look back for events.
  * @return None or throws an Error.
  */
 async function run({
@@ -61,6 +62,7 @@ async function run({
   optimisticOracleAddressOverride,
   ignoredIdentifiersPostExpiry,
   ignoredIdentifiers,
+  optimisticOracleClientLookback,
 }) {
   if (!Object.keys(OracleType).includes(oracleType)) throw new Error("Unexpected OracleType");
   try {
@@ -81,6 +83,7 @@ async function run({
       optimisticOracleProposerConfig,
       oracleType,
       optimisticOracleType,
+      optimisticOracleClientLookback,
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
@@ -92,7 +95,7 @@ async function run({
       web3,
       optimisticOracleAddress,
       await getAddress(oracleType, networkId),
-      604800, // default lookback setting for this client
+      optimisticOracleClientLookback,
       optimisticOracleType,
       blocksPerEventSearch ? Number(blocksPerEventSearch) : null
     );
@@ -217,6 +220,8 @@ async function Poll(callback) {
       // to ignore the identifiers for some other reason. See a sample list here:
       // https://github.com/UMAprotocol/protocol/blob/4806b51d830466c445560f83196d5918af820a98/packages/common/src/PriceIdentifierUtils.ts#L50-L68
       ignoredIdentifiers: process.env.OPTIMISTIC_ORACLE_IGNORE ? JSON.parse(process.env.OPTIMISTIC_ORACLE_IGNORE) : [],
+      // The optimistic oracle client lookback is the amount of time in seconds that the client will look back for events.
+      optimisticOracleClientLookback: process.env.OPTIMISTIC_ORACLE_CLIENT_LOOKBACK || 604800, // 7 days in seconds
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
