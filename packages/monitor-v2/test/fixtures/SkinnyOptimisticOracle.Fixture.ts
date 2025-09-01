@@ -1,48 +1,10 @@
 import { addGlobalHardhatTestingAddress } from "@uma/common";
 import { ExpandedERC20Ethers } from "@uma/contracts-node";
-import { Contract, BigNumber } from "ethers";
+import type { SkinnyOptimisticOracleEthers } from "@uma/contracts-node";
+export type { SkinnyOptimisticOracleEthers } from "@uma/contracts-node";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 import { defaultCurrency, defaultLiveness, defaultOptimisticOracleV2Identifier } from "../constants";
 import { getContractFactory, hre, Signer } from "../utils";
-
-// Define SkinnyOptimisticOracle interface for type safety
-export interface SkinnyOptimisticOracleEthers extends Contract {
-  // View functions
-  getState(
-    requester: string,
-    identifier: string,
-    timestamp: number,
-    ancillaryData: string,
-    request: any
-  ): Promise<number>;
-  requests(requestId: string): Promise<string>;
-
-  // State-changing functions
-  requestPrice(
-    identifier: string,
-    timestamp: number,
-    ancillaryData: string,
-    currency: string,
-    reward: BigNumber,
-    bond: BigNumber,
-    customLiveness: number
-  ): Promise<any>;
-  proposePrice(
-    requester: string,
-    identifier: string,
-    timestamp: number,
-    ancillaryData: string,
-    request: any,
-    proposedPrice: string
-  ): Promise<any>;
-  settle(requester: string, identifier: string, timestamp: number, ancillaryData: string, request: any): Promise<any>;
-
-  // Events
-  filters: {
-    RequestPrice(...args: any[]): any;
-    Settle(...args: any[]): any;
-  };
-}
 
 export interface SkinnyOptimisticOracleContracts {
   bondToken: ExpandedERC20Ethers;

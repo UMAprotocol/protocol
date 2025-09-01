@@ -1,39 +1,12 @@
 import { addGlobalHardhatTestingAddress } from "@uma/common";
 import { ExpandedERC20Ethers } from "@uma/contracts-node";
-import { Contract } from "ethers";
+import type { OptimisticOracleEthers } from "@uma/contracts-node";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 import { defaultCurrency, defaultLiveness, defaultOptimisticOracleV2Identifier } from "../constants";
 import { getContractFactory, hre, Signer } from "../utils";
 
-// Define OptimisticOracle V1 interface for type safety
-export interface OptimisticOracleV1Ethers extends Contract {
-  // View functions
-  getState(requester: string, identifier: string, timestamp: number, ancillaryData: string): Promise<number>;
-  requests(requestId: string): Promise<any>;
-
-  // State-changing functions
-  requestPrice(
-    identifier: string,
-    timestamp: number,
-    ancillaryData: string,
-    currency: string,
-    reward: number
-  ): Promise<any>;
-  proposePrice(
-    requester: string,
-    identifier: string,
-    timestamp: number,
-    ancillaryData: string,
-    proposedPrice: string
-  ): Promise<any>;
-  settle(requester: string, identifier: string, timestamp: number, ancillaryData: string): Promise<any>;
-
-  // Events
-  filters: {
-    RequestPrice(...args: any[]): any;
-    Settle(...args: any[]): any;
-  };
-}
+// Re-export a local alias to keep existing imports stable in tests
+export type OptimisticOracleV1Ethers = OptimisticOracleEthers;
 
 export interface OptimisticOracleV1Contracts {
   bondToken: ExpandedERC20Ethers;
