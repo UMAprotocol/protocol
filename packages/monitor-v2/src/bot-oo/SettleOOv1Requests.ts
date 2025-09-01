@@ -29,15 +29,15 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
     params.maxBlockLookBack
   );
 
-  const requests = await paginatedEventQuery(oov1WithAddress, oov1WithAddress.filters.RequestPrice(), searchConfig);
+  const proposals = await paginatedEventQuery(oov1WithAddress, oov1WithAddress.filters.ProposePrice(), searchConfig);
 
   const settlements = await paginatedEventQuery(oov1WithAddress, oov1WithAddress.filters.Settle(), searchConfig);
 
   const settledKeys = new Set(settlements.filter((e) => e && e.args).map((e: any) => requestKey(e.args)));
 
-  const requestsToSettle = requests.filter((e: any) => e && e.args && !settledKeys.has(requestKey(e.args)));
+  const proposalsToSettle = proposals.filter((e: any) => e && e.args && !settledKeys.has(requestKey(e.args)));
 
-  const settleableRequestsPromises = requestsToSettle.map(async (req: any) => {
+  const settleableRequestsPromises = proposalsToSettle.map(async (req: any) => {
     try {
       await oov1WithAddress.callStatic.settle(
         req.args.requester,
@@ -69,9 +69,9 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
   logger.debug({
     at: "OOv1Bot",
     message: "Settlement processing",
-    totalRequests: requests.length,
+    totalProposals: proposals.length,
     settlements: settlements.length,
-    requestsToSettle: requestsToSettle.length,
+    proposalsToSettle: proposalsToSettle.length,
     settleableRequests: settleableRequests.length,
   });
 

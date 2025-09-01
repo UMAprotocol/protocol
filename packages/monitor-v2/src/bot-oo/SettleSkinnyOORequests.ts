@@ -45,16 +45,11 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
     params.maxBlockLookBack
   );
 
-  const requests = await paginatedEventQuery(
+  const proposals = await paginatedEventQuery(
     skinnyOOWithAddress,
-    skinnyOOWithAddress.filters.RequestPrice(),
+    skinnyOOWithAddress.filters.ProposePrice(),
     searchConfig
   );
-
-  // Also get proposals to understand the updated request state
-  const proposals = skinnyOOWithAddress.filters.ProposePrice
-    ? await paginatedEventQuery(skinnyOOWithAddress, skinnyOOWithAddress.filters.ProposePrice(), searchConfig)
-    : [];
 
   const settlements = await paginatedEventQuery(
     skinnyOOWithAddress,
@@ -64,26 +59,13 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
 
   const settledKeys = new Set(settlements.filter((e) => e && e.args).map((e: any) => requestKey(e.args)));
 
-  // Create a map of the latest proposal by request key
-  const proposalsByRequestKey = new Map<string, any>();
-  proposals.forEach((proposal: any) => {
-    if (proposal && proposal.args) {
-      const key = requestKey(proposal.args);
-      proposalsByRequestKey.set(key, proposal);
-    }
-  });
+  const proposalsToSettle = proposals.filter((e: any) => e && e.args && !settledKeys.has(requestKey(e.args)));
 
-  const requestsToSettle = requests.filter((e: any) => e && e.args && !settledKeys.has(requestKey(e.args)));
-
-  const settleableRequestsPromises = requestsToSettle.map(async (req: any) => {
+  const settleableRequestsPromises = proposalsToSettle.map(async (req: any) => {
     try {
-      // Get the request ID and corresponding proposal if it exists
-      const requestId = requestKey(req.args);
-      const proposal = proposalsByRequestKey.get(requestId);
-
-      // Require a proposal carrying the request struct; otherwise, skip
-      if (!(proposal && proposal.args && proposal.args.length > 4)) return null;
-      const request = proposal.args[4] as SkinnyOORequest;
+      // ProposePrice event carries the request struct at args[4]
+      if (!(req && req.args && req.args.length > 4)) return null;
+      const request = req.args[4] as SkinnyOORequest;
 
       await skinnyOOWithAddress.callStatic.settle(
         req.args.requester,
@@ -130,9 +112,9 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
   logger.debug({
     at: "SkinnyOOBot",
     message: "Settlement processing",
-    totalRequests: requests.length,
+    totalProposals: proposals.length,
     settlements: settlements.length,
-    requestsToSettle: requestsToSettle.length,
+    proposalsToSettle: proposalsToSettle.length,
     settleableRequests: settleableRequests.length,
   });
 

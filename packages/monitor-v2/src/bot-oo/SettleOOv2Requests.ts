@@ -1,6 +1,6 @@
 import { paginatedEventQuery } from "@uma/common";
 import {
-  RequestPriceEvent,
+  ProposePriceEvent,
   SettleEvent,
 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV2";
 import { ethers } from "ethers";
@@ -10,7 +10,11 @@ import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOr
 import { requestKey } from "./requestKey";
 
 export async function settleOOv2Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
-  const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>("OptimisticOracleV2", params.provider);
+  const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
+    "OptimisticOracleV2",
+    params.provider,
+    params.contractAddress
+  );
 
   const searchConfig = await computeEventSearch(
     params.provider,
@@ -19,13 +23,13 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
     params.maxBlockLookBack
   );
 
-  const requests = await paginatedEventQuery<RequestPriceEvent>(oo, oo.filters.RequestPrice(), searchConfig);
+  const proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
 
   const settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
 
   const settledKeys = new Set(settlements.map((e) => requestKey(e.args)));
 
-  const requestsToSettle = requests.filter((e) => !settledKeys.has(requestKey(e.args))) as RequestPriceEvent[];
+  const requestsToSettle = proposals.filter((e) => !settledKeys.has(requestKey(e.args))) as ProposePriceEvent[];
 
   const settleableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
@@ -45,7 +49,7 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
   });
 
   const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter(
-    (req): req is RequestPriceEvent => req !== null
+    (req): req is ProposePriceEvent => req !== null
   );
 
   if (settleableRequests.length > 0) {
