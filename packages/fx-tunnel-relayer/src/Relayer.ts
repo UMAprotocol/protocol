@@ -1,4 +1,3 @@
-import { ExitUtil, POSClient } from "@maticnetwork/maticjs";
 import { Contract, EventData } from "web3-eth-contract";
 import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
 import type Web3 from "web3";
@@ -13,7 +12,7 @@ export class Relayer {
     readonly logger: any,
     readonly account: string,
     readonly gasEstimator: any,
-    readonly maticPosClient: POSClient,
+    readonly maticPosClient: any,
     readonly oracleChildTunnel: Contract,
     readonly oracleRootTunnel: Contract,
     readonly web3: Web3,
@@ -94,9 +93,7 @@ export class Relayer {
       blockNumber,
     });
 
-    // Only used for debugging purposes upon error.
-    let chainBlockInfo: Awaited<ReturnType<ExitUtil["getChainBlockInfo"]>> | undefined;
-
+    let chainBlockInfo; // Only used for debugging purposes upon error.
     let proof;
     try {
       chainBlockInfo = await this.maticPosClient.exitUtil.getChainBlockInfo(transactionHash);
