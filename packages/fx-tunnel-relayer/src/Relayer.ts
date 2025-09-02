@@ -1,4 +1,4 @@
-import { POSClient } from "@maticnetwork/maticjs";
+import { ExitUtil, POSClient } from "@maticnetwork/maticjs";
 import { Contract, EventData } from "web3-eth-contract";
 import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
 import type Web3 from "web3";
@@ -95,7 +95,7 @@ export class Relayer {
     });
 
     // Only used for debugging purposes upon error.
-    let chainBlockInfo: Awaited<ReturnType<typeof this.maticPosClient.exitUtil.getChainBlockInfo>> | undefined;
+    let chainBlockInfo: Awaited<ReturnType<ExitUtil["getChainBlockInfo"]>> | undefined;
 
     let proof;
     try {
