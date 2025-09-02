@@ -93,8 +93,10 @@ export class Relayer {
       blockNumber,
     });
 
+    let chainBlockInfo; // Only used for debugging purposes upon error.
     let proof;
     try {
+      chainBlockInfo = await this.maticPosClient.exitUtil.getChainBlockInfo(transactionHash);
       // Proof construction logic copied from:
       // - https://maticnetwork.github.io/matic.js/docs/advanced/exit-util/
       proof = await this.maticPosClient.exitUtil.buildPayloadForExit(
@@ -108,6 +110,7 @@ export class Relayer {
         at: "Relayer#relayMessage",
         message: "Failed to derive proof for MessageSent transaction hash 📛",
         messageEvent,
+        chainBlockInfo,
         error,
       });
       return;
