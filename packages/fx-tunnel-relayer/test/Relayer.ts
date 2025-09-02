@@ -25,6 +25,7 @@ interface MaticPosClient {
   exitUtil: {
     buildPayloadForExit: customPayloadFn;
     isCheckPointed: () => Promise<boolean>;
+    getChainBlockInfo: () => Promise<{ lastChildBlock: number; txBlockNumber: number }>;
   };
 }
 describe("Relayer unit tests", function () {
@@ -102,6 +103,7 @@ describe("Relayer unit tests", function () {
             resolve(utf8ToHex("Test proof"));
           }),
         isCheckPointed: async () => new Promise((resolve) => resolve(true)),
+        getChainBlockInfo: async () => new Promise((resolve) => resolve({ lastChildBlock: 0, txBlockNumber: 0 })),
       },
     };
 
@@ -181,6 +183,7 @@ describe("Relayer unit tests", function () {
             reject(new Error("This error is always thrown"));
           }),
         isCheckPointed: async () => new Promise((resolve) => resolve(true)),
+        getChainBlockInfo: async () => new Promise((resolve) => resolve({ lastChildBlock: 0, txBlockNumber: 0 })),
       },
     };
     const _relayer: any = new Relayer(
@@ -211,6 +214,7 @@ describe("Relayer unit tests", function () {
             resolve(utf8ToHex("Test proof"));
           }),
         isCheckPointed: async () => new Promise((resolve) => resolve(false)),
+        getChainBlockInfo: async () => new Promise((resolve) => resolve({ lastChildBlock: 0, txBlockNumber: 0 })),
       },
     };
     const _relayer: any = new Relayer(
