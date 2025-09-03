@@ -6,6 +6,8 @@ The unified Optimistic Oracle bot performs off-chain actions related to multiple
 - **SkinnyOptimisticOracle** (gas-optimized version)
 - **OptimisticOracle V2** (current standard)
 
+> Warning: This bot does not support SkinnyOptimisticOracleV2. That contract has a distinct interface from SkinnyOptimisticOracle and is intentionally out of scope here.
+
 Run via:
 
 ```
