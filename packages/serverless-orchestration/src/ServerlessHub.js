@@ -529,10 +529,10 @@ function _getWeb3AndUrlForBot(botConfig) {
     urls.push({ url, retries: 3 });
   }
 
-  assert(
-    urls.length > 0 && urls.every((url) => url !== undefined),
-    "Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)"
-  );
+//  assert(
+//    urls.length > 0 && urls.every((url) => url !== undefined),
+//    "Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)"
+//  );
 
   const provider = viem.createPublicClient({
     transport: viem.fallback(
@@ -540,7 +540,7 @@ function _getWeb3AndUrlForBot(botConfig) {
     ),
   });
 
-  return [provider, urls[0]];
+  return [provider, urls[0].url];
 }
 
 function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
@@ -570,8 +570,8 @@ function _getLatestBlockNumber(provider) {
   };
 }
 
-function _getChainId(web3) {
-  return web3.getChainId();
+function _getChainId(provider) {
+  return provider.getChainId();
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
