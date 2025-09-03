@@ -1,5 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
-import { ExpandedERC20Ethers, TimerEthers } from "@uma/contracts-node";
+import { ExpandedERC20Ethers, MockOracleAncillaryEthers, TimerEthers } from "@uma/contracts-node";
 import { spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import { OracleType } from "../src/bot-oo/common";
@@ -23,14 +23,17 @@ describe("SkinnyOptimisticOracleBot", function () {
   let timer: TimerEthers;
   let requester: Signer;
   let proposer: Signer;
+  let disputer: Signer;
+  let mockOracle: MockOracleAncillaryEthers;
 
   const ancillaryData = toUtf8Bytes("This is just a test question");
 
   beforeEach(async function () {
-    [requester, proposer] = (await ethers.getSigners()) as Signer[];
+    [requester, proposer, disputer] = (await ethers.getSigners()) as Signer[];
 
     const uma = await umaEcosystemFixture();
     timer = uma.timer;
+    mockOracle = uma.mockOracle;
 
     const skinnyOO = await skinnyOptimisticOracleFixture();
     bondToken = skinnyOO.bondToken;
@@ -40,7 +43,9 @@ describe("SkinnyOptimisticOracleBot", function () {
     const bond = ethers.utils.parseEther("1000");
     await bondToken.addMinter(await requester.getAddress());
     await bondToken.mint(await proposer.getAddress(), bond);
+    await bondToken.mint(await disputer.getAddress(), bond);
     await bondToken.connect(proposer).approve(skinnyOptimisticOracle.address, bond);
+    await bondToken.connect(disputer).approve(skinnyOptimisticOracle.address, bond);
   });
 
   it("Settle price request happy path", async function () {
@@ -164,5 +169,93 @@ describe("SkinnyOptimisticOracleBot", function () {
     // Check that no settlement warning logs were generated (but debug logs are OK).
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "No settlement logs should be generated before liveness expires");
+  });
+
+  it("Settles disputed request once DVM resolved", async function () {
+    const timestamp = (await timer.getCurrentTime()).toNumber();
+
+    await (
+      await skinnyOptimisticOracle.requestPrice(
+        defaultOptimisticOracleV2Identifier,
+        timestamp,
+        ethers.utils.hexlify(ancillaryData),
+        bondToken.address,
+        ethers.constants.Zero,
+        ethers.utils.parseEther("100"),
+        defaultLiveness
+      )
+    ).wait();
+
+    const baseRequest = {
+      proposer: ethers.constants.AddressZero,
+      disputer: ethers.constants.AddressZero,
+      currency: bondToken.address,
+      settled: false,
+      proposedPrice: ethers.constants.Zero,
+      resolvedPrice: ethers.constants.Zero,
+      expirationTime: ethers.constants.Zero,
+      reward: ethers.constants.Zero,
+      finalFee: ethers.utils.parseEther("100"),
+      bond: ethers.utils.parseEther("100"),
+      customLiveness: ethers.BigNumber.from(defaultLiveness),
+    };
+
+    await (
+      await skinnyOptimisticOracle
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          timestamp,
+          ethers.utils.hexlify(ancillaryData),
+          baseRequest,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    // Fetch the request struct from the ProposePrice event to pass into dispute
+    const proposeEvents = await skinnyOptimisticOracle.queryFilter(skinnyOptimisticOracle.filters.ProposePrice());
+    const latestPropose = proposeEvents[proposeEvents.length - 1]!;
+    const proposedRequest = latestPropose.args!.request;
+
+    await (
+      await skinnyOptimisticOracle
+        .connect(disputer)
+        .disputePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          timestamp,
+          ethers.utils.hexlify(ancillaryData),
+          proposedRequest
+        )
+    ).wait();
+
+    // Simulate VotingV2 resolution by pushing the price in MockOracle
+    const pending = await mockOracle.getPendingQueries();
+    const last = pending[pending.length - 1]!;
+    await (
+      await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
+    ).wait();
+
+    const { spy, logger } = makeSpyLogger();
+
+    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
+
+    const settledIndex = spy
+      .getCalls()
+      .findIndex((c) => c.lastArg?.message === "Price Request Settled ✅" && c.lastArg?.at === "SkinnyOOBot");
+    assert.isAbove(settledIndex, -1, "Expected a settlement log to be emitted");
+    assert.equal(spy.getCall(settledIndex).lastArg.at, "SkinnyOOBot");
+    assert.equal(spy.getCall(settledIndex).lastArg.message, "Price Request Settled ✅");
+    assert.equal(spyLogLevel(spy, settledIndex), "warn");
+    assert.isTrue(spyLogIncludes(spy, settledIndex, toUtf8String(ancillaryData)));
+    assert.isTrue(spyLogIncludes(spy, settledIndex, "Resolved Price"));
+    assert.equal(spy.getCall(settledIndex).lastArg.notificationPath, "optimistic-oracle");
+
+    // No additional settlement logs on subsequent run
+    spy.resetHistory();
+    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
+    const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 0, "No settlement logs should be generated on subsequent runs");
   });
 });

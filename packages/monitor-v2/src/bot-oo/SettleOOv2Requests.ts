@@ -29,7 +29,7 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
 
   const settledKeys = new Set(settlements.map((e) => requestKey(e.args)));
 
-  const requestsToSettle = proposals.filter((e) => !settledKeys.has(requestKey(e.args))) as ProposePriceEvent[];
+  const requestsToSettle = proposals.filter((e) => !settledKeys.has(requestKey(e.args)));
 
   const settleableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
@@ -63,15 +63,15 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
   const ooWithSigner = oo.connect(params.signer);
 
   for (const req of settleableRequests) {
-    const estimatedGas = await oo.estimateGas.settle(
-      req.args.requester,
-      req.args.identifier,
-      req.args.timestamp,
-      req.args.ancillaryData
-    );
-    const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-
     try {
+      const estimatedGas = await oo.estimateGas.settle(
+        req.args.requester,
+        req.args.identifier,
+        req.args.timestamp,
+        req.args.ancillaryData
+      );
+      const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
+
       const tx = await ooWithSigner.settle(
         req.args.requester,
         req.args.identifier,
@@ -90,7 +90,7 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
           identifier: req.args.identifier,
           timestamp: req.args.timestamp,
           ancillaryData: req.args.ancillaryData,
-          price: (event?.args as SettleEvent["args"])?.price ?? ethers.constants.Zero,
+          price: (event as SettleEvent | undefined)?.args?.price ?? ethers.constants.Zero,
         },
         params
       );

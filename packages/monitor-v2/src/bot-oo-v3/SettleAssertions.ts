@@ -3,8 +3,8 @@ import {
   AssertionMadeEvent,
   AssertionSettledEvent,
 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracleV3";
-import { logSettleAssertion } from "./BotLogger";
 import { computeEventSearch } from "../bot-utils/events";
+import { logSettleAssertion } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV3Ethers } from "./common";
 
 export async function settleAssertions(logger: typeof Logger, params: MonitoringParams): Promise<void> {
@@ -60,24 +60,11 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
   const ooWithSigner = oo.connect(params.signer);
 
   for (const assertion of setteableAssertions) {
-    let gasLimitOverride: any = undefined;
     try {
       const estimatedGas = await oo.estimateGas.settleAssertion(assertion.args.assertionId);
-      gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-    } catch (error) {
-      logger.debug({
-        at: "OOv3Bot",
-        message: "Gas estimation failed; sending without override",
-        assertionId: assertion.args.assertionId,
-        error,
-      });
-    }
+      const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
 
-    try {
-      const tx = await ooWithSigner.settleAssertion(
-        assertion.args.assertionId,
-        gasLimitOverride ? { gasLimit: gasLimitOverride } : {}
-      );
+      const tx = await ooWithSigner.settleAssertion(assertion.args.assertionId, { gasLimit: gasLimitOverride });
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "AssertionSettled");
       await logSettleAssertion(

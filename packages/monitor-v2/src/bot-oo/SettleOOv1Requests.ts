@@ -1,21 +1,14 @@
 import { paginatedEventQuery } from "@uma/common";
+import {
+  ProposePriceEvent,
+  SettleEvent,
+} from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/OptimisticOracle";
 import { ethers } from "ethers";
-import { logSettleRequest } from "./BotLogger";
 import { computeEventSearch } from "../bot-utils/events";
+import { tryHexToUtf8String } from "../utils/contracts";
+import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleEthers } from "./common";
 import { requestKey } from "./requestKey";
-import { tryHexToUtf8String } from "../utils/contracts";
-
-interface SettleEvent {
-  args: {
-    requester: string;
-    identifier: string;
-    timestamp: ethers.BigNumber;
-    ancillaryData: string;
-    price: ethers.BigNumber;
-    payout: ethers.BigNumber;
-  };
-}
 
 export async function settleOOv1Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oov1 = await getContractInstanceWithProvider<OptimisticOracleEthers>("OptimisticOracle", params.provider);
@@ -29,15 +22,23 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
     params.maxBlockLookBack
   );
 
-  const proposals = await paginatedEventQuery(oov1WithAddress, oov1WithAddress.filters.ProposePrice(), searchConfig);
+  const proposals = await paginatedEventQuery<ProposePriceEvent>(
+    oov1WithAddress,
+    oov1WithAddress.filters.ProposePrice(),
+    searchConfig
+  );
 
-  const settlements = await paginatedEventQuery(oov1WithAddress, oov1WithAddress.filters.Settle(), searchConfig);
+  const settlements = await paginatedEventQuery<SettleEvent>(
+    oov1WithAddress,
+    oov1WithAddress.filters.Settle(),
+    searchConfig
+  );
 
-  const settledKeys = new Set(settlements.filter((e) => e && e.args).map((e: any) => requestKey(e.args)));
+  const settledKeys = new Set(settlements.filter((e) => e && e.args).map((e) => requestKey(e.args)));
 
-  const proposalsToSettle = proposals.filter((e: any) => e && e.args && !settledKeys.has(requestKey(e.args)));
+  const proposalsToSettle = proposals.filter((e) => e && e.args && !settledKeys.has(requestKey(e.args)));
 
-  const settleableRequestsPromises = proposalsToSettle.map(async (req: any) => {
+  const settleableRequestsPromises = proposalsToSettle.map(async (req) => {
     try {
       await oov1WithAddress.callStatic.settle(
         req.args.requester,
@@ -64,7 +65,7 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
     }
   });
 
-  const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter((req: any) => req !== null);
+  const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter((req) => req !== null);
 
   logger.debug({
     at: "OOv1Bot",
@@ -86,15 +87,15 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
   const oov1WithSigner = oov1WithAddress.connect(params.signer);
 
   for (const req of settleableRequests) {
-    const estimatedGas = await oov1WithAddress.estimateGas.settle(
-      req.args.requester,
-      req.args.identifier,
-      req.args.timestamp,
-      req.args.ancillaryData
-    );
-    const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-
     try {
+      const estimatedGas = await oov1WithAddress.estimateGas.settle(
+        req.args.requester,
+        req.args.identifier,
+        req.args.timestamp,
+        req.args.ancillaryData
+      );
+      const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
+
       const tx = await oov1WithSigner.settle(
         req.args.requester,
         req.args.identifier,
@@ -103,7 +104,7 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
         { gasLimit: gasLimitOverride }
       );
       const receipt = await tx.wait();
-      const event = receipt.events?.find((e: any) => e.event === "Settle");
+      const event = receipt.events?.find((e) => e.event === "Settle");
 
       await logSettleRequest(
         logger,
@@ -113,7 +114,7 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
           identifier: req.args.identifier,
           timestamp: req.args.timestamp,
           ancillaryData: req.args.ancillaryData,
-          price: ((event?.args as unknown) as SettleEvent["args"])?.price ?? ethers.constants.Zero,
+          price: (event as SettleEvent | undefined)?.args?.price ?? ethers.constants.Zero,
         },
         params,
         "OOv1Bot"

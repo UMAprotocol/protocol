@@ -1,5 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
-import { ExpandedERC20Ethers, TimerEthers } from "@uma/contracts-node";
+import { ExpandedERC20Ethers, MockOracleAncillaryEthers, TimerEthers } from "@uma/contracts-node";
 import { spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import { OracleType } from "../src/bot-oo/common";
@@ -23,14 +23,17 @@ describe("OptimisticOracleV1Bot", function () {
   let timer: TimerEthers;
   let requester: Signer;
   let proposer: Signer;
+  let disputer: Signer;
+  let mockOracle: MockOracleAncillaryEthers;
 
   const ancillaryData = toUtf8Bytes("This is just a test question");
 
   beforeEach(async function () {
-    [requester, proposer] = (await ethers.getSigners()) as Signer[];
+    [requester, proposer, disputer] = (await ethers.getSigners()) as Signer[];
 
     const uma = await umaEcosystemFixture();
     timer = uma.timer;
+    mockOracle = uma.mockOracle;
 
     const oov1 = await optimisticOracleV1Fixture();
     bondToken = oov1.bondToken;
@@ -40,7 +43,9 @@ describe("OptimisticOracleV1Bot", function () {
     const bond = ethers.utils.parseEther("1000");
     await bondToken.addMinter(await requester.getAddress());
     await bondToken.mint(await proposer.getAddress(), bond);
+    await bondToken.mint(await disputer.getAddress(), bond);
     await bondToken.connect(proposer).approve(optimisticOracleV1.address, bond);
+    await bondToken.connect(disputer).approve(optimisticOracleV1.address, bond);
   });
 
   it("Settle price request happy path", async function () {
@@ -122,5 +127,68 @@ describe("OptimisticOracleV1Bot", function () {
     // Check that no settlement warning logs were generated (but debug logs are OK).
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "No settlement logs should be generated before liveness expires");
+  });
+
+  it("Settles disputed request once DVM resolved", async function () {
+    await (
+      await optimisticOracleV1.requestPrice(
+        defaultOptimisticOracleV2Identifier,
+        0,
+        ethers.utils.hexlify(ancillaryData),
+        bondToken.address,
+        0
+      )
+    ).wait();
+
+    await (
+      await optimisticOracleV1
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ethers.utils.hexlify(ancillaryData),
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    await (
+      await optimisticOracleV1
+        .connect(disputer)
+        .disputePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ethers.utils.hexlify(ancillaryData)
+        )
+    ).wait();
+
+    // Resolve in DVM via MockOracle
+    const pending = await mockOracle.getPendingQueries();
+    const last = pending[pending.length - 1]!;
+    await (
+      await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
+    ).wait();
+
+    const { spy, logger } = makeSpyLogger();
+
+    await settleRequests(logger, await createParams("OptimisticOracle", optimisticOracleV1.address));
+
+    const settledIndex = spy
+      .getCalls()
+      .findIndex((c) => c.lastArg?.message === "Price Request Settled ✅" && c.lastArg?.at === "OOv1Bot");
+    assert.isAbove(settledIndex, -1, "Expected a settlement log to be emitted");
+    assert.equal(spy.getCall(settledIndex).lastArg.at, "OOv1Bot");
+    assert.equal(spy.getCall(settledIndex).lastArg.message, "Price Request Settled ✅");
+    assert.equal(spyLogLevel(spy, settledIndex), "warn");
+    assert.isTrue(spyLogIncludes(spy, settledIndex, toUtf8String(ancillaryData)));
+    assert.isTrue(spyLogIncludes(spy, settledIndex, "Resolved Price"));
+    assert.equal(spy.getCall(settledIndex).lastArg.notificationPath, "optimistic-oracle");
+
+    // No additional settlement logs on subsequent run
+    spy.resetHistory();
+    await settleRequests(logger, await createParams("OptimisticOracle", optimisticOracleV1.address));
+    const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 0, "No settlement logs should be generated on subsequent runs");
   });
 });

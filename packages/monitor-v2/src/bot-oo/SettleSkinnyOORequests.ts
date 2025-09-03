@@ -1,12 +1,18 @@
 import { paginatedEventQuery } from "@uma/common";
+import {
+  DisputePriceEvent,
+  ProposePriceEvent,
+  SettleEvent,
+} from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/SkinnyOptimisticOracle";
 import { ethers } from "ethers";
-import { logSettleRequest } from "./BotLogger";
 import { computeEventSearch } from "../bot-utils/events";
+import { tryHexToUtf8String } from "../utils/contracts";
+import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, SkinnyOptimisticOracleEthers } from "./common";
 import { requestKey } from "./requestKey";
-import { tryHexToUtf8String } from "../utils/contracts";
 
-interface SkinnyOORequest {
+// SkinnyOO events use uint32 for timestamp; convert to BigNumber for requestKey()
+type SkinnyOORequest = {
   proposer: string;
   disputer: string;
   currency: string;
@@ -18,18 +24,14 @@ interface SkinnyOORequest {
   finalFee: ethers.BigNumber;
   bond: ethers.BigNumber;
   customLiveness: ethers.BigNumber;
-}
+};
 
-interface SettleEvent {
-  args: {
-    requester: string;
-    identifier: string;
-    timestamp: ethers.BigNumber;
-    ancillaryData: string;
-    price: ethers.BigNumber;
-    payout: ethers.BigNumber;
-  };
-}
+const toRequestKeyArgs = (args: ProposePriceEvent["args"] | DisputePriceEvent["args"] | SettleEvent["args"]) => ({
+  requester: args.requester,
+  identifier: args.identifier,
+  timestamp: ethers.BigNumber.from(args.timestamp),
+  ancillaryData: args.ancillaryData,
+});
 
 export async function settleSkinnyOORequests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const skinnyOO = await getContractInstanceWithProvider<SkinnyOptimisticOracleEthers>(
@@ -45,23 +47,56 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
     params.maxBlockLookBack
   );
 
-  const proposals = await paginatedEventQuery(
+  const proposals = await paginatedEventQuery<ProposePriceEvent>(
     skinnyOOWithAddress,
     skinnyOOWithAddress.filters.ProposePrice(),
     searchConfig
   );
 
-  const settlements = await paginatedEventQuery(
+  const disputes = await paginatedEventQuery<DisputePriceEvent>(
+    skinnyOOWithAddress,
+    skinnyOOWithAddress.filters.DisputePrice(),
+    searchConfig
+  );
+
+  const settlements = await paginatedEventQuery<SettleEvent>(
     skinnyOOWithAddress,
     skinnyOOWithAddress.filters.Settle(),
     searchConfig
   );
 
-  const settledKeys = new Set(settlements.filter((e) => e && e.args).map((e: any) => requestKey(e.args)));
+  const settledKeys = new Set(settlements.filter((e) => e && e.args).map((e) => requestKey(toRequestKeyArgs(e.args))));
 
-  const proposalsToSettle = proposals.filter((e: any) => e && e.args && !settledKeys.has(requestKey(e.args)));
+  // Build a map of latest event per request key using both ProposePrice and DisputePrice.
+  type SkinnyEvent = ProposePriceEvent | DisputePriceEvent;
 
-  const settleableRequestsPromises = proposalsToSettle.map(async (req: any) => {
+  const byKey = new Map<string, SkinnyEvent>();
+
+  const pushIfLatest = (e: SkinnyEvent | null | undefined) => {
+    if (!e || !e.args) return;
+    const key = requestKey(toRequestKeyArgs(e.args));
+    const current = byKey.get(key);
+    if (!current) {
+      byKey.set(key, e);
+      return;
+    }
+    // Keep the latest by blockNumber/logIndex
+    if (
+      e.blockNumber > current.blockNumber ||
+      (e.blockNumber === current.blockNumber && (e.logIndex ?? 0) > (current.logIndex ?? 0))
+    )
+      byKey.set(key, e);
+  };
+
+  proposals.forEach(pushIfLatest);
+  disputes.forEach(pushIfLatest);
+
+  // Exclude already settled requests.
+  const candidatesToSettle: SkinnyEvent[] = Array.from(byKey.entries())
+    .filter(([key]) => !settledKeys.has(key))
+    .map(([, evt]) => evt);
+
+  const settleableRequestsPromises = candidatesToSettle.map(async (req) => {
     try {
       // ProposePrice event carries the request struct at args[4]
       if (!(req && req.args && req.args.length > 4)) return null;
@@ -90,7 +125,7 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
       logger.debug({
         at: "SkinnyOOBot",
         message: "Request is settleable",
-        requestKey: requestKey(req.args),
+        requestKey: requestKey(toRequestKeyArgs(req.args)),
         requester: req.args.requester,
         identifier: tryHexToUtf8String(req.args.identifier),
         timestamp: req.args.timestamp.toString(),
@@ -107,14 +142,15 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
     }
   });
 
-  const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter((req: any) => req !== null);
+  const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter((req) => req !== null);
 
   logger.debug({
     at: "SkinnyOOBot",
     message: "Settlement processing",
     totalProposals: proposals.length,
+    totalDisputes: disputes.length,
     settlements: settlements.length,
-    proposalsToSettle: proposalsToSettle.length,
+    candidatesToSettle: candidatesToSettle.length,
     settleableRequests: settleableRequests.length,
   });
 
@@ -132,28 +168,28 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
     if (!settleableRequest) continue;
     const { event: req, request } = settleableRequest;
 
-    const estimatedGas = await skinnyOOWithAddress.estimateGas.settle(
-      req.args.requester,
-      req.args.identifier,
-      req.args.timestamp,
-      req.args.ancillaryData,
-      {
-        proposer: request.proposer,
-        disputer: request.disputer,
-        currency: request.currency,
-        settled: request.settled,
-        proposedPrice: request.proposedPrice,
-        resolvedPrice: request.resolvedPrice,
-        expirationTime: request.expirationTime,
-        reward: request.reward,
-        finalFee: request.finalFee,
-        bond: request.bond,
-        customLiveness: request.customLiveness,
-      }
-    );
-    const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-
     try {
+      const estimatedGas = await skinnyOOWithAddress.estimateGas.settle(
+        req.args.requester,
+        req.args.identifier,
+        req.args.timestamp,
+        req.args.ancillaryData,
+        {
+          proposer: request.proposer,
+          disputer: request.disputer,
+          currency: request.currency,
+          settled: request.settled,
+          proposedPrice: request.proposedPrice,
+          resolvedPrice: request.resolvedPrice,
+          expirationTime: request.expirationTime,
+          reward: request.reward,
+          finalFee: request.finalFee,
+          bond: request.bond,
+          customLiveness: request.customLiveness,
+        }
+      );
+      const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
+
       const tx = await skinnyOOWithSigner.settle(
         req.args.requester,
         req.args.identifier,
@@ -175,7 +211,9 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
         { gasLimit: gasLimitOverride }
       );
       const receipt = await tx.wait();
-      const event = receipt.events?.find((e: any) => e.event === "Settle");
+      const event = receipt.events?.find((e) => e.event === "Settle");
+
+      const skinnySettleArgs = (event as SettleEvent | undefined)?.args;
 
       await logSettleRequest(
         logger,
@@ -183,9 +221,9 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
           tx: tx.hash,
           requester: req.args.requester,
           identifier: req.args.identifier,
-          timestamp: req.args.timestamp,
+          timestamp: ethers.BigNumber.from(req.args.timestamp),
           ancillaryData: req.args.ancillaryData,
-          price: ((event?.args as unknown) as SettleEvent["args"])?.price ?? ethers.constants.Zero,
+          price: skinnySettleArgs?.request?.resolvedPrice ?? ethers.constants.Zero,
         },
         params,
         "SkinnyOOBot"
@@ -194,7 +232,7 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
       logger.error({
         at: "SkinnyOOBot",
         message: "Request settlement failed",
-        requestKey: requestKey(req.args),
+        requestKey: requestKey(toRequestKeyArgs(req.args)),
         error,
         notificationPath: "optimistic-oracle",
       });
