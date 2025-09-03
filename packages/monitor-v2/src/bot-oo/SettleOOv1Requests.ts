@@ -65,7 +65,9 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
     }
   });
 
-  const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter((req) => req !== null);
+  const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter(
+    (req): req is ProposePriceEvent => req !== null
+  );
 
   logger.debug({
     at: "OOv1Bot",
