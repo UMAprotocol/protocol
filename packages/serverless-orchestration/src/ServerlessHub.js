@@ -60,7 +60,7 @@ const { createBasicProvider } = require("@uma/common");
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { delay, createNewLogger, generateRandomRunId } = require("@uma/financial-templates-lib");
+const { delay, createNewLogger, generateRandomRunId } = require("@uma/logger");
 let customLogger;
 let spokeUrl;
 // spokeUrlTable is an optional table populated through the env var SPOKE_URLS. SPOKE_URLS is expected to be a
