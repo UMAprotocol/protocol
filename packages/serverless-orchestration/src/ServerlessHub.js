@@ -20,8 +20,7 @@
  * This script assumes the caller is providing a HTTP POST with a body formatted as:
  * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
  */
-import { createPublicClient, fallback, http } from "viem";
-
+const viem = require("viem");
 const retry = require("async-retry");
 const express = require("express");
 const hub = express();
@@ -520,7 +519,7 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
 function _getWeb3AndUrlForBot(botConfig) {
   /**
    * NODE_RETRY CONFIG = [
-   *  { url: "https://...", retries: 2 },  
+   *  { url: "https://...", retries: 2 },
    * ]
    */
   let urls = [];
@@ -532,12 +531,13 @@ function _getWeb3AndUrlForBot(botConfig) {
 
   assert(
     urls.length > 0 && urls.every((url) => url !== undefined),
-    `Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)`
+    "Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)"
   );
 
-  const provider = createPublicClient({
-    chain: mainnet,
-    transport: fallback(urls.map(({ url, retries }) => http(url, { retryCount: retries }))),
+  const provider = viem.createPublicClient({
+    transport: viem.fallback(
+      urls.map(({ url, retries }) => viem.http(url, { retryCount: retries ?? DEFAULT_RETRIES }))
+    ),
   });
 
   return [provider, urls[0]];
@@ -553,8 +553,8 @@ function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
   }
 
   const retryConfig = lodash.castArray(urls).map((url) => ({ url }));
-  const provider = createPublicClient({
-    transport: fallback(retryConfig.map((url) => http(url), { retryConfig: 1 }))
+  const provider = viem.createPublicClient({
+    transport: viem.fallback(retryConfig.map((url) => viem.http(url), { retryConfig: 1 })),
   });
 
   return _getLatestBlockNumber(provider);
@@ -564,7 +564,7 @@ function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
 // lastSeenBlockNumber` after each run.
 function _getLatestBlockNumber(provider) {
   // Return a Promise to avoid the need for async on this function.
-  return async() => {
+  return async () => {
     const blockNumber = await provider.getBlockNumber();
     return Number(blockNumber);
   };
