@@ -9,7 +9,7 @@ import { CombinedHRE } from "./types";
 // /build/artifacts.json -> JSON file with [relativePath] where each relativePath points to a hardhat artifact json file.
 // /networks/[CHAIN_ID].json that matches the structure in core.
 // /typechain
-const EXTERNAL_PACKAGES: string[] = ["@across-protocol/contracts"];
+const EXTERNAL_PACKAGES: string[] = [];
 
 function removeFileIfExists(filename: string): void {
   try {
@@ -54,7 +54,7 @@ async function getArtifactPathList(hre: HardhatRuntimeEnvironment, relativeTo: s
       ...packageArtifacts
         .map(({ artifacts, basePath, packageName }) =>
           artifacts.map(({ relativePath }) => ({
-            // Since this path is relative to the base across path, we need to join that path to the artifact path to get the full path.
+            // Since this path is relative to the package root, we need to join that path to the artifact path to get the full path.
             // Then we need to perform the relative path operation to get the relative path to that file.
             relativePath: path.relative(path.dirname(relativeTo), path.join(basePath, relativePath)),
             contractName: path.basename(relativePath).split(".")[0],

@@ -29,7 +29,6 @@
     "/types/**/*"
   ],
   "dependencies": {
-    "@across-protocol/contracts": "^0.1.4",
     "@ethersproject/address": "^5.7.0",
     "@ethersproject/bignumber": "^5.0.5",
     "@ethersproject/bytes": "^5.7.0",
