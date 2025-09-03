@@ -20,6 +20,8 @@
  * This script assumes the caller is providing a HTTP POST with a body formatted as:
  * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
  */
+import { createPublicClient, fallback, http } from "viem";
+
 const retry = require("async-retry");
 const express = require("express");
 const hub = express();
@@ -55,12 +57,8 @@ const storage = new Storage(storageConfig);
 
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
-const { createBasicProvider } = require("@uma/common");
-
-// Web3 instance to get current block numbers of polling loops.
-const Web3 = require("web3");
-
 const { delay, createNewLogger, generateRandomRunId } = require("@uma/logger");
+
 let customLogger;
 let spokeUrl;
 // spokeUrlTable is an optional table populated through the env var SPOKE_URLS. SPOKE_URLS is expected to be a
@@ -520,37 +518,60 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
 }
 
 function _getWeb3AndUrlForBot(botConfig) {
+  /**
+   * NODE_RETRY CONFIG = [
+   *  { url: "https://...", retries: 2 },  
+   * ]
+   */
+  let urls = [];
   const retryConfig = botConfig?.environmentVariables?.NODE_RETRY_CONFIG;
-  if (retryConfig) {
-    return [new Web3(createBasicProvider(retryConfig)), retryConfig[0].url];
-  } else {
+  if (!retryConfig) {
     const url = botConfig?.environmentVariables?.CUSTOM_NODE_URL || customNodeUrl;
-    return [new Web3(url), url];
+    urls.push({ url, retries: 3 });
   }
+
+  assert(
+    urls.length > 0 && urls.every((url) => url !== undefined),
+    `Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)`
+  );
+
+  const provider = createPublicClient({
+    chain: mainnet,
+    transport: fallback(urls.map(({ url, retries }) => http(url, { retryCount: retries }))),
+  });
+
+  return [provider, urls[0]];
 }
 
 function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
-  const urls = botConfig?.environmentVariables?.[`NODE_URLS_${chainId}`]
-    ? botConfig.environmentVariables[`NODE_URLS_${chainId}`]
-    : botConfig?.environmentVariables?.[`NODE_URL_${chainId}`];
-  if (!urls)
+  const env = botConfig?.environmentVariables;
+  const urls = env?.[`NODE_URLS_${chainId}`] ?? env?.[`NODE_URL_${chainId}`];
+  if (!urls) {
     throw new Error(
       `ServerlessHub::_getBlockNumberOnChainIdMultiChain NODE_URLS_${chainId} or NODE_URL_${chainId} in botConfig: ${botConfig}`
     );
+  }
 
   const retryConfig = lodash.castArray(urls).map((url) => ({ url }));
-  const retryWeb3 = new Web3(createBasicProvider(retryConfig));
-  return retryWeb3.eth.getBlockNumber();
+  const provider = createPublicClient({
+    transport: fallback(retryConfig.map((url) => http(url), { retryConfig: 1 }))
+  });
+
+  return _getLatestBlockNumber(provider);
 }
 
 // Get the latest block number from either `overrideNodeUrl` or `CUSTOM_NODE_URL`. Used to update the `
 // lastSeenBlockNumber` after each run.
-async function _getLatestBlockNumber(web3) {
-  return await web3.eth.getBlockNumber();
+function _getLatestBlockNumber(provider) {
+  // Return a Promise to avoid the need for async on this function.
+  return async() => {
+    const blockNumber = await provider.getBlockNumber();
+    return Number(blockNumber);
+  };
 }
 
-async function _getChainId(web3) {
-  return await web3.eth.getChainId();
+function _getChainId(web3) {
+  return web3.getChainId();
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
