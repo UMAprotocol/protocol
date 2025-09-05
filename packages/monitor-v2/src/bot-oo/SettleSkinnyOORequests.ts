@@ -147,6 +147,7 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
   const skinnyOOWithSigner = skinnyOOWithAddress.connect(params.signer);
 
   for (const settleableRequest of settleableRequests) {
+    if (!settleableRequest) continue;
     const { event: req, request } = settleableRequest;
 
     try {
