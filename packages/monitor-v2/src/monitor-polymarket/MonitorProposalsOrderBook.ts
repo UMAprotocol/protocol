@@ -6,6 +6,7 @@ import {
   logProposalHighVolume,
 } from "./MonitorLogger";
 import {
+  buildFirstOkSummary,
   calculatePolymarketQuestionID,
   decodeMultipleQueryPriceAtIndex,
   decodeMultipleValuesQuery,
@@ -18,18 +19,20 @@ import {
   getProposalKeyToStore,
   getSportsMarketData,
   getSportsPayouts,
+  hasFirstOkLogged,
   isUnresolvable,
-  Logger,
-  Market,
-  MarketOrderbook,
-  MonitoringParams,
-  MultipleValuesQuery,
   ONE_SCALED,
-  OptimisticPriceRequest,
   POLYGON_BLOCKS_PER_HOUR,
-  PolymarketMarketGraphqlProcessed,
+  setFirstOkLogged,
   shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
+  type Logger,
+  type Market,
+  type MarketOrderbook,
+  type MonitoringParams,
+  type MultipleValuesQuery,
+  type OptimisticPriceRequest,
+  type PolymarketMarketGraphqlProcessed,
 } from "./common";
 
 // Retrieve threshold values from environment variables.
@@ -137,7 +140,11 @@ export async function processProposal(
       alerted = true;
     }
 
-    if (sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length) {
+    const hasDiscrepancy = Boolean(
+      sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length
+    );
+
+    if (hasDiscrepancy) {
       await logMarketSentimentDiscrepancy(
         logger,
         {
@@ -154,6 +161,38 @@ export async function processProposal(
         params
       );
       alerted = true;
+    }
+
+    if (!hasDiscrepancy) {
+      try {
+        const alreadyLogged = await hasFirstOkLogged(market.questionID);
+        if (!alreadyLogged) {
+          const { tradesCount, orderbookOrdersCount, orderbookTop, lastTrades } = buildFirstOkSummary(books, fills);
+
+          logger.info({
+            at: "PolymarketMonitor",
+            event: "Proposal Alignment Confirmed",
+            marketId: market.questionID,
+            question: market.question,
+            timestamp: new Date().toISOString(),
+            tradesCount,
+            orderbookOrdersCount,
+            orderbookTop,
+            lastTrades,
+            consistentWithProposal: true,
+          });
+
+          await setFirstOkLogged(market.questionID);
+        }
+      } catch (e) {
+        // Don't fail the monitor if storage/logging fails
+        logger.debug({
+          at: "PolymarketMonitor",
+          message: "first-ok summary logging failed or skipped",
+          marketId: market.questionID,
+          error: e,
+        });
+      }
     }
 
     return alerted;
