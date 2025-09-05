@@ -104,6 +104,8 @@ describe("ServerlessHub.js", function () {
     // Start the serverless spoke instance with the spy logger injected.
     spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
 
+    // Mine a block to ensure the chain keeps progressing.
+    await web3.currentProvider.send({ method: "evm_mine", params: [] });
   });
 
   afterEach(async function () {
