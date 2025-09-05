@@ -60,9 +60,7 @@ describe("ServerlessSpoke.js", function () {
   it("Serverless Spoke can correctly execute bot logic with valid body", async function () {
     const validBody = {
       serverlessCommand: "true", // Force command success.
-      environmentVariables: {
-        CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
-      },
+      environmentVariables: { CUSTOM_NODE_URL: web3.currentProvider.host },
     };
 
     const validResponse = await sendRequest(validBody);
@@ -80,9 +78,7 @@ describe("ServerlessSpoke.js", function () {
   it("Serverless Spoke can execute multiple chained commands with &&", async function () {
     const validBody = {
       serverlessCommand: "cd . && echo TEST_VAR=${TEST_VAR}",
-      environmentVariables: {
-        TEST_VAR: "test_value",
-      },
+      environmentVariables: { TEST_VAR: "test_value" },
     };
     const validResponse = await sendRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // error code
@@ -91,9 +87,7 @@ describe("ServerlessSpoke.js", function () {
   it("Serverless Spoke can correctly returns errors over http calls", async function () {
     const body = {
       serverlessCommand: "false",
-      environmentVariables: {
-        CUSTOM_NODE_URL: web3.currentProvider.host,
-      },
+      environmentVariables: { CUSTOM_NODE_URL: web3.currentProvider.host },
     };
 
     const response = await sendRequest(body);

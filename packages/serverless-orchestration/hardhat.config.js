@@ -1,5 +1,4 @@
 require("@nomiclabs/hardhat-web3");
-require("hardhat-deploy");
 
 module.exports = {
   networks: {

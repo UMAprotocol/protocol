@@ -148,9 +148,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "true",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -179,9 +177,7 @@ describe("ServerlessHub.js", function () {
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
     const defaultConfig = {
       serverlessCommand: "true",
-      environmentVariables: {
-        CUSTOM_NODE_URL: network.config.url,
-      },
+      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
     };
     const hubConfig = {
       // no named spoke
@@ -210,9 +206,7 @@ describe("ServerlessHub.js", function () {
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
     const defaultConfig = {
       serverlessCommand: "true",
-      environmentVariables: {
-        CUSTOM_NODE_URL: network.config.url,
-      },
+      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
     };
     const hubConfig = { testInvalidInstance: { ...defaultConfig, spokeUrlName: "invalid" } };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -232,9 +226,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "true",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -273,9 +265,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "true",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -323,21 +313,15 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "sleep 5",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitor2: {
         serverlessCommand: "sleep 5",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitor3: {
         serverlessCommand: "sleep 5",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -371,23 +355,17 @@ describe("ServerlessHub.js", function () {
       testServerlessMonitor: {
         // Creates no error.
         serverlessCommand: "true",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
         serverlessCommand: "false",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
         serverlessCommand: "sleep 1; false",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -506,23 +484,17 @@ describe("ServerlessHub.js", function () {
       testServerlessMonitor: {
         // eslint-disable-next-line no-useless-escape
         serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${network.config.url}\" ]`,
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitor2: {
         // eslint-disable-next-line no-useless-escape
         serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.currentProvider.host}\" ]`,
-        environmentVariables: {
-          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: alternateWeb3.currentProvider.host },
       },
       testServerlessMonitor3: {
         // eslint-disable-next-line no-useless-escape
         serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.currentProvider.host}\" ]`,
-        environmentVariables: {
-          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: alternateWeb3.currentProvider.host },
       },
     };
 
@@ -611,7 +583,8 @@ describe("ServerlessHub.js", function () {
     };
 
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
-    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, "0");
+    const lastQueriedBlockNumber = 0;
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, lastQueriedBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
     setEnvironmentVariable(`lastQueriedBlockNumber-${alternateChainId}-${testConfigFile}`, "0");
 
@@ -622,7 +595,7 @@ describe("ServerlessHub.js", function () {
     // Logs should include correct starting and latest block numbers for the alternate network.
     const alternateBlockNumbers = {
       [alternateChainId]: {
-        lastQueriedBlockNumber: 0, // This should match the environment variable we set above
+        lastQueriedBlockNumber,
         latestBlockNumber: latestAlternateBlockNumber,
       },
     };
