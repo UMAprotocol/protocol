@@ -15,7 +15,7 @@ const spoke = express();
 spoke.use(express.json()); // Enables json to be parsed by the express process.
 const spawn = require("child_process").spawn;
 
-const { delay, createNewLogger } = require("@uma/financial-templates-lib");
+const { delay, createNewLogger } = require("@uma/logger");
 
 let customLogger;
 
