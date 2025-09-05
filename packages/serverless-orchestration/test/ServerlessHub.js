@@ -437,14 +437,16 @@ describe("ServerlessHub.js", function () {
         },
       },
       testServerlessMonitor: {
-        serverlessCommand: "test -n \"${SOME_TEST_ENV}\" && test -n \"${TOKEN_PRICE_FEED_CONFIG}\" && test -z \"${MONITOR_CONFIG_2}\"",
+        serverlessCommand:
+          'test -n "${SOME_TEST_ENV}" && test -n "${TOKEN_PRICE_FEED_CONFIG}" && test -z "${MONITOR_CONFIG_2}"',
         environmentVariables: {
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
       },
       testServerlessMonitor2: {
-        serverlessCommand: "test -n \"${SOME_TEST_ENV}\" && test -z \"${TOKEN_PRICE_FEED_CONFIG}\" && test -n \"${MONITOR_CONFIG_2}\"",
+        serverlessCommand:
+          'test -n "${SOME_TEST_ENV}" && test -z "${TOKEN_PRICE_FEED_CONFIG}" && test -n "${MONITOR_CONFIG_2}"',
         environmentVariables: {
           MONITOR_CONFIG_2: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
@@ -500,18 +502,21 @@ describe("ServerlessHub.js", function () {
 
     const hubConfig = {
       testServerlessMonitor: {
+        // eslint-disable-next-line no-useless-escape
         serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${network.config.url}\" ]`,
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
         },
       },
       testServerlessMonitor2: {
+        // eslint-disable-next-line no-useless-escape
         serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.currentProvider.host}\" ]`,
         environmentVariables: {
           CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
         },
       },
       testServerlessMonitor3: {
+        // eslint-disable-next-line no-useless-escape
         serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.currentProvider.host}\" ]`,
         environmentVariables: {
           CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
