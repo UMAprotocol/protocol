@@ -568,6 +568,7 @@ describe("ServerlessHub.js", function () {
     await alternateWeb3.currentProvider.send({ method: "evm_mine", params: [] });
     const latestAlternateBlockNumber = await alternateWeb3.eth.getBlockNumber();
 
+    console.log(`xxx environmentVariables: ${JSON.stringify(environmentVariables, null, 2)}.`);
     const hubConfig = {
       testServerlessBot: {
         serverlessCommand: "echo single network bot started",
@@ -589,7 +590,6 @@ describe("ServerlessHub.js", function () {
     setEnvironmentVariable(`lastQueriedBlockNumber-${alternateChainId}-${testConfigFile}`, "0");
 
     const validBody = { bucket: testBucket, configFile: testConfigFile };
-
     const validResponse = await sendHubRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // no error code
 
