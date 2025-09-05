@@ -194,11 +194,11 @@ hub.post("/", async (req, res) => {
         // If the last queried block number stored on GCP Data Store is undefined, then its possible that this is
         // the first time that the hub is being run for this chain. Therefore, try setting it to the head block number
         // for the chosen node.
-        if (lastQueriedBlockNumber == null && latestBlockNumber != null) {
+        if (!lastQueriedBlockNumber && latestBlockNumber) {
           lastQueriedBlockNumber = latestBlockNumber;
         }
         // If the last queried number is still undefined at this point, then exit with an error.
-        else if (lastQueriedBlockNumber == null)
+        else if (!lastQueriedBlockNumber)
           throw new Error(
             `No block number for chain ID stored on GCP and cannot read head block from node! chainID:${chainId}`
           );
