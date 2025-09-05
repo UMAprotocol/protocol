@@ -554,7 +554,7 @@ function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
 
   const retryConfig = lodash.castArray(urls).map((url) => ({ url }));
   const provider = viem.createPublicClient({
-    transport: viem.fallback(retryConfig.map((url) => viem.http(url), { retryConfig: 1 })),
+    transport: viem.fallback(retryConfig.map(({ url }) => viem.http(url, { retryCount: 1 }))),
   });
 
   return _getLatestBlockNumber(provider);
@@ -562,12 +562,9 @@ function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
 
 // Get the latest block number from either `overrideNodeUrl` or `CUSTOM_NODE_URL`. Used to update the `
 // lastSeenBlockNumber` after each run.
-function _getLatestBlockNumber(provider) {
-  // Return a Promise to avoid the need for async on this function.
-  return async () => {
-    const blockNumber = await provider.getBlockNumber();
-    return Number(blockNumber);
-  };
+async function _getLatestBlockNumber(provider) {
+  const blockNumber = await provider.getBlockNumber();
+  return Number(blockNumber);
 }
 
 function _getChainId(provider) {
