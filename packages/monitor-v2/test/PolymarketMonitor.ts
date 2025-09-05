@@ -87,11 +87,9 @@ describe("PolymarketNotifier", function () {
     const apiEndpoint = "endpoint";
 
     return {
-      binaryAdapterAddress,
-      ctfAdapterAddress,
-      ctfAdapterAddressV2,
       ctfExchangeAddress,
       ctfSportsOracleAddress,
+      additionalRequesters: [ctfAdapterAddress, ctfAdapterAddressV2, binaryAdapterAddress],
       maxBlockLookBack: 3499,
       graphqlEndpoint,
       apiEndpoint,
@@ -200,7 +198,7 @@ describe("PolymarketNotifier", function () {
     // Create a mock proposal
     const mockProposal: OptimisticPriceRequest = {
       proposalHash: "0xordertest",
-      requester: params.ctfAdapterAddress,
+      requester: await deployer.getAddress(),
       proposer: await deployer.getAddress(),
       identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
       proposedPrice: ONE,
@@ -395,7 +393,7 @@ describe("PolymarketNotifier", function () {
     // Create a mock proposal
     const mockProposal: OptimisticPriceRequest = {
       proposalHash: "0xmockproposal",
-      requester: params.ctfAdapterAddress,
+      requester: await deployer.getAddress(),
       proposer: proposerAddress,
       identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
       proposedPrice: ONE,
@@ -441,7 +439,7 @@ describe("PolymarketNotifier", function () {
     // Create a mock proposal
     const mockProposal: OptimisticPriceRequest = {
       proposalHash: "0xmockproposal2",
-      requester: params.ctfAdapterAddress,
+      requester: await deployer.getAddress(),
       proposer: await deployer.getAddress(),
       identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
       proposedPrice: ONE,
