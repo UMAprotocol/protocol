@@ -907,3 +907,44 @@ export function queryFilterSafe(contract: Contract) {
     }
   };
 }
+
+
+export function buildFirstOkSummary(
+  booksIn: [MarketOrderbook | undefined, MarketOrderbook | undefined],
+  fillsIn: [PolymarketTradeInformation[] | undefined, PolymarketTradeInformation[] | undefined]
+) {
+  const books: [MarketOrderbook, MarketOrderbook] = [
+    booksIn[0] ?? { bids: [], asks: [] },
+    booksIn[1] ?? { bids: [], asks: [] },
+  ];
+  const fills: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
+    fillsIn[0] ?? [],
+    fillsIn[1] ?? [],
+  ];
+
+  const tradesCount = (fills[0].length || 0) + (fills[1].length || 0);
+  const orderbookOrdersCount =
+    (books[0].bids.length || 0) +
+    (books[0].asks.length || 0) +
+    (books[1].bids.length || 0) +
+    (books[1].asks.length || 0);
+
+  // Determine best bid (max price) and best ask (min price) across both outcomes
+  const allBids = [...books[0].bids, ...books[1].bids];
+  const allAsks = [...books[0].asks, ...books[1].asks];
+  const bestBid = allBids.length ? allBids.reduce((a, b) => (b.price > a.price ? b : a)) : null;
+  const bestAsk = allAsks.length ? allAsks.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+
+  const combinedTrades = [...fills[0], ...fills[1]].sort((a, b) => b.timestamp - a.timestamp);
+  const lastTrades = combinedTrades.slice(0, 3);
+
+  return {
+    tradesCount,
+    orderbookOrdersCount,
+    orderbookTop: {
+      bestBid: bestBid ? { price: bestBid.price, size: bestBid.size } : null,
+      bestAsk: bestAsk ? { price: bestAsk.price, size: bestAsk.size } : null,
+    },
+    lastTrades,
+  } as const;
+}

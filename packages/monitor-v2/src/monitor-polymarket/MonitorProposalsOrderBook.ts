@@ -6,6 +6,7 @@ import {
   logProposalHighVolume,
 } from "./MonitorLogger";
 import {
+  buildFirstOkSummary,
   calculatePolymarketQuestionID,
   decodeMultipleQueryPriceAtIndex,
   decodeMultipleValuesQuery,
@@ -143,14 +144,6 @@ export async function processProposal(
       sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length
     );
 
-    // Always emit a per-check summary for observability
-    logger.info({
-      at: "PolymarketMonitor",
-      event: "market_check",
-      marketId: market.questionID,
-      hasDiscrepancy,
-    });
-
     if (hasDiscrepancy) {
       await logMarketSentimentDiscrepancy(
         logger,
@@ -170,41 +163,21 @@ export async function processProposal(
       alerted = true;
     }
 
-
-    // First OK summary (one-time per market, only if no discrepancies in this check)
     if (!hasDiscrepancy) {
       try {
         const alreadyLogged = await hasFirstOkLogged(market.questionID);
         if (!alreadyLogged) {
-          // Aggregate summary fields
-          const tradesCount = fills[0].length + fills[1].length;
-          const orderbookOrdersCount =
-            books[0].bids.length + books[0].asks.length + books[1].bids.length + books[1].asks.length;
-
-          // Determine best bid (max price) and best ask (min price) across both outcomes
-          const allBids = [...books[0].bids, ...books[1].bids];
-          const allAsks = [...books[0].asks, ...books[1].asks];
-          const bestBid = allBids.length
-            ? allBids.reduce((a, b) => (b.price > a.price ? b : a))
-            : null;
-          const bestAsk = allAsks.length
-            ? allAsks.reduce((a, b) => (b.price < a.price ? b : a))
-            : null;
-
-          const combinedTrades = [...fills[0], ...fills[1]].sort((a, b) => b.timestamp - a.timestamp);
-          const lastTrades = combinedTrades.slice(0, 3);
+          const { tradesCount, orderbookOrdersCount, orderbookTop, lastTrades } = buildFirstOkSummary(books, fills);
 
           logger.info({
             at: "PolymarketMonitor",
-            event: "market_first_ok",
+            event: "Proposal Alignment Confirmed",
             marketId: market.questionID,
+            question: market.question,
             timestamp: new Date().toISOString(),
             tradesCount,
             orderbookOrdersCount,
-            orderbookTop: {
-              bestBid: bestBid ? { price: bestBid.price, size: bestBid.size } : null,
-              bestAsk: bestAsk ? { price: bestAsk.price, size: bestAsk.size } : null,
-            },
+            orderbookTop,
             lastTrades,
             consistentWithProposal: true,
           });

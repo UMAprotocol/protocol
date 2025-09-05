@@ -242,6 +242,156 @@ describe("PolymarketNotifier", function () {
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
 
+  describe("market check + first-ok", function () {
+    // Helper to build a proposal aligning with outcome 0 (YES)
+    const makeProposal = async (): Promise<OptimisticPriceRequest> => ({
+      proposalHash: "0xhash1",
+      requester: (await createMonitoringParams()).ctfAdapterAddress,
+      proposer: await deployer.getAddress(),
+      identifier,
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 1,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequest",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600),
+      proposalLogIndex: 0,
+    });
+
+    beforeEach(function () {
+      // Default stubs common to these tests
+      sandbox.stub(commonModule, "getPolymarketMarketInformation").resolves(marketInfo);
+      sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(() => asBooksRecord(emptyOrders));
+      sandbox.stub(commonModule, "getOrderFilledEvents").resolves([[], []]);
+      sandbox.stub(commonModule, "getNotifiedProposals").resolves({});
+    });
+
+    it("First check, no discrepancy → summary only; flag set.", async function () {
+      const params = await createMonitoringParams();
+      const prop = await makeProposal();
+      sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
+
+      const hasFirstOkStub = sandbox.stub(commonModule, "hasFirstOkLogged").resolves(false);
+      const setFirstOkStub = sandbox.stub(commonModule, "setFirstOkLogged").resolves();
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const logger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(logger, params);
+
+      // Expect exactly one info log for the confirmation summary
+      const infoEvents = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .filter((a) => a?.event === "Proposal Alignment Confirmed");
+      assert.equal(infoEvents.length, 1);
+      assert.deepInclude(infoEvents[0], {
+        at: "PolymarketMonitor",
+        marketId: marketInfo[0].questionID,
+        consistentWithProposal: true,
+      });
+
+      assert.isTrue(hasFirstOkStub.calledOnceWithExactly(marketInfo[0].questionID));
+      assert.isTrue(setFirstOkStub.calledOnceWithExactly(marketInfo[0].questionID));
+    });
+
+    it("First check, with discrepancy → no summary; no flag.", async function () {
+      const params = await createMonitoringParams();
+      const prop = await makeProposal();
+      sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
+
+      // Create a discrepancy: winner side ask below threshold
+      const books: [MarketOrderbook, MarketOrderbook] = [
+        { bids: [], asks: [{ price: 0.5, size: 10 }] },
+        { bids: [], asks: [] },
+      ];
+      (commonModule.getPolymarketOrderBooks as any).restore?.();
+      sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(() => asBooksRecord(books));
+
+      const hasFirstOkStub = sandbox.stub(commonModule, "hasFirstOkLogged").resolves(false);
+      const setFirstOkStub = sandbox.stub(commonModule, "setFirstOkLogged");
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const logger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(logger, params);
+
+      // No confirmation summary should be logged
+      const confirmation = spy.getCalls().map((c) => c.lastArg).find((a) => a?.event === "Proposal Alignment Confirmed");
+      assert.isUndefined(confirmation);
+
+      // Should have an error level log for discrepancy
+      assert.isAbove(spy.callCount, 0);
+      const firstError = spy.getCalls().map((c) => c.lastArg).find((a) => a?.message?.includes("Difference between"));
+      assert.exists(firstError);
+
+      assert.isTrue(hasFirstOkStub.notCalled);
+      assert.isTrue(setFirstOkStub.notCalled);
+    });
+
+    it("Subsequent no-discrepancy with flag set → no logs.", async function () {
+      const params = await createMonitoringParams();
+      const prop = await makeProposal();
+      sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
+
+      sandbox.stub(commonModule, "hasFirstOkLogged").resolves(true);
+      const setFirstOkStub = sandbox.stub(commonModule, "setFirstOkLogged");
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const logger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(logger, params);
+
+      // No per-check or summary logs expected now
+      assert.equal(spy.callCount, 0);
+      assert.isTrue(setFirstOkStub.notCalled);
+    });
+
+    it("Missing/partial data → summary has null top and empty lastTrades.", async function () {
+      const params = await createMonitoringParams();
+      const prop = await makeProposal();
+      sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
+      sandbox.stub(commonModule, "hasFirstOkLogged").resolves(false);
+      sandbox.stub(commonModule, "setFirstOkLogged").resolves();
+
+      const spy = sinon.spy();
+      const logger = createNewLogger([new SpyTransport({}, { spy })]);
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+      await monitorTransactionsProposedOrderBook(logger, params);
+
+      const okLog = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .find((a) => a?.event === "Proposal Alignment Confirmed");
+      assert.exists(okLog);
+      assert.property(okLog, "orderbookTop");
+      assert.deepEqual(okLog.orderbookTop, { bestBid: null, bestAsk: null });
+      assert.deepEqual(okLog.lastTrades, []);
+    });
+
+    it("Key isolation → uses polymarket:first-ok-logged:${marketId}", async function () {
+      const key = commonModule.getFirstOkLoggedKey(marketInfo[0].questionID);
+      assert.equal(key, `polymarket:first-ok-logged:${marketInfo[0].questionID}`);
+    });
+  });
+
   it("It should not notify if order book is empty", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
