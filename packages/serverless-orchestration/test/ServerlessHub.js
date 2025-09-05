@@ -41,7 +41,7 @@ describe("ServerlessHub.js", function () {
 
   const setEnvironmentVariable = (key, value) => {
     assert(
-      [key, value].forEach((x) => x !== undefined),
+      [key, value].every((x) => x !== undefined),
       `Must provide both a key and value to set an environment variable (key: ${key}, value: ${value})`
     );
     setEnvironmentVariableKeys.push(key);
