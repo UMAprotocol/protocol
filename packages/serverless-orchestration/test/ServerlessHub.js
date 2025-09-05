@@ -421,6 +421,7 @@ describe("ServerlessHub.js", function () {
         serverlessCommand:
           'test -n "${SOME_TEST_ENV}" && test -n "${TOKEN_PRICE_FEED_CONFIG}" && test -z "${MONITOR_CONFIG_2}"',
         environmentVariables: {
+          ...environmentVariables,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
@@ -429,6 +430,7 @@ describe("ServerlessHub.js", function () {
         serverlessCommand:
           'test -n "${SOME_TEST_ENV}" && test -z "${TOKEN_PRICE_FEED_CONFIG}" && test -n "${MONITOR_CONFIG_2}"',
         environmentVariables: {
+          ...environmentVariables,
           MONITOR_CONFIG_2: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
       },
