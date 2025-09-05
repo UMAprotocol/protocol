@@ -1,5 +1,4 @@
-const hre = require("hardhat");
-const { getContract, web3, network } = hre;
+const { web3, network } = require("hardhat");
 const { assert } = require("chai");
 const Web3 = require("web3");
 
@@ -13,22 +12,16 @@ const spoke = require("../src/ServerlessSpoke");
 // Helper scripts to test different kind of rejection behaviour.
 const timeoutSpoke = require("../test-helpers/TimeoutSpokeMock.js");
 
-// Contract to monitor
-const OptimisticOracleV2 = getContract("OptimisticOracleV2");
-
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
-const { runDefaultFixture } = require("@uma/common");
+const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/logger");
 
 // Use Ganache to create additional web3 providers with different chain ID's
 const ganache = require("ganache-core");
 
 describe("ServerlessHub.js", function () {
-  let optimisticOracleV2Address;
-
-  let defaultPricefeedConfig;
+  const defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
   let hubSpy;
   let hubSpyLogger;
@@ -43,18 +36,21 @@ describe("ServerlessHub.js", function () {
   let defaultChainId;
 
   let ganacheServers = []; // keep track of all ganache instances so they can be closed after each test to avoid port conflicts
+  let setEnvironmentVariableKeys = []; // record all envs set within a test to unset them after in the afterEach block
 
-  let setEnvironmentVariableKes = []; // record all envs set within a test to unset them after in the afterEach block
   const setEnvironmentVariable = (key, value) => {
-    assert(key && value, "Must provide both a key and value to set an environment variable");
-    setEnvironmentVariableKes.push(key);
+    assert(
+      [key, value].every((x) => x !== undefined),
+      `Must provide both a key and value to set an environment variable (key: ${key}, value: ${value})`
+    );
+    setEnvironmentVariableKeys.push(key);
     process.env[key] = value;
   };
   const unsetEnvironmentVariables = () => {
-    for (let key of setEnvironmentVariableKes) {
+    for (let key of setEnvironmentVariableKeys) {
       delete process.env[key];
     }
-    setEnvironmentVariableKes = [];
+    setEnvironmentVariableKeys = [];
   };
 
   const closeGanacheServers = () => {
@@ -78,7 +74,6 @@ describe("ServerlessHub.js", function () {
 
   before(async function () {
     defaultChainId = await web3.eth.getChainId();
-    await runDefaultFixture(hre);
   });
 
   beforeEach(async function () {
@@ -108,13 +103,8 @@ describe("ServerlessHub.js", function () {
 
     // Start the serverless spoke instance with the spy logger injected.
     spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
-
-    // Only used for testing environment variables.
-    defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
-
-    // Get deployed OptimisticOracleV2 address to monitor.
-    optimisticOracleV2Address = (await OptimisticOracleV2.deployed()).options.address;
   });
+
   afterEach(async function () {
     hubInstance.close();
     spokeInstance.close();
@@ -157,13 +147,8 @@ describe("ServerlessHub.js", function () {
 
     const hubConfig = {
       testServerlessMonitor: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "true",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -191,13 +176,8 @@ describe("ServerlessHub.js", function () {
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
     const defaultConfig = {
-      serverlessCommand: "yarn --silent monitors --network test",
-      environmentVariables: {
-        CUSTOM_NODE_URL: network.config.url,
-        POLLING_DELAY: 0,
-        OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-        OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-      },
+      serverlessCommand: "true",
+      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
     };
     const hubConfig = {
       // no named spoke
@@ -225,13 +205,8 @@ describe("ServerlessHub.js", function () {
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
     const defaultConfig = {
-      serverlessCommand: "yarn --silent monitors --network test",
-      environmentVariables: {
-        CUSTOM_NODE_URL: network.config.url,
-        POLLING_DELAY: 0,
-        OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-        OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-      },
+      serverlessCommand: "true",
+      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
     };
     const hubConfig = { testInvalidInstance: { ...defaultConfig, spokeUrlName: "invalid" } };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -250,13 +225,8 @@ describe("ServerlessHub.js", function () {
 
     const hubConfig = {
       testServerlessMonitor: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "true",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -294,13 +264,8 @@ describe("ServerlessHub.js", function () {
 
     const hubConfig = {
       testServerlessMonitor: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "true",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -347,31 +312,16 @@ describe("ServerlessHub.js", function () {
 
     const hubConfig = {
       testServerlessMonitor: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "sleep 5",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitor2: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "sleep 5",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitor3: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "sleep 5",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -404,33 +354,18 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         // Creates no error.
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "true",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
-        serverlessCommand: "yarn --silent INVALID --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "false",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: "0x0000000000000000000000000000000000000000",
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        serverlessCommand: "sleep 1; false",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -480,36 +415,20 @@ describe("ServerlessHub.js", function () {
         },
       },
       testServerlessMonitor: {
-        serverlessCommand: "yarn --silent monitors --network test",
+        serverlessCommand:
+          'test -n "${SOME_TEST_ENV}" && test -n "${TOKEN_PRICE_FEED_CONFIG}" && test -z "${MONITOR_CONFIG_2}"',
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
       },
       testServerlessMonitor2: {
-        serverlessCommand: "yarn --silent monitors --network test",
+        serverlessCommand:
+          'test -n "${SOME_TEST_ENV}" && test -z "${TOKEN_PRICE_FEED_CONFIG}" && test -n "${MONITOR_CONFIG_2}"',
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-          PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
-          MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
-        },
-      },
-      testServerlessMonitor3: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-          PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
-          MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
+          MONITOR_CONFIG_2: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
       },
     };
@@ -563,31 +482,19 @@ describe("ServerlessHub.js", function () {
 
     const hubConfig = {
       testServerlessMonitor: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        // eslint-disable-next-line no-useless-escape
+        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${network.config.url}\" ]`,
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitor2: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        // eslint-disable-next-line no-useless-escape
+        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.currentProvider.host}\" ]`,
+        environmentVariables: { CUSTOM_NODE_URL: alternateWeb3.currentProvider.host },
       },
       testServerlessMonitor3: {
-        serverlessCommand: "yarn --silent monitors --network test",
-        environmentVariables: {
-          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
-          POLLING_DELAY: 0,
-          OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-          OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
-        },
+        // eslint-disable-next-line no-useless-escape
+        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.currentProvider.host}\" ]`,
+        environmentVariables: { CUSTOM_NODE_URL: alternateWeb3.currentProvider.host },
       },
     };
 
@@ -653,7 +560,8 @@ describe("ServerlessHub.js", function () {
     // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to store the latest
     // block number for this alternative network when passed together with default network within the same bot config.
     const alternateChainId = 666;
-    const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
+    const alternatePort = 7777;
+    const alternateWeb3 = startGanacheServer(alternateChainId, alternatePort);
 
     // Mine additional block and store its number.
     await alternateWeb3.currentProvider.send({ method: "evm_mine", params: [] });
@@ -675,19 +583,19 @@ describe("ServerlessHub.js", function () {
     };
 
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
-    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, "0");
+    const lastQueriedBlockNumber = 0;
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, lastQueriedBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
     setEnvironmentVariable(`lastQueriedBlockNumber-${alternateChainId}-${testConfigFile}`, "0");
 
     const validBody = { bucket: testBucket, configFile: testConfigFile };
-
     const validResponse = await sendHubRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // no error code
 
     // Logs should include correct starting and latest block numbers for the alternate network.
     const alternateBlockNumbers = {
       [alternateChainId]: {
-        lastQueriedBlockNumber: latestAlternateBlockNumber, // Same as latest as this is first time bot is run.
+        lastQueriedBlockNumber,
         latestBlockNumber: latestAlternateBlockNumber,
       },
     };
