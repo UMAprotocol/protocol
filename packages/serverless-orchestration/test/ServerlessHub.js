@@ -22,7 +22,7 @@ const ganache = require("ganache-core");
 
 describe("ServerlessHub.js", function () {
   const defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
-  let environmentVariables = { CUSTOM_NODE_URL: "" };
+  let environmentVariables = { CUSTOM_NODE_URL: "", POLLING_DELAY: 0 };
 
   let hubSpy;
   let hubSpyLogger;
@@ -105,7 +105,7 @@ describe("ServerlessHub.js", function () {
     // Start the serverless spoke instance with the spy logger injected.
     spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
 
-    environmentVariables = { CUSTOM_NODE_URL: network.config.url };
+    environmentVariables = { CUSTOM_NODE_URL: network.config.url, POLLING_DELAY: 0 };
   });
 
   afterEach(async function () {
