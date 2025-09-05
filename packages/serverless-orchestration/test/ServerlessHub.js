@@ -103,9 +103,6 @@ describe("ServerlessHub.js", function () {
 
     // Start the serverless spoke instance with the spy logger injected.
     spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
-
-    // Mine a block to ensure the chain keeps progressing.
-    await web3.currentProvider.send({ method: "evm_mine", params: [] });
   });
 
   afterEach(async function () {
@@ -557,9 +554,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessBot: {
         serverlessCommand: "echo single network bot started",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessBot2: {
         serverlessCommand: "echo multiple network bot started",
@@ -593,7 +588,8 @@ describe("ServerlessHub.js", function () {
     // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to store the latest
     // block number for this alternative network when passed together with default network within the same bot config.
     const alternateChainId = 666;
-    const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
+    const alternatePort = 7777;
+    const alternateWeb3 = startGanacheServer(alternateChainId, alternatePort);
 
     // Mine additional block and store its number.
     await alternateWeb3.currentProvider.send({ method: "evm_mine", params: [] });
@@ -602,9 +598,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessBot: {
         serverlessCommand: "echo single network bot started",
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-        },
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessBot2: {
         serverlessCommand: "echo multiple network bot started",
@@ -628,7 +622,7 @@ describe("ServerlessHub.js", function () {
     // Logs should include correct starting and latest block numbers for the alternate network.
     const alternateBlockNumbers = {
       [alternateChainId]: {
-        lastQueriedBlockNumber: latestAlternateBlockNumber, // Same as latest as this is first time bot is run.
+        lastQueriedBlockNumber: 0, // This should match the environment variable we set above
         latestBlockNumber: latestAlternateBlockNumber,
       },
     };
