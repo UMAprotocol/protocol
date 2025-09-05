@@ -1,6 +1,5 @@
-const hre = require("hardhat");
+const { web3 } = require("hardhat");
 const { assert } = require("chai");
-const { web3 } = hre;
 
 // Enables testing http requests to an express spoke.
 const request = require("supertest");

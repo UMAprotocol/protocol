@@ -1,5 +1,4 @@
-const hre = require("hardhat");
-const { web3, network } = hre;
+const { web3, network } = require("hardhat");
 const { assert } = require("chai");
 const Web3 = require("web3");
 
@@ -22,7 +21,7 @@ const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = re
 const ganache = require("ganache-core");
 
 describe("ServerlessHub.js", function () {
-  let defaultPricefeedConfig;
+  const defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
   let hubSpy;
   let hubSpyLogger;
@@ -37,8 +36,8 @@ describe("ServerlessHub.js", function () {
   let defaultChainId;
 
   let ganacheServers = []; // keep track of all ganache instances so they can be closed after each test to avoid port conflicts
-
   let setEnvironmentVariableKes = []; // record all envs set within a test to unset them after in the afterEach block
+
   const setEnvironmentVariable = (key, value) => {
     assert(key && value, "Must provide both a key and value to set an environment variable");
     setEnvironmentVariableKes.push(key);
@@ -101,10 +100,8 @@ describe("ServerlessHub.js", function () {
 
     // Start the serverless spoke instance with the spy logger injected.
     spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
-
-    // Only used for testing environment variables.
-    defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
   });
+
   afterEach(async function () {
     hubInstance.close();
     spokeInstance.close();
