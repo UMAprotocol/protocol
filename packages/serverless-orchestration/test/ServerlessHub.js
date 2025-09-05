@@ -37,18 +37,21 @@ describe("ServerlessHub.js", function () {
   let defaultChainId;
 
   let ganacheServers = []; // keep track of all ganache instances so they can be closed after each test to avoid port conflicts
-  let setEnvironmentVariableKes = []; // record all envs set within a test to unset them after in the afterEach block
+  let setEnvironmentVariableKeys = []; // record all envs set within a test to unset them after in the afterEach block
 
   const setEnvironmentVariable = (key, value) => {
-    assert(key && value, "Must provide both a key and value to set an environment variable");
-    setEnvironmentVariableKes.push(key);
+    assert(
+      key && value,
+      `Must provide both a key and value to set an environment variable (key: ${key}, value: ${value})`
+    );
+    setEnvironmentVariableKeys.push(key);
     process.env[key] = value;
   };
   const unsetEnvironmentVariables = () => {
-    for (let key of setEnvironmentVariableKes) {
+    for (let key of setEnvironmentVariableKeys) {
       delete process.env[key];
     }
-    setEnvironmentVariableKes = [];
+    setEnvironmentVariableKeys = [];
   };
 
   const closeGanacheServers = () => {
