@@ -41,7 +41,7 @@ describe("ServerlessHub.js", function () {
 
   const setEnvironmentVariable = (key, value) => {
     assert(
-      key && value,
+      [key, value].forEach((x) => x !== undefined),
       `Must provide both a key and value to set an environment variable (key: ${key}, value: ${value})`
     );
     setEnvironmentVariableKeys.push(key);
@@ -571,7 +571,6 @@ describe("ServerlessHub.js", function () {
     await alternateWeb3.currentProvider.send({ method: "evm_mine", params: [] });
     const latestAlternateBlockNumber = await alternateWeb3.eth.getBlockNumber();
 
-    console.log(`xxx environmentVariables: ${JSON.stringify(environmentVariables, null, 2)}.`);
     const hubConfig = {
       testServerlessBot: {
         serverlessCommand: "echo single network bot started",
