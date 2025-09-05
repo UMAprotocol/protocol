@@ -18,18 +18,20 @@ import {
   getProposalKeyToStore,
   getSportsMarketData,
   getSportsPayouts,
+  hasFirstOkLogged,
   isUnresolvable,
-  Logger,
-  Market,
-  MarketOrderbook,
-  MonitoringParams,
-  MultipleValuesQuery,
   ONE_SCALED,
-  OptimisticPriceRequest,
   POLYGON_BLOCKS_PER_HOUR,
-  PolymarketMarketGraphqlProcessed,
+  setFirstOkLogged,
   shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
+  type Logger,
+  type Market,
+  type MarketOrderbook,
+  type MonitoringParams,
+  type MultipleValuesQuery,
+  type OptimisticPriceRequest,
+  type PolymarketMarketGraphqlProcessed,
 } from "./common";
 
 // Retrieve threshold values from environment variables.
@@ -137,7 +139,19 @@ export async function processProposal(
       alerted = true;
     }
 
-    if (sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length) {
+    const hasDiscrepancy = Boolean(
+      sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length
+    );
+
+    // Always emit a per-check summary for observability
+    logger.info({
+      at: "PolymarketMonitor",
+      event: "market_check",
+      marketId: market.questionID,
+      hasDiscrepancy,
+    });
+
+    if (hasDiscrepancy) {
       await logMarketSentimentDiscrepancy(
         logger,
         {
@@ -154,6 +168,58 @@ export async function processProposal(
         params
       );
       alerted = true;
+    }
+
+
+    // First OK summary (one-time per market, only if no discrepancies in this check)
+    if (!hasDiscrepancy) {
+      try {
+        const alreadyLogged = await hasFirstOkLogged(market.questionID);
+        if (!alreadyLogged) {
+          // Aggregate summary fields
+          const tradesCount = fills[0].length + fills[1].length;
+          const orderbookOrdersCount =
+            books[0].bids.length + books[0].asks.length + books[1].bids.length + books[1].asks.length;
+
+          // Determine best bid (max price) and best ask (min price) across both outcomes
+          const allBids = [...books[0].bids, ...books[1].bids];
+          const allAsks = [...books[0].asks, ...books[1].asks];
+          const bestBid = allBids.length
+            ? allBids.reduce((a, b) => (b.price > a.price ? b : a))
+            : null;
+          const bestAsk = allAsks.length
+            ? allAsks.reduce((a, b) => (b.price < a.price ? b : a))
+            : null;
+
+          const combinedTrades = [...fills[0], ...fills[1]].sort((a, b) => b.timestamp - a.timestamp);
+          const lastTrades = combinedTrades.slice(0, 3);
+
+          logger.info({
+            at: "PolymarketMonitor",
+            event: "market_first_ok",
+            marketId: market.questionID,
+            timestamp: new Date().toISOString(),
+            tradesCount,
+            orderbookOrdersCount,
+            orderbookTop: {
+              bestBid: bestBid ? { price: bestBid.price, size: bestBid.size } : null,
+              bestAsk: bestAsk ? { price: bestAsk.price, size: bestAsk.size } : null,
+            },
+            lastTrades,
+            consistentWithProposal: true,
+          });
+
+          await setFirstOkLogged(market.questionID);
+        }
+      } catch (e) {
+        // Don't fail the monitor if storage/logging fails
+        logger.debug({
+          at: "PolymarketMonitor",
+          message: "first-ok summary logging failed or skipped",
+          marketId: market.questionID,
+          error: e,
+        });
+      }
     }
 
     return alerted;
