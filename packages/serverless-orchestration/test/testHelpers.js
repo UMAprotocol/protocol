@@ -7,10 +7,10 @@ function getContract() {
       // For testing, we'll create a mock contract instance with a hardcoded address
       const mockAddress = "0x181624443B104B040F99D013D62b7A92Ee3C15f0";
       return { options: { address: mockAddress } };
-    }
+    },
   };
 }
 
 module.exports = {
-  getContract
+  getContract,
 };

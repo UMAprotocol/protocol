@@ -20,7 +20,7 @@ const OptimisticOracleV2 = getContract("OptimisticOracleV2");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
+const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/logger");
 
 // Use Ganache to create additional web3 providers with different chain ID's
 const ganache = require("ganache-core");
