@@ -22,7 +22,6 @@ const ganache = require("ganache-core");
 
 describe("ServerlessHub.js", function () {
   const defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
-  let environmentVariables = { CUSTOM_NODE_URL: "", POLLING_DELAY: 0 };
 
   let hubSpy;
   let hubSpyLogger;
@@ -105,7 +104,6 @@ describe("ServerlessHub.js", function () {
     // Start the serverless spoke instance with the spy logger injected.
     spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
 
-    environmentVariables = { CUSTOM_NODE_URL: network.config.url, POLLING_DELAY: 0 };
   });
 
   afterEach(async function () {
@@ -151,7 +149,9 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "true",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -180,7 +180,9 @@ describe("ServerlessHub.js", function () {
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
     const defaultConfig = {
       serverlessCommand: "true",
-      environmentVariables,
+      environmentVariables: {
+        CUSTOM_NODE_URL: network.config.url,
+      },
     };
     const hubConfig = {
       // no named spoke
@@ -209,7 +211,9 @@ describe("ServerlessHub.js", function () {
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
     const defaultConfig = {
       serverlessCommand: "true",
-      environmentVariables,
+      environmentVariables: {
+        CUSTOM_NODE_URL: network.config.url,
+      },
     };
     const hubConfig = { testInvalidInstance: { ...defaultConfig, spokeUrlName: "invalid" } };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -229,7 +233,9 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "true",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -268,7 +274,9 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "true",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -316,15 +324,21 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "sleep 5",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
       testServerlessMonitor2: {
         serverlessCommand: "sleep 5",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
       testServerlessMonitor3: {
         serverlessCommand: "sleep 5",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -358,17 +372,23 @@ describe("ServerlessHub.js", function () {
       testServerlessMonitor: {
         // Creates no error.
         serverlessCommand: "true",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
         serverlessCommand: "false",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
         serverlessCommand: "sleep 1; false",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
@@ -421,7 +441,7 @@ describe("ServerlessHub.js", function () {
         serverlessCommand:
           'test -n "${SOME_TEST_ENV}" && test -n "${TOKEN_PRICE_FEED_CONFIG}" && test -z "${MONITOR_CONFIG_2}"',
         environmentVariables: {
-          ...environmentVariables,
+          CUSTOM_NODE_URL: network.config.url,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
@@ -430,7 +450,7 @@ describe("ServerlessHub.js", function () {
         serverlessCommand:
           'test -n "${SOME_TEST_ENV}" && test -z "${TOKEN_PRICE_FEED_CONFIG}" && test -n "${MONITOR_CONFIG_2}"',
         environmentVariables: {
-          ...environmentVariables,
+          CUSTOM_NODE_URL: network.config.url,
           MONITOR_CONFIG_2: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
         },
       },
@@ -487,7 +507,9 @@ describe("ServerlessHub.js", function () {
       testServerlessMonitor: {
         // eslint-disable-next-line no-useless-escape
         serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${network.config.url}\" ]`,
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
       testServerlessMonitor2: {
         // eslint-disable-next-line no-useless-escape
@@ -533,7 +555,9 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessBot: {
         serverlessCommand: "echo single network bot started",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
       testServerlessBot2: {
         serverlessCommand: "echo multiple network bot started",
@@ -576,7 +600,9 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessBot: {
         serverlessCommand: "echo single network bot started",
-        environmentVariables,
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+        },
       },
       testServerlessBot2: {
         serverlessCommand: "echo multiple network bot started",
