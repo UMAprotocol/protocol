@@ -11,21 +11,6 @@ import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, SkinnyOptimisticOracleEthers } from "./common";
 import { requestKey } from "./requestKey";
 
-// SkinnyOO events use uint32 for timestamp; convert to BigNumber for requestKey()
-type SkinnyOORequest = {
-  proposer: string;
-  disputer: string;
-  currency: string;
-  settled: boolean;
-  proposedPrice: ethers.BigNumber;
-  resolvedPrice: ethers.BigNumber;
-  expirationTime: ethers.BigNumber;
-  reward: ethers.BigNumber;
-  finalFee: ethers.BigNumber;
-  bond: ethers.BigNumber;
-  customLiveness: ethers.BigNumber;
-};
-
 const toRequestKeyArgs = (args: ProposePriceEvent["args"] | DisputePriceEvent["args"] | SettleEvent["args"]) => ({
   requester: args.requester,
   identifier: args.identifier,
@@ -81,10 +66,7 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
       return;
     }
     // Keep the latest by blockNumber/logIndex
-    if (
-      e.blockNumber > current.blockNumber ||
-      (e.blockNumber === current.blockNumber && (e.logIndex ?? 0) > (current.logIndex ?? 0))
-    )
+    if (e.blockNumber > current.blockNumber || (e.blockNumber === current.blockNumber && e.logIndex > current.logIndex))
       byKey.set(key, e);
   };
 
@@ -100,7 +82,7 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
     try {
       // ProposePrice event carries the request struct at args[4]
       if (!(req && req.args && req.args.length > 4)) return null;
-      const request = req.args[4] as SkinnyOORequest;
+      const request = req.args.request;
 
       await skinnyOOWithAddress.callStatic.settle(
         req.args.requester,
@@ -165,7 +147,6 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
   const skinnyOOWithSigner = skinnyOOWithAddress.connect(params.signer);
 
   for (const settleableRequest of settleableRequests) {
-    if (!settleableRequest) continue;
     const { event: req, request } = settleableRequest;
 
     try {
