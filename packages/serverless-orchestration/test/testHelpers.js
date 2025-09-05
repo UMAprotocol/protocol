@@ -1,7 +1,7 @@
 // Shared test helpers for serverless-orchestration tests
 
 // Simple getContract implementation for testing
-function getContract(contractName) {
+function getContract() {
   return {
     deployed: async () => {
       // For testing, we'll create a mock contract instance with a hardcoded address
