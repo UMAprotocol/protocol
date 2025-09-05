@@ -20,6 +20,7 @@
  * This script assumes the caller is providing a HTTP POST with a body formatted as:
  * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
  */
+const assert = require("assert");
 const viem = require("viem");
 const retry = require("async-retry");
 const express = require("express");
@@ -529,10 +530,10 @@ function _getWeb3AndUrlForBot(botConfig) {
     urls.push({ url, retries: 3 });
   }
 
-//  assert(
-//    urls.length > 0 && urls.every((url) => url !== undefined),
-//    "Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)"
-//  );
+  assert(
+    urls.length > 0 && urls.every((url) => url !== undefined),
+    "Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)"
+  );
 
   const provider = viem.createPublicClient({
     transport: viem.fallback(
