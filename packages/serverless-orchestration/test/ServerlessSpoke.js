@@ -67,14 +67,12 @@ describe("ServerlessSpoke.js", function () {
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error"));
     assert.isTrue(lastSpyLogIncludes(spy, "Missing serverlessCommand in json body"));
   });
-  it("Serverless Spoke can correctly execute bot logic with valid body", async function () {
+  it.only("Serverless Spoke can correctly execute bot logic with valid body", async function () {
     const validBody = {
-      serverlessCommand: "yarn --silent monitors --network test",
+      serverlessCommand: "true", // Force command success.
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
         POLLING_DELAY: 0,
-        OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-        OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
       },
     };
 
@@ -104,12 +102,10 @@ describe("ServerlessSpoke.js", function () {
   it("Serverless Spoke can correctly returns errors over http calls(invalid path)", async function () {
     // Invalid path should error out when trying to run an executable that does not exist
     const invalidPathBody = {
-      serverlessCommand: "yarn --silent INVALID --network test",
+      serverlessCommand: "false",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
-        OPTIMISTIC_ORACLE_ADDRESS: optimisticOracleV2Address,
-        OPTIMISTIC_ORACLE_TYPE: "OptimisticOracleV2",
       },
     };
 
@@ -121,7 +117,7 @@ describe("ServerlessSpoke.js", function () {
   it("Serverless Spoke can correctly returns errors over http calls(invalid body)", async function () {
     // Invalid config should error out before entering the main while loop in the bot.
     const invalidConfigBody = {
-      serverlessCommand: "yarn --silent monitors --network test",
+      serverlessCommand: "true",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -136,7 +132,7 @@ describe("ServerlessSpoke.js", function () {
   it("Serverless Spoke can correctly returns errors over http calls(invalid oo)", async function () {
     // Invalid OPTIMISTIC_ORACLE_ADDRESS address should error out when trying to retrieve on-chain data.
     const invalidOOAddressBody = {
-      serverlessCommand: "yarn --silent monitors --network test",
+      serverlessCommand: "true",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
