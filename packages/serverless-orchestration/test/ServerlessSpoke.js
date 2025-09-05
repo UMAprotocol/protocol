@@ -1,6 +1,7 @@
 const hre = require("hardhat");
 const { assert } = require("chai");
-const { web3, getContract } = hre;
+const { web3 } = hre;
+const { getContract } = require("./testHelpers");
 
 // Enables testing http requests to an express spoke.
 const request = require("supertest");
@@ -15,7 +16,6 @@ const OptimisticOracleV2 = getContract("OptimisticOracleV2");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes } = require("@uma/financial-templates-lib");
-const { runDefaultFixture } = require("@uma/common");
 
 describe("ServerlessSpoke.js", function () {
   let optimisticOracleV2Address;
@@ -28,10 +28,6 @@ describe("ServerlessSpoke.js", function () {
   const sendRequest = (body) => {
     return request(`http://localhost:${testPort}`).post("/").send(body).set("Accept", "application/json");
   };
-
-  before(async function () {
-    await runDefaultFixture(hre);
-  });
 
   beforeEach(async function () {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.

@@ -1,5 +1,6 @@
 const hre = require("hardhat");
-const { getContract, web3, network } = hre;
+const { web3, network } = hre;
+const { getContract } = require("./testHelpers");
 const { assert } = require("chai");
 const Web3 = require("web3");
 
@@ -20,7 +21,6 @@ const OptimisticOracleV2 = getContract("OptimisticOracleV2");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
-const { runDefaultFixture } = require("@uma/common");
 
 // Use Ganache to create additional web3 providers with different chain ID's
 const ganache = require("ganache-core");
@@ -78,7 +78,6 @@ describe("ServerlessHub.js", function () {
 
   before(async function () {
     defaultChainId = await web3.eth.getChainId();
-    await runDefaultFixture(hre);
   });
 
   beforeEach(async function () {

@@ -1,17 +1,14 @@
-const { getHardhatConfig } = require("@uma/common");
+require("@nomiclabs/hardhat-web3");
+require("hardhat-deploy");
 
-const path = require("path");
-const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
-const packageWkdir = path.dirname(require.resolve("@uma/financial-templates-lib/package.json"));
-
-const configOverride = {
-  paths: {
-    root: coreWkdir,
-    sources: `${coreWkdir}/contracts`,
-    artifacts: `${coreWkdir}/artifacts`,
-    cache: `${coreWkdir}/cache`,
-    tests: `${packageWkdir}/test`,
+module.exports = {
+  networks: {
+    localhost: {
+      url: "http://127.0.0.1:9545",
+      timeout: 1800000,
+    },
   },
+  namedAccounts: {
+    deployer: 0,
+  }
 };
-
-module.exports = getHardhatConfig(configOverride, coreWkdir);
