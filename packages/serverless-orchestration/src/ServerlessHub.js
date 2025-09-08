@@ -527,7 +527,7 @@ function _getWeb3AndUrlForBot(botConfig) {
   const retryConfig = botConfig?.environmentVariables?.NODE_RETRY_CONFIG;
   if (!retryConfig) {
     const url = botConfig?.environmentVariables?.CUSTOM_NODE_URL || customNodeUrl;
-    urls.push({ url, retries: 3 });
+    urls.push({ url, retries: 2 }); // 2 retries if there's only a single provider.
   }
 
   assert(
@@ -555,7 +555,7 @@ function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
 
   const retryConfig = lodash.castArray(urls).map((url) => ({ url }));
   const provider = viem.createPublicClient({
-    transport: viem.fallback(retryConfig.map(({ url }) => viem.http(url, { retryCount: 1 }))),
+    transport: viem.fallback(retryConfig.map(({ url }) => viem.http(url, { retryCount: DEFAULT_RETRIES }))),
   });
 
   return _getLatestBlockNumber(provider);
