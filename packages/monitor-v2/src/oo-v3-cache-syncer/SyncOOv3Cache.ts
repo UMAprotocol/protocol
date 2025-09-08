@@ -51,7 +51,7 @@ async function syncOracle(logger: typeof Logger, params: MonitoringParams, oo: O
       });
     }
   } else {
-    logger.info({
+    logger.debug({
       at: "SyncOOv3Cache",
       message: "Oracle is already in sync",
     });
@@ -120,7 +120,7 @@ async function syncCollaterals(
       collaterals: outOfSyncCollaterals,
     });
   } else {
-    logger.info({
+    logger.debug({
       at: "SyncOOv3Cache",
       message: "No out of sync collaterals found",
     });
@@ -211,7 +211,7 @@ async function syncIdentifiers(
       identifiers: outOfSyncIdentifiers.map((identifier) => ethers.utils.parseBytes32String(identifier)),
     });
   } else {
-    logger.info({
+    logger.debug({
       at: "SyncOOv3Cache",
       message: "No out of sync identifiers found",
     });
