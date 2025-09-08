@@ -26,13 +26,13 @@ import {
   setFirstOkLogged,
   shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
-  type Logger,
-  type Market,
-  type MarketOrderbook,
-  type MonitoringParams,
-  type MultipleValuesQuery,
-  type OptimisticPriceRequest,
-  type PolymarketMarketGraphqlProcessed,
+  Logger,
+  Market,
+  MarketOrderbook,
+  MonitoringParams,
+  MultipleValuesQuery,
+  OptimisticPriceRequest,
+  PolymarketMarketGraphqlProcessed,
 } from "./common";
 
 // Retrieve threshold values from environment variables.
@@ -140,9 +140,7 @@ export async function processProposal(
       alerted = true;
     }
 
-    const hasDiscrepancy = Boolean(
-      sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length
-    );
+    const hasDiscrepancy = Boolean(sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length);
 
     if (hasDiscrepancy) {
       await logMarketSentimentDiscrepancy(

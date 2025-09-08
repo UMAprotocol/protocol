@@ -327,12 +327,18 @@ describe("PolymarketNotifier", function () {
       await monitorTransactionsProposedOrderBook(logger, params);
 
       // No confirmation summary should be logged
-      const confirmation = spy.getCalls().map((c) => c.lastArg).find((a) => a?.event === "Proposal Alignment Confirmed");
+      const confirmation = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .find((a) => a?.event === "Proposal Alignment Confirmed");
       assert.isUndefined(confirmation);
 
       // Should have an error level log for discrepancy
       assert.isAbove(spy.callCount, 0);
-      const firstError = spy.getCalls().map((c) => c.lastArg).find((a) => a?.message?.includes("Difference between"));
+      const firstError = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .find((a) => a?.message?.includes("Difference between"));
       assert.exists(firstError);
 
       assert.isTrue(hasFirstOkStub.notCalled);

@@ -908,7 +908,6 @@ export function queryFilterSafe(contract: Contract) {
   };
 }
 
-
 export function buildFirstOkSummary(
   booksIn: [MarketOrderbook | undefined, MarketOrderbook | undefined],
   fillsIn: [PolymarketTradeInformation[] | undefined, PolymarketTradeInformation[] | undefined]
@@ -917,10 +916,7 @@ export function buildFirstOkSummary(
     booksIn[0] ?? { bids: [], asks: [] },
     booksIn[1] ?? { bids: [], asks: [] },
   ];
-  const fills: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
-    fillsIn[0] ?? [],
-    fillsIn[1] ?? [],
-  ];
+  const fills: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [fillsIn[0] ?? [], fillsIn[1] ?? []];
 
   const tradesCount = (fills[0].length || 0) + (fills[1].length || 0);
   const orderbookOrdersCount =
