@@ -12,7 +12,7 @@ const CUSTOM_NODE_URL = network.config.url;
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, lastSpyLogIncludes } = require("@uma/financial-templates-lib");
+const { SpyTransport, lastSpyLogIncludes } = require("@uma/logger");
 
 describe("ServerlessSpoke.js", function () {
   let spy;
