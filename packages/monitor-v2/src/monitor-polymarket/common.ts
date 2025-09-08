@@ -51,11 +51,9 @@ interface GraphQLResponse<T> {
 }
 
 export interface MonitoringParams {
-  binaryAdapterAddress: string;
-  ctfAdapterAddress: string;
-  ctfAdapterAddressV2: string;
   ctfExchangeAddress: string;
   ctfSportsOracleAddress: string;
+  additionalRequesters: string[];
   maxBlockLookBack: number;
   graphqlEndpoint: string;
   polymarketApiKey: string;
@@ -733,9 +731,6 @@ export const initMonitoringParams = async (
   env: NodeJS.ProcessEnv,
   logger: typeof Logger
 ): Promise<MonitoringParams> => {
-  const binaryAdapterAddress = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
-  const ctfAdapterAddress = "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74";
-  const ctfAdapterAddressV2 = "0x2f5e3684cb1f318ec51b00edba38d79ac2c0aa9d";
   const ctfExchangeAddress = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E";
   const ctfSportsOracleAddress = "0xb21182d0494521Cf45DbbeEbb5A3ACAAb6d22093";
 
@@ -796,12 +791,12 @@ export const initMonitoringParams = async (
   const ooV2Addresses = parseEnvList(env, "OOV2_ADDRESSES", [await getAddress("OptimisticOracleV2", chainId)]);
   const ooV1Addresses = parseEnvList(env, "OOV1_ADDRESSES", [await getAddress("OptimisticOracle", chainId)]);
 
+  const additionalRequesters = parseEnvList(env, "POLYMARKET_ADDITIONAL_REQUESTERS", []);
+
   return {
-    binaryAdapterAddress,
-    ctfAdapterAddress,
-    ctfAdapterAddressV2,
     ctfExchangeAddress,
     ctfSportsOracleAddress,
+    additionalRequesters,
     maxBlockLookBack,
     graphqlEndpoint,
     polymarketApiKey,

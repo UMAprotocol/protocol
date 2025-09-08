@@ -175,12 +175,7 @@ export async function monitorTransactionsProposedOrderBook(
   params: MonitoringParams
 ): Promise<void> {
   const notifiedKeys = new Set(Object.keys(await getNotifiedProposals()));
-  const requesters = [
-    params.ctfAdapterAddress,
-    params.ctfAdapterAddressV2,
-    params.binaryAdapterAddress,
-    params.ctfSportsOracleAddress,
-  ];
+  const requesters = [params.ctfSportsOracleAddress, ...(params.additionalRequesters ?? [])];
 
   const ooV2Promises = params.ooV2Addresses.map((ooV2Address) =>
     getPolymarketProposedPriceRequestsOO(params, "v2", requesters, ooV2Address)
