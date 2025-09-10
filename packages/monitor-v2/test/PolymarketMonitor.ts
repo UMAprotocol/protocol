@@ -392,7 +392,7 @@ describe("PolymarketNotifier", function () {
     });
 
     it("Key isolation → uses polymarket:first-ok-logged:${marketId}", async function () {
-      const key = commonModule.getFirstOkLoggedKey(marketInfo[0].questionID);
+      const key = commonModule.getFirstCheckLoggedKey(marketInfo[0].questionID);
       assert.equal(key, `polymarket:first-ok-logged:${marketInfo[0].questionID}`);
     });
   });
