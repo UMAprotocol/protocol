@@ -274,8 +274,8 @@ describe("PolymarketNotifier", function () {
         .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
         .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
 
-      const hasFirstOkStub = sandbox.stub(commonModule, "hasFirstCheckLogged").resolves(false);
-      const setFirstOkStub = sandbox.stub(commonModule, "setFirstCheckLogged").resolves();
+      const hasFirstOkStub = sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
+      const setFirstOkStub = sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
 
       await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
       await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -315,8 +315,8 @@ describe("PolymarketNotifier", function () {
       (commonModule.getPolymarketOrderBooks as any).restore?.();
       sandbox.stub(commonModule, "getPolymarketOrderBooks").resolves(asBooksRecord(books));
 
-      const hasFirstOkStub = sandbox.stub(commonModule, "hasFirstCheckLogged").resolves(false);
-      const setFirstOkStub = sandbox.stub(commonModule, "setFirstCheckLogged");
+      const hasFirstOkStub = sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
+      const setFirstOkStub = sandbox.stub(commonModule, "markInitialConfirmationLogged");
 
       await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
       await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -351,8 +351,8 @@ describe("PolymarketNotifier", function () {
         .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
         .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
 
-      sandbox.stub(commonModule, "hasFirstCheckLogged").resolves(true);
-      const setFirstOkStub = sandbox.stub(commonModule, "setFirstCheckLogged");
+      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(true);
+      const setFirstOkStub = sandbox.stub(commonModule, "markInitialConfirmationLogged");
 
       await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
       await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -372,8 +372,8 @@ describe("PolymarketNotifier", function () {
       sandbox
         .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
         .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
-      sandbox.stub(commonModule, "hasFirstCheckLogged").resolves(false);
-      sandbox.stub(commonModule, "setFirstCheckLogged").resolves();
+      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
+      sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
 
       const spy = sinon.spy();
       const logger = createNewLogger([new SpyTransport({}, { spy })]);
@@ -391,9 +391,9 @@ describe("PolymarketNotifier", function () {
       assert.deepEqual(okLog.lastTrades, []);
     });
 
-    it("Key isolation → uses polymarket:first-ok-logged:${marketId}", async function () {
-      const key = commonModule.getFirstCheckLoggedKey(marketInfo[0].questionID);
-      assert.equal(key, `polymarket:first-ok-logged:${marketInfo[0].questionID}`);
+    it("Key isolation → uses polymarket:initial-confirmation-logged:${marketId}", async function () {
+      const key = commonModule.getInitialConfirmationLoggedKey(marketInfo[0].questionID);
+      assert.equal(key, `polymarket:initial-confirmation-logged:${marketInfo[0].questionID}`);
     });
   });
 

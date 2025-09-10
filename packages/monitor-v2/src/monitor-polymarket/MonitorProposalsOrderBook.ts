@@ -31,7 +31,7 @@ import {
   MultipleValuesQuery,
   OptimisticPriceRequest,
   PolymarketMarketGraphqlProcessed,
-  hasFirstCheckLogged,
+  isInitialConfirmationLogged,
 } from "./common";
 import * as common from "./common";
 
@@ -162,7 +162,7 @@ export async function processProposal(
     }
 
     if (!hasDiscrepancy && !alerted) {
-      const alreadyLogged = await hasFirstCheckLogged(market.questionID);
+      const alreadyLogged = await isInitialConfirmationLogged(market.questionID);
 
       if (!alreadyLogged) {
         const { tradesCount, orderbookOrdersCount, orderbookTop, lastTrades } = buildFirstOkSummary(books, fills);
@@ -181,7 +181,7 @@ export async function processProposal(
           consistentWithProposal: true,
         });
 
-        await common.setFirstCheckLogged(market.questionID);
+        await common.markInitialConfirmationLogged(market.questionID);
       }
     }
 
