@@ -1,4 +1,4 @@
-import { delay, waitForLogger } from "@uma/financial-templates-lib";
+import { delay, waitForLogger, GasEstimator } from "@uma/financial-templates-lib";
 import { initMonitoringParams, Logger, startupLogLevel } from "./common";
 import { syncOOv3Cache } from "./SyncOOv3Cache";
 
@@ -12,8 +12,12 @@ async function main() {
     message: "Optimistic Oracle V3 Cache Syncer started 🤖",
   });
 
+  const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
+
   for (;;) {
-    await syncOOv3Cache(logger, params);
+    await gasEstimator.update();
+
+    await syncOOv3Cache(logger, params, gasEstimator);
 
     // If polling delay is 0 then we are running in serverless mode and should exit after one iteration.
     if (params.pollingDelay === 0) {

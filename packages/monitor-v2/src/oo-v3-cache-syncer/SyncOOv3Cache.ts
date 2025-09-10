@@ -8,11 +8,17 @@ import {
 } from "@uma/contracts-node";
 import { AddedToWhitelistEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/AddressWhitelist";
 import { SupportedIdentifierAddedEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/IdentifierWhitelist";
+import type { GasEstimator } from "@uma/financial-templates-lib";
 import { ethers } from "ethers";
 import { getContractInstanceWithProvider } from "../utils/contracts";
 import { Logger, MonitoringParams } from "./common";
 
-async function syncOracle(logger: typeof Logger, params: MonitoringParams, oo: OptimisticOracleV3Ethers) {
+async function syncOracle(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  oo: OptimisticOracleV3Ethers,
+  gasEstimator: GasEstimator
+) {
   const finder = await getContractInstanceWithProvider<FinderEthers>("Finder", params.provider);
 
   const currentOracle = await finder.getImplementationAddress(ethers.utils.formatBytes32String("Oracle"));
@@ -34,6 +40,7 @@ async function syncOracle(logger: typeof Logger, params: MonitoringParams, oo: O
       const tx = await oo
         .connect(params.signer)
         .syncUmaParams(ethers.constants.HashZero, ethers.constants.AddressZero, {
+          ...gasEstimator.getCurrentFastPriceEthers(),
           gasLimit: gasLimitOverride,
         });
       await tx.wait();
@@ -65,7 +72,8 @@ async function syncCollaterals(
   logger: typeof Logger,
   params: MonitoringParams,
   oo: OptimisticOracleV3Ethers,
-  searchConfig: EventSearchConfig
+  searchConfig: EventSearchConfig,
+  gasEstimator: GasEstimator
 ) {
   type CachedCurrency = Awaited<ReturnType<OptimisticOracleV3Ethers["functions"]["cachedCurrencies"]>>;
   type FinalFee = Awaited<ReturnType<StoreEthers["functions"]["computeFinalFee"]>>;
@@ -139,7 +147,9 @@ async function syncCollaterals(
   try {
     const estimatedGas = await oo.estimateGas.multicall(syncCalls);
     const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-    const tx = await oo.connect(params.signer).multicall(syncCalls, { gasLimit: gasLimitOverride });
+    const tx = await oo
+      .connect(params.signer)
+      .multicall(syncCalls, { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride });
     await tx.wait();
     logger.info({
       at: "SyncOOv3Cache",
@@ -162,7 +172,8 @@ async function syncIdentifiers(
   logger: typeof Logger,
   params: MonitoringParams,
   oo: OptimisticOracleV3Ethers,
-  searchConfig: EventSearchConfig
+  searchConfig: EventSearchConfig,
+  gasEstimator: GasEstimator
 ) {
   type CachedIdentifier = Awaited<ReturnType<OptimisticOracleV3Ethers["functions"]["cachedIdentifiers"]>>;
   type IsIdentifierSupported = Awaited<ReturnType<IdentifierWhitelistEthers["functions"]["isIdentifierSupported"]>>;
@@ -232,7 +243,9 @@ async function syncIdentifiers(
   try {
     const estimatedGas = await oo.estimateGas.multicall(syncCalls);
     const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-    const tx = await oo.connect(params.signer).multicall(syncCalls, { gasLimit: gasLimitOverride });
+    const tx = await oo
+      .connect(params.signer)
+      .multicall(syncCalls, { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride });
     await tx.wait();
     logger.info({
       at: "SyncOOv3Cache",
@@ -251,7 +264,11 @@ async function syncIdentifiers(
   }
 }
 
-export async function syncOOv3Cache(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function syncOOv3Cache(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  gasEstimator: GasEstimator
+): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
 
   const currentBlock = await params.provider.getBlock("latest");
@@ -261,7 +278,7 @@ export async function syncOOv3Cache(logger: typeof Logger, params: MonitoringPar
     maxBlockLookBack: params.maxBlockLookBack,
   };
 
-  await syncOracle(logger, params, oo);
-  await syncCollaterals(logger, params, oo, searchConfig);
-  await syncIdentifiers(logger, params, oo, searchConfig);
+  await syncOracle(logger, params, oo, gasEstimator);
+  await syncCollaterals(logger, params, oo, searchConfig, gasEstimator);
+  await syncIdentifiers(logger, params, oo, searchConfig, gasEstimator);
 }

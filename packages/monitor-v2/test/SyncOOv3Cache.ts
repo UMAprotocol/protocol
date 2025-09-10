@@ -9,7 +9,7 @@ import {
   OptimisticOracleV3Ethers,
   StoreEthers,
 } from "@uma/contracts-node";
-import { spyLogLevel } from "@uma/financial-templates-lib";
+import { spyLogLevel, GasEstimator } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import { syncOOv3Cache } from "../src/oo-v3-cache-syncer/SyncOOv3Cache";
 import { defaultOptimisticOracleV3Identifier } from "./constants";
@@ -50,7 +50,7 @@ describe("SyncOOv3Cache", function () {
 
   it("Does not sync if cache is up to date", async function () {
     const { spy, logger } = makeSpyLogger();
-    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address));
+    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address), new GasEstimator(logger));
 
     const syncedOracleIndex = spy
       .getCalls()
@@ -81,7 +81,7 @@ describe("SyncOOv3Cache", function () {
 
     // Call syncOOv3Cache directly.
     const { spy, logger } = makeSpyLogger();
-    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address));
+    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address), new GasEstimator(logger));
 
     const cachedOracle = await optimisticOracleV3.cachedOracle();
     assert.equal(cachedOracle, newMockOracle.address, "Cached oracle should be the new mock oracle address");
@@ -105,7 +105,7 @@ describe("SyncOOv3Cache", function () {
     await collateralWhitelist.addToWhitelist(newBondToken.address);
 
     const { spy, logger } = makeSpyLogger();
-    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address));
+    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address), new GasEstimator(logger));
 
     const cachedCollateral = await optimisticOracleV3.cachedCurrencies(newBondToken.address);
     assert.isTrue(cachedCollateral.isWhitelisted, "The new bond token should be added to the cache");
@@ -131,7 +131,7 @@ describe("SyncOOv3Cache", function () {
     await collateralWhitelist.removeFromWhitelist(bondToken.address);
 
     const { spy, logger } = makeSpyLogger();
-    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address));
+    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address), new GasEstimator(logger));
 
     const cachedCollateral = await optimisticOracleV3.cachedCurrencies(bondToken.address);
     assert.isFalse(cachedCollateral.isWhitelisted, "The bond token should be removed from the cache");
@@ -158,7 +158,7 @@ describe("SyncOOv3Cache", function () {
     await store.setFinalFee(bondToken.address, { rawValue: newFinalFee });
 
     const { spy, logger } = makeSpyLogger();
-    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address));
+    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address), new GasEstimator(logger));
 
     const cachedCollateral = await optimisticOracleV3.cachedCurrencies(bondToken.address);
     assert.isTrue(cachedCollateral.finalFee.eq(newFinalFee), "The final fee should be updated in the cache");
@@ -185,7 +185,7 @@ describe("SyncOOv3Cache", function () {
     await identifierWhitelist.addSupportedIdentifier(formatBytes32String(newIdentifier));
 
     const { spy, logger } = makeSpyLogger();
-    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address));
+    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address), new GasEstimator(logger));
     const cachedIdentifier = await optimisticOracleV3.cachedIdentifiers(formatBytes32String(newIdentifier));
     assert.isTrue(cachedIdentifier, "The new identifier should be added to the cache");
 
@@ -210,7 +210,7 @@ describe("SyncOOv3Cache", function () {
     await identifierWhitelist.removeSupportedIdentifier(defaultOptimisticOracleV3Identifier);
 
     const { spy, logger } = makeSpyLogger();
-    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address));
+    await syncOOv3Cache(logger, await makeMonitoringParamsOOv3Cache(multicall3.address), new GasEstimator(logger));
 
     const cachedIdentifier = await optimisticOracleV3.cachedIdentifiers(defaultOptimisticOracleV3Identifier);
     assert.isFalse(cachedIdentifier, "The identifier should be removed from the cache");
