@@ -25,6 +25,9 @@ async function syncOracle(logger: typeof Logger, params: MonitoringParams, oo: O
       currentOracle,
       cachedOracle,
     });
+
+    if (params.sumbitSyncTx === false) return; // If we are not submitting the sync transaction, we can exit early.
+
     try {
       const estimatedGas = await oo.estimateGas.syncUmaParams(ethers.constants.HashZero, ethers.constants.AddressZero);
       const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
@@ -127,6 +130,8 @@ async function syncCollaterals(
     return; // There are no out of sync collaterals, we can exit early.
   }
 
+  if (params.sumbitSyncTx === false) return; // If we are not submitting the sync transaction, we can exit early.
+
   // Prepare and execute the multicall to sync the out of sync collaterals.
   const syncCalls = outOfSyncCollaterals.map((currency) =>
     oo.interface.encodeFunctionData("syncUmaParams", [ethers.constants.HashZero, currency])
@@ -217,6 +222,8 @@ async function syncIdentifiers(
     });
     return; // There are no out of sync identifiers, we can exit early.
   }
+
+  if (params.sumbitSyncTx === false) return; // If we are not submitting the sync transaction, we can exit early.
 
   // Prepare and execute the multicall to sync the out of sync identifiers.
   const syncCalls = outOfSyncIdentifiers.map((identifier) =>
