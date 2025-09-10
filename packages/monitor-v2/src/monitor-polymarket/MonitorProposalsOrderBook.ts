@@ -162,18 +162,7 @@ export async function processProposal(
     }
 
     if (!hasDiscrepancy && !alerted) {
-      // Try to read the flag; if it fails, act as if it's not logged yet.
-      let alreadyLogged = false;
-      try {
-        alreadyLogged = await hasFirstCheckLogged(market.questionID);
-      } catch (e) {
-        logger.debug({
-          at: "PolymarketMonitor",
-          message: "hasFirstCheckLogged failed; proceeding to log summary",
-          marketId: market.questionID,
-          error: e,
-        });
-      }
+      const alreadyLogged = await hasFirstCheckLogged(market.questionID);
 
       if (!alreadyLogged) {
         const { tradesCount, orderbookOrdersCount, orderbookTop, lastTrades } = buildFirstOkSummary(books, fills);
@@ -192,17 +181,7 @@ export async function processProposal(
           consistentWithProposal: true,
         });
 
-        // Try to set the flag, but don't let failures break the flow
-        try {
-          await common.setFirstCheckLogged(market.questionID);
-        } catch (e) {
-          logger.debug({
-            at: "PolymarketMonitor",
-            message: "setFirstCheckLogged failed after summary log",
-            marketId: market.questionID,
-            error: e,
-          });
-        }
+        await common.setFirstCheckLogged(market.questionID);
       }
     }
 
