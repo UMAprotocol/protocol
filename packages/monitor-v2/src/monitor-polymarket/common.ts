@@ -691,14 +691,14 @@ export const getInitialConfirmationLoggedKey = (marketId: string): string =>
 
 export const isInitialConfirmationLogged = async (marketId: string): Promise<boolean> => {
   const keyName = getInitialConfirmationLoggedKey(marketId);
-  const key = datastore.key(["MonitorFlags", keyName]);
+  const key = datastore.key(["NotifiedProposals", keyName]);
   const [entity] = await datastore.get(key);
   return Boolean(entity);
 };
 
 export const markInitialConfirmationLogged = async (marketId: string): Promise<void> => {
   const keyName = getInitialConfirmationLoggedKey(marketId);
-  const key = datastore.key(["MonitorFlags", keyName]);
+  const key = datastore.key(["NotifiedProposals", keyName]);
   await datastore.save({
     key,
     data: {
