@@ -688,14 +688,14 @@ export const getProposalKeyToStore = (market: StoredNotifiedProposal | Optimisti
 
 export const getFirstOkLoggedKey = (marketId: string): string => `polymarket:first-ok-logged:${marketId}`;
 
-export const hasFirstOkLogged = async (marketId: string): Promise<boolean> => {
+export const hasFirstCheckLogged = async (marketId: string): Promise<boolean> => {
   const keyName = getFirstOkLoggedKey(marketId);
   const key = datastore.key(["MonitorFlags", keyName]);
   const [entity] = await datastore.get(key);
   return Boolean(entity);
 };
 
-export const setFirstOkLogged = async (marketId: string): Promise<void> => {
+export const setFirstCheckLogged = async (marketId: string): Promise<void> => {
   const keyName = getFirstOkLoggedKey(marketId);
   const key = datastore.key(["MonitorFlags", keyName]);
   await datastore.save({

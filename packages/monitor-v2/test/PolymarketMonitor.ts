@@ -148,7 +148,7 @@ describe("PolymarketNotifier", function () {
     await (await collateralWhitelist.addToWhitelist(votingToken.address)).wait();
 
     const getNotifiedProposalsMock = sandbox.stub();
-    getNotifiedProposalsMock.returns({});
+    getNotifiedProposalsMock.resolves({});
     getNotifiedProposalsStub = sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
     const storeNotifiedProposalsMock = sandbox.stub();
@@ -168,13 +168,13 @@ describe("PolymarketNotifier", function () {
 
   function mockFunctionWithReturnValue(functionName: CommonModuleFunctions, mockValue: any) {
     const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns(mockValue);
+    mockDataFunction.resolves(mockValue);
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
 
   function mockFunctionThrowsError(functionName: CommonModuleFunctions, errorMessage = "Mock error") {
     const mockDataFunction = sandbox.stub();
-    mockDataFunction.throws(new Error(errorMessage));
+    mockDataFunction.rejects(new Error(errorMessage));
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
 
@@ -263,9 +263,8 @@ describe("PolymarketNotifier", function () {
     beforeEach(function () {
       // Default stubs common to these tests
       sandbox.stub(commonModule, "getPolymarketMarketInformation").resolves(marketInfo);
-      sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(() => asBooksRecord(emptyOrders));
+      sandbox.stub(commonModule, "getPolymarketOrderBooks").resolves(asBooksRecord(emptyOrders));
       sandbox.stub(commonModule, "getOrderFilledEvents").resolves([[], []]);
-      sandbox.stub(commonModule, "getNotifiedProposals").resolves({});
     });
 
     it("First check, no discrepancy → summary only; flag set.", async function () {
@@ -275,8 +274,8 @@ describe("PolymarketNotifier", function () {
         .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
         .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
 
-      const hasFirstOkStub = sandbox.stub(commonModule, "hasFirstOkLogged").resolves(false);
-      const setFirstOkStub = sandbox.stub(commonModule, "setFirstOkLogged").resolves();
+      const hasFirstOkStub = sandbox.stub(commonModule, "hasFirstCheckLogged").resolves(false);
+      const setFirstOkStub = sandbox.stub(commonModule, "setFirstCheckLogged").resolves();
 
       await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
       await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -314,10 +313,10 @@ describe("PolymarketNotifier", function () {
         { bids: [], asks: [] },
       ];
       (commonModule.getPolymarketOrderBooks as any).restore?.();
-      sandbox.stub(commonModule, "getPolymarketOrderBooks").callsFake(() => asBooksRecord(books));
+      sandbox.stub(commonModule, "getPolymarketOrderBooks").resolves(asBooksRecord(books));
 
-      const hasFirstOkStub = sandbox.stub(commonModule, "hasFirstOkLogged").resolves(false);
-      const setFirstOkStub = sandbox.stub(commonModule, "setFirstOkLogged");
+      const hasFirstOkStub = sandbox.stub(commonModule, "hasFirstCheckLogged").resolves(false);
+      const setFirstOkStub = sandbox.stub(commonModule, "setFirstCheckLogged");
 
       await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
       await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -352,8 +351,8 @@ describe("PolymarketNotifier", function () {
         .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
         .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
 
-      sandbox.stub(commonModule, "hasFirstOkLogged").resolves(true);
-      const setFirstOkStub = sandbox.stub(commonModule, "setFirstOkLogged");
+      sandbox.stub(commonModule, "hasFirstCheckLogged").resolves(true);
+      const setFirstOkStub = sandbox.stub(commonModule, "setFirstCheckLogged");
 
       await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
       await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -373,8 +372,8 @@ describe("PolymarketNotifier", function () {
       sandbox
         .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
         .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
-      sandbox.stub(commonModule, "hasFirstOkLogged").resolves(false);
-      sandbox.stub(commonModule, "setFirstOkLogged").resolves();
+      sandbox.stub(commonModule, "hasFirstCheckLogged").resolves(false);
+      sandbox.stub(commonModule, "setFirstCheckLogged").resolves();
 
       const spy = sinon.spy();
       const logger = createNewLogger([new SpyTransport({}, { spy })]);
@@ -660,7 +659,7 @@ describe("PolymarketNotifier", function () {
 
     getNotifiedProposalsStub.restore();
     const getNotifiedProposalsMock = sandbox.stub();
-    getNotifiedProposalsMock.returns({
+    getNotifiedProposalsMock.resolves({
       [getProposalKeyToStore({ proposalHash: tx.hash })]: { proposalHash: tx.hash },
     });
     sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);

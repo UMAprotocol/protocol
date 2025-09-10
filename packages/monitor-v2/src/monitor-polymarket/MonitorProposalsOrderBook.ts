@@ -19,11 +19,9 @@ import {
   getProposalKeyToStore,
   getSportsMarketData,
   getSportsPayouts,
-  hasFirstOkLogged,
   isUnresolvable,
   ONE_SCALED,
   POLYGON_BLOCKS_PER_HOUR,
-  setFirstOkLogged,
   shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
   Logger,
@@ -33,7 +31,9 @@ import {
   MultipleValuesQuery,
   OptimisticPriceRequest,
   PolymarketMarketGraphqlProcessed,
+  hasFirstCheckLogged,
 } from "./common";
+import * as common from "./common";
 
 // Retrieve threshold values from environment variables.
 function getThresholds() {
@@ -161,35 +161,48 @@ export async function processProposal(
       alerted = true;
     }
 
-    if (!hasDiscrepancy) {
+    if (!hasDiscrepancy && !alerted) {
+      // Try to read the flag; if it fails, act as if it's not logged yet.
+      let alreadyLogged = false;
       try {
-        const alreadyLogged = await hasFirstOkLogged(market.questionID);
-        if (!alreadyLogged) {
-          const { tradesCount, orderbookOrdersCount, orderbookTop, lastTrades } = buildFirstOkSummary(books, fills);
-
-          logger.info({
-            at: "PolymarketMonitor",
-            event: "Proposal Alignment Confirmed",
-            marketId: market.questionID,
-            question: market.question,
-            timestamp: new Date().toISOString(),
-            tradesCount,
-            orderbookOrdersCount,
-            orderbookTop,
-            lastTrades,
-            consistentWithProposal: true,
-          });
-
-          await setFirstOkLogged(market.questionID);
-        }
+        alreadyLogged = await hasFirstCheckLogged(market.questionID);
       } catch (e) {
-        // Don't fail the monitor if storage/logging fails
         logger.debug({
           at: "PolymarketMonitor",
-          message: "first-ok summary logging failed or skipped",
+          message: "hasFirstCheckLogged failed; proceeding to log summary",
           marketId: market.questionID,
           error: e,
         });
+      }
+
+      if (!alreadyLogged) {
+        const { tradesCount, orderbookOrdersCount, orderbookTop, lastTrades } = buildFirstOkSummary(books, fills);
+
+        logger.info({
+          at: "PolymarketMonitor",
+          message: "Proposal Alignment Confirmed",
+          event: "Proposal Alignment Confirmed",
+          marketId: market.questionID,
+          question: market.question,
+          timestamp: new Date().toISOString(),
+          tradesCount,
+          orderbookOrdersCount,
+          orderbookTop,
+          lastTrades,
+          consistentWithProposal: true,
+        });
+
+        // Try to set the flag, but don't let failures break the flow
+        try {
+          await common.setFirstCheckLogged(market.questionID);
+        } catch (e) {
+          logger.debug({
+            at: "PolymarketMonitor",
+            message: "setFirstCheckLogged failed after summary log",
+            marketId: market.questionID,
+            error: e,
+          });
+        }
       }
     }
 
