@@ -2,7 +2,7 @@ import { Multicall } from "@uma/sdk";
 import { ethers } from "ethers";
 import { BaseMonitoringParams, initBaseMonitoringParams, startupLogLevel as baseStartup } from "../bot-utils/base";
 
-export { Logger } from "@uma/financial-templates-lib";
+export { Logger } from "@uma/logger";
 
 export interface MonitoringParams extends BaseMonitoringParams {
   multicall: Multicall;
