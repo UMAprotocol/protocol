@@ -288,13 +288,11 @@ describe("PolymarketNotifier", function () {
       const infoEvents = spy
         .getCalls()
         .map((c) => c.lastArg)
-        .filter((a) => a?.event === "Proposal Alignment Confirmed");
+        .filter((a) => a?.message === "Proposal Alignment Confirmed");
       assert.equal(infoEvents.length, 1);
-      assert.deepInclude(infoEvents[0], {
-        at: "PolymarketMonitor",
-        marketId: marketInfo[0].questionID,
-        consistentWithProposal: true,
-      });
+      assert.equal(infoEvents[0].at, "PolymarketMonitor");
+      assert.isString(infoEvents[0].mrkdwn);
+      assert.include(infoEvents[0].mrkdwn, "aligns with the proposed price");
 
       assert.isTrue(hasFirstOkStub.calledOnceWithExactly(marketInfo[0].questionID));
       assert.isTrue(setFirstOkStub.calledOnceWithExactly(marketInfo[0].questionID));
@@ -329,7 +327,7 @@ describe("PolymarketNotifier", function () {
       const confirmation = spy
         .getCalls()
         .map((c) => c.lastArg)
-        .find((a) => a?.event === "Proposal Alignment Confirmed");
+        .find((a) => a?.message === "Proposal Alignment Confirmed");
       assert.isUndefined(confirmation);
 
       // Should have an error level log for discrepancy
@@ -366,7 +364,7 @@ describe("PolymarketNotifier", function () {
       assert.isTrue(setFirstOkStub.notCalled);
     });
 
-    it("Missing/partial data → summary has null top and empty lastTrades.", async function () {
+    it("Missing/partial data → still logs simple alignment message.", async function () {
       const params = await createMonitoringParams();
       const prop = await makeProposal();
       sandbox
@@ -384,11 +382,10 @@ describe("PolymarketNotifier", function () {
       const okLog = spy
         .getCalls()
         .map((c) => c.lastArg)
-        .find((a) => a?.event === "Proposal Alignment Confirmed");
+        .find((a) => a?.message === "Proposal Alignment Confirmed");
       assert.exists(okLog);
-      assert.property(okLog, "orderbookTop");
-      assert.deepEqual(okLog.orderbookTop, { bestBid: null, bestAsk: null });
-      assert.deepEqual(okLog.lastTrades, []);
+      assert.isString(okLog.mrkdwn);
+      assert.include(okLog.mrkdwn, "aligns with the proposed price");
     });
 
     it("Key isolation → uses polymarket:initial-confirmation-logged:${marketId}", async function () {

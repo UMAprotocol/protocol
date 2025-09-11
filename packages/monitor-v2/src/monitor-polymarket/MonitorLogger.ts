@@ -104,6 +104,32 @@ export async function logMarketSentimentDiscrepancy(
   });
 }
 
+export async function logProposalAlignmentConfirmed(
+  logger: typeof Logger,
+  market: OptimisticPriceRequest &
+    PolymarketMarketGraphqlProcessed & {
+      scores?: [ethers.BigNumber, ethers.BigNumber];
+      multipleValuesQuery?: MultipleValuesQuery;
+      isSportsMarket: boolean;
+    },
+  params: MonitoringParams
+): Promise<void> {
+  const intro = buildMarketIntro(market);
+
+  logger.info({
+    at: "PolymarketMonitor",
+    message: "Proposal Alignment Confirmed",
+    mrkdwn:
+      intro +
+      " Market sentiment aligns with the proposed price. ✅" +
+      ` In the following transaction: ` +
+      createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
+      ` ` +
+      generateUILink(market.requestHash, params.chainId, Number(market.requestLogIndex)),
+    notificationPath: "polymarket-notifier",
+  });
+}
+
 export async function logProposalHighVolume(
   logger: typeof Logger,
   market: OptimisticPriceRequest &

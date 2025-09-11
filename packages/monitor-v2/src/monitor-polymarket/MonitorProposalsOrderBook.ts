@@ -4,9 +4,9 @@ import {
   logFailedMarketProposalVerification,
   logMarketSentimentDiscrepancy,
   logProposalHighVolume,
+  logProposalAlignmentConfirmed,
 } from "./MonitorLogger";
 import {
-  buildFirstOkSummary,
   calculatePolymarketQuestionID,
   decodeMultipleQueryPriceAtIndex,
   decodeMultipleValuesQuery,
@@ -165,21 +165,17 @@ export async function processProposal(
       const alreadyLogged = await isInitialConfirmationLogged(market.questionID);
 
       if (!alreadyLogged) {
-        const { tradesCount, orderbookOrdersCount, orderbookTop, lastTrades } = buildFirstOkSummary(books, fills);
-
-        logger.info({
-          at: "PolymarketMonitor",
-          message: "Proposal Alignment Confirmed",
-          event: "Proposal Alignment Confirmed",
-          marketId: market.questionID,
-          question: market.question,
-          timestamp: new Date().toISOString(),
-          tradesCount,
-          orderbookOrdersCount,
-          orderbookTop,
-          lastTrades,
-          consistentWithProposal: true,
-        });
+        await logProposalAlignmentConfirmed(
+          logger,
+          {
+            ...proposal,
+            ...market,
+            scores: outcome.scores,
+            multipleValuesQuery: outcome.mvq,
+            isSportsMarket: isSportsRequest,
+          },
+          params
+        );
 
         await common.markInitialConfirmationLogged(market.questionID);
       }
