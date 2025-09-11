@@ -143,7 +143,7 @@ describe("ServerlessHub.js", function () {
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await provider.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
     const hubConfig = {
       testServerlessMonitor: {
