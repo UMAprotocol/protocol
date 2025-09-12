@@ -25,8 +25,17 @@ describe("OptimisticOracleV1Bot", function () {
   let proposer: Signer;
   let disputer: Signer;
   let mockOracle: MockOracleAncillaryEthers;
+  let gasEstimator: GasEstimator;
 
   const ancillaryData = toUtf8Bytes("This is just a test question");
+
+  before(async function () {
+    // Create a single GasEstimator for this file using the global provider/chainId
+    const { logger } = makeSpyLogger();
+    const network = await ethers.provider.getNetwork();
+    gasEstimator = new GasEstimator(logger, undefined, network.chainId, ethers.provider);
+    await gasEstimator.update();
+  });
 
   beforeEach(async function () {
     [requester, proposer, disputer] = (await ethers.getSigners()) as Signer[];
@@ -76,7 +85,6 @@ describe("OptimisticOracleV1Bot", function () {
 
     const { spy, logger } = makeSpyLogger();
     const params = await createParams("OptimisticOracle", optimisticOracleV1.address);
-    const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
     await gasEstimator.update();
     await settleRequests(logger, params, gasEstimator);
 
@@ -129,7 +137,6 @@ describe("OptimisticOracleV1Bot", function () {
 
     const { spy, logger } = makeSpyLogger();
     const params = await createParams("OptimisticOracle", optimisticOracleV1.address);
-    const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
     await gasEstimator.update();
     await settleRequests(logger, params, gasEstimator);
 
@@ -200,11 +207,11 @@ describe("OptimisticOracleV1Bot", function () {
 
     // No additional settlement logs on subsequent run
     spy.resetHistory();
-    await settleRequests(
-      logger,
-      await createParams("OptimisticOracle", optimisticOracleV1.address),
-      new GasEstimator(logger)
-    );
+    {
+      const params3 = await createParams("OptimisticOracle", optimisticOracleV1.address);
+      await gasEstimator.update();
+      await settleRequests(logger, params3, gasEstimator);
+    }
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "No settlement logs should be generated on subsequent runs");
   });

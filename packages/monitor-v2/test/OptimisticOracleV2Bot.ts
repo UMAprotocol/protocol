@@ -30,6 +30,7 @@ describe("OptimisticOracleV2Bot", function () {
   let proposer: Signer;
   let disputer: Signer;
   let mockOracle: MockOracleAncillaryEthers;
+  let gasEstimator: GasEstimator;
 
   const ancillaryData = toUtf8Bytes("This is just a test question");
 
@@ -51,6 +52,13 @@ describe("OptimisticOracleV2Bot", function () {
     await bondToken.mint(await disputer.getAddress(), bond);
     await bondToken.connect(proposer).approve(optimisticOracleV2.address, bond);
     await bondToken.connect(disputer).approve(optimisticOracleV2.address, bond);
+  });
+
+  before(async function () {
+    const { logger } = makeSpyLogger();
+    const network = await ethers.provider.getNetwork();
+    gasEstimator = new GasEstimator(logger, undefined, network.chainId, ethers.provider);
+    await gasEstimator.update();
   });
 
   it("Settle price request happy path", async function () {
@@ -75,7 +83,6 @@ describe("OptimisticOracleV2Bot", function () {
 
     const { spy, logger } = makeSpyLogger();
     const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
-    const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
     await gasEstimator.update();
     await settleRequests(logger, params, gasEstimator);
 
@@ -122,7 +129,6 @@ describe("OptimisticOracleV2Bot", function () {
 
     const { spy, logger } = makeSpyLogger();
     const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
-    const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
     await gasEstimator.update();
     await settleRequests(logger, params, gasEstimator);
 
@@ -163,7 +169,6 @@ describe("OptimisticOracleV2Bot", function () {
 
     const { spy, logger } = makeSpyLogger();
     const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
-    const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
     await gasEstimator.update();
     await settleRequests(logger, params, gasEstimator);
 
