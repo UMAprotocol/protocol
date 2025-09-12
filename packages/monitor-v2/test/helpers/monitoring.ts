@@ -86,6 +86,6 @@ export const makeMonitoringParamsOOv3Cache = async (multicallAddress: string): P
   return {
     ...base,
     multicall,
-    sumbitSyncTx: true,
+    submitSyncTx: true,
   };
 };

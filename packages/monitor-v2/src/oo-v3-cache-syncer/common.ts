@@ -6,7 +6,7 @@ export { Logger } from "@uma/logger";
 
 export interface MonitoringParams extends BaseMonitoringParams {
   multicall: Multicall;
-  sumbitSyncTx: boolean; // Whether to submit the sync transaction (defaults to true) or just log it (when false).
+  submitSyncTx: boolean; // Whether to submit the sync transaction (defaults to true) or just log it (when false).
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -20,12 +20,12 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const multicall = new Multicall(multicallAddress, base.provider);
 
   // By default, submit sync transactions unless explicitly disabled.
-  const sumbitSyncTx = env.SUBMIT_SYNC_TX === "false" ? false : true;
+  const submitSyncTx = env.SUBMIT_SYNC_TX === "false" ? false : true;
 
   return {
     ...base,
     multicall,
-    sumbitSyncTx,
+    submitSyncTx,
   };
 };
 
