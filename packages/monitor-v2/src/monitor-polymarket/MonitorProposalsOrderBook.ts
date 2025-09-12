@@ -4,6 +4,7 @@ import {
   logFailedMarketProposalVerification,
   logMarketSentimentDiscrepancy,
   logProposalHighVolume,
+  logProposalAlignmentConfirmed,
 } from "./MonitorLogger";
 import {
   calculatePolymarketQuestionID,
@@ -19,18 +20,20 @@ import {
   getSportsMarketData,
   getSportsPayouts,
   isUnresolvable,
+  ONE_SCALED,
+  POLYGON_BLOCKS_PER_HOUR,
+  shouldIgnoreThirdPartyProposal,
+  storeNotifiedProposals,
   Logger,
   Market,
   MarketOrderbook,
   MonitoringParams,
   MultipleValuesQuery,
-  ONE_SCALED,
   OptimisticPriceRequest,
-  POLYGON_BLOCKS_PER_HOUR,
   PolymarketMarketGraphqlProcessed,
-  shouldIgnoreThirdPartyProposal,
-  storeNotifiedProposals,
+  isInitialConfirmationLogged,
 } from "./common";
+import * as common from "./common";
 
 // Retrieve threshold values from environment variables.
 function getThresholds() {
@@ -137,7 +140,9 @@ export async function processProposal(
       alerted = true;
     }
 
-    if (sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length) {
+    const hasDiscrepancy = Boolean(sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length);
+
+    if (hasDiscrepancy) {
       await logMarketSentimentDiscrepancy(
         logger,
         {
@@ -154,6 +159,26 @@ export async function processProposal(
         params
       );
       alerted = true;
+    }
+
+    if (!hasDiscrepancy && !alerted) {
+      const alreadyLogged = await isInitialConfirmationLogged(market.questionID);
+
+      if (!alreadyLogged) {
+        await logProposalAlignmentConfirmed(
+          logger,
+          {
+            ...proposal,
+            ...market,
+            scores: outcome.scores,
+            multipleValuesQuery: outcome.mvq,
+            isSportsMarket: isSportsRequest,
+          },
+          params
+        );
+
+        await common.markInitialConfirmationLogged(market.questionID);
+      }
     }
 
     return alerted;

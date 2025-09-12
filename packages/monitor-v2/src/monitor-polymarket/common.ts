@@ -684,6 +684,28 @@ export const getProposalKeyToStore = (market: StoredNotifiedProposal | Optimisti
   return market.proposalHash;
 };
 
+export const getInitialConfirmationLoggedKey = (marketId: string): string =>
+  `polymarket:initial-confirmation-logged:${marketId}`;
+
+export const isInitialConfirmationLogged = async (marketId: string): Promise<boolean> => {
+  const keyName = getInitialConfirmationLoggedKey(marketId);
+  const key = datastore.key(["NotifiedProposals", keyName]);
+  const [entity] = await datastore.get(key);
+  return Boolean(entity);
+};
+
+export const markInitialConfirmationLogged = async (marketId: string): Promise<void> => {
+  const keyName = getInitialConfirmationLoggedKey(marketId);
+  const key = datastore.key(["NotifiedProposals", keyName]);
+  await datastore.save({
+    key,
+    data: {
+      key: keyName,
+      createdAt: new Date().toISOString(),
+    },
+  });
+};
+
 export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceRequest[]): Promise<void> => {
   const promises = notifiedContracts.map((contract) => {
     const key = datastore.key(["NotifiedProposals", getProposalKeyToStore(contract)]);
