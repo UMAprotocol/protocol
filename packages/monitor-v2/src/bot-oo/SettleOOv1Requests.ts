@@ -9,8 +9,13 @@ import { tryHexToUtf8String } from "../utils/contracts";
 import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleEthers } from "./common";
 import { requestKey } from "./requestKey";
+import type { GasEstimator } from "@uma/financial-templates-lib";
 
-export async function settleOOv1Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function settleOOv1Requests(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  gasEstimator: GasEstimator
+): Promise<void> {
   const oov1 = await getContractInstanceWithProvider<OptimisticOracleEthers>("OptimisticOracle", params.provider);
   // Override with the test contract address
   const oov1WithAddress = oov1.attach(params.contractAddress);
@@ -103,7 +108,7 @@ export async function settleOOv1Requests(logger: typeof Logger, params: Monitori
         req.args.identifier,
         req.args.timestamp,
         req.args.ancillaryData,
-        { gasLimit: gasLimitOverride }
+        { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride }
       );
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "Settle");
