@@ -1,6 +1,6 @@
 import "@nomiclabs/hardhat-ethers";
 import { ExpandedERC20Ethers, MockOracleAncillaryEthers, TimerEthers } from "@uma/contracts-node";
-import { spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
+import { spyLogIncludes, spyLogLevel, GasEstimator } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import { OracleType } from "../src/bot-oo/common";
 import { settleRequests } from "../src/bot-oo/SettleRequests";
@@ -97,8 +97,10 @@ describe("SkinnyOptimisticOracleBot", function () {
     await advanceTimerPastLiveness(timer, proposeReceipt.blockNumber!, defaultLiveness);
 
     const { spy, logger } = makeSpyLogger();
-
-    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
+    const params = await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address);
+    const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
 
     const settledIndex = spy
       .getCalls()
@@ -113,7 +115,11 @@ describe("SkinnyOptimisticOracleBot", function () {
 
     // Subsequent run should produce no settlement logs (but may have debug logs).
     spy.resetHistory();
-    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
+    await settleRequests(
+      logger,
+      await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address),
+      new GasEstimator(logger)
+    );
 
     // Check that no settlement warning logs were generated
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
@@ -164,7 +170,10 @@ describe("SkinnyOptimisticOracleBot", function () {
     ).wait();
 
     const { spy, logger } = makeSpyLogger();
-    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
+    const params = await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address);
+    const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
 
     // Check that no settlement warning logs were generated (but debug logs are OK).
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
@@ -238,8 +247,10 @@ describe("SkinnyOptimisticOracleBot", function () {
     ).wait();
 
     const { spy, logger } = makeSpyLogger();
-
-    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
+    const params = await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address);
+    const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
 
     const settledIndex = spy
       .getCalls()
@@ -254,7 +265,11 @@ describe("SkinnyOptimisticOracleBot", function () {
 
     // No additional settlement logs on subsequent run
     spy.resetHistory();
-    await settleRequests(logger, await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address));
+    {
+      const params2 = await createParams("SkinnyOptimisticOracle", skinnyOptimisticOracle.address);
+      await gasEstimator.update();
+      await settleRequests(logger, params2, gasEstimator);
+    }
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "No settlement logs should be generated on subsequent runs");
   });

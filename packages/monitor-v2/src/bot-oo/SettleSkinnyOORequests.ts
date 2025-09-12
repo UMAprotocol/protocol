@@ -10,6 +10,7 @@ import { tryHexToUtf8String } from "../utils/contracts";
 import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, SkinnyOptimisticOracleEthers } from "./common";
 import { requestKey } from "./requestKey";
+import type { GasEstimator } from "@uma/financial-templates-lib";
 
 const toRequestKeyArgs = (args: ProposePriceEvent["args"] | DisputePriceEvent["args"] | SettleEvent["args"]) => ({
   requester: args.requester,
@@ -18,7 +19,11 @@ const toRequestKeyArgs = (args: ProposePriceEvent["args"] | DisputePriceEvent["a
   ancillaryData: args.ancillaryData,
 });
 
-export async function settleSkinnyOORequests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function settleSkinnyOORequests(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  gasEstimator: GasEstimator
+): Promise<void> {
   const skinnyOO = await getContractInstanceWithProvider<SkinnyOptimisticOracleEthers>(
     "SkinnyOptimisticOracle",
     params.provider
@@ -190,7 +195,7 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
           bond: request.bond,
           customLiveness: request.customLiveness,
         },
-        { gasLimit: gasLimitOverride }
+        { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride }
       );
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "Settle");

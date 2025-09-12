@@ -8,8 +8,13 @@ import { computeEventSearch } from "../bot-utils/events";
 import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV2Ethers } from "./common";
 import { requestKey } from "./requestKey";
+import type { GasEstimator } from "@uma/financial-templates-lib";
 
-export async function settleOOv2Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function settleOOv2Requests(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  gasEstimator: GasEstimator
+): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
     "OptimisticOracleV2",
     params.provider,
@@ -77,7 +82,7 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
         req.args.identifier,
         req.args.timestamp,
         req.args.ancillaryData,
-        { gasLimit: gasLimitOverride }
+        { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride }
       );
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "Settle");
