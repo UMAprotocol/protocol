@@ -64,6 +64,9 @@ export const umaEcosystemFixture = hre.deployments.createFixture(
     // Add voting token to global hardhatTestingAddresses.
     addGlobalHardhatTestingAddress("VotingToken", votingToken.address);
     addGlobalHardhatTestingAddress("Store", store.address);
+    addGlobalHardhatTestingAddress("Finder", finder.address);
+    addGlobalHardhatTestingAddress("AddressWhitelist", collateralWhitelist.address);
+    addGlobalHardhatTestingAddress("IdentifierWhitelist", identifierWhitelist.address);
 
     return {
       finder,
