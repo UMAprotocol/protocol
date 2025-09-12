@@ -240,9 +240,9 @@ export class GasEstimator {
         this.latestMaxPriorityFeePerGasGwei
       );
 
-      // Extract the base fee from the most recent block. If the block is not available or errored then is set to the
-      // latest max fee per gas so we still have some value in the right ballpark to return to the client implementer.
-      // Base fee is represented in Wei so we convert to Gwei to be consistent with other variables in this class.
+      // Use the base fee (converted to Gwei) from the most recent block. If the block was not available or errored then
+      // it is set to the latest max fee per gas so we still have some value in the right ballpark to return to the
+      // client implementer.
       this.latestBaseFeeGwei = latestBlockBaseFeePerGasGwei || this.latestMaxFeePerGasGwei;
     } else this.lastFastPriceGwei = (gasInfo as LegacyGasData).gasPrice;
   }
