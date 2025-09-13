@@ -61,8 +61,8 @@ export class DiscordTicketTransport extends PersistentTransport {
   protected readonly rateLimit: number;
 
   // Ticket tool does not allow more than 1 ticket to be opened per 10 seconds. By default we conservatively use
-  // rateLimit of 15 seconds.
-  constructor(winstonOpts: TransportOptions, { botToken, channelIds = {}, rateLimit = 15 }: Config) {
+  // rateLimit of 20 seconds.
+  constructor(winstonOpts: TransportOptions, { botToken, channelIds = {}, rateLimit = 20 }: Config) {
     super(winstonOpts, "Discord Ticket");
 
     this.botToken = botToken;
