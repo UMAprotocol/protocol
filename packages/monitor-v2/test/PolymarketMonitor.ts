@@ -152,6 +152,7 @@ describe("PolymarketNotifier", function () {
     const storeNotifiedProposalsMock = sandbox.stub();
     storeNotifiedProposalsMock.returns(Promise.resolve());
     sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
+    sandbox.stub(commonModule, "isProposalNotified").resolves(false);
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
@@ -505,6 +506,89 @@ describe("PolymarketNotifier", function () {
     );
     assert.equal(spyLogLevel(spy, 0), "error");
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
+  });
+
+  it("It should not notify if already notified (discrepancy)", async function () {
+    const orders: [MarketOrderbook, MarketOrderbook] = [
+      { bids: [], asks: [{ price: 0.5, size: 10 }] },
+      { bids: [], asks: [] },
+    ];
+
+    // Force per-proposal check to report already-notified
+    (commonModule.isProposalNotified as any).resolves(true);
+
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(orders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+    // Return a single mock proposal from v2 so the monitor picks it up
+    const mockProposal: OptimisticPriceRequest = {
+      proposalHash: "0xalreadyNotifiedDisc",
+      requester: await deployer.getAddress(),
+      proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000",
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 12345,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequesthashAN1",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+      proposalLogIndex: 0,
+    };
+    sandbox
+      .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+      .callsFake(async (_p, v) => (v === "v2" ? [mockProposal] : []));
+
+    const spy = sinon.spy();
+    const logger = createNewLogger([new SpyTransport({}, { spy })]);
+    await monitorTransactionsProposedOrderBook(logger, await createMonitoringParams());
+
+    // No discrepancy notifications should be logged because proposal is already notified
+    assert.equal(spy.callCount, 0);
+  });
+
+  it("It should not notify if already notified (high volume)", async function () {
+    // Force per-proposal check to report already-notified and also avoid summary log
+    (commonModule.isProposalNotified as any).resolves(true);
+    sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(true);
+
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+    const mockProposal: OptimisticPriceRequest = {
+      proposalHash: "0xalreadyNotifiedVol",
+      requester: await deployer.getAddress(),
+      proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000",
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 12346,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequesthashAN2",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+      proposalLogIndex: 0,
+    };
+    sandbox
+      .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+      .callsFake(async (_p, v) => (v === "v2" ? [mockProposal] : []));
+
+    const spy = sinon.spy();
+    const logger = createNewLogger([new SpyTransport({}, { spy })]);
+    await monitorTransactionsProposedOrderBook(logger, await createMonitoringParams());
+
+    // No high volume notifications should be logged because proposal is already notified
+    assert.equal(spy.callCount, 0);
   });
 
   it("It should notify if market polymarket information is not found", async function () {
