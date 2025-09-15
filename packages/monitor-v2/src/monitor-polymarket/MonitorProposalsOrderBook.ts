@@ -20,6 +20,7 @@ import {
   getSportsMarketData,
   getSportsPayouts,
   isUnresolvable,
+  isProposalNotified,
   ONE_SCALED,
   POLYGON_BLOCKS_PER_HOUR,
   shouldIgnoreThirdPartyProposal,
@@ -125,7 +126,8 @@ export async function processProposal(
 
     let alerted = false;
 
-    if (market.volumeNum > thresholds.volume) {
+    const alreadyNotified = await isProposalNotified(proposal);
+    if (!alreadyNotified && market.volumeNum > thresholds.volume) {
       await logProposalHighVolume(
         logger,
         {
@@ -137,12 +139,13 @@ export async function processProposal(
         },
         params
       );
+      await persistNotified(proposal, logger);
       alerted = true;
     }
 
     const hasDiscrepancy = Boolean(sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length);
 
-    if (hasDiscrepancy) {
+    if (!alreadyNotified && hasDiscrepancy) {
       await logMarketSentimentDiscrepancy(
         logger,
         {
@@ -158,6 +161,7 @@ export async function processProposal(
         },
         params
       );
+      await persistNotified(proposal, logger);
       alerted = true;
     }
 
