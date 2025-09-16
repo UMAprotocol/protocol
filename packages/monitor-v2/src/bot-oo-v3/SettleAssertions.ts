@@ -33,7 +33,9 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
 
   const setteableAssertionsPromises = assertionsToSettle.map(async (assertion) => {
     try {
-      await oo.callStatic.settleAndGetAssertionResult(assertion.args.assertionId);
+      await oo.callStatic.settleAndGetAssertionResult(assertion.args.assertionId, {
+        blockTag: params.settleableCheckBlock,
+      });
       logger.debug({
         at: "OOv3Bot",
         message: "Assertion is settleable",
@@ -59,7 +61,16 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
 
   const ooWithSigner = oo.connect(params.signer);
 
-  for (const assertion of setteableAssertions) {
+  for (const [i, assertion] of setteableAssertions.entries()) {
+    if (params.executionDeadline && Date.now() / 1000 >= params.executionDeadline) {
+      logger.warn({
+        at: "OOv3Bot",
+        message: "Execution deadline reached, skipping settlement",
+        remainingAssertions: setteableAssertions.length - i,
+      });
+      break;
+    }
+
     try {
       const estimatedGas = await oo.estimateGas.settleAssertion(assertion.args.assertionId);
       const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);

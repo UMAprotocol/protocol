@@ -14,6 +14,8 @@ export interface MonitoringParams extends BaseMonitoringParams {
   botModes: BotModes;
   oracleType: OracleType;
   contractAddress: string;
+  settleableCheckBlock: number; // Block number to check for settleable requests, defaults to 5 minutes ago
+  executionDeadline?: number; // Timestamp in sec for when to stop settling, defaults to 4 minutes from now in serverless
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -38,11 +40,20 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     );
   }
 
+  const settleDelay = Number(env.SETTLE_DELAY) || 5 * 60; // Default to 5 minutes ago
+  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const settleableCheckBlock = (await base.blockFinder.getBlockForTimestamp(currentTimestamp - settleDelay)).number;
+
+  const settleTimeout = Number(env.SETTLE_TIMEOUT) || 4 * 60; // Default to 4 minutes from now in serverless
+  const executionDeadline = base.pollingDelay === 0 ? currentTimestamp + settleTimeout : undefined;
+
   return {
     ...base,
     botModes,
     oracleType,
     contractAddress,
+    settleableCheckBlock,
+    executionDeadline,
   };
 };
 

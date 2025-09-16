@@ -38,7 +38,9 @@ export async function settleOOv2Requests(
 
   const settleableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
-      await oo.callStatic.settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData);
+      await oo.callStatic.settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData, {
+        blockTag: params.settleableCheckBlock,
+      });
       logger.debug({
         at: "OOv2Bot",
         message: "Request is settleable",
@@ -67,7 +69,16 @@ export async function settleOOv2Requests(
 
   const ooWithSigner = oo.connect(params.signer);
 
-  for (const req of settleableRequests) {
+  for (const [i, req] of settleableRequests.entries()) {
+    if (params.executionDeadline && Date.now() / 1000 >= params.executionDeadline) {
+      logger.warn({
+        at: "OOv2Bot",
+        message: "Execution deadline reached, skipping settlement",
+        remainingRequests: settleableRequests.length - i,
+      });
+      break;
+    }
+
     try {
       const estimatedGas = await oo.estimateGas.settle(
         req.args.requester,

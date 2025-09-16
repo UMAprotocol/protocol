@@ -106,7 +106,8 @@ export async function settleSkinnyOORequests(
           finalFee: request.finalFee,
           bond: request.bond,
           customLiveness: request.customLiveness,
-        }
+        },
+        { blockTag: params.settleableCheckBlock }
       );
 
       logger.debug({
@@ -151,7 +152,16 @@ export async function settleSkinnyOORequests(
 
   const skinnyOOWithSigner = skinnyOOWithAddress.connect(params.signer);
 
-  for (const settleableRequest of settleableRequests) {
+  for (const [i, settleableRequest] of settleableRequests.entries()) {
+    if (params.executionDeadline && Date.now() / 1000 >= params.executionDeadline) {
+      logger.warn({
+        at: "SkinnyOOBot",
+        message: "Execution deadline reached, skipping settlement",
+        remainingRequests: settleableRequests.length - i,
+      });
+      break;
+    }
+
     if (!settleableRequest) continue;
     const { event: req, request } = settleableRequest;
 
