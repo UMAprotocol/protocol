@@ -5,9 +5,9 @@ export const paginatedEventQuery = umaPaginatedEventQuery;
 
 import type { Provider } from "@ethersproject/abstract-provider";
 
-import { BigNumber, Event, ethers } from "ethers";
+import { BigNumber, Contract, Event, EventFilter, ethers } from "ethers";
 
-import { OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
+import { getAddress, OptimisticOracleEthers, OptimisticOracleV2Ethers } from "@uma/contracts-node";
 import {
   DisputePriceEvent,
   ProposePriceEvent,
@@ -51,11 +51,9 @@ interface GraphQLResponse<T> {
 }
 
 export interface MonitoringParams {
-  binaryAdapterAddress: string;
-  ctfAdapterAddress: string;
-  ctfAdapterAddressV2: string;
   ctfExchangeAddress: string;
   ctfSportsOracleAddress: string;
+  additionalRequesters: string[];
   maxBlockLookBack: number;
   graphqlEndpoint: string;
   polymarketApiKey: string;
@@ -69,6 +67,9 @@ export interface MonitoringParams {
   checkBeforeExpirationSeconds: number;
   fillEventsLookbackSeconds: number;
   httpClient: ReturnType<typeof createHttpClient>;
+  orderBookBatchSize: number;
+  ooV2Addresses: string[];
+  ooV1Addresses: string[];
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -156,7 +157,8 @@ export type Market = {
 export const getPolymarketProposedPriceRequestsOO = async (
   params: MonitoringParams,
   version: "v1" | "v2",
-  requesterAddresses: string[]
+  requesterAddresses: string[],
+  ooAddress: string
 ): Promise<OptimisticPriceRequest[]> => {
   const currentBlockNumber = await params.provider.getBlockNumber();
   const oneDayInBlocks = POLYGON_BLOCKS_PER_HOUR * 24;
@@ -171,19 +173,24 @@ export const getPolymarketProposedPriceRequestsOO = async (
 
   const oo = await getContractInstanceWithProvider<OptimisticOracleEthers | OptimisticOracleV2Ethers>(
     version == "v1" ? "OptimisticOracle" : "OptimisticOracleV2",
-    params.provider
+    params.provider,
+    ooAddress
   );
 
   const proposeEvents = await paginatedEventQuery<ProposePriceEvent>(
     oo,
     oo.filters.ProposePrice(null, null, null, null, null, null, null, null),
-    searchConfig
+    searchConfig,
+    params.retryAttempts,
+    queryFilterSafe
   );
 
   const disputeEvents = await paginatedEventQuery<DisputePriceEvent>(
     oo,
     oo.filters.DisputePrice(null, null, null, null, null, null, null),
-    searchConfig
+    searchConfig,
+    params.retryAttempts,
+    queryFilterSafe
   );
 
   const disputedRequestIds = new Set(
@@ -407,7 +414,9 @@ export const getOrderFilledEvents = async (
   const events: Event[] = await paginatedEventQuery(
     ctfExchange,
     ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
-    searchConfig
+    searchConfig,
+    params.retryAttempts,
+    queryFilterSafe
   );
 
   const outcomeTokenOne = await Promise.all(
@@ -511,6 +520,56 @@ export const getPolymarketOrderBook = async (
     },
   ];
 };
+
+export interface BookParams {
+  token_id: string;
+}
+
+export async function getPolymarketOrderBooks(
+  params: MonitoringParams,
+  tokenIds: string[]
+): Promise<Record<string, MarketOrderbook>> {
+  const batchSize = params.orderBookBatchSize;
+  const apiUrl = `${params.apiEndpoint}/books`;
+
+  type RawOrderBook = {
+    asset_id: string;
+    bids: { price: string; size: string }[];
+    asks: { price: string; size: string }[];
+  };
+
+  const toNumeric = (orders: { price: string; size: string }[]) =>
+    orders.map((o) => ({ price: Number(o.price), size: Number(o.size) }));
+
+  // Split the clob IDs into batches that respect the limit.
+  const chunks: string[][] = [];
+  for (let i = 0; i < tokenIds.length; i += batchSize) {
+    chunks.push(tokenIds.slice(i, i + batchSize));
+  }
+
+  // Fire off every API call in parallel.
+  const chunkResults = await Promise.all(
+    chunks.map((ids) => {
+      const payload: BookParams[] = ids.map((token_id) => ({ token_id }));
+      return params.httpClient.post<RawOrderBook[]>(apiUrl, payload).then((res) => res.data);
+    })
+  );
+
+  // Consolidate all partial order books into one look-up map.
+  const map: Record<string, MarketOrderbook> = {};
+  for (const rawBooks of chunkResults) {
+    for (const ob of rawBooks) {
+      map[ob.asset_id] = { bids: toNumeric(ob.bids), asks: toNumeric(ob.asks) };
+    }
+  }
+
+  // Guarantee every requested ID appears, even if the API returned none.
+  for (const id of tokenIds) {
+    if (!map[id]) map[id] = { bids: [], asks: [] };
+  }
+
+  return map;
+}
 
 export async function getSportsMarketData(params: MonitoringParams, questionID: string): Promise<Market> {
   const umaSportsOracle = new ethers.Contract(params.ctfSportsOracleAddress, umaSportsOracleAbi, params.provider);
@@ -625,6 +684,35 @@ export const getProposalKeyToStore = (market: StoredNotifiedProposal | Optimisti
   return market.proposalHash;
 };
 
+export const isProposalNotified = async (proposal: OptimisticPriceRequest): Promise<boolean> => {
+  const keyName = getProposalKeyToStore(proposal);
+  const key = datastore.key(["NotifiedProposals", keyName]);
+  const [entity] = await datastore.get(key);
+  return Boolean(entity);
+};
+
+export const getInitialConfirmationLoggedKey = (marketId: string): string =>
+  `polymarket:initial-confirmation-logged:${marketId}`;
+
+export const isInitialConfirmationLogged = async (marketId: string): Promise<boolean> => {
+  const keyName = getInitialConfirmationLoggedKey(marketId);
+  const key = datastore.key(["NotifiedProposals", keyName]);
+  const [entity] = await datastore.get(key);
+  return Boolean(entity);
+};
+
+export const markInitialConfirmationLogged = async (marketId: string): Promise<void> => {
+  const keyName = getInitialConfirmationLoggedKey(marketId);
+  const key = datastore.key(["NotifiedProposals", keyName]);
+  await datastore.save({
+    key,
+    data: {
+      key: keyName,
+      createdAt: new Date().toISOString(),
+    },
+  });
+};
+
 export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceRequest[]): Promise<void> => {
   const promises = notifiedContracts.map((contract) => {
     const key = datastore.key(["NotifiedProposals", getProposalKeyToStore(contract)]);
@@ -650,13 +738,28 @@ export const getNotifiedProposals = async (): Promise<{
   }, {});
 };
 
+export const parseEnvList = (env: NodeJS.ProcessEnv, key: string, defaultValue: string[]): string[] => {
+  const rawValue = env[key];
+  if (!rawValue) return defaultValue;
+
+  let output: string[];
+  try {
+    output = JSON.parse(rawValue);
+  } catch (error) {
+    throw new Error(`${key} is not valid JSON.`);
+  }
+
+  if (!Array.isArray(output)) {
+    throw new Error(`${key} is valid JSON, but not an array.`);
+  }
+
+  return output;
+};
+
 export const initMonitoringParams = async (
   env: NodeJS.ProcessEnv,
   logger: typeof Logger
 ): Promise<MonitoringParams> => {
-  const binaryAdapterAddress = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
-  const ctfAdapterAddress = "0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74";
-  const ctfAdapterAddressV2 = "0x2f5e3684cb1f318ec51b00edba38d79ac2c0aa9d";
   const ctfExchangeAddress = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E";
   const ctfSportsOracleAddress = "0xb21182d0494521Cf45DbbeEbb5A3ACAAb6d22093";
 
@@ -695,6 +798,8 @@ export const initMonitoringParams = async (
 
   const shouldResetTimeout = env.SHOULD_RESET_TIMEOUT !== "false";
 
+  const orderBookBatchSize = env.ORDER_BOOK_BATCH_SIZE ? Number(env.ORDER_BOOK_BATCH_SIZE) : 499;
+
   // Rate limit and retry with exponential backoff and jitter to handle rate limiting and errors from the APIs.
   const httpClient = createHttpClient({
     axios: { timeout: httpTimeout },
@@ -712,12 +817,15 @@ export const initMonitoringParams = async (
     },
   });
 
+  const ooV2Addresses = parseEnvList(env, "OOV2_ADDRESSES", [await getAddress("OptimisticOracleV2", chainId)]);
+  const ooV1Addresses = parseEnvList(env, "OOV1_ADDRESSES", [await getAddress("OptimisticOracle", chainId)]);
+
+  const additionalRequesters = parseEnvList(env, "POLYMARKET_ADDITIONAL_REQUESTERS", []);
+
   return {
-    binaryAdapterAddress,
-    ctfAdapterAddress,
-    ctfAdapterAddressV2,
     ctfExchangeAddress,
     ctfSportsOracleAddress,
+    additionalRequesters,
     maxBlockLookBack,
     graphqlEndpoint,
     polymarketApiKey,
@@ -731,6 +839,9 @@ export const initMonitoringParams = async (
     checkBeforeExpirationSeconds,
     fillEventsLookbackSeconds,
     httpClient,
+    orderBookBatchSize,
+    ooV2Addresses,
+    ooV1Addresses,
   };
 };
 
@@ -759,4 +870,43 @@ export async function retryAsync<T>(fn: () => Promise<T>, retries: number, delay
 
   // Should never actually reach this, but for the sake of typescript
   throw new Error(`React a maximum of ${retries} retries.`);
+}
+
+/**
+ * @dev This function is a wrapper around the queryFilter function that splits the query into smaller chunks if the query is too large.
+ * @param contract - The contract to query.
+ * @param filter - The filter to apply to the query.
+ * @param fromBlock - The block number to start the query from.
+ * @param toBlock - The block number to end the query at.
+ * @returns The filtered events.
+ */
+export function queryFilterSafe(contract: Contract) {
+  return async function <T extends Event = Event>(
+    filter: EventFilter,
+    fromBlock: number,
+    toBlock: number
+  ): Promise<T[]> {
+    try {
+      return (await contract.queryFilter(filter, fromBlock, toBlock)) as T[];
+    } catch (err: any) {
+      const msg = String(err?.error?.message ?? err);
+      if (msg.includes("query returned more than")) {
+        if (fromBlock === toBlock)
+          throw new Error(
+            `Block ${fromBlock} alone returns more logs than provider can handle; further splitting impossible`
+          );
+
+        const mid = Math.floor((fromBlock + toBlock) / 2);
+
+        // Recursively split window
+        const [left, right] = await Promise.all([
+          queryFilterSafe(contract)<T>(filter, fromBlock, mid),
+          queryFilterSafe(contract)<T>(filter, mid + 1, toBlock),
+        ]);
+
+        return [...left, ...right];
+      }
+      throw err;
+    }
+  };
 }

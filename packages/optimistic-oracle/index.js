@@ -42,6 +42,10 @@ const OracleType = {
  * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
  * @param {OracleType} [oracleType] Type of "Oracle" for this network, defaults to "VotingV2"
  * @param {OptimisticOracleType} [optimisticOracleType] Type of "OptimisticOracle" for this network, defaults to "OptimisticOracle"
+ * @param {String} optimisticOracleAddressOverride Optional override address of the OptimisticOracle Contract.
+ * @param {Array} [ignoredIdentifiersPostExpiry] Array of identifiers to ignore post-expiry
+ * @param {Array} [ignoredIdentifiers] Array of identifiers to ignore
+ * @param {Number} [optimisticOracleClientLookback] The amount of time in seconds that the client will look back for events.
  * @return None or throws an Error.
  */
 async function run({
@@ -55,13 +59,16 @@ async function run({
   optimisticOracleProposerConfig,
   oracleType = OracleType.VotingV2,
   optimisticOracleType = OptimisticOracleType.OptimisticOracle,
+  optimisticOracleAddressOverride,
   ignoredIdentifiersPostExpiry,
   ignoredIdentifiers,
+  optimisticOracleClientLookback,
 }) {
   if (!Object.keys(OracleType).includes(oracleType)) throw new Error("Unexpected OracleType");
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
-    const optimisticOracleAddress = await getAddress(optimisticOracleType, networkId);
+    const optimisticOracleAddress =
+      optimisticOracleAddressOverride || (await getAddress(optimisticOracleType, networkId));
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -76,6 +83,7 @@ async function run({
       optimisticOracleProposerConfig,
       oracleType,
       optimisticOracleType,
+      optimisticOracleClientLookback,
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
@@ -87,7 +95,7 @@ async function run({
       web3,
       optimisticOracleAddress,
       await getAddress(oracleType, networkId),
-      604800, // default lookback setting for this client
+      optimisticOracleClientLookback,
       optimisticOracleType,
       blocksPerEventSearch ? Number(blocksPerEventSearch) : null
     );
@@ -190,6 +198,10 @@ async function Poll(callback) {
       optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
         ? process.env.OPTIMISTIC_ORACLE_TYPE
         : OptimisticOracleType.OptimisticOracle,
+      // Optional override for the optimistic oracle address. If not set, the bot will use the address from the networks
+      // file for the optimistic oracle type. This is useful for ManagedOptimisticOracleV2 that is not added to the
+      // networks file.
+      optimisticOracleAddressOverride: process.env.OPTIMISTIC_ORACLE_ADDRESS || null,
 
       // The optimistic oracle proposer should skip proposing prices for some identifiers, for expired EMP contracts,
       // because they map to self-referential pricefeeds pre-expiry, but have different price resolution ogic post-expiry.
@@ -208,6 +220,8 @@ async function Poll(callback) {
       // to ignore the identifiers for some other reason. See a sample list here:
       // https://github.com/UMAprotocol/protocol/blob/4806b51d830466c445560f83196d5918af820a98/packages/common/src/PriceIdentifierUtils.ts#L50-L68
       ignoredIdentifiers: process.env.OPTIMISTIC_ORACLE_IGNORE ? JSON.parse(process.env.OPTIMISTIC_ORACLE_IGNORE) : [],
+      // The optimistic oracle client lookback is the amount of time in seconds that the client will look back for events.
+      optimisticOracleClientLookback: process.env.OPTIMISTIC_ORACLE_CLIENT_LOOKBACK || 604800, // 7 days in seconds
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

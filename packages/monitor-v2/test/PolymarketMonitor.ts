@@ -5,9 +5,11 @@ import {
   FinderEthers,
   IdentifierWhitelistEthers,
   OptimisticOracleV2Ethers,
+  OptimisticOracleEthers,
   VotingTokenEthers,
 } from "@uma/contracts-node";
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
+import { createHttpClient } from "@uma/toolkit";
 import { assert } from "chai";
 import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
@@ -35,6 +37,7 @@ type CommonModuleFunctions = keyof typeof commonModule;
 describe("PolymarketNotifier", function () {
   let sandbox: sinon.SinonSandbox;
   let oov2: OptimisticOracleV2Ethers;
+  let oo: OptimisticOracleEthers;
   let deployer: Signer;
   let votingToken: VotingTokenEthers;
   let getNotifiedProposalsStub: sinon.SinonStub;
@@ -45,11 +48,12 @@ describe("PolymarketNotifier", function () {
 
   const marketInfo: PolymarketMarketGraphqlProcessed[] = [
     {
-      clobTokenIds: ["0x1234", "0x1234"],
+      clobTokenIds: ["0x1234", "0x1235"],
       volumeNum: 200_000,
       outcomes: ["Yes", "No"],
       outcomePrices: ["1", "0"],
       question: "Will NATO expand by June 30?",
+      questionID: "0x1234",
     },
   ];
 
@@ -64,6 +68,12 @@ describe("PolymarketNotifier", function () {
     },
   ];
 
+  // helper to convert the old pair-of-books fixture into the new map shape
+  const asBooksRecord = (pair: [MarketOrderbook, MarketOrderbook]) => ({
+    [marketInfo[0].clobTokenIds[0]]: pair[0],
+    [marketInfo[0].clobTokenIds[1]]: pair[1],
+  });
+
   const emptyTradeInformation: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [[], []];
 
   // Create monitoring params for single block to pass to monitor modules.
@@ -77,11 +87,9 @@ describe("PolymarketNotifier", function () {
     const apiEndpoint = "endpoint";
 
     return {
-      binaryAdapterAddress,
-      ctfAdapterAddress,
-      ctfAdapterAddressV2,
       ctfExchangeAddress,
       ctfSportsOracleAddress,
+      additionalRequesters: [ctfAdapterAddress, ctfAdapterAddressV2, binaryAdapterAddress],
       maxBlockLookBack: 3499,
       graphqlEndpoint,
       apiEndpoint,
@@ -94,6 +102,10 @@ describe("PolymarketNotifier", function () {
       retryDelayMs: 1000,
       checkBeforeExpirationSeconds: Date.now() + 1000 * 60 * 60 * 24,
       fillEventsLookbackSeconds: 0,
+      httpClient: createHttpClient(),
+      orderBookBatchSize: 499,
+      ooV2Addresses: [oov2.address],
+      ooV1Addresses: [oo.address],
     };
   };
 
@@ -113,11 +125,11 @@ describe("PolymarketNotifier", function () {
     votingToken = vt;
     const defaultLiveness = 7200; // 2 hours
 
-    const oo = (await (await getContractFactory("OptimisticOracle", deployer)).deploy(
+    oo = (await (await getContractFactory("OptimisticOracle", deployer)).deploy(
       defaultLiveness,
       finder.address,
       ZERO_ADDRESS
-    )) as OptimisticOracleV2Ethers;
+    )) as OptimisticOracleEthers;
     oov2 = (await (await getContractFactory("OptimisticOracleV2", deployer)).deploy(
       defaultLiveness,
       finder.address,
@@ -134,12 +146,13 @@ describe("PolymarketNotifier", function () {
     await (await collateralWhitelist.addToWhitelist(votingToken.address)).wait();
 
     const getNotifiedProposalsMock = sandbox.stub();
-    getNotifiedProposalsMock.returns({});
+    getNotifiedProposalsMock.resolves({});
     getNotifiedProposalsStub = sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
     const storeNotifiedProposalsMock = sandbox.stub();
-    storeNotifiedProposalsMock.returns({});
+    storeNotifiedProposalsMock.returns(Promise.resolve());
     sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
+    sandbox.stub(commonModule, "isProposalNotified").resolves(false);
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
@@ -154,13 +167,13 @@ describe("PolymarketNotifier", function () {
 
   function mockFunctionWithReturnValue(functionName: CommonModuleFunctions, mockValue: any) {
     const mockDataFunction = sandbox.stub();
-    mockDataFunction.returns(mockValue);
+    mockDataFunction.resolves(mockValue);
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
 
   function mockFunctionThrowsError(functionName: CommonModuleFunctions, errorMessage = "Mock error") {
     const mockDataFunction = sandbox.stub();
-    mockDataFunction.throws(new Error(errorMessage));
+    mockDataFunction.rejects(new Error(errorMessage));
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
 
@@ -186,7 +199,7 @@ describe("PolymarketNotifier", function () {
     // Create a mock proposal
     const mockProposal: OptimisticPriceRequest = {
       proposalHash: "0xordertest",
-      requester: params.ctfAdapterAddress,
+      requester: await deployer.getAddress(),
       proposer: await deployer.getAddress(),
       identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
       proposedPrice: ONE,
@@ -205,7 +218,7 @@ describe("PolymarketNotifier", function () {
       return version === "v2" ? [mockProposal] : [];
     });
 
-    mockFunctionWithReturnValue("getPolymarketOrderBook", orders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(orders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
@@ -228,8 +241,160 @@ describe("PolymarketNotifier", function () {
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
 
+  describe("market check + first-ok", function () {
+    // Helper to build a proposal aligning with outcome 0 (YES)
+    const makeProposal = async (): Promise<OptimisticPriceRequest> => ({
+      proposalHash: "0xhash1",
+      requester: (await createMonitoringParams()).ctfAdapterAddress,
+      proposer: await deployer.getAddress(),
+      identifier,
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 1,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequest",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600),
+      proposalLogIndex: 0,
+    });
+
+    beforeEach(function () {
+      // Default stubs common to these tests
+      sandbox.stub(commonModule, "getPolymarketMarketInformation").resolves(marketInfo);
+      sandbox.stub(commonModule, "getPolymarketOrderBooks").resolves(asBooksRecord(emptyOrders));
+      sandbox.stub(commonModule, "getOrderFilledEvents").resolves([[], []]);
+    });
+
+    it("First check, no discrepancy → summary only; flag set.", async function () {
+      const params = await createMonitoringParams();
+      const prop = await makeProposal();
+      sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
+
+      const hasFirstOkStub = sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
+      const setFirstOkStub = sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const logger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(logger, params);
+
+      // Expect exactly one info log for the confirmation summary
+      const infoEvents = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .filter((a) => a?.message === "Proposal Alignment Confirmed");
+      assert.equal(infoEvents.length, 1);
+      assert.equal(infoEvents[0].at, "PolymarketMonitor");
+      assert.isString(infoEvents[0].mrkdwn);
+      assert.include(infoEvents[0].mrkdwn, "aligns with the proposed price");
+
+      assert.isTrue(hasFirstOkStub.calledOnceWithExactly(marketInfo[0].questionID));
+      assert.isTrue(setFirstOkStub.calledOnceWithExactly(marketInfo[0].questionID));
+    });
+
+    it("First check, with discrepancy → no summary; no flag.", async function () {
+      const params = await createMonitoringParams();
+      const prop = await makeProposal();
+      sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
+
+      // Create a discrepancy: winner side ask below threshold
+      const books: [MarketOrderbook, MarketOrderbook] = [
+        { bids: [], asks: [{ price: 0.5, size: 10 }] },
+        { bids: [], asks: [] },
+      ];
+      (commonModule.getPolymarketOrderBooks as any).restore?.();
+      sandbox.stub(commonModule, "getPolymarketOrderBooks").resolves(asBooksRecord(books));
+
+      const hasFirstOkStub = sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
+      const setFirstOkStub = sandbox.stub(commonModule, "markInitialConfirmationLogged");
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const logger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(logger, params);
+
+      // No confirmation summary should be logged
+      const confirmation = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .find((a) => a?.message === "Proposal Alignment Confirmed");
+      assert.isUndefined(confirmation);
+
+      // Should have an error level log for discrepancy
+      assert.isAbove(spy.callCount, 0);
+      const firstError = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .find((a) => a?.message?.includes("Difference between"));
+      assert.exists(firstError);
+
+      assert.isTrue(hasFirstOkStub.notCalled);
+      assert.isTrue(setFirstOkStub.notCalled);
+    });
+
+    it("Subsequent no-discrepancy with flag set → no logs.", async function () {
+      const params = await createMonitoringParams();
+      const prop = await makeProposal();
+      sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
+
+      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(true);
+      const setFirstOkStub = sandbox.stub(commonModule, "markInitialConfirmationLogged");
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const logger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(logger, params);
+
+      // No per-check or summary logs expected now
+      assert.equal(spy.callCount, 0);
+      assert.isTrue(setFirstOkStub.notCalled);
+    });
+
+    it("Missing/partial data → still logs simple alignment message.", async function () {
+      const params = await createMonitoringParams();
+      const prop = await makeProposal();
+      sandbox
+        .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+        .callsFake(async (_p, v) => (v === "v2" ? [prop] : []));
+      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
+      sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
+
+      const spy = sinon.spy();
+      const logger = createNewLogger([new SpyTransport({}, { spy })]);
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+      await monitorTransactionsProposedOrderBook(logger, params);
+
+      const okLog = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .find((a) => a?.message === "Proposal Alignment Confirmed");
+      assert.exists(okLog);
+      assert.isString(okLog.mrkdwn);
+      assert.include(okLog.mrkdwn, "aligns with the proposed price");
+    });
+
+    it("Key isolation → uses polymarket:initial-confirmation-logged:${marketId}", async function () {
+      const key = commonModule.getInitialConfirmationLoggedKey(marketInfo[0].questionID);
+      assert.equal(key, `polymarket:initial-confirmation-logged:${marketInfo[0].questionID}`);
+    });
+  });
+
   it("It should not notify if order book is empty", async function () {
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
@@ -253,7 +418,7 @@ describe("PolymarketNotifier", function () {
       ],
       [],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
@@ -293,7 +458,7 @@ describe("PolymarketNotifier", function () {
         },
       ],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
@@ -322,8 +487,8 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if there are proposals with high volume", async function () {
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo, volumeNum: 2_000_000 }]);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
@@ -343,8 +508,91 @@ describe("PolymarketNotifier", function () {
     assert.equal(spy.getCall(0).lastArg.notificationPath, "polymarket-notifier");
   });
 
+  it("It should not notify if already notified (discrepancy)", async function () {
+    const orders: [MarketOrderbook, MarketOrderbook] = [
+      { bids: [], asks: [{ price: 0.5, size: 10 }] },
+      { bids: [], asks: [] },
+    ];
+
+    // Force per-proposal check to report already-notified
+    (commonModule.isProposalNotified as any).resolves(true);
+
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(orders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+    // Return a single mock proposal from v2 so the monitor picks it up
+    const mockProposal: OptimisticPriceRequest = {
+      proposalHash: "0xalreadyNotifiedDisc",
+      requester: await deployer.getAddress(),
+      proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000",
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 12345,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequesthashAN1",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+      proposalLogIndex: 0,
+    };
+    sandbox
+      .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+      .callsFake(async (_p, v) => (v === "v2" ? [mockProposal] : []));
+
+    const spy = sinon.spy();
+    const logger = createNewLogger([new SpyTransport({}, { spy })]);
+    await monitorTransactionsProposedOrderBook(logger, await createMonitoringParams());
+
+    // No discrepancy notifications should be logged because proposal is already notified
+    assert.equal(spy.callCount, 0);
+  });
+
+  it("It should not notify if already notified (high volume)", async function () {
+    // Force per-proposal check to report already-notified and also avoid summary log
+    (commonModule.isProposalNotified as any).resolves(true);
+    sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(true);
+
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
+    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+    const mockProposal: OptimisticPriceRequest = {
+      proposalHash: "0xalreadyNotifiedVol",
+      requester: await deployer.getAddress(),
+      proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000",
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 12346,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequesthashAN2",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+      proposalLogIndex: 0,
+    };
+    sandbox
+      .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+      .callsFake(async (_p, v) => (v === "v2" ? [mockProposal] : []));
+
+    const spy = sinon.spy();
+    const logger = createNewLogger([new SpyTransport({}, { spy })]);
+    await monitorTransactionsProposedOrderBook(logger, await createMonitoringParams());
+
+    // No high volume notifications should be logged because proposal is already notified
+    assert.equal(spy.callCount, 0);
+  });
+
   it("It should notify if market polymarket information is not found", async function () {
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
     mockFunctionThrowsError("getPolymarketMarketInformation", "Market not found");
 
@@ -381,7 +629,7 @@ describe("PolymarketNotifier", function () {
     // Create a mock proposal
     const mockProposal: OptimisticPriceRequest = {
       proposalHash: "0xmockproposal",
-      requester: params.ctfAdapterAddress,
+      requester: await deployer.getAddress(),
       proposer: proposerAddress,
       identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
       proposedPrice: ONE,
@@ -400,7 +648,7 @@ describe("PolymarketNotifier", function () {
       return version === "v2" ? [mockProposal] : [];
     });
 
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     // Calculate the actual questionID that will be generated from our ancillary data
@@ -427,7 +675,7 @@ describe("PolymarketNotifier", function () {
     // Create a mock proposal
     const mockProposal: OptimisticPriceRequest = {
       proposalHash: "0xmockproposal2",
-      requester: params.ctfAdapterAddress,
+      requester: await deployer.getAddress(),
       proposer: await deployer.getAddress(),
       identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000", // YES_OR_NO_QUERY
       proposedPrice: ONE,
@@ -446,7 +694,7 @@ describe("PolymarketNotifier", function () {
       return version === "v2" ? [mockProposal] : [];
     });
 
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     // Calculate the actual questionID that will be generated from our ancillary data
@@ -481,7 +729,7 @@ describe("PolymarketNotifier", function () {
         },
       ],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
@@ -490,7 +738,7 @@ describe("PolymarketNotifier", function () {
 
     getNotifiedProposalsStub.restore();
     const getNotifiedProposalsMock = sandbox.stub();
-    getNotifiedProposalsMock.returns({
+    getNotifiedProposalsMock.resolves({
       [getProposalKeyToStore({ proposalHash: tx.hash })]: { proposalHash: tx.hash },
     });
     sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
@@ -516,8 +764,8 @@ describe("PolymarketNotifier", function () {
       [],
     ];
 
-    mockFunctionWithReturnValue("getPolymarketOrderBook", emptyOrders);
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo, volumeNum: 2_000_000 }]);
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
     mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
@@ -592,7 +840,7 @@ describe("PolymarketNotifier", function () {
           asks: [],
         },
       ];
-      mockFunctionWithReturnValue("getPolymarketOrderBook", sportsOrderBook);
+      mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(sportsOrderBook));
       mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
       mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
 

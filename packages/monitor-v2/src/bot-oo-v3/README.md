@@ -19,7 +19,6 @@ All the configuration should be provided with following environment variables:
 - `NODE_RETRIES` is the number of retries to make when a node request fails (defaults to `2`).
 - `NODE_RETRY_DELAY` is the delay in seconds between retries (defaults to `1`).
 - `NODE_TIMEOUT` is the timeout in seconds for node requests (defaults to `60`).
-- `RUN_FREQUENCY` is the frequency in seconds at which the bot should run (defaults to `60`).
 - `SETTLEMENTS_ENABLED` is boolean enabling/disabling settlement of assertions (`false` by default).
 - `BOT_IDENTIFIER` identifies the application name in the logs.
 - `SLACK_CONFIG` is a JSON object containing `defaultWebHookUrl` for the default Slack webhook URL.
