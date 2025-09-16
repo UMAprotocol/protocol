@@ -26,3 +26,5 @@ All the configuration should be provided with following environment variables:
   Defaults to 72h if not provided.
 - `MAX_BLOCK_LOOKBACK` (Optional) is the maximum number of blocks to look back per query.
   See default values in blockDefaults in index.ts
+- `SETTLE_DELAY`: Lookback period in seconds to detect settleable assertions (default `300`).
+- `SETTLE_TIMEOUT`: Timeout in seconds for submitting settlement transactions in serverless mode (default `240`).

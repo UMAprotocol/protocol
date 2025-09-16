@@ -49,7 +49,8 @@ export async function settleOOv1Requests(
         req.args.requester,
         req.args.identifier,
         req.args.timestamp,
-        req.args.ancillaryData
+        req.args.ancillaryData,
+        { blockTag: params.settleableCheckBlock }
       );
       logger.debug({
         at: "OOv1Bot",
@@ -93,7 +94,16 @@ export async function settleOOv1Requests(
 
   const oov1WithSigner = oov1WithAddress.connect(params.signer);
 
-  for (const req of settleableRequests) {
+  for (const [i, req] of settleableRequests.entries()) {
+    if (params.executionDeadline && Date.now() / 1000 >= params.executionDeadline) {
+      logger.warn({
+        at: "OOv1Bot",
+        message: "Execution deadline reached, skipping settlement",
+        remainingRequests: settleableRequests.length - i,
+      });
+      break;
+    }
+
     try {
       const estimatedGas = await oov1WithAddress.estimateGas.settle(
         req.args.requester,
