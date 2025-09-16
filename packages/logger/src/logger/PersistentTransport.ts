@@ -22,7 +22,15 @@ export abstract class PersistentTransport extends Transport {
   private redis: _RedisClient;
   private readonly logListKey: string;
 
-  constructor(winstonOpts: TransportOptions, protected readonly derivedTransport: string) {
+  // TODO: Remove this when the previous botIdentifier log queue is fully processed for bots that have been moved to use
+  // the shared log queue.
+  private readonly legacyLogListKey: string;
+
+  constructor(
+    winstonOpts: TransportOptions,
+    protected readonly derivedTransport: string,
+    protected readonly sharedLogQueue?: string
+  ) {
     super(winstonOpts);
 
     const url = process.env.REDIS_URL || redisDefaultUrl;
@@ -31,7 +39,11 @@ export abstract class PersistentTransport extends Transport {
     this.redis = createClient({ url }).on("error", (err) => console.error("Redis error", err));
 
     const botIdentifier = process.env.BOT_IDENTIFIER || noBotId;
-    this.logListKey = `uma-persistent-log-queue:${botIdentifier}:${derivedTransport}`;
+    this.legacyLogListKey = `uma-persistent-log-queue:${botIdentifier}:${derivedTransport}`;
+    this.logListKey =
+      sharedLogQueue === undefined
+        ? `uma-persistent-log-queue:${botIdentifier}:${derivedTransport}`
+        : `uma-persistent-log-queue:${sharedLogQueue}:${derivedTransport}`;
 
     this.on("processed", () => (this.isQueueBeingExecuted = false)); // Unlock queue execution when current run processed.
   }
@@ -91,7 +103,11 @@ export abstract class PersistentTransport extends Transport {
       try {
         await this.connectRedis();
 
-        const oldestLogString = await this.redis.lPop(this.logListKey);
+        // TODO: Remove the legacy queue when it is fully processed for bots that have been moved to use the shared log queue.
+        // For now process the legacy queue first, then the shared log queue if the old one is empty.
+        const logListKey =
+          (await this.redis.lLen(this.legacyLogListKey)) === 0 ? this.logListKey : this.legacyLogListKey;
+        const oldestLogString = await this.redis.lPop(logListKey);
         if (oldestLogString === null) break; // We have processed all logs from persistent storage queue.
 
         info = JSON.parse(oldestLogString);

@@ -19,12 +19,14 @@ const Config = ss.object({
   botToken: ss.string(),
   channelIds: ss.optional(ss.record(ss.string(), ss.string())),
   rateLimit: ss.optional(ss.number()),
+  sharedLogQueue: ss.optional(ss.string()),
 });
 // Config object becomes a type
 // {
 //   botToken: string;
 //   channelIds?: Record<string,string>;
 //   rateLimit?: number;
+//   sharedLogQueue?: string;
 // }
 export type Config = ss.Infer<typeof Config>;
 
@@ -62,8 +64,8 @@ export class DiscordTicketTransport extends PersistentTransport {
 
   // Ticket tool does not allow more than 1 ticket to be opened per 10 seconds. By default we conservatively use
   // rateLimit of 20 seconds.
-  constructor(winstonOpts: TransportOptions, { botToken, channelIds = {}, rateLimit = 20 }: Config) {
-    super(winstonOpts, "Discord Ticket");
+  constructor(winstonOpts: TransportOptions, { botToken, channelIds = {}, rateLimit = 20, sharedLogQueue }: Config) {
+    super(winstonOpts, "Discord Ticket", sharedLogQueue);
 
     this.botToken = botToken;
     this.channelIds = channelIds;
