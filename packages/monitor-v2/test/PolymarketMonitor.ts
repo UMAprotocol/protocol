@@ -85,6 +85,10 @@ describe("PolymarketNotifier", function () {
     const ctfSportsOracleAddress = "0x1234";
     const graphqlEndpoint = "endpoint";
     const apiEndpoint = "endpoint";
+    const aiApiUrl = "https://ai.example.com/api";
+    const aiResultsBaseUrl = "https://ai.example.com/results";
+    const aiApiKey = "test-ai-api-key";
+    const aiProjectId = "test-project";
 
     return {
       ctfExchangeAddress,
@@ -106,6 +110,10 @@ describe("PolymarketNotifier", function () {
       orderBookBatchSize: 499,
       ooV2Addresses: [oov2.address],
       ooV1Addresses: [oo.address],
+      aiApiUrl,
+      aiResultsBaseUrl,
+      aiApiKey,
+      aiProjectId,
     };
   };
 
@@ -152,6 +160,8 @@ describe("PolymarketNotifier", function () {
     const storeNotifiedProposalsMock = sandbox.stub();
     storeNotifiedProposalsMock.returns(Promise.resolve());
     sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
+
+    sandbox.stub(commonModule, "fetchLatestAIDeepLink").resolves({ deeplink: undefined });
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
