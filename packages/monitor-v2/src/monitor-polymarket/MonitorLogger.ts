@@ -69,7 +69,7 @@ export async function logMarketSentimentDiscrepancy(
       scores: [ethers.BigNumber, ethers.BigNumber];
       multipleValuesQuery?: MultipleValuesQuery;
       isSportsMarket: boolean;
-      aiRecommendationLink?: string;
+      aiDeeplink?: string;
     },
   params: MonitoringParams
 ): Promise<void> {
@@ -101,7 +101,7 @@ export async function logMarketSentimentDiscrepancy(
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       extraDetails +
       buildDisputeMessage(market, params.chainId) +
-      (market.aiRecommendationLink ? ` AI check: <${market.aiRecommendationLink}|View UMA AI review>.` : ""),
+      (market.aiDeeplink ? ` AI check: <${market.aiDeeplink}|View UMA AI review>.` : ""),
     notificationPath: "polymarket-notifier",
   });
 }
@@ -113,7 +113,7 @@ export async function logProposalAlignmentConfirmed(
       scores?: [ethers.BigNumber, ethers.BigNumber];
       multipleValuesQuery?: MultipleValuesQuery;
       isSportsMarket: boolean;
-      aiRecommendationLink?: string;
+      aiDeeplink?: string;
     },
   params: MonitoringParams
 ): Promise<void> {
@@ -129,7 +129,7 @@ export async function logProposalAlignmentConfirmed(
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       ` ` +
       generateUILink(market.requestHash, params.chainId, Number(market.requestLogIndex)) +
-      (market.aiRecommendationLink ? ` AI check: <${market.aiRecommendationLink}|View UMA AI review>.` : ""),
+      (market.aiDeeplink ? ` AI check: <${market.aiDeeplink}|View UMA AI review>.` : ""),
     notificationPath: "polymarket-notifier",
   });
 }
@@ -141,7 +141,7 @@ export async function logProposalHighVolume(
       scores: [ethers.BigNumber, ethers.BigNumber];
       multipleValuesQuery?: MultipleValuesQuery;
       isSportsMarket: boolean;
-      aiRecommendationLink?: string;
+      aiDeeplink?: string;
     },
   params: MonitoringParams
 ): Promise<void> {
@@ -155,7 +155,7 @@ export async function logProposalHighVolume(
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       buildDisputeMessage(market, params.chainId) +
-      (market.aiRecommendationLink ? ` AI check: <${market.aiRecommendationLink}|View UMA AI review>.` : ""),
+      (market.aiDeeplink ? ` AI check: <${market.aiDeeplink}|View UMA AI review>.` : ""),
     notificationPath: "polymarket-notifier",
   });
 }
@@ -164,7 +164,8 @@ export async function logFailedMarketProposalVerification(
   logger: typeof Logger,
   chainId: number,
   market: OptimisticPriceRequest,
-  error: Error
+  error: Error,
+  aiDeeplink?: string
 ): Promise<void> {
   logger.error({
     at: "PolymarketMonitor",
@@ -173,7 +174,8 @@ export async function logFailedMarketProposalVerification(
       ` Failed to verify market:` +
       ` Ancillary data: ${tryHexToUtf8String(market.ancillaryData)}.` +
       ` Price request timestamp ${market.requestTimestamp.toString()}.` +
-      buildDisputeMessage(market, chainId),
+      buildDisputeMessage(market, chainId) +
+      (aiDeeplink ? ` AI check: <${aiDeeplink}|View UMA AI review>.` : ""),
     error,
     notificationPath: "polymarket-notifier",
   });
