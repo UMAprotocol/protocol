@@ -32,6 +32,7 @@ import {
   OptimisticPriceRequest,
   PolymarketMarketGraphqlProcessed,
   isInitialConfirmationLogged,
+  fetchLatestAIDeepLink,
 } from "./common";
 import * as common from "./common";
 
@@ -123,6 +124,8 @@ export async function processProposal(
     const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
     const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
 
+    const { deeplink: aiRecommendationLink } = await fetchLatestAIDeepLink(proposal, params, logger);
+
     let alerted = false;
 
     if (market.volumeNum > thresholds.volume) {
@@ -134,6 +137,7 @@ export async function processProposal(
           scores: outcome.scores,
           multipleValuesQuery: outcome.mvq,
           isSportsMarket: isSportsRequest,
+          aiRecommendationLink,
         },
         params
       );
@@ -155,6 +159,7 @@ export async function processProposal(
           scores: outcome.scores,
           multipleValuesQuery: outcome.mvq,
           isSportsMarket: isSportsRequest,
+          aiRecommendationLink,
         },
         params
       );
@@ -173,6 +178,7 @@ export async function processProposal(
             scores: outcome.scores,
             multipleValuesQuery: outcome.mvq,
             isSportsMarket: isSportsRequest,
+            aiRecommendationLink,
           },
           params
         );

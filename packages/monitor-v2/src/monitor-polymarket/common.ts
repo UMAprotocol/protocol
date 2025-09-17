@@ -70,6 +70,10 @@ export interface MonitoringParams {
   orderBookBatchSize: number;
   ooV2Addresses: string[];
   ooV1Addresses: string[];
+  aiApiUrl: string;
+  aiResultsBaseUrl: string;
+  aiApiKey: string;
+  aiProjectId: string;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -110,7 +114,6 @@ export interface MarketOrderbook {
   bids: Order;
   asks: Order;
 }
-
 export interface OptimisticPriceRequest {
   requestHash: string;
   requestTimestamp: BigNumber;
@@ -680,6 +683,56 @@ export function decodeMultipleValuesQuery(decodedAncillaryData: string): Multipl
   return json;
 }
 
+export interface UMAAIRetry {
+  id: string;
+}
+export interface UMAAIRetriesLatestResponse {
+  elements: UMAAIRetry[];
+  next_cursor: string | null;
+  has_more: boolean;
+  total_count: number;
+  total_pages: number;
+}
+interface AIRetryLookupResult {
+  deeplink?: string;
+}
+
+export async function fetchLatestAIDeepLink(
+  proposal: OptimisticPriceRequest,
+  params: MonitoringParams,
+  logger: typeof Logger
+): Promise<AIRetryLookupResult> {
+  try {
+    const response = await params.httpClient.get<UMAAIRetriesLatestResponse>(params.aiApiUrl, {
+      params: {
+        limit: 50,
+        search: proposal.proposalHash,
+        last_page: false,
+        project_id: params.aiProjectId,
+      },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${params.aiApiKey}`,
+      },
+    });
+
+    const result = response.data?.elements?.[0] ?? null;
+    if (!result) return { deeplink: undefined };
+
+    return {
+      deeplink: `${params.aiResultsBaseUrl}/${result.id}`,
+    };
+  } catch (error) {
+    logger.debug({
+      at: "PolymarketMonitor",
+      message: "Failed to fetch AI deeplink",
+      error: error instanceof Error ? error.message : String(error),
+      proposalHash: proposal.proposalHash,
+    });
+    return { deeplink: undefined };
+  }
+}
+
 export const getProposalKeyToStore = (market: StoredNotifiedProposal | OptimisticPriceRequest): string => {
   return market.proposalHash;
 };
@@ -765,6 +818,18 @@ export const initMonitoringParams = async (
   if (!env.POLYMARKET_API_KEY) throw new Error("POLYMARKET_API_KEY must be defined in env");
   const polymarketApiKey = env.POLYMARKET_API_KEY;
 
+  if (!env.AI_API_KEY) throw new Error("AI_API_KEY must be defined in env");
+  const aiApiKey = env.AI_API_KEY;
+
+  if (!env.AI_PROJECT_ID) throw new Error("AI_PROJECT_ID must be defined in env");
+  const aiProjectId = env.AI_PROJECT_ID;
+
+  if (!env.AI_API_URL) throw new Error("AI_API_URL must be defined in env");
+  const aiApiUrl = env.AI_API_URL;
+
+  if (!env.AI_RESULTS_BASE_URL) throw new Error("AI_RESULTS_BASE_URL must be defined in env");
+  const aiResultsBaseUrl = env.AI_RESULTS_BASE_URL;
+
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
 
@@ -835,6 +900,10 @@ export const initMonitoringParams = async (
     orderBookBatchSize,
     ooV2Addresses,
     ooV1Addresses,
+    aiApiUrl,
+    aiResultsBaseUrl,
+    aiApiKey,
+    aiProjectId,
   };
 };
 

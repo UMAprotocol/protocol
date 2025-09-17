@@ -69,6 +69,7 @@ export async function logMarketSentimentDiscrepancy(
       scores: [ethers.BigNumber, ethers.BigNumber];
       multipleValuesQuery?: MultipleValuesQuery;
       isSportsMarket: boolean;
+      aiRecommendationLink?: string;
     },
   params: MonitoringParams
 ): Promise<void> {
@@ -99,7 +100,8 @@ export async function logMarketSentimentDiscrepancy(
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       extraDetails +
-      buildDisputeMessage(market, params.chainId),
+      buildDisputeMessage(market, params.chainId) +
+      (market.aiRecommendationLink ? ` AI check: <${market.aiRecommendationLink}|View UMA AI review>.` : ""),
     notificationPath: "polymarket-notifier",
   });
 }
@@ -111,6 +113,7 @@ export async function logProposalAlignmentConfirmed(
       scores?: [ethers.BigNumber, ethers.BigNumber];
       multipleValuesQuery?: MultipleValuesQuery;
       isSportsMarket: boolean;
+      aiRecommendationLink?: string;
     },
   params: MonitoringParams
 ): Promise<void> {
@@ -125,7 +128,8 @@ export async function logProposalAlignmentConfirmed(
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       ` ` +
-      generateUILink(market.requestHash, params.chainId, Number(market.requestLogIndex)),
+      generateUILink(market.requestHash, params.chainId, Number(market.requestLogIndex)) +
+      (market.aiRecommendationLink ? ` AI check: <${market.aiRecommendationLink}|View UMA AI review>.` : ""),
     notificationPath: "polymarket-notifier",
   });
 }
@@ -137,6 +141,7 @@ export async function logProposalHighVolume(
       scores: [ethers.BigNumber, ethers.BigNumber];
       multipleValuesQuery?: MultipleValuesQuery;
       isSportsMarket: boolean;
+      aiRecommendationLink?: string;
     },
   params: MonitoringParams
 ): Promise<void> {
@@ -149,7 +154,8 @@ export async function logProposalHighVolume(
       intro +
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
-      buildDisputeMessage(market, params.chainId),
+      buildDisputeMessage(market, params.chainId) +
+      (market.aiRecommendationLink ? ` AI check: <${market.aiRecommendationLink}|View UMA AI review>.` : ""),
     notificationPath: "polymarket-notifier",
   });
 }
