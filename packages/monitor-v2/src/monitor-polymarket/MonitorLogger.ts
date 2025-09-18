@@ -9,6 +9,10 @@ import type {
 import { tryHexToUtf8String } from "../utils/contracts";
 import { ethers } from "ethers";
 
+function formatAIDeeplinkMessage(deeplink?: string): string {
+  return deeplink ? ` AI check: <${deeplink}|View UMA AI review>.` : "";
+}
+
 function generateUILink(transactionHash: string, chainId: number, eventIndex: number) {
   return `<https://oracle.uma.xyz/request?transactionHash=${transactionHash}&chainId=${chainId}&oracleType=OptimisticV2&eventIndex=${eventIndex} | View in the Oracle UI.>`;
 }
@@ -101,7 +105,7 @@ export async function logMarketSentimentDiscrepancy(
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       extraDetails +
       buildDisputeMessage(market, params.chainId) +
-      (market.aiDeeplink ? ` AI check: <${market.aiDeeplink}|View UMA AI review>.` : ""),
+      formatAIDeeplinkMessage(market.aiDeeplink),
     notificationPath: "polymarket-notifier",
   });
 }
@@ -129,7 +133,7 @@ export async function logProposalAlignmentConfirmed(
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       ` ` +
       generateUILink(market.requestHash, params.chainId, Number(market.requestLogIndex)) +
-      (market.aiDeeplink ? ` AI check: <${market.aiDeeplink}|View UMA AI review>.` : ""),
+      formatAIDeeplinkMessage(market.aiDeeplink),
     notificationPath: "polymarket-notifier",
   });
 }
@@ -155,7 +159,7 @@ export async function logProposalHighVolume(
       ` In the following transaction: ` +
       createEtherscanLinkMarkdown(market.proposalHash, params.chainId) +
       buildDisputeMessage(market, params.chainId) +
-      (market.aiDeeplink ? ` AI check: <${market.aiDeeplink}|View UMA AI review>.` : ""),
+      formatAIDeeplinkMessage(market.aiDeeplink),
     notificationPath: "polymarket-notifier",
   });
 }
@@ -175,7 +179,7 @@ export async function logFailedMarketProposalVerification(
       ` Ancillary data: ${tryHexToUtf8String(market.ancillaryData)}.` +
       ` Price request timestamp ${market.requestTimestamp.toString()}.` +
       buildDisputeMessage(market, chainId) +
-      (aiDeeplink ? ` AI check: <${aiDeeplink}|View UMA AI review>.` : ""),
+      formatAIDeeplinkMessage(aiDeeplink),
     error,
     notificationPath: "polymarket-notifier",
   });

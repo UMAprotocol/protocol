@@ -110,10 +110,13 @@ describe("PolymarketNotifier", function () {
       orderBookBatchSize: 499,
       ooV2Addresses: [oov2.address],
       ooV1Addresses: [oo.address],
-      aiApiUrl,
-      aiResultsBaseUrl,
-      aiApiKey,
-      aiProjectId,
+      aiConfig: {
+        enabled: true,
+        apiUrl: aiApiUrl,
+        resultsBaseUrl: aiResultsBaseUrl,
+        apiKey: aiApiKey,
+        projectId: aiProjectId,
+      },
     };
   };
 
@@ -254,7 +257,7 @@ describe("PolymarketNotifier", function () {
     // Helper to build a proposal aligning with outcome 0 (YES)
     const makeProposal = async (): Promise<OptimisticPriceRequest> => ({
       proposalHash: "0xhash1",
-      requester: (await createMonitoringParams()).ctfAdapterAddress,
+      requester: (await createMonitoringParams()).additionalRequesters[0],
       proposer: await deployer.getAddress(),
       identifier,
       proposedPrice: ONE,

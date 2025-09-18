@@ -70,10 +70,7 @@ export interface MonitoringParams {
   orderBookBatchSize: number;
   ooV2Addresses: string[];
   ooV1Addresses: string[];
-  aiApiUrl: string;
-  aiResultsBaseUrl: string;
-  aiApiKey: string;
-  aiProjectId: string;
+  aiConfig: AIConfig;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -685,7 +682,16 @@ export function decodeMultipleValuesQuery(decodedAncillaryData: string): Multipl
 
 export interface UMAAIRetry {
   id: string;
+  question_id: string;
+  data: {
+    input: {
+      timing?: {
+        expiration_timestamp?: number;
+      };
+    };
+  };
 }
+
 export interface UMAAIRetriesLatestResponse {
   elements: UMAAIRetry[];
   next_cursor: string | null;
@@ -702,25 +708,53 @@ export async function fetchLatestAIDeepLink(
   params: MonitoringParams,
   logger: typeof Logger
 ): Promise<AIRetryLookupResult> {
+  if (
+    !params.aiConfig.apiKey ||
+    !params.aiConfig.apiUrl ||
+    !params.aiConfig.projectId ||
+    !params.aiConfig.resultsBaseUrl
+  ) {
+    return { deeplink: undefined };
+  }
   try {
-    const response = await params.httpClient.get<UMAAIRetriesLatestResponse>(params.aiApiUrl, {
+    const response = await params.httpClient.get<UMAAIRetriesLatestResponse>(params.aiConfig.apiUrl, {
       params: {
         limit: 50,
         search: proposal.proposalHash,
         last_page: false,
-        project_id: params.aiProjectId,
+        project_id: params.aiConfig.projectId,
       },
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${params.aiApiKey}`,
+        Authorization: `Bearer ${params.aiConfig.apiKey}`,
       },
     });
 
-    const result = response.data?.elements?.[0] ?? null;
-    if (!result) return { deeplink: undefined };
+    const questionId = calculatePolymarketQuestionID(proposal.ancillaryData);
+    const result = response.data?.elements?.find(
+      (element) =>
+        questionId === element.question_id &&
+        element.data.input.timing?.expiration_timestamp === proposal.proposalExpirationTimestamp.toNumber()
+    );
+
+    if (!result) {
+      logger.debug({
+        at: "PolymarketMonitor",
+        message: "No AI deeplink found",
+        proposalHash: proposal.proposalHash,
+        expirationTimestamp: proposal.proposalExpirationTimestamp.toNumber(),
+        questionId: questionId,
+        response: {
+          data: response.data,
+          status: response.status,
+          statusText: response.statusText,
+        },
+      });
+      return { deeplink: undefined };
+    }
 
     return {
-      deeplink: `${params.aiResultsBaseUrl}/${result.id}`,
+      deeplink: `${params.aiConfig.resultsBaseUrl}/${result.id}`,
     };
   } catch (error) {
     logger.debug({
@@ -802,6 +836,19 @@ export const parseEnvList = (env: NodeJS.ProcessEnv, key: string, defaultValue: 
   return output;
 };
 
+export const parseEnvJson = <T>(env: NodeJS.ProcessEnv, key: string, defaultValue: T): T => {
+  const rawValue = env[key];
+  if (!rawValue) return defaultValue;
+  return JSON.parse(rawValue);
+};
+
+export interface AIConfig {
+  projectId: string;
+  apiUrl: string;
+  resultsBaseUrl: string;
+  apiKey: string;
+}
+
 export const initMonitoringParams = async (
   env: NodeJS.ProcessEnv,
   logger: typeof Logger
@@ -818,17 +865,12 @@ export const initMonitoringParams = async (
   if (!env.POLYMARKET_API_KEY) throw new Error("POLYMARKET_API_KEY must be defined in env");
   const polymarketApiKey = env.POLYMARKET_API_KEY;
 
-  if (!env.AI_API_KEY) throw new Error("AI_API_KEY must be defined in env");
-  const aiApiKey = env.AI_API_KEY;
-
-  if (!env.AI_PROJECT_ID) throw new Error("AI_PROJECT_ID must be defined in env");
-  const aiProjectId = env.AI_PROJECT_ID;
-
-  if (!env.AI_API_URL) throw new Error("AI_API_URL must be defined in env");
-  const aiApiUrl = env.AI_API_URL;
-
-  if (!env.AI_RESULTS_BASE_URL) throw new Error("AI_RESULTS_BASE_URL must be defined in env");
-  const aiResultsBaseUrl = env.AI_RESULTS_BASE_URL;
+  const aiConfig = parseEnvJson<AIConfig>(env, "AI_CONFIG", {
+    projectId: "",
+    apiUrl: "",
+    resultsBaseUrl: "",
+    apiKey: "",
+  });
 
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
@@ -900,10 +942,7 @@ export const initMonitoringParams = async (
     orderBookBatchSize,
     ooV2Addresses,
     ooV1Addresses,
-    aiApiUrl,
-    aiResultsBaseUrl,
-    aiApiKey,
-    aiProjectId,
+    aiConfig,
   };
 };
 
