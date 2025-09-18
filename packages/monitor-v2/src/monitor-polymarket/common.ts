@@ -70,7 +70,7 @@ export interface MonitoringParams {
   orderBookBatchSize: number;
   ooV2Addresses: string[];
   ooV1Addresses: string[];
-  aiConfig: AIConfig;
+  aiConfig?: AIConfig;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -708,12 +708,7 @@ export async function fetchLatestAIDeepLink(
   params: MonitoringParams,
   logger: typeof Logger
 ): Promise<AIRetryLookupResult> {
-  if (
-    !params.aiConfig.apiKey ||
-    !params.aiConfig.apiUrl ||
-    !params.aiConfig.projectId ||
-    !params.aiConfig.resultsBaseUrl
-  ) {
+  if (!params.aiConfig) {
     return { deeplink: undefined };
   }
   try {
@@ -865,12 +860,18 @@ export const initMonitoringParams = async (
   if (!env.POLYMARKET_API_KEY) throw new Error("POLYMARKET_API_KEY must be defined in env");
   const polymarketApiKey = env.POLYMARKET_API_KEY;
 
-  const aiConfig = parseEnvJson<AIConfig>(env, "AI_CONFIG", {
+  const rawAiConfig = parseEnvJson<AIConfig>(env, "AI_CONFIG", {
     projectId: "",
     apiUrl: "",
     resultsBaseUrl: "",
     apiKey: "",
   });
+
+  // Only set aiConfig if all required fields are present
+  const aiConfig =
+    rawAiConfig.apiKey && rawAiConfig.apiUrl && rawAiConfig.projectId && rawAiConfig.resultsBaseUrl
+      ? rawAiConfig
+      : undefined;
 
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
