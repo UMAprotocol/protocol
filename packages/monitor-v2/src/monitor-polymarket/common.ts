@@ -70,6 +70,7 @@ export interface MonitoringParams {
   orderBookBatchSize: number;
   ooV2Addresses: string[];
   ooV1Addresses: string[];
+  aiConfig?: AIConfig;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -110,7 +111,6 @@ export interface MarketOrderbook {
   bids: Order;
   asks: Order;
 }
-
 export interface OptimisticPriceRequest {
   requestHash: string;
   requestTimestamp: BigNumber;
@@ -680,6 +680,88 @@ export function decodeMultipleValuesQuery(decodedAncillaryData: string): Multipl
   return json;
 }
 
+export interface UMAAIRetry {
+  id: string;
+  question_id: string;
+  data: {
+    input: {
+      timing?: {
+        expiration_timestamp?: number;
+      };
+    };
+  };
+}
+
+export interface UMAAIRetriesLatestResponse {
+  elements: UMAAIRetry[];
+  next_cursor: string | null;
+  has_more: boolean;
+  total_count: number;
+  total_pages: number;
+}
+interface AIRetryLookupResult {
+  deeplink?: string;
+}
+
+export async function fetchLatestAIDeepLink(
+  proposal: OptimisticPriceRequest,
+  params: MonitoringParams,
+  logger: typeof Logger
+): Promise<AIRetryLookupResult> {
+  if (!params.aiConfig) {
+    return { deeplink: undefined };
+  }
+  try {
+    const response = await params.httpClient.get<UMAAIRetriesLatestResponse>(params.aiConfig.apiUrl, {
+      params: {
+        limit: 50,
+        search: proposal.proposalHash,
+        last_page: false,
+        project_id: params.aiConfig.projectId,
+      },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${params.aiConfig.apiKey}`,
+      },
+    });
+
+    const questionId = calculatePolymarketQuestionID(proposal.ancillaryData);
+    const result = response.data?.elements?.find(
+      (element) =>
+        questionId === element.question_id &&
+        element.data.input.timing?.expiration_timestamp === proposal.proposalExpirationTimestamp.toNumber()
+    );
+
+    if (!result) {
+      logger.debug({
+        at: "PolymarketMonitor",
+        message: "No AI deeplink found",
+        proposalHash: proposal.proposalHash,
+        expirationTimestamp: proposal.proposalExpirationTimestamp.toNumber(),
+        questionId: questionId,
+        response: {
+          data: response.data,
+          status: response.status,
+          statusText: response.statusText,
+        },
+      });
+      return { deeplink: undefined };
+    }
+
+    return {
+      deeplink: `${params.aiConfig.resultsBaseUrl}/${result.id}`,
+    };
+  } catch (error) {
+    logger.debug({
+      at: "PolymarketMonitor",
+      message: "Failed to fetch AI deeplink",
+      error: error instanceof Error ? error.message : String(error),
+      proposalHash: proposal.proposalHash,
+    });
+    return { deeplink: undefined };
+  }
+}
+
 export const getProposalKeyToStore = (market: StoredNotifiedProposal | OptimisticPriceRequest): string => {
   return market.proposalHash;
 };
@@ -756,6 +838,19 @@ export const parseEnvList = (env: NodeJS.ProcessEnv, key: string, defaultValue: 
   return output;
 };
 
+export const parseEnvJson = <T>(env: NodeJS.ProcessEnv, key: string, defaultValue: T): T => {
+  const rawValue = env[key];
+  if (!rawValue) return defaultValue;
+  return JSON.parse(rawValue);
+};
+
+export interface AIConfig {
+  projectId: string;
+  apiUrl: string;
+  resultsBaseUrl: string;
+  apiKey: string;
+}
+
 export const initMonitoringParams = async (
   env: NodeJS.ProcessEnv,
   logger: typeof Logger
@@ -771,6 +866,19 @@ export const initMonitoringParams = async (
 
   if (!env.POLYMARKET_API_KEY) throw new Error("POLYMARKET_API_KEY must be defined in env");
   const polymarketApiKey = env.POLYMARKET_API_KEY;
+
+  const rawAiConfig = parseEnvJson<AIConfig>(env, "AI_CONFIG", {
+    projectId: "",
+    apiUrl: "",
+    resultsBaseUrl: "",
+    apiKey: "",
+  });
+
+  // Only set aiConfig if all required fields are present
+  const aiConfig =
+    rawAiConfig.apiKey && rawAiConfig.apiUrl && rawAiConfig.projectId && rawAiConfig.resultsBaseUrl
+      ? rawAiConfig
+      : undefined;
 
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
@@ -842,6 +950,7 @@ export const initMonitoringParams = async (
     orderBookBatchSize,
     ooV2Addresses,
     ooV1Addresses,
+    aiConfig,
   };
 };
 

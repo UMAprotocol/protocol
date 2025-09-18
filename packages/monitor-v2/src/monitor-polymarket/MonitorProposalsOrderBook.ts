@@ -33,6 +33,7 @@ import {
   OptimisticPriceRequest,
   PolymarketMarketGraphqlProcessed,
   isInitialConfirmationLogged,
+  fetchLatestAIDeepLink,
 } from "./common";
 import * as common from "./common";
 
@@ -124,6 +125,8 @@ export async function processProposal(
     const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
     const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
 
+    const { deeplink: aiDeeplink } = await fetchLatestAIDeepLink(proposal, params, logger);
+
     let alerted = false;
 
     const alreadyNotified = await isProposalNotified(proposal);
@@ -136,6 +139,7 @@ export async function processProposal(
           scores: outcome.scores,
           multipleValuesQuery: outcome.mvq,
           isSportsMarket: isSportsRequest,
+          aiDeeplink,
         },
         params
       );
@@ -158,6 +162,7 @@ export async function processProposal(
           scores: outcome.scores,
           multipleValuesQuery: outcome.mvq,
           isSportsMarket: isSportsRequest,
+          aiDeeplink,
         },
         params
       );
@@ -177,6 +182,7 @@ export async function processProposal(
             scores: outcome.scores,
             multipleValuesQuery: outcome.mvq,
             isSportsMarket: isSportsRequest,
+            aiDeeplink,
           },
           params
         );
@@ -232,7 +238,8 @@ export async function monitorTransactionsProposedOrderBook(
   const tokenIds = new Set<string>();
 
   const logErrorAndPersist = async (proposal: OptimisticPriceRequest, err: Error) => {
-    await logFailedMarketProposalVerification(logger, params.chainId, proposal, err as Error);
+    const { deeplink: aiDeeplink } = await fetchLatestAIDeepLink(proposal, params, logger);
+    await logFailedMarketProposalVerification(logger, params.chainId, proposal, err as Error, aiDeeplink);
     await persistNotified(proposal, logger);
   };
 

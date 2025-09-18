@@ -85,6 +85,10 @@ describe("PolymarketNotifier", function () {
     const ctfSportsOracleAddress = "0x1234";
     const graphqlEndpoint = "endpoint";
     const apiEndpoint = "endpoint";
+    const aiApiUrl = "https://ai.example.com/api";
+    const aiResultsBaseUrl = "https://ai.example.com/results";
+    const aiApiKey = "test-ai-api-key";
+    const aiProjectId = "test-project";
 
     return {
       ctfExchangeAddress,
@@ -106,6 +110,13 @@ describe("PolymarketNotifier", function () {
       orderBookBatchSize: 499,
       ooV2Addresses: [oov2.address],
       ooV1Addresses: [oo.address],
+      aiConfig: {
+        enabled: true,
+        apiUrl: aiApiUrl,
+        resultsBaseUrl: aiResultsBaseUrl,
+        apiKey: aiApiKey,
+        projectId: aiProjectId,
+      },
     };
   };
 
@@ -153,6 +164,8 @@ describe("PolymarketNotifier", function () {
     storeNotifiedProposalsMock.returns(Promise.resolve());
     sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
     sandbox.stub(commonModule, "isProposalNotified").resolves(false);
+
+    sandbox.stub(commonModule, "fetchLatestAIDeepLink").resolves({ deeplink: undefined });
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
@@ -245,7 +258,7 @@ describe("PolymarketNotifier", function () {
     // Helper to build a proposal aligning with outcome 0 (YES)
     const makeProposal = async (): Promise<OptimisticPriceRequest> => ({
       proposalHash: "0xhash1",
-      requester: (await createMonitoringParams()).ctfAdapterAddress,
+      requester: (await createMonitoringParams()).additionalRequesters[0],
       proposer: await deployer.getAddress(),
       identifier,
       proposedPrice: ONE,
