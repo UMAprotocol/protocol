@@ -526,7 +526,7 @@ function _getProviderAndUrl(botConfig) {
    * ]
    */
   const defaultConfig = [
-    { url: env?.CUSTOM_NODDE_URL ?? customNodeUrl, retries: 2 }, // 2 retries if there's only a single provider.
+    { url: env?.CUSTOM_NODE_URL ?? customNodeUrl, retries: 2 }, // 2 retries if there's only a single provider.
   ];
 
   const config = env?.NODE_RETRY_CONFIG ?? defaultConfig;
