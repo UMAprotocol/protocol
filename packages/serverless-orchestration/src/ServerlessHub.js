@@ -144,9 +144,9 @@ hub.post("/", async (req, res) => {
     };
     for (const botName in configObject) {
       // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
-      const [botWeb3, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
+      const [provider, spokeCustomNodeUrl] = _getProviderAndUrl(configObject[botName]);
 
-      const singleChainId = await _getChainId(botWeb3);
+      const singleChainId = await _getChainId(provider);
 
       // Cache the chain id for this node url.
       nodeUrlToChainIdCache[spokeCustomNodeUrl] = singleChainId;
@@ -158,7 +158,7 @@ hub.post("/", async (req, res) => {
       if (!blockNumbersForChain[singleChainId]) {
         blockNumberPromises.push(
           _getLastQueriedBlockNumber(req.body.configFile, singleChainId, logger),
-          _getLatestBlockNumber(botWeb3),
+          _getLatestBlockNumber(provider),
           new Promise((resolve) => {
             resolve(singleChainId);
           })
@@ -226,7 +226,7 @@ hub.post("/", async (req, res) => {
     let promiseArray = [];
     let botConfigs = {};
     for (const botName in configObject) {
-      const [, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
+      const [, spokeCustomNodeUrl] = _getProviderAndUrl(configObject[botName]);
       const singleChainId = nodeUrlToChainIdCache[spokeCustomNodeUrl];
 
       // Execute the spoke's command:
@@ -517,7 +517,7 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
   );
 }
 
-function _getWeb3AndUrlForBot(botConfig) {
+function _getProviderAndUrl(botConfig) {
   /**
    * NODE_RETRY CONFIG = [
    *  { url: "https://...", retries: 2 },

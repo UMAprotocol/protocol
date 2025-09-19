@@ -17,7 +17,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/logger");
 
-// Use Ganache to create additional web3 providers with different chain ID's
+// Use Ganache to create additional providers with different chain IDs.
 const ganache = require("ganache-core");
 
 describe("ServerlessHub.js", function () {
@@ -475,10 +475,10 @@ describe("ServerlessHub.js", function () {
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
-    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
-    // alternative node URL and fetch its chain ID.
+    // Temporarily spin up a new provider with an overridden chain ID. The hub
+    // should be able to detect the alternative node URL and fetch its chain ID.
     const alternateChainId = 666;
-    const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
+    const altProvider = startGanacheServer(alternateChainId, 7777);
     const hubConfig = {
       testServerlessMonitor: {
         // eslint-disable-next-line no-useless-escape
@@ -487,13 +487,13 @@ describe("ServerlessHub.js", function () {
       },
       testServerlessMonitor2: {
         // eslint-disable-next-line no-useless-escape
-        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.transport.url}\" ]`,
-        environmentVariables: { CUSTOM_NODE_URL: alternateWeb3.transport.url },
+        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${altProvider.transport.url}\" ]`,
+        environmentVariables: { CUSTOM_NODE_URL: altProvider.transport.url },
       },
       testServerlessMonitor3: {
         // eslint-disable-next-line no-useless-escape
-        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.transport.url}\" ]`,
-        environmentVariables: { CUSTOM_NODE_URL: alternateWeb3.transport.url },
+        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${altProvider.transport.url}\" ]`,
+        environmentVariables: { CUSTOM_NODE_URL: altProvider.transport.url },
       },
     };
 
@@ -517,10 +517,10 @@ describe("ServerlessHub.js", function () {
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
-    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
-    // alternative network when passed together with default network within the same bot config.
+    // Temporarily spin up a new provider with an overridden chain ID. The hub should be able to detect
+    // the alternative network when passed together with default network within the same bot config.
     const alternateChainId = 666;
-    const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
+    const altProvider = startGanacheServer(alternateChainId, 7777);
 
     const hubConfig = {
       testServerlessBot: {
@@ -531,7 +531,7 @@ describe("ServerlessHub.js", function () {
         serverlessCommand: "echo multiple network bot started",
         environmentVariables: {
           [`NODE_URL_${defaultChainId}`]: network.config.url,
-          [`NODE_URL_${alternateChainId}`]: alternateWeb3.transport.url,
+          [`NODE_URL_${alternateChainId}`]: altProvider.transport.url,
           STORE_MULTI_CHAIN_BLOCK_NUMBERS: [defaultChainId, alternateChainId],
         },
       },
@@ -556,15 +556,15 @@ describe("ServerlessHub.js", function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
 
-    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to store the latest
+    // Temporarily spin up a new provider with an overridden chain ID. The hub should be able to store the latest
     // block number for this alternative network when passed together with default network within the same bot config.
     const alternateChainId = 666;
     const alternatePort = 7777;
-    const alternateWeb3 = startGanacheServer(alternateChainId, alternatePort);
+    const altProvider = startGanacheServer(alternateChainId, alternatePort);
 
     // Mine additional block and store its number.
-    await alternateWeb3.request({ method: "evm_mine", params: [] });
-    const latestAlternateBlockNumber = Number(await alternateWeb3.getBlockNumber());
+    await altProvider.request({ method: "evm_mine", params: [] });
+    const latestAlternateBlockNumber = Number(await altProvider.getBlockNumber());
 
     const hubConfig = {
       testServerlessBot: {
@@ -575,7 +575,7 @@ describe("ServerlessHub.js", function () {
         serverlessCommand: "echo multiple network bot started",
         environmentVariables: {
           [`NODE_URL_${defaultChainId}`]: network.config.url,
-          [`NODE_URL_${alternateChainId}`]: alternateWeb3.transport.url,
+          [`NODE_URL_${alternateChainId}`]: altProvider.transport.url,
           STORE_MULTI_CHAIN_BLOCK_NUMBERS: [defaultChainId, alternateChainId],
         },
       },
