@@ -1,6 +1,6 @@
-const { web3, network } = require("hardhat");
+const { network } = require("hardhat");
 const { assert } = require("chai");
-const Web3 = require("web3");
+const viem = require("viem");
 
 // Enables testing http requests to an express server.
 const request = require("supertest");
@@ -17,12 +17,13 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/logger");
 
-// Use Ganache to create additional web3 providers with different chain ID's
+// Use Ganache to create additional providers with different chain IDs.
 const ganache = require("ganache-core");
 
 describe("ServerlessHub.js", function () {
   const defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
+  let provider;
   let hubSpy;
   let hubSpyLogger;
   let hubTestPort = 8080;
@@ -69,14 +70,13 @@ describe("ServerlessHub.js", function () {
     const node = ganache.server({ _chainIdRpc: chainId });
     node.listen(port);
     ganacheServers.push(node);
-    return new Web3("http://127.0.0.1:" + port);
+    return viem.createPublicClient({ transport: viem.http(`http://127.0.0.1:${port}`) });
   };
 
-  before(async function () {
-    defaultChainId = await web3.eth.getChainId();
-  });
-
   beforeEach(async function () {
+    provider = viem.createPublicClient({ transport: viem.http(network.config.url) });
+    defaultChainId = await provider.getChainId();
+
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     hubSpy = sinon.spy(); // Create a new spy for each test.
     hubSpyLogger = winston.createLogger({
@@ -143,7 +143,7 @@ describe("ServerlessHub.js", function () {
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
     const hubConfig = {
       testServerlessMonitor: {
@@ -174,7 +174,7 @@ describe("ServerlessHub.js", function () {
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
     const defaultConfig = {
       serverlessCommand: "true",
       environmentVariables: { CUSTOM_NODE_URL: network.config.url },
@@ -203,7 +203,7 @@ describe("ServerlessHub.js", function () {
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
     const defaultConfig = {
       serverlessCommand: "true",
       environmentVariables: { CUSTOM_NODE_URL: network.config.url },
@@ -221,7 +221,7 @@ describe("ServerlessHub.js", function () {
     // valid config to send but set the spoke to be off-line
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
     const hubConfig = {
       testServerlessMonitor: {
@@ -260,7 +260,7 @@ describe("ServerlessHub.js", function () {
     // valid config to send but set the spoke to be off-line.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
     const hubConfig = {
       testServerlessMonitor: {
@@ -308,7 +308,7 @@ describe("ServerlessHub.js", function () {
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
     const hubConfig = {
       testServerlessMonitor: {
@@ -349,7 +349,7 @@ describe("ServerlessHub.js", function () {
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
     const hubConfig = {
       testServerlessMonitor: {
@@ -404,7 +404,7 @@ describe("ServerlessHub.js", function () {
   it("ServerlessHub can correctly inject common config into child configs", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
     const hubConfig = {
       commonConfig: {
@@ -473,13 +473,12 @@ describe("ServerlessHub.js", function () {
   it("ServerlessHub can correctly deal with multiple providers", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
-    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
-    // alternative node URL and fetch its chain ID.
+    // Temporarily spin up a new provider with an overridden chain ID. The hub
+    // should be able to detect the alternative node URL and fetch its chain ID.
     const alternateChainId = 666;
-    const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
-
+    const altProvider = startGanacheServer(alternateChainId, 7777);
     const hubConfig = {
       testServerlessMonitor: {
         // eslint-disable-next-line no-useless-escape
@@ -488,13 +487,13 @@ describe("ServerlessHub.js", function () {
       },
       testServerlessMonitor2: {
         // eslint-disable-next-line no-useless-escape
-        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.currentProvider.host}\" ]`,
-        environmentVariables: { CUSTOM_NODE_URL: alternateWeb3.currentProvider.host },
+        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${altProvider.transport.url}\" ]`,
+        environmentVariables: { CUSTOM_NODE_URL: altProvider.transport.url },
       },
       testServerlessMonitor3: {
         // eslint-disable-next-line no-useless-escape
-        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${alternateWeb3.currentProvider.host}\" ]`,
-        environmentVariables: { CUSTOM_NODE_URL: alternateWeb3.currentProvider.host },
+        serverlessCommand: `[ \"\${CUSTOM_NODE_URL}\" = \"${altProvider.transport.url}\" ]`,
+        environmentVariables: { CUSTOM_NODE_URL: altProvider.transport.url },
       },
     };
 
@@ -516,12 +515,12 @@ describe("ServerlessHub.js", function () {
   it("ServerlessHub sets multiple network block numbers", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
-    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
-    // alternative network when passed together with default network within the same bot config.
+    // Temporarily spin up a new provider with an overridden chain ID. The hub should be able to detect
+    // the alternative network when passed together with default network within the same bot config.
     const alternateChainId = 666;
-    const alternateWeb3 = startGanacheServer(alternateChainId, 7777);
+    const altProvider = startGanacheServer(alternateChainId, 7777);
 
     const hubConfig = {
       testServerlessBot: {
@@ -532,7 +531,7 @@ describe("ServerlessHub.js", function () {
         serverlessCommand: "echo multiple network bot started",
         environmentVariables: {
           [`NODE_URL_${defaultChainId}`]: network.config.url,
-          [`NODE_URL_${alternateChainId}`]: alternateWeb3.currentProvider.host,
+          [`NODE_URL_${alternateChainId}`]: altProvider.transport.url,
           STORE_MULTI_CHAIN_BLOCK_NUMBERS: [defaultChainId, alternateChainId],
         },
       },
@@ -557,15 +556,15 @@ describe("ServerlessHub.js", function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
 
-    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to store the latest
+    // Temporarily spin up a new provider with an overridden chain ID. The hub should be able to store the latest
     // block number for this alternative network when passed together with default network within the same bot config.
     const alternateChainId = 666;
     const alternatePort = 7777;
-    const alternateWeb3 = startGanacheServer(alternateChainId, alternatePort);
+    const altProvider = startGanacheServer(alternateChainId, alternatePort);
 
     // Mine additional block and store its number.
-    await alternateWeb3.currentProvider.send({ method: "evm_mine", params: [] });
-    const latestAlternateBlockNumber = await alternateWeb3.eth.getBlockNumber();
+    await altProvider.request({ method: "evm_mine", params: [] });
+    const latestAlternateBlockNumber = Number(await altProvider.getBlockNumber());
 
     const hubConfig = {
       testServerlessBot: {
@@ -576,7 +575,7 @@ describe("ServerlessHub.js", function () {
         serverlessCommand: "echo multiple network bot started",
         environmentVariables: {
           [`NODE_URL_${defaultChainId}`]: network.config.url,
-          [`NODE_URL_${alternateChainId}`]: alternateWeb3.currentProvider.host,
+          [`NODE_URL_${alternateChainId}`]: altProvider.transport.url,
           STORE_MULTI_CHAIN_BLOCK_NUMBERS: [defaultChainId, alternateChainId],
         },
       },

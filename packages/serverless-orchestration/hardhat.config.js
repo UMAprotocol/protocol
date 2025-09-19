@@ -1,5 +1,3 @@
-require("@nomiclabs/hardhat-web3");
-
 module.exports = {
   networks: {
     localhost: {
