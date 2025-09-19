@@ -44,7 +44,7 @@ contract Admin_ChildMessenger is Ownable, Lockable, ChildMessengerInterface {
 
     /**
      * @notice Process a received message from the admin.
-     * @dev The caller must be the the admin.
+     * @dev The caller must be the admin.
      * @param data data message sent from the admin. Should be an encoded function call or packed data.
      * @param target desired recipient of `data`. Target must implement the `processMessageFromParent` function. Having
      * this as a param enables the Admin to send messages to arbitrary addresses from the messenger contract. This is
