@@ -518,26 +518,26 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
 }
 
 function _getProviderAndUrl(botConfig) {
+  const env = botConfig?.environmentVariables;
+
   /**
    * NODE_RETRY CONFIG = [
    *  { url: "https://...", retries: 2 },
    * ]
    */
-  let urls = [];
-  const retryConfig = botConfig?.environmentVariables?.NODE_RETRY_CONFIG;
-  if (!retryConfig) {
-    const url = botConfig?.environmentVariables?.CUSTOM_NODE_URL || customNodeUrl;
-    urls.push({ url, retries: 2 }); // 2 retries if there's only a single provider.
-  }
+  const defaultConfig = [
+    { url: env?.CUSTOM_NODDE_URL ?? customNodeUrl, retries: 2 }, // 2 retries if there's only a single provider.
+  ];
 
+  const config = env?.NODE_RETRY_CONFIG ?? defaultConfig;
   assert(
-    urls.length > 0 && urls.every((url) => url !== undefined),
+    config.length > 0 && config.every(({ url, retries }) => url !== undefined && retries > 0),
     "Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)"
   );
 
   const provider = viem.createPublicClient({
     transport: viem.fallback(
-      urls.map(({ url, retries }) => viem.http(url, { retryCount: retries ?? DEFAULT_RETRIES }))
+      config.map(({ url, retries }) => viem.http(url, { retryCount: retries ?? DEFAULT_RETRIES }))
     ),
   });
 
