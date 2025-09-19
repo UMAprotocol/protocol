@@ -1,6 +1,6 @@
 import "@nomiclabs/hardhat-ethers";
 import { ExpandedERC20Ethers, MockOracleAncillaryEthers, TimerEthers } from "@uma/contracts-node";
-import { spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
+import { spyLogIncludes, spyLogLevel, GasEstimator } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import { OracleType } from "../src/bot-oo/common";
 import { settleRequests } from "../src/bot-oo/SettleRequests";
@@ -25,8 +25,17 @@ describe("OptimisticOracleV1Bot", function () {
   let proposer: Signer;
   let disputer: Signer;
   let mockOracle: MockOracleAncillaryEthers;
+  let gasEstimator: GasEstimator;
 
   const ancillaryData = toUtf8Bytes("This is just a test question");
+
+  before(async function () {
+    // Create a single GasEstimator for this file using the global provider/chainId
+    const { logger } = makeSpyLogger();
+    const network = await ethers.provider.getNetwork();
+    gasEstimator = new GasEstimator(logger, undefined, network.chainId, ethers.provider);
+    await gasEstimator.update();
+  });
 
   beforeEach(async function () {
     [requester, proposer, disputer] = (await ethers.getSigners()) as Signer[];
@@ -75,8 +84,9 @@ describe("OptimisticOracleV1Bot", function () {
     await advanceTimerPastLiveness(timer, proposeReceipt.blockNumber!, defaultLiveness);
 
     const { spy, logger } = makeSpyLogger();
-
-    await settleRequests(logger, await createParams("OptimisticOracle", optimisticOracleV1.address));
+    const params = await createParams("OptimisticOracle", optimisticOracleV1.address);
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
 
     const settledIndex = spy
       .getCalls()
@@ -91,7 +101,11 @@ describe("OptimisticOracleV1Bot", function () {
 
     // Subsequent run should produce no settlement logs (but may have debug logs).
     spy.resetHistory();
-    await settleRequests(logger, await createParams("OptimisticOracle", optimisticOracleV1.address));
+    {
+      const params2 = await createParams("OptimisticOracle", optimisticOracleV1.address);
+      await gasEstimator.update();
+      await settleRequests(logger, params2, gasEstimator);
+    }
 
     // Check that no settlement warning logs were generated
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
@@ -122,7 +136,9 @@ describe("OptimisticOracleV1Bot", function () {
     ).wait();
 
     const { spy, logger } = makeSpyLogger();
-    await settleRequests(logger, await createParams("OptimisticOracle", optimisticOracleV1.address));
+    const params = await createParams("OptimisticOracle", optimisticOracleV1.address);
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
 
     // Check that no settlement warning logs were generated (but debug logs are OK).
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
@@ -172,7 +188,11 @@ describe("OptimisticOracleV1Bot", function () {
 
     const { spy, logger } = makeSpyLogger();
 
-    await settleRequests(logger, await createParams("OptimisticOracle", optimisticOracleV1.address));
+    {
+      const params2 = await createParams("OptimisticOracle", optimisticOracleV1.address);
+      await gasEstimator.update();
+      await settleRequests(logger, params2, gasEstimator);
+    }
 
     const settledIndex = spy
       .getCalls()
@@ -187,7 +207,11 @@ describe("OptimisticOracleV1Bot", function () {
 
     // No additional settlement logs on subsequent run
     spy.resetHistory();
-    await settleRequests(logger, await createParams("OptimisticOracle", optimisticOracleV1.address));
+    {
+      const params3 = await createParams("OptimisticOracle", optimisticOracleV1.address);
+      await gasEstimator.update();
+      await settleRequests(logger, params3, gasEstimator);
+    }
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "No settlement logs should be generated on subsequent runs");
   });

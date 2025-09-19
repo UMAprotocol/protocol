@@ -1,5 +1,7 @@
 import fetch from "node-fetch";
 import Web3 from "web3";
+import { BigNumber, utils as ethersUtils } from "ethers";
+import type { Provider } from "@ethersproject/abstract-provider";
 
 import type { Logger } from "winston";
 
@@ -10,6 +12,9 @@ enum NetworkType {
 
 type LondonGasData = { maxFeePerGas: number; maxPriorityFeePerGas: number };
 type LegacyGasData = { gasPrice: number };
+
+type LondonGasDataEthers = { maxFeePerGas: BigNumber; maxPriorityFeePerGas: BigNumber };
+type LegacyGasDataEthers = { gasPrice: BigNumber };
 
 interface GasEstimatorMapping {
   [networkId: number]: {
@@ -106,7 +111,7 @@ export class GasEstimator {
     private readonly logger: Logger,
     private readonly updateThreshold = 60,
     private readonly networkId = DEFAULT_NETWORK_ID,
-    private readonly web3: Web3 | undefined = undefined
+    private readonly provider: Web3 | Provider | undefined = undefined
   ) {
     // If networkId is not found in MAPPING_BY_NETWORK, then default to 1.
     if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
@@ -184,6 +189,19 @@ export class GasEstimator {
     else return { gasPrice: Math.ceil(this.lastFastPriceGwei * 1e9) };
   }
 
+  getCurrentFastPriceEthers(): LondonGasDataEthers | LegacyGasDataEthers {
+    if (this.type == NetworkType.London) {
+      const currentFastPrice = this.getCurrentFastPrice() as LondonGasData;
+      return {
+        maxFeePerGas: BigNumber.from(currentFastPrice.maxFeePerGas),
+        maxPriorityFeePerGas: BigNumber.from(currentFastPrice.maxPriorityFeePerGas),
+      };
+    } else {
+      const currentFastPrice = this.getCurrentFastPrice() as LegacyGasData;
+      return { gasPrice: BigNumber.from(currentFastPrice.gasPrice) };
+    }
+  }
+
   // Returns an estimate of the gas price that you will actually pay based on most recent data. If this is a london
   // network then you will pay the prevailing base fee + the max priority fee. if not london then pay the latest fast
   // gas price.
@@ -193,11 +211,25 @@ export class GasEstimator {
     else return this.lastFastPriceGwei * 1e9;
   }
 
+  private async _getLatestBlockBaseFeePerGasGwei(provider: Web3 | Provider): Promise<number | null> {
+    const isWeb3 = (provider: Web3 | Provider): provider is Web3 => {
+      return "eth" in provider && typeof provider.eth.getBlock === "function";
+    };
+
+    if (isWeb3(provider)) {
+      const latestBlock = await provider.eth.getBlock("latest");
+      return latestBlock.baseFeePerGas ? latestBlock.baseFeePerGas / 1e9 : null;
+    } else {
+      const latestBlock = await provider.getBlock("latest");
+      return latestBlock.baseFeePerGas ? Number(ethersUtils.formatUnits(latestBlock.baseFeePerGas, "gwei")) : null;
+    }
+  }
+
   async _update(): Promise<void> {
     // Fetch the latest gas info from the gas price API and fetch the latest block to extract baseFeePerGas, if London.
-    const [gasInfo, latestBlock] = await Promise.all([
+    const [gasInfo, latestBlockBaseFeePerGasGwei] = await Promise.all([
       this._getPrice(this.networkId),
-      this.web3 && this.type == NetworkType.London ? this.web3.eth.getBlock("latest") : null,
+      this.provider && this.type == NetworkType.London ? this._getLatestBlockBaseFeePerGasGwei(this.provider) : null,
     ]);
 
     if (this.type == NetworkType.London) {
@@ -208,10 +240,10 @@ export class GasEstimator {
         this.latestMaxPriorityFeePerGasGwei
       );
 
-      // Extract the base fee from the most recent block. If the block is not available or errored then is set to the
-      // latest max fee per gas so we still have some value in the right ballpark to return to the client implementer.
-      // Base fee is represented in Wei so we convert to Gwei to be consistent with other variables in this class.
-      this.latestBaseFeeGwei = Number((latestBlock as any)?.baseFeePerGas) / 1e9 || this.latestMaxFeePerGasGwei;
+      // Use the base fee (converted to Gwei) from the most recent block. If the block was not available or errored then
+      // it is set to the latest max fee per gas so we still have some value in the right ballpark to return to the
+      // client implementer.
+      this.latestBaseFeeGwei = latestBlockBaseFeePerGasGwei || this.latestMaxFeePerGasGwei;
     } else this.lastFastPriceGwei = (gasInfo as LegacyGasData).gasPrice;
   }
 

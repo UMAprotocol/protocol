@@ -1,4 +1,4 @@
-import { delay, waitForLogger } from "@uma/financial-templates-lib";
+import { delay, waitForLogger, GasEstimator } from "@uma/financial-templates-lib";
 import { BotModes, initMonitoringParams, Logger, startupLogLevel } from "./common";
 import { settleRequests } from "./SettleRequests";
 
@@ -15,14 +15,18 @@ async function main() {
     botModes: params.botModes,
   });
 
+  const gasEstimator = new GasEstimator(logger, undefined, params.chainId, params.provider);
+
   const cmds = {
     settleRequestsEnabled: settleRequests,
   };
 
   for (;;) {
+    await gasEstimator.update();
+
     const runCmds = Object.entries(cmds)
       .filter(([mode]) => params.botModes[mode as keyof BotModes])
-      .map(([, cmd]) => cmd(logger, { ...params }));
+      .map(([, cmd]) => cmd(logger, { ...params }, gasEstimator));
 
     await Promise.all(runCmds);
 

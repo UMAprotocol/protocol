@@ -8,8 +8,13 @@ import { computeEventSearch } from "../bot-utils/events";
 import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV2Ethers } from "./common";
 import { requestKey } from "./requestKey";
+import type { GasEstimator } from "@uma/financial-templates-lib";
 
-export async function settleOOv2Requests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function settleOOv2Requests(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  gasEstimator: GasEstimator
+): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
     "OptimisticOracleV2",
     params.provider,
@@ -33,7 +38,9 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
 
   const settleableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
-      await oo.callStatic.settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData);
+      await oo.callStatic.settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData, {
+        blockTag: params.settleableCheckBlock,
+      });
       logger.debug({
         at: "OOv2Bot",
         message: "Request is settleable",
@@ -62,7 +69,16 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
 
   const ooWithSigner = oo.connect(params.signer);
 
-  for (const req of settleableRequests) {
+  for (const [i, req] of settleableRequests.entries()) {
+    if (params.executionDeadline && Date.now() / 1000 >= params.executionDeadline) {
+      logger.warn({
+        at: "OOv2Bot",
+        message: "Execution deadline reached, skipping settlement",
+        remainingRequests: settleableRequests.length - i,
+      });
+      break;
+    }
+
     try {
       const estimatedGas = await oo.estimateGas.settle(
         req.args.requester,
@@ -77,7 +93,7 @@ export async function settleOOv2Requests(logger: typeof Logger, params: Monitori
         req.args.identifier,
         req.args.timestamp,
         req.args.ancillaryData,
-        { gasLimit: gasLimitOverride }
+        { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride }
       );
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "Settle");

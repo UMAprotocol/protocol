@@ -10,6 +10,7 @@ import { tryHexToUtf8String } from "../utils/contracts";
 import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, SkinnyOptimisticOracleEthers } from "./common";
 import { requestKey } from "./requestKey";
+import type { GasEstimator } from "@uma/financial-templates-lib";
 
 const toRequestKeyArgs = (args: ProposePriceEvent["args"] | DisputePriceEvent["args"] | SettleEvent["args"]) => ({
   requester: args.requester,
@@ -18,7 +19,11 @@ const toRequestKeyArgs = (args: ProposePriceEvent["args"] | DisputePriceEvent["a
   ancillaryData: args.ancillaryData,
 });
 
-export async function settleSkinnyOORequests(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function settleSkinnyOORequests(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  gasEstimator: GasEstimator
+): Promise<void> {
   const skinnyOO = await getContractInstanceWithProvider<SkinnyOptimisticOracleEthers>(
     "SkinnyOptimisticOracle",
     params.provider
@@ -101,7 +106,8 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
           finalFee: request.finalFee,
           bond: request.bond,
           customLiveness: request.customLiveness,
-        }
+        },
+        { blockTag: params.settleableCheckBlock }
       );
 
       logger.debug({
@@ -146,7 +152,16 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
 
   const skinnyOOWithSigner = skinnyOOWithAddress.connect(params.signer);
 
-  for (const settleableRequest of settleableRequests) {
+  for (const [i, settleableRequest] of settleableRequests.entries()) {
+    if (params.executionDeadline && Date.now() / 1000 >= params.executionDeadline) {
+      logger.warn({
+        at: "SkinnyOOBot",
+        message: "Execution deadline reached, skipping settlement",
+        remainingRequests: settleableRequests.length - i,
+      });
+      break;
+    }
+
     if (!settleableRequest) continue;
     const { event: req, request } = settleableRequest;
 
@@ -190,7 +205,7 @@ export async function settleSkinnyOORequests(logger: typeof Logger, params: Moni
           bond: request.bond,
           customLiveness: request.customLiveness,
         },
-        { gasLimit: gasLimitOverride }
+        { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride }
       );
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "Settle");

@@ -4,6 +4,7 @@ import {
   logFailedMarketProposalVerification,
   logMarketSentimentDiscrepancy,
   logProposalHighVolume,
+  logProposalAlignmentConfirmed,
 } from "./MonitorLogger";
 import {
   calculatePolymarketQuestionID,
@@ -19,18 +20,22 @@ import {
   getSportsMarketData,
   getSportsPayouts,
   isUnresolvable,
+  isProposalNotified,
+  ONE_SCALED,
+  POLYGON_BLOCKS_PER_HOUR,
+  shouldIgnoreThirdPartyProposal,
+  storeNotifiedProposals,
   Logger,
   Market,
   MarketOrderbook,
   MonitoringParams,
   MultipleValuesQuery,
-  ONE_SCALED,
   OptimisticPriceRequest,
-  POLYGON_BLOCKS_PER_HOUR,
   PolymarketMarketGraphqlProcessed,
-  shouldIgnoreThirdPartyProposal,
-  storeNotifiedProposals,
+  isInitialConfirmationLogged,
+  fetchLatestAIDeepLink,
 } from "./common";
+import * as common from "./common";
 
 // Retrieve threshold values from environment variables.
 function getThresholds() {
@@ -120,9 +125,12 @@ export async function processProposal(
     const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
     const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
 
+    const { deeplink: aiDeeplink } = await fetchLatestAIDeepLink(proposal, params, logger);
+
     let alerted = false;
 
-    if (market.volumeNum > thresholds.volume) {
+    const alreadyNotified = await isProposalNotified(proposal);
+    if (!alreadyNotified && market.volumeNum > thresholds.volume) {
       await logProposalHighVolume(
         logger,
         {
@@ -131,13 +139,17 @@ export async function processProposal(
           scores: outcome.scores,
           multipleValuesQuery: outcome.mvq,
           isSportsMarket: isSportsRequest,
+          aiDeeplink,
         },
         params
       );
+      await persistNotified(proposal, logger);
       alerted = true;
     }
 
-    if (sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length) {
+    const hasDiscrepancy = Boolean(sellingWinnerSide || buyingLoserSide || soldWinner.length || boughtLoser.length);
+
+    if (!alreadyNotified && hasDiscrepancy) {
       await logMarketSentimentDiscrepancy(
         logger,
         {
@@ -150,10 +162,33 @@ export async function processProposal(
           scores: outcome.scores,
           multipleValuesQuery: outcome.mvq,
           isSportsMarket: isSportsRequest,
+          aiDeeplink,
         },
         params
       );
+      await persistNotified(proposal, logger);
       alerted = true;
+    }
+
+    if (!hasDiscrepancy && !alerted) {
+      const alreadyLogged = await isInitialConfirmationLogged(market.questionID);
+
+      if (!alreadyLogged) {
+        await logProposalAlignmentConfirmed(
+          logger,
+          {
+            ...proposal,
+            ...market,
+            scores: outcome.scores,
+            multipleValuesQuery: outcome.mvq,
+            isSportsMarket: isSportsRequest,
+            aiDeeplink,
+          },
+          params
+        );
+
+        await common.markInitialConfirmationLogged(market.questionID);
+      }
     }
 
     return alerted;
@@ -203,7 +238,8 @@ export async function monitorTransactionsProposedOrderBook(
   const tokenIds = new Set<string>();
 
   const logErrorAndPersist = async (proposal: OptimisticPriceRequest, err: Error) => {
-    await logFailedMarketProposalVerification(logger, params.chainId, proposal, err as Error);
+    const { deeplink: aiDeeplink } = await fetchLatestAIDeepLink(proposal, params, logger);
+    await logFailedMarketProposalVerification(logger, params.chainId, proposal, err as Error, aiDeeplink);
     await persistNotified(proposal, logger);
   };
 
