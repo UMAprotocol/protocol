@@ -541,7 +541,7 @@ function _getProviderAndUrl(botConfig) {
     ),
   });
 
-  return [provider, urls[0].url];
+  return [provider, config[0].url];
 }
 
 function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
