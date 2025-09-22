@@ -5,7 +5,8 @@
 // This transport should be used with Ticket Tool (https://tickettool.xyz/) configured to trigger ticket commands on
 // the resolved channel ID and whitelisting of bot ID. Also the Discord server should be configured to allow the bot
 // to post messages on the ticket opening channel.
-import { Client, GatewayIntentBits, TextBasedChannel } from "discord.js";
+import { REST } from "@discordjs/rest";
+import { Routes } from "discord-api-types/v10";
 import * as ss from "superstruct";
 import Transport from "winston-transport";
 
@@ -56,9 +57,7 @@ export const isDiscordTicketInfo = (info: unknown): info is DiscordTicketInfo =>
 export class DiscordTicketTransport extends PersistentTransport {
   private readonly botToken: string;
   private readonly channelIds: { [key: string]: string };
-
-  private client: Client = new Client({ intents: [GatewayIntentBits.Guilds] });
-  private channels: Map<string, TextBasedChannel> = new Map();
+  private readonly rest: REST;
 
   protected readonly rateLimit: number;
 
@@ -69,7 +68,7 @@ export class DiscordTicketTransport extends PersistentTransport {
 
     this.botToken = botToken;
     this.channelIds = channelIds;
-
+    this.rest = new REST({ version: "10" }).setToken(this.botToken);
     this.rateLimit = rateLimit;
   }
 
@@ -85,19 +84,6 @@ export class DiscordTicketTransport extends PersistentTransport {
     }
   }
 
-  // Get Discord channel by its id and cache fetched ids.
-  private async getChannel(channelId: string): Promise<TextBasedChannel> {
-    const cachedChannel = this.channels.get(channelId);
-    if (cachedChannel !== undefined) return cachedChannel;
-
-    const channel = await this.client.channels.fetch(channelId);
-    if (channel === null) throw new Error(`Discord channel ${channelId} not available!`);
-    if (!channel.isTextBased()) throw new Error(`Invalid type for Discord channel ${channelId}!`);
-
-    this.channels.set(channelId, channel);
-    return channel;
-  }
-
   // Logs queue element when processing persistent storage.
   async logQueueElement(info: Record<string, unknown>): Promise<void> {
     if (!isDiscordTicketInfo(info)) throw new Error(`Invalid info`);
@@ -106,11 +92,7 @@ export class DiscordTicketTransport extends PersistentTransport {
     if (!(info.discordTicketChannel in this.channelIds))
       throw new Error(`Missing channel ID for ${info.discordTicketChannel}!`);
 
-    if (!this.client.isReady()) await this.login(); // Log in if not yet established the connection.
-
-    // Get and verify requested Discord channel to post.
     const channelId = this.channelIds[info.discordTicketChannel];
-    const channel = await this.getChannel(channelId);
 
     // Prepend the $ticket command and concatenate message title and content separated by newline.
     // Also remove anchor text from links and truncate the message to Discord's max character limit.
@@ -122,12 +104,12 @@ export class DiscordTicketTransport extends PersistentTransport {
     const message = header + content;
 
     // Send out the message.
-    await channel.send(message);
-  }
-
-  // Use bot token for establishing a connection to Discord API.
-  private async login(): Promise<void> {
-    await this.client.login(this.botToken);
+    await this.rest.post(Routes.channelMessages(channelId), {
+      body: {
+        content: message,
+        allowed_mentions: { parse: [] }, // avoid accidental user/role pings from logs
+      },
+    });
   }
 
   // Truncate the message if it exceeds the provided character limit. Try to preserve URLs.
