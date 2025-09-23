@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.2](https://github.com/UMAprotocol/protocol/compare/@uma/logger@1.3.1...@uma/logger@1.3.2) (2025-09-23)
+
+### Bug Fixes
+
+- **logger:** use rest for discord ticket transport ([#4872](https://github.com/UMAprotocol/protocol/issues/4872)) ([bd3abcd](https://github.com/UMAprotocol/protocol/commit/bd3abcd5291c5e872614106f4db8f2949576c7e8))
+- enforce global rate limit in log queue transports ([#4870](https://github.com/UMAprotocol/protocol/issues/4870)) ([bbd8e92](https://github.com/UMAprotocol/protocol/commit/bbd8e921cd902749b4798dd72d38067512f0925c))
+- rate limit discord tickets to 20 seconds ([#4866](https://github.com/UMAprotocol/protocol/issues/4866)) ([9f3b9a7](https://github.com/UMAprotocol/protocol/commit/9f3b9a7576472cb3d63a651db7e875313ba6741d))
+- shared log queue in persistent queue transports ([#4869](https://github.com/UMAprotocol/protocol/issues/4869)) ([b38c56c](https://github.com/UMAprotocol/protocol/commit/b38c56cddf20551a557442a89109e1ee7f5da8e7))
+
 ## [1.3.1](https://github.com/UMAprotocol/protocol/compare/@uma/logger@1.3.0...@uma/logger@1.3.1) (2025-07-15)
 
 **Note:** Version bump only for package @uma/logger
