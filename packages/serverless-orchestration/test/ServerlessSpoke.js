@@ -1,4 +1,4 @@
-const { web3 } = require("hardhat");
+const { network } = require("hardhat");
 const { assert } = require("chai");
 
 // Enables testing http requests to an express spoke.
@@ -6,6 +6,8 @@ const request = require("supertest");
 
 // Script to test
 const spoke = require("../src/ServerlessSpoke");
+
+const CUSTOM_NODE_URL = network.config.url;
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -60,7 +62,7 @@ describe("ServerlessSpoke.js", function () {
   it("Serverless Spoke can correctly execute bot logic with valid body", async function () {
     const validBody = {
       serverlessCommand: "true", // Force command success.
-      environmentVariables: { CUSTOM_NODE_URL: web3.currentProvider.host },
+      environmentVariables: { CUSTOM_NODE_URL },
     };
 
     const validResponse = await sendRequest(validBody);
@@ -87,7 +89,7 @@ describe("ServerlessSpoke.js", function () {
   it("Serverless Spoke can correctly returns errors over http calls", async function () {
     const body = {
       serverlessCommand: "false",
-      environmentVariables: { CUSTOM_NODE_URL: web3.currentProvider.host },
+      environmentVariables: { CUSTOM_NODE_URL },
     };
 
     const response = await sendRequest(body);
