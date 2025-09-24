@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.16.13](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.16.11...@uma/optimistic-oracle@2.16.13) (2025-09-24)
+
+
+### Bug Fixes
+
+* add oracle client lookback override ([#4854](https://github.com/UMAprotocol/protocol/issues/4854)) ([24899bf](https://github.com/UMAprotocol/protocol/commit/24899bffbbb1987de69365a122a9353705555b71))
+* allow oo address override in proposer bot ([#4852](https://github.com/UMAprotocol/protocol/issues/4852)) ([0c00e53](https://github.com/UMAprotocol/protocol/commit/0c00e53f2c048491a6ad912ab0d1b6f2c077b23c))
+
+
+
+
+
 ## [2.16.12](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.16.11...@uma/optimistic-oracle@2.16.12) (2025-09-23)
 
 ### Bug Fixes
