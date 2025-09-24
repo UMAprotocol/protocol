@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/toolkit@1.1.0...@uma/toolkit@1.3.0) (2025-09-24)
 
-
 ### Features
 
-* **pm-notifier:** log http retry errors ([#4846](https://github.com/UMAprotocol/protocol/issues/4846)) ([1275a21](https://github.com/UMAprotocol/protocol/commit/1275a218775f404b3e17071f5a6e3ba13e4ec306))
-
-
-
-
+- **pm-notifier:** log http retry errors ([#4846](https://github.com/UMAprotocol/protocol/issues/4846)) ([1275a21](https://github.com/UMAprotocol/protocol/commit/1275a218775f404b3e17071f5a6e3ba13e4ec306))
 
 # [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/toolkit@1.1.0...@uma/toolkit@1.2.0) (2025-09-23)
 

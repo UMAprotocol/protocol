@@ -5,15 +5,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [1.30.0](https://github-frp/UMAprotocol/protocol/compare/@uma/affiliates@1.28.0...@uma/affiliates@1.30.0) (2025-09-24)
 
-
 ### Features
 
-* **gas-rebates:** gas rebates july 2025 ([#4850](https://github-frp/UMAprotocol/protocol/issues/4850)) ([69df5de](https://github-frp/UMAprotocol/protocol/commit/69df5de2daae1d67d45418aae21d23cf519e3bfa))
-* **gas-rebates:** run june 2025 gas rebates ([#4839](https://github-frp/UMAprotocol/protocol/issues/4839)) ([49a6678](https://github-frp/UMAprotocol/protocol/commit/49a6678369d1468f84b5a6420dee1dc950ce71cb))
-
-
-
-
+- **gas-rebates:** gas rebates july 2025 ([#4850](https://github-frp/UMAprotocol/protocol/issues/4850)) ([69df5de](https://github-frp/UMAprotocol/protocol/commit/69df5de2daae1d67d45418aae21d23cf519e3bfa))
+- **gas-rebates:** run june 2025 gas rebates ([#4839](https://github-frp/UMAprotocol/protocol/issues/4839)) ([49a6678](https://github-frp/UMAprotocol/protocol/commit/49a6678369d1468f84b5a6420dee1dc950ce71cb))
 
 # [1.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.28.0...@uma/affiliates@1.29.0) (2025-09-23)
 

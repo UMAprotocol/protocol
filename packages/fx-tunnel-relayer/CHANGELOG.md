@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [1.4.2](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.4.0...@uma/fx-tunnel-relayer@1.4.2) (2025-09-24)
 
-
 ### Bug Fixes
 
-* debug chainBlockInfo upon error in fx relay proof construction ([#4856](https://github.com/UMAprotocol/protocol/issues/4856)) ([dac4f7d](https://github.com/UMAprotocol/protocol/commit/dac4f7ddeca73767ba5ffb798ba70d88beb9afcf))
-
-
-
-
+- debug chainBlockInfo upon error in fx relay proof construction ([#4856](https://github.com/UMAprotocol/protocol/issues/4856)) ([dac4f7d](https://github.com/UMAprotocol/protocol/commit/dac4f7ddeca73767ba5ffb798ba70d88beb9afcf))
 
 ## [1.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.4.0...@uma/fx-tunnel-relayer@1.4.1) (2025-09-23)
 

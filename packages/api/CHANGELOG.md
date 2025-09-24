@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/api
 
-
-
-
-
 ## [0.13.7](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.13.6...@uma/api@0.13.7) (2025-09-23)
 
 **Note:** Version bump only for package @uma/api

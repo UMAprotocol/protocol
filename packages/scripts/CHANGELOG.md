@@ -5,14 +5,9 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [1.35.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.33.0...@uma/scripts@1.35.0) (2025-09-24)
 
-
 ### Features
 
-* script to register new contract ([#4849](https://github.com/UMAprotocol/protocol/issues/4849)) ([1429499](https://github.com/UMAprotocol/protocol/commit/142949916617122ebeb9a8398716748f23b7acfa))
-
-
-
-
+- script to register new contract ([#4849](https://github.com/UMAprotocol/protocol/issues/4849)) ([1429499](https://github.com/UMAprotocol/protocol/commit/142949916617122ebeb9a8398716748f23b7acfa))
 
 # [1.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.33.0...@uma/scripts@1.34.0) (2025-09-23)
 
