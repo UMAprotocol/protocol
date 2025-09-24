@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/toolkit@1.2.0...@uma/toolkit@1.3.0) (2025-09-24)
+
+**Note:** Version bump only for package @uma/toolkit
+
 # [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/toolkit@1.1.0...@uma/toolkit@1.2.0) (2025-09-23)
 
 ### Features

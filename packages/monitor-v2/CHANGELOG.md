@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.12.0](https://github-frp/UMAprotocol/protocol/compare/@uma/monitor-v2@1.11.0...@uma/monitor-v2@1.12.0) (2025-09-24)
+
+**Note:** Version bump only for package @uma/monitor-v2
+
 # [1.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.10.0...@uma/monitor-v2@1.11.0) (2025-09-23)
 
 ### Bug Fixes

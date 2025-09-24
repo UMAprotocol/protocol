@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.35.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.34.0...@uma/scripts@1.35.0) (2025-09-24)
+
+**Note:** Version bump only for package @uma/scripts
+
 # [1.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.33.0...@uma/scripts@1.34.0) (2025-09-23)
 
 ### Features
