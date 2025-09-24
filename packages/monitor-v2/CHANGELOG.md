@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.10.0...@uma/monitor-v2@1.11.0) (2025-09-23)
+
+### Bug Fixes
+
+- add oov3 cache syncer ([#4863](https://github.com/UMAprotocol/protocol/issues/4863)) ([bff01fa](https://github.com/UMAprotocol/protocol/commit/bff01fae21a35ec0d8766cd73794eb397467ce2e))
+- delay and timeout oo settlements ([#4868](https://github.com/UMAprotocol/protocol/issues/4868)) ([d358785](https://github.com/UMAprotocol/protocol/commit/d358785d80fa88222fda991656a0ab0fe9fc882e))
+
+### Features
+
+- **pm-notifier:** add deep links to mcp-otb results ([#4871](https://github.com/UMAprotocol/protocol/issues/4871)) ([aa30997](https://github.com/UMAprotocol/protocol/commit/aa309970c84d91a666dfd7f782e0a617b260073c))
+- **pm-notifier:** per‑proposal idempotent notifications to prevent duplicate alerts ([#4867](https://github.com/UMAprotocol/protocol/issues/4867)) ([fecdfb0](https://github.com/UMAprotocol/protocol/commit/fecdfb04ca49968c19b6ecd64301531dab1188c7))
+- add capability to pass in OO address list to the PM notifier ([#4851](https://github.com/UMAprotocol/protocol/issues/4851)) ([62c5712](https://github.com/UMAprotocol/protocol/commit/62c5712fe738d643b4982c31213c4c744b5d6f95))
+- use gas estimator in settlement bots ([#4865](https://github.com/UMAprotocol/protocol/issues/4865)) ([afe9a73](https://github.com/UMAprotocol/protocol/commit/afe9a732c6b656719bcb1b9bc9ba86ce65f10364))
+- **pm-notifier:** Introduced an informative log to announce successful checks ([#4862](https://github.com/UMAprotocol/protocol/issues/4862)) ([ba85b2b](https://github.com/UMAprotocol/protocol/commit/ba85b2bfd8eea0276e9751b646b4aa6bc9f24eb6))
+- oov2, oov1 and skinnyoo settlement bot ([#4853](https://github.com/UMAprotocol/protocol/issues/4853)) ([d060679](https://github.com/UMAprotocol/protocol/commit/d060679b00796fc9a9d9b42e235759c953a1a6aa))
+- **pm-notifier:** batch orderbook fetching and query size error handling ([#4848](https://github.com/UMAprotocol/protocol/issues/4848)) ([66764a9](https://github.com/UMAprotocol/protocol/commit/66764a9f2fb67e3a95b539fd23e8f6ddcc42926b))
+- **pm-notifier:** log http retry errors ([#4846](https://github.com/UMAprotocol/protocol/issues/4846)) ([1275a21](https://github.com/UMAprotocol/protocol/commit/1275a218775f404b3e17071f5a6e3ba13e4ec306))
+
 # [1.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitor-v2@1.9.2...@uma/monitor-v2@1.10.0) (2025-07-15)
 
 ### Bug Fixes
