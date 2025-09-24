@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [1.1.11](https://github-frp/UMAprotocol/protocol/compare/@uma/llm-bot@1.1.9...@uma/llm-bot@1.1.11) (2025-09-24)
+## [1.1.11](https://github-frp/UMAprotocol/protocol/compare/@uma/llm-bot@1.1.10...@uma/llm-bot@1.1.11) (2025-09-24)
 
 **Note:** Version bump only for package @uma/llm-bot
 

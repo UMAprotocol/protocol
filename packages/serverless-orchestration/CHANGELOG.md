@@ -3,12 +3,9 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [2.17.2](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.17.0...@uma/serverless-orchestration@2.17.2) (2025-09-24)
+## [2.17.2](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.17.1...@uma/serverless-orchestration@2.17.2) (2025-09-24)
 
-### Features
-
-- improve(serverless): Cleanup tests & depends ([#4857](https://github.com/UMAprotocol/protocol/issues/4857)) ([aeed939](https://github.com/UMAprotocol/protocol/commit/aeed93931ad9165f7054eb74b0b4df89bd0aefb3))
-- improve(serverless): Drop Web3 for viem ([#4858](https://github.com/UMAprotocol/protocol/issues/4858)) ([1d86e9f](https://github.com/UMAprotocol/protocol/commit/1d86e9f622330acdc7d54e118ceaf23a29934275))
+**Note:** Version bump only for package @uma/serverless-orchestration
 
 ## [2.17.1](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.17.0...@uma/serverless-orchestration@2.17.1) (2025-09-23)
 

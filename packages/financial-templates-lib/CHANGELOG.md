@@ -3,11 +3,9 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [2.37.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.37.0...@uma/financial-templates-lib@2.37.2) (2025-09-24)
+## [2.37.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.37.1...@uma/financial-templates-lib@2.37.2) (2025-09-24)
 
-### Bug Fixes
-
-- add oov3 cache syncer ([#4863](https://github.com/UMAprotocol/protocol/issues/4863)) ([bff01fa](https://github.com/UMAprotocol/protocol/commit/bff01fae21a35ec0d8766cd73794eb397467ce2e))
+**Note:** Version bump only for package @uma/financial-templates-lib
 
 ## [2.37.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.37.0...@uma/financial-templates-lib@2.37.1) (2025-09-23)
 
