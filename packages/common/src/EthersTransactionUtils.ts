@@ -1,4 +1,4 @@
-import { ethers, PopulatedTransaction, ContractTransaction, ContractReceipt } from "ethers";
+import { utils as ethersUtils, PopulatedTransaction, ContractTransaction, ContractReceipt } from "ethers";
 import { TransactionResponse, TransactionReceipt } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
 import type { Contract } from "@ethersproject/contracts";
@@ -62,13 +62,13 @@ function isEthersEstimateGasError(error: unknown): error is EthersV5EstimateGasE
     error.code === ErrorCode.UNPREDICTABLE_GAS_LIMIT &&
     isRecordStringUnknown(error.error) &&
     isRecordStringUnknown(error.error.error) &&
-    ethers.utils.isHexString(error.error.error.data)
+    ethersUtils.isHexString(error.error.error.data)
   );
 }
 
 // Type guard that can be used by the caller to handle revert data in the Ethers transaction runner errors.
 export function isEthersTxRunnerError(error: unknown): error is EthersTxRunnerError {
-  return isErrorRecord(error) && typeof error.revertData === "string";
+  return isErrorRecord(error) && ethersUtils.isHexString(error.revertData);
 }
 
 // Type guard for transaction receipt thrown when sending a transaction. This only checks the blockNumber that is needed
