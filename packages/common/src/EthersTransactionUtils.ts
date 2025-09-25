@@ -1,8 +1,8 @@
-import { ethers, PopulatedTransaction, Transaction } from "ethers";
-import { TransactionResponse } from "@ethersproject/abstract-provider";
+import { ethers, PopulatedTransaction, ContractTransaction, ContractReceipt } from "ethers";
+import { TransactionResponse, TransactionReceipt } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
+import type { Contract } from "@ethersproject/contracts";
 import { ErrorCode } from "@ethersproject/logger";
-import { TransactionReceipt } from "@ethersproject/abstract-provider";
 import { isRecordStringUnknown } from "./";
 
 // Helper interface for Ethers error codes.
@@ -21,9 +21,6 @@ interface EthersV5EstimateGasError extends EthersV5Error {
   };
 }
 
-// This module only uses selected properties from the failing transaction when replaying it to extract the revert data.
-type ReplayTransaction = Pick<Transaction, "to" | "from" | "gasLimit" | "data" | "value" | "accessList">;
-
 // This module only uses the block number from the transaction receipt.
 type TxReceiptWithBlockNumber = Pick<TransactionReceipt, "blockNumber">;
 
@@ -32,13 +29,16 @@ interface EthersV5WaitTransactionError extends EthersV5Error {
   receipt: TxReceiptWithBlockNumber;
 }
 
-// Type helper to add revert data and where the error was thrown to the Ethers error type.
-type WithRevertData<T, At extends "estimateGas" | "waitTransaction"> = T & { revertData: string; thrownAt: At };
+// Type helper to add revert data to the Ethers error type.
+type WithRevertData<T> = T & { revertData: string };
 
-// Extended Ethers error adding where the error was thrown and revert data for easier handling in the caller.
+// Extended Ethers error adding the revert data for easier handling in the caller.
 export type EthersTxRunnerError =
-  | WithRevertData<EthersV5EstimateGasError, "estimateGas">
-  | WithRevertData<EthersV5WaitTransactionError, "waitTransaction">;
+  | WithRevertData<EthersV5EstimateGasError>
+  | WithRevertData<EthersV5WaitTransactionError>;
+
+// Type helper to determine the return type of the wait() method based on the transaction type.
+type WaitReturn<T> = T extends ContractTransaction ? ContractReceipt : TransactionReceipt;
 
 // Every Error should be a Record, so this type guard helps to check on individual properties of the Error object.
 function isErrorRecord(error: unknown): error is Error & Record<PropertyKey, unknown> {
@@ -66,6 +66,11 @@ function isEthersEstimateGasError(error: unknown): error is EthersV5EstimateGasE
   );
 }
 
+// Type guard that can be used by the caller to handle revert data in the Ethers transaction runner errors.
+export function isEthersTxRunnerError(error: unknown): error is EthersTxRunnerError {
+  return isErrorRecord(error) && typeof error.revertData === "string";
+}
+
 // Type guard for transaction receipt thrown when sending a transaction. This only checks the blockNumber that is needed
 // for the replay when extracting the revert data.
 function isEthersTransactionReceipt(receipt: unknown): receipt is TxReceiptWithBlockNumber {
@@ -78,43 +83,11 @@ function isEthersWaitTransactionError(error: unknown): error is EthersV5WaitTran
   return isEthersError(error) && error.code === ErrorCode.CALL_EXCEPTION && isEthersTransactionReceipt(error.receipt);
 }
 
-// Helper to run an Ethers transaction with the provided signer and transaction parameters. It estimates the gas limit
-// if not provided, applies a gas limit multiplier if specified, and sends the transaction. If the transaction fails in
-// wait() stage, it attempts to extract the revert data by replaying the transaction. The function throws an error with
-// additional information about where the error occurred and the revert data if available.
-export async function runEthersTransaction(
-  signer: Signer,
-  originalTx: PopulatedTransaction,
-  gasLimitMultiplier?: number
-): Promise<TransactionResponse> {
-  // Copy the transaction as it will be modified on gas estimation and sending.
-  const submittedTx = { ...originalTx };
-
-  // Estimate gas limit if not provided.
-  if (!originalTx.gasLimit) {
-    try {
-      submittedTx.gasLimit = await signer.estimateGas(submittedTx);
-    } catch (error) {
-      // Add revert data if it is gas estimation error (mutate the original error, same as done in Ethers v5).
-      if (isEthersEstimateGasError(error)) {
-        (error as EthersTxRunnerError).thrownAt = "estimateGas";
-        (error as EthersTxRunnerError).revertData = error.error.error.data;
-        throw error;
-      }
-      // If the error is not related to gas estimation, rethrow it.
-      throw error;
-    }
-
-    // Potentially apply gas limit multiplier only when the gas limit was not explicitly set.
-    if (gasLimitMultiplier) submittedTx.gasLimit = submittedTx.gasLimit.mul(gasLimitMultiplier).div(100);
-  }
-
-  // Submit the transaction, any Ethers errors would be bubbled up to the caller.
-  const tx = await signer.sendTransaction(submittedTx);
-
-  // Override tx.wait() adding revert data on failure.
+// Helper function to add revert data to thrown error in the Ethers transaction wait() method. It overrides the original
+// wait() method and adds the logic to replay the transaction to extract the revert data if the transaction fails.
+function overrideTxWait<T extends TransactionResponse | ContractTransaction>(tx: T, signer: Signer): T {
   const originalWait = tx.wait.bind(tx);
-  tx.wait = async (confirmations?: number): Promise<TransactionReceipt> => {
+  tx.wait = async (confirmations?: number): Promise<WaitReturn<T>> => {
     try {
       // Call the original wait() method to get the receipt.
       return await originalWait(confirmations);
@@ -124,16 +97,9 @@ export async function runEthersTransaction(
         // Try to replay the transaction to extract the revert data. Note that this will not work if the reverting state
         // has changed between the transaction index and the top of the block. For more precise revert data, the call
         // tracing should be used instead.
-        const replayTx: ReplayTransaction = {
-          to: tx.to,
-          from: tx.from,
-          gasLimit: tx.gasLimit,
-          data: tx.data,
-          value: tx.value,
-          accessList: tx.accessList,
-        };
-
         let revertData: string;
+        const { to, from, gasLimit, data, value, accessList } = tx;
+        const replayTx = { to, from, gasLimit, data, value, accessList };
         try {
           // Note that Ethers v5 does not throw an error on call when it reverts and just returns the revert data.
           // This might be different in Ethers v6, so this logic might need to be adjusted if it is migrated to v6.
@@ -143,7 +109,6 @@ export async function runEthersTransaction(
           throw error;
         }
         // Add revert data to the error (mutate the original error, same as done in Ethers v5).
-        (error as EthersTxRunnerError).thrownAt = "waitTransaction";
         (error as EthersTxRunnerError).revertData = revertData;
         throw error;
       }
@@ -153,4 +118,120 @@ export async function runEthersTransaction(
   };
 
   return tx;
+}
+
+// Helper function to add revert data on gas estimation error. It mutates the original error to add the revert data.
+async function estimateTxGasLimit(
+  signer: Signer,
+  originalTx: PopulatedTransaction,
+  gasLimitMultiplier?: number
+): Promise<PopulatedTransaction> {
+  // Copy the transaction as it will be modified on gas estimation.
+  const returnedTx = { ...originalTx };
+
+  // Estimate gas limit if not provided.
+  if (!originalTx.gasLimit) {
+    try {
+      returnedTx.gasLimit = await signer.estimateGas(returnedTx);
+    } catch (error) {
+      // Add revert data if it is gas estimation error (mutate the original error, same as done in Ethers v5).
+      if (isEthersEstimateGasError(error)) {
+        (error as EthersTxRunnerError).revertData = error.error.error.data;
+        throw error;
+      }
+      // If the error is not related to gas estimation, rethrow it.
+      throw error;
+    }
+
+    // Potentially apply gas limit multiplier only when the gas limit was not explicitly set.
+    if (gasLimitMultiplier) returnedTx.gasLimit = returnedTx.gasLimit.mul(gasLimitMultiplier).div(100);
+  }
+
+  return returnedTx;
+}
+
+/**
+ * Send a transaction with Ethers v5 while preserving native error semantics and enriching failures with revert data.
+ *
+ * Behavior:
+ * - If `originalTx.gasLimit` is missing, estimates it via `signer.estimateGas(originalTx)`.
+ * - On `UNPREDICTABLE_GAS_LIMIT`, rethrows the same error object and annotates it with `error.revertData` (hex).
+ * - Optionally applies a gas limit multiplier (percentage), e.g. `110` => +10%.
+ * - Sends via `signer.sendTransaction(...)` and returns the resulting `TransactionResponse`.
+ * - The returned `tx.wait()` is overridden so that if the tx **mines and reverts** (ethers throws `CALL_EXCEPTION`),
+ *   the function replays the call at `receipt.blockNumber` to recover the revert payload and annotates the thrown
+ *   error with `error.revertData` before rethrowing the **same** error instance.
+ *
+ * @param signer               Ethers v5 Signer that will estimate and send the transaction.
+ * @param originalTx           Populated transaction (may omit `gasLimit`; `from` is inferred from the signer if absent).
+ * @param gasLimitMultiplier   Optional percentage multiplier for the estimated gas limit (e.g., 110 = +10%).
+ * @returns                    A `TransactionResponse` whose `wait()` may throw `CALL_EXCEPTION` with `error.revertData`
+ *                             on failure.
+ */
+export async function runEthersTransaction(
+  signer: Signer,
+  originalTx: PopulatedTransaction,
+  gasLimitMultiplier?: number
+): Promise<TransactionResponse> {
+  // Estimate the gas limit adding the revert data on failure.
+  const submittedTx = await estimateTxGasLimit(signer, originalTx, gasLimitMultiplier);
+
+  // Submit the transaction, any Ethers errors would be bubbled up to the caller.
+  const tx = await signer.sendTransaction(submittedTx);
+
+  // Override tx.wait() adding revert data on failure.
+  return overrideTxWait(tx, signer);
+}
+
+/**
+ * Send a **contract** transaction with Ethers v5 while preserving native error semantics, enriching failures with
+ * revert data and enabling decoded events.
+ *
+ * Behavior:
+ * - If `originalTx.gasLimit` is missing, estimates it via `signer.estimateGas(originalTx)`.
+ * - On `UNPREDICTABLE_GAS_LIMIT`, rethrows the same error object and annotates it with `error.revertData` (hex).
+ * - Optionally applies a gas limit multiplier (percentage), e.g. `110` => +10%.
+ * - Validates that `originalTx.to` matches `contract.address` and that `data` is present.
+ * - Re-encodes and **dispatches through the contract ABI** (`contract.functions[name](...args, overrides)`), so that
+ *   `tx.wait()` resolves to a **ContractReceipt with decoded `events`**.
+ * - The returned `tx.wait()` is overridden so that if the tx **mines and reverts** (ethers throws `CALL_EXCEPTION`),
+ *   the function replays the call at `receipt.blockNumber` to recover the revert payload and annotates the thrown
+ *   error with `error.revertData` before rethrowing the **same** error instance.
+ *
+ * @param contract             Ethers v5 Contract instance (must have a signer attached).
+ * @param originalTx           Populated transaction targeting `contract.address` with encoded `data`.
+ * @param gasLimitMultiplier   Optional percentage multiplier for the estimated gas limit (e.g., 110 = +10%).
+ * @returns                    A `ContractTransaction` whose `wait()` returns a `ContractReceipt` with decoded events,
+ *                             or throws `CALL_EXCEPTION` with `error.revertData` on failure.
+ */
+export async function runEthersContractTransaction(
+  contract: Contract,
+  originalTx: PopulatedTransaction,
+  gasLimitMultiplier?: number
+): Promise<ContractTransaction> {
+  const { signer } = contract;
+  if (!Signer.isSigner(signer)) throw new Error("Contract has invalid signer");
+
+  // Estimate the gas limit adding the revert data on failure.
+  const submittedTx = await estimateTxGasLimit(signer, originalTx, gasLimitMultiplier);
+
+  // Validate this can be run as a contract transaction.
+  if (submittedTx.to?.toLowerCase() !== contract.address.toLowerCase()) {
+    throw new Error(`Transaction 'to' address ${submittedTx.to} does not match contract address ${contract.address}.`);
+  }
+  if (submittedTx.data === undefined || submittedTx.data === "0x") {
+    throw new Error("Transaction 'data' is undefined or empty, cannot run contract transaction.");
+  }
+
+  // Extract transaction overrides and parse the transaction data.
+  const overrides = (({ to: _to, from: _from, data: _data, chainId: _chainId, ...overrides }) => overrides)(
+    submittedTx
+  );
+  const parsed = contract.interface.parseTransaction({ data: submittedTx.data });
+
+  // Submit the transaction re-encoding with contract interface and applying overrides.
+  const tx = (await contract.functions[parsed.name](...parsed.args, overrides)) as ContractTransaction;
+
+  // Override tx.wait() adding revert data on failure.
+  return overrideTxWait(tx, signer);
 }
