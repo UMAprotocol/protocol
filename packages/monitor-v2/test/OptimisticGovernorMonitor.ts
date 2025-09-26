@@ -1215,4 +1215,29 @@ describe("OptimisticGovernorMonitor", function () {
     assert.equal(parsedRules?.quorum, quorum);
     assert.equal(parsedRules?.votingPeriod, votingPeriod);
   });
+  it("Parse rules accepts v1.snapshot.box", async function () {
+    const space = "test.eth";
+    const quorum = 10;
+    const votingPeriod = 3600;
+
+    const rules =
+      "I assert that this transaction proposal is valid according to the following rules: Proposals approved on" +
+      " Snapshot, as verified at https://v1.snapshot.box/#/" +
+      space +
+      ", are valid as long as there is a minimum quorum of " +
+      quorum +
+      " and a minimum voting period of " +
+      votingPeriod +
+      " hours and it does not appear that the Snapshot voting system is being exploited or is otherwise unavailable." +
+      " The quorum and voting period are minimum requirements for a proposal to be valid. Quorum and voting period" +
+      " values set for a specific proposal in Snapshot should be used if they are more strict than the rules" +
+      " parameter. The explanation included with the on-chain proposal must be the unique IPFS identifier for the" +
+      " specific Snapshot proposal that was approved or a unique identifier for a proposal in an alternative" +
+      " voting system approved by DAO social consensus if Snapshot is being exploited or is otherwise unavailable.";
+
+    const parsedRules = parseRules(rules);
+    assert.equal(parsedRules?.space, space);
+    assert.equal(parsedRules?.quorum, quorum);
+    assert.equal(parsedRules?.votingPeriod, votingPeriod);
+  });
 });
