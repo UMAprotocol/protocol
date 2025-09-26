@@ -161,6 +161,8 @@ async function estimateTxGasLimit(
  * - The returned `tx.wait()` is overridden so that if the tx **mines and reverts** (ethers throws `CALL_EXCEPTION`),
  *   the function replays the call at `receipt.blockNumber` to recover the revert payload and annotates the thrown
  *   error with `error.revertData` before rethrowing the **same** error instance.
+ * Note: Enhanced error data would only work for signers backed by JsonRpcProvider, as it relies on the specific
+ *   placement of the revert data in the thrown error structure. Other providers may not support this.
  *
  * @param signer               Ethers v5 Signer that will estimate and send the transaction.
  * @param originalTx           Populated transaction (may omit `gasLimit`; `from` is inferred from the signer if absent).
@@ -197,6 +199,8 @@ export async function runEthersTransaction(
  * - The returned `tx.wait()` is overridden so that if the tx **mines and reverts** (ethers throws `CALL_EXCEPTION`),
  *   the function replays the call at `receipt.blockNumber` to recover the revert payload and annotates the thrown
  *   error with `error.revertData` before rethrowing the **same** error instance.
+ * Note: Enhanced error data would only work for contracts backed by JsonRpcProvider, as it relies on the specific
+ *   placement of the revert data in the thrown error structure. Other providers may not support this.
  *
  * @param contract             Ethers v5 Contract instance (must have a signer attached).
  * @param originalTx           Populated transaction targeting `contract.address` with encoded `data`.
