@@ -1,4 +1,4 @@
-import { paginatedEventQuery } from "@uma/common";
+import { paginatedEventQuery, runEthersContractTransaction } from "@uma/common";
 import {
   ProposePriceEvent,
   SettleEvent,
@@ -9,6 +9,7 @@ import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV2Ethers } from "./common";
 import { requestKey } from "./requestKey";
 import type { GasEstimator } from "@uma/financial-templates-lib";
+import { getSettleTxErrorLogLevel } from "../bot-utils/errors";
 
 export async function settleOOv2Requests(
   logger: typeof Logger,
@@ -80,21 +81,14 @@ export async function settleOOv2Requests(
     }
 
     try {
-      const estimatedGas = await oo.estimateGas.settle(
-        req.args.requester,
-        req.args.identifier,
-        req.args.timestamp,
-        req.args.ancillaryData
-      );
-      const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-
-      const tx = await ooWithSigner.settle(
+      const populatedTx = await oo.populateTransaction.settle(
         req.args.requester,
         req.args.identifier,
         req.args.timestamp,
         req.args.ancillaryData,
-        { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride }
+        { ...gasEstimator.getCurrentFastPriceEthers() }
       );
+      const tx = await runEthersContractTransaction(ooWithSigner, populatedTx, params.gasLimitMultiplier);
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "Settle");
 
@@ -111,7 +105,7 @@ export async function settleOOv2Requests(
         params
       );
     } catch (error) {
-      logger.error({
+      logger[getSettleTxErrorLogLevel(error)]({
         at: "OOv2Bot",
         message: "Request settlement failed",
         requestKey: requestKey(req.args),
