@@ -3,7 +3,7 @@ import { TransactionResponse, TransactionReceipt } from "@ethersproject/abstract
 import { Signer } from "@ethersproject/abstract-signer";
 import type { Contract } from "@ethersproject/contracts";
 import { ErrorCode } from "@ethersproject/logger";
-import { isRecordStringUnknown } from "./";
+import { isRecordStringUnknown } from "./ObjectUtils";
 
 // Helper interface for Ethers error codes.
 interface EthersV5Error extends Error {
