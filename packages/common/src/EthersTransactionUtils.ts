@@ -234,7 +234,7 @@ export async function runEthersContractTransaction(
   const parsed = contract.interface.parseTransaction({ data: submittedTx.data });
 
   // Submit the transaction re-encoding with contract interface and applying overrides.
-  const tx = (await contract.functions[parsed.name](...parsed.args, overrides)) as ContractTransaction;
+  const tx = (await contract.functions[parsed.signature](...parsed.args, overrides)) as ContractTransaction;
 
   // Override tx.wait() adding revert data on failure.
   return overrideTxWait(tx, signer);
