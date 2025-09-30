@@ -66,6 +66,7 @@ export interface MonitoringParams {
   retryDelayMs: number;
   checkBeforeExpirationSeconds: number;
   fillEventsLookbackSeconds: number;
+  fillEventsProposalGapSeconds: number;
   httpClient: ReturnType<typeof createHttpClient>;
   orderBookBatchSize: number;
   ooV2Addresses: string[];
@@ -898,6 +899,9 @@ export const initMonitoringParams = async (
     ? Number(env.CHECK_BEFORE_EXPIRATION_SECONDS)
     : 1800; // default to 30 minutes
   const fillEventsLookbackSeconds = env.FILL_EVENTS_LOOKBACK_SECONDS ? Number(env.FILL_EVENTS_LOOKBACK_SECONDS) : 1800; // default to 30 minutes
+  const fillEventsProposalGapSeconds = env.FILL_EVENTS_PROPOSAL_GAP_SECONDS
+    ? Number(env.FILL_EVENTS_PROPOSAL_GAP_SECONDS)
+    : 300; // default to 5 minutes
 
   const maxConcurrentRequests = env.MAX_CONCURRENT_REQUESTS ? Number(env.MAX_CONCURRENT_REQUESTS) : 5;
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
@@ -946,6 +950,7 @@ export const initMonitoringParams = async (
     retryDelayMs,
     checkBeforeExpirationSeconds,
     fillEventsLookbackSeconds,
+    fillEventsProposalGapSeconds,
     httpClient,
     orderBookBatchSize,
     ooV2Addresses,

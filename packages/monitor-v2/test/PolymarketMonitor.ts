@@ -26,7 +26,10 @@ import {
   PolymarketTradeInformation,
   Underdog,
 } from "../src/monitor-polymarket/common";
-import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
+import {
+  monitorTransactionsProposedOrderBook,
+  processProposal,
+} from "../src/monitor-polymarket/MonitorProposalsOrderBook";
 import { tryHexToUtf8String } from "../src/utils/contracts";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
@@ -106,12 +109,12 @@ describe("PolymarketNotifier", function () {
       retryDelayMs: 1000,
       checkBeforeExpirationSeconds: Date.now() + 1000 * 60 * 60 * 24,
       fillEventsLookbackSeconds: 0,
+      fillEventsProposalGapSeconds: 300,
       httpClient: createHttpClient(),
       orderBookBatchSize: 499,
       ooV2Addresses: [oov2.address],
       ooV1Addresses: [oo.address],
       aiConfig: {
-        enabled: true,
         apiUrl: aiApiUrl,
         resultsBaseUrl: aiResultsBaseUrl,
         apiKey: aiApiKey,
@@ -1042,6 +1045,103 @@ describe("PolymarketNotifier", function () {
           assert.deepEqual(payouts, [1, 0]);
         });
       });
+    });
+  });
+
+  describe("processProposal proposal gap", function () {
+    it("applies the default proposal gap when the lookback window would include the proposal block", async function () {
+      const params = await createMonitoringParams();
+      params.fillEventsLookbackSeconds = 7_200; // 2 hours
+
+      const currentBlock = 2_000;
+      const getBlockNumberStub = sandbox.stub().resolves(currentBlock);
+      params.provider = ({ getBlockNumber: getBlockNumberStub } as unknown) as Provider;
+
+      const proposalBlockNumber = 900;
+      const proposal: OptimisticPriceRequest = {
+        proposalHash: "0xdefaultgap",
+        requester: params.additionalRequesters[0],
+        proposer: await deployer.getAddress(),
+        identifier,
+        proposedPrice: ONE,
+        requestTimestamp: ethers.BigNumber.from(Date.now()),
+        proposalBlockNumber,
+        ancillaryData: ethers.utils.hexlify(ancillaryData),
+        requestHash: "0xdefaultgaprequest",
+        requestLogIndex: 0,
+        proposalTimestamp: ethers.BigNumber.from(Date.now()),
+        proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 3_600),
+        proposalLogIndex: 0,
+      };
+
+      let capturedFromBlock: number | undefined;
+      sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(async (_params, _tokenIds, fromBlock) => {
+        capturedFromBlock = fromBlock;
+        return emptyTradeInformation;
+      });
+
+      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
+      sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
+
+      const logger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
+
+      await processProposal(proposal, marketInfo, asBooksRecord(emptyOrders), params, logger);
+
+      assert.isDefined(capturedFromBlock, "getOrderFilledEvents should be called");
+      const blocksPerSecond = commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600;
+      const expectedFromBlock = Math.max(
+        proposalBlockNumber + Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond),
+        currentBlock - Math.round(params.fillEventsLookbackSeconds * blocksPerSecond)
+      );
+      assert.equal(capturedFromBlock, expectedFromBlock);
+    });
+
+    it("uses the configured proposal gap when provided", async function () {
+      const params = await createMonitoringParams();
+      params.fillEventsLookbackSeconds = 7_200;
+      params.fillEventsProposalGapSeconds = 600; // 10 minutes
+
+      const currentBlock = 2_000;
+      const getBlockNumberStub = sandbox.stub().resolves(currentBlock);
+      params.provider = ({ getBlockNumber: getBlockNumberStub } as unknown) as Provider;
+
+      const proposalBlockNumber = 900;
+      const proposal: OptimisticPriceRequest = {
+        proposalHash: "0xcustomgap",
+        requester: params.additionalRequesters[0],
+        proposer: await deployer.getAddress(),
+        identifier,
+        proposedPrice: ONE,
+        requestTimestamp: ethers.BigNumber.from(Date.now()),
+        proposalBlockNumber,
+        ancillaryData: ethers.utils.hexlify(ancillaryData),
+        requestHash: "0xcustomgaprequest",
+        requestLogIndex: 0,
+        proposalTimestamp: ethers.BigNumber.from(Date.now()),
+        proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 3_600),
+        proposalLogIndex: 0,
+      };
+
+      let capturedFromBlock: number | undefined;
+      sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(async (_params, _tokenIds, fromBlock) => {
+        capturedFromBlock = fromBlock;
+        return emptyTradeInformation;
+      });
+
+      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
+      sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
+
+      const logger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
+
+      await processProposal(proposal, marketInfo, asBooksRecord(emptyOrders), params, logger);
+
+      assert.isDefined(capturedFromBlock, "getOrderFilledEvents should be called");
+      const blocksPerSecond = commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600;
+      const expectedFromBlock = Math.max(
+        proposalBlockNumber + Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond),
+        currentBlock - Math.round(params.fillEventsLookbackSeconds * blocksPerSecond)
+      );
+      assert.equal(capturedFromBlock, expectedFromBlock);
     });
   });
 
