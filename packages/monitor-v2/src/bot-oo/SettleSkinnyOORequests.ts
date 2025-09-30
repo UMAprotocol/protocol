@@ -1,4 +1,4 @@
-import { paginatedEventQuery } from "@uma/common";
+import { paginatedEventQuery, runEthersContractTransaction } from "@uma/common";
 import {
   DisputePriceEvent,
   ProposePriceEvent,
@@ -11,6 +11,7 @@ import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, SkinnyOptimisticOracleEthers } from "./common";
 import { requestKey } from "./requestKey";
 import type { GasEstimator } from "@uma/financial-templates-lib";
+import { getSettleTxErrorLogLevel } from "../bot-utils/errors";
 
 const toRequestKeyArgs = (args: ProposePriceEvent["args"] | DisputePriceEvent["args"] | SettleEvent["args"]) => ({
   requester: args.requester,
@@ -166,28 +167,7 @@ export async function settleSkinnyOORequests(
     const { event: req, request } = settleableRequest;
 
     try {
-      const estimatedGas = await skinnyOOWithAddress.estimateGas.settle(
-        req.args.requester,
-        req.args.identifier,
-        req.args.timestamp,
-        req.args.ancillaryData,
-        {
-          proposer: request.proposer,
-          disputer: request.disputer,
-          currency: request.currency,
-          settled: request.settled,
-          proposedPrice: request.proposedPrice,
-          resolvedPrice: request.resolvedPrice,
-          expirationTime: request.expirationTime,
-          reward: request.reward,
-          finalFee: request.finalFee,
-          bond: request.bond,
-          customLiveness: request.customLiveness,
-        }
-      );
-      const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
-
-      const tx = await skinnyOOWithSigner.settle(
+      const populatedTx = await skinnyOOWithAddress.populateTransaction.settle(
         req.args.requester,
         req.args.identifier,
         req.args.timestamp,
@@ -205,8 +185,9 @@ export async function settleSkinnyOORequests(
           bond: request.bond,
           customLiveness: request.customLiveness,
         },
-        { ...gasEstimator.getCurrentFastPriceEthers(), gasLimit: gasLimitOverride }
+        { ...gasEstimator.getCurrentFastPriceEthers() }
       );
+      const tx = await runEthersContractTransaction(skinnyOOWithSigner, populatedTx, params.gasLimitMultiplier);
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "Settle");
 
@@ -226,7 +207,7 @@ export async function settleSkinnyOORequests(
         "SkinnyOOBot"
       );
     } catch (error) {
-      logger.error({
+      logger[getSettleTxErrorLogLevel(error)]({
         at: "SkinnyOOBot",
         message: "Request settlement failed",
         requestKey: requestKey(toRequestKeyArgs(req.args)),

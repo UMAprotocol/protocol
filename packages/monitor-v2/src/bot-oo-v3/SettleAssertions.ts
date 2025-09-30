@@ -1,4 +1,4 @@
-import { paginatedEventQuery } from "@uma/common";
+import { paginatedEventQuery, runEthersContractTransaction } from "@uma/common";
 import {
   AssertionMadeEvent,
   AssertionSettledEvent,
@@ -6,6 +6,7 @@ import {
 import { computeEventSearch } from "../bot-utils/events";
 import { logSettleAssertion } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV3Ethers } from "./common";
+import { getSettleTxErrorLogLevel } from "../bot-utils/errors";
 
 export async function settleAssertions(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
@@ -72,10 +73,9 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
     }
 
     try {
-      const estimatedGas = await oo.estimateGas.settleAssertion(assertion.args.assertionId);
-      const gasLimitOverride = estimatedGas.mul(params.gasLimitMultiplier).div(100);
+      const populatedTx = await oo.populateTransaction.settleAssertion(assertion.args.assertionId);
 
-      const tx = await ooWithSigner.settleAssertion(assertion.args.assertionId, { gasLimit: gasLimitOverride });
+      const tx = await runEthersContractTransaction(ooWithSigner, populatedTx, params.gasLimitMultiplier);
       const receipt = await tx.wait();
       const event = receipt.events?.find((e) => e.event === "AssertionSettled");
       await logSettleAssertion(
@@ -92,7 +92,7 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
         params
       );
     } catch (error) {
-      logger.error({
+      logger[getSettleTxErrorLogLevel(error)]({
         at: "OOv3Bot",
         message: "Assertion settlement failed",
         assertionId: assertion.args.assertionId,
