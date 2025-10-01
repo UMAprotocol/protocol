@@ -27,3 +27,5 @@ All the configuration should be provided with following environment variables:
 - `UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL` is the interval in seconds we allow to pass before notifying about a proposal event not found (defaults to `300`).
 - `RETRY_ATTEMPTS` optionally specify a number to retry various external queries to polymarket. Defaults to off.
 - `RETRY_DELAY_MS` optionally specify a delay in milliseconds between retries, defaults to 0 delay.
+- `FILL_EVENTS_LOOKBACK_SECONDS` controls how many seconds of historic fills to consider for each proposal (defaults to `1800`).
+- `FILL_EVENTS_PROPOSAL_GAP_SECONDS` adds a positive buffer after the proposal block before fills are queried, ensuring we skip fills close to proposal timestamp (defaults to `300`).
