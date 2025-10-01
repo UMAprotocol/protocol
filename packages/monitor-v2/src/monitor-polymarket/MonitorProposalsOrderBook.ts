@@ -104,7 +104,7 @@ export async function processProposal(
   const currentBlock = await params.provider.getBlockNumber();
   const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
   const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
-  const proposalStart = Number(proposal.proposalBlockNumber) + gapBlocks;
+  const proposalGapStartBlock = Number(proposal.proposalBlockNumber) + gapBlocks;
 
   const checkMarket = async (market: PolymarketMarketGraphqlProcessed): Promise<boolean> => {
     const outcome = isSportsRequest
@@ -121,7 +121,7 @@ export async function processProposal(
     const sellingWinnerSide = books[outcome.winner].asks.find((a) => a.price < thresholds.asks);
     const buyingLoserSide = books[outcome.loser].bids.find((b) => b.price > thresholds.bids);
 
-    const fromBlock = Math.max(proposalStart, currentBlock - lookbackBlocks);
+    const fromBlock = Math.max(proposalGapStartBlock, currentBlock - lookbackBlocks);
     const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock);
 
     const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
