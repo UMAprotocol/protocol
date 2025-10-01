@@ -123,7 +123,7 @@ export async function logProposalAlignmentConfirmed(
 ): Promise<void> {
   const intro = buildMarketIntro(market);
 
-  logger.info({
+  logger.debug({
     at: "PolymarketMonitor",
     message: "Proposal Alignment Confirmed",
     mrkdwn:
