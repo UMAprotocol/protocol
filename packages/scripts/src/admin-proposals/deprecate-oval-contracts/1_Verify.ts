@@ -11,17 +11,12 @@ import { strict as assert } from "assert";
 import hre from "hardhat";
 const { ethers } = hre;
 
-// Contract addresses to verify
-const TARGET_CONTRACTS = [
-  "0xc47641ed51f73A82C62Ba439d90096bccC376fe8",
-  "0xCf17f459F4D1D9e6fb5aa5013Bd2D7EB6083bd45",
-  "0x4fC22E5f89891B6bd00d554B6250503d38EE5E4D",
-  "0xE2380c199F07e78012c6D0b076A4137E6D1Ba022",
-  "0x171b10e16223F86500D558D426Bf4fa5EF280087",
-];
+const TARGET_CONTRACTS = process.env.TARGET_CONTRACTS?.split(",") || [];
+if (TARGET_CONTRACTS.length === 0) {
+  throw new Error("TARGET_CONTRACTS environment variable is required (comma-separated addresses)");
+}
 
-// Contract ABI
-const LOCK_CONTRACT_ABI = [
+const CONTRACT_ABI = [
   {
     inputs: [],
     name: "lockWindow",
@@ -45,7 +40,7 @@ async function main() {
     console.log(`Checking contract: ${contractAddress}`);
 
     // Connect to the contract
-    const contract = new ethers.Contract(contractAddress, LOCK_CONTRACT_ABI, ethers.provider);
+    const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, ethers.provider);
 
     // Verify lockWindow is 0
     const lockWindow = await contract.lockWindow();
