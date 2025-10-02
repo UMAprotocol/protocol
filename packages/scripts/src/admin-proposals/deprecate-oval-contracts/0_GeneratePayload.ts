@@ -1,6 +1,7 @@
-// This script creates a Safe payload to deprecate 5 lock contracts by setting their lock window to 0 and renouncing ownership.
+// This script creates a Safe payload to deprecate Oval lock contracts by setting their lock window to 0 and renouncing ownership.
 // The generated JSON file can be imported into the Gnosis Safe Transaction Builder UI.
 // Export following environment variables:
+// - TARGET_CONTRACTS: Comma-separated list of contract addresses to deprecate (e.g., "0x123...,0x456...")
 // - SAFE_ADDRESS: The Gnosis Safe multisig address that will execute these transactions
 // - NODE_URL_1: Mainnet RPC URL (optional, only needed for fork testing)
 // Then run the script with:
@@ -69,7 +70,7 @@ async function main() {
     safeAddress
   );
 
-  // For each contract, add setLockWindow(0) and transferOwnership(0x0) transactions
+  // For each contract, add setLockWindow(0) and renounceOwnership transactions
   for (const contractAddress of TARGET_CONTRACTS) {
     // Transaction 1: setLockWindow(0)
     safePayload = appendTxToSafePayload(
