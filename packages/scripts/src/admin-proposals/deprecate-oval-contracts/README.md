@@ -26,7 +26,7 @@ yarn && yarn build
 In a separate terminal:
 
 ```sh
-HARDHAT_CHAIN_ID=1 yarn hardhat node --fork <YOUR-MAINNET-RPC-URL> --port 8545 --no-deploy
+HARDHAT_CHAIN_ID=1 yarn hardhat node --fork <YOUR-MAINNET-RPC-URL> --port 9545 --no-deploy
 ```
 
 ### 2. Export required environment variables
