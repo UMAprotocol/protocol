@@ -46,12 +46,12 @@ syncOOv3Cache()
 For each parameter type:
 
 1. **Oracle Sync**: Compares cached oracle address with current oracle from Finder contract
-2. **Collateral Sync**: 
+2. **Collateral Sync**:
    - Fetches all collaterals ever added to AddressWhitelist
    - Compares current whitelist status and final fees with cached values
    - Batches sync transactions for out-of-sync collaterals
 3. **Identifier Sync**:
-   - Fetches all identifiers ever added to IdentifierWhitelist  
+   - Fetches all identifiers ever added to IdentifierWhitelist
    - Compares current support status with cached values
    - Batches sync transactions for out-of-sync identifiers
 
