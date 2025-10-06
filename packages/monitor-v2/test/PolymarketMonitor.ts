@@ -90,7 +90,6 @@ describe("PolymarketNotifier", function () {
     const apiEndpoint = "endpoint";
     const aiApiUrl = "https://ai.example.com/api";
     const aiResultsBaseUrl = "https://ai.example.com/results";
-    const aiApiKey = "test-ai-api-key";
     const aiProjectId = "test-project";
 
     return {
@@ -117,7 +116,6 @@ describe("PolymarketNotifier", function () {
       aiConfig: {
         apiUrl: aiApiUrl,
         resultsBaseUrl: aiResultsBaseUrl,
-        apiKey: aiApiKey,
         projectId: aiProjectId,
       },
     };

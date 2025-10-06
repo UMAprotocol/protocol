@@ -720,10 +720,6 @@ export async function fetchLatestAIDeepLink(
         last_page: false,
         project_id: params.aiConfig.projectId,
       },
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${params.aiConfig.apiKey}`,
-      },
     });
 
     const questionId = calculatePolymarketQuestionID(proposal.ancillaryData);
@@ -849,7 +845,6 @@ export interface AIConfig {
   projectId: string;
   apiUrl: string;
   resultsBaseUrl: string;
-  apiKey: string;
 }
 
 export const initMonitoringParams = async (
@@ -872,14 +867,10 @@ export const initMonitoringParams = async (
     projectId: "",
     apiUrl: "",
     resultsBaseUrl: "",
-    apiKey: "",
   });
 
   // Only set aiConfig if all required fields are present
-  const aiConfig =
-    rawAiConfig.apiKey && rawAiConfig.apiUrl && rawAiConfig.projectId && rawAiConfig.resultsBaseUrl
-      ? rawAiConfig
-      : undefined;
+  const aiConfig = rawAiConfig.apiUrl && rawAiConfig.projectId && rawAiConfig.resultsBaseUrl ? rawAiConfig : undefined;
 
   // Creating provider will check for other chainId specific env variables.
   const provider = getRetryProvider(chainId) as Provider;
