@@ -353,13 +353,6 @@ export const getPolymarketMarketInformation = async (
 
   const { markets } = data.data;
 
-  logger.info({
-    at: "PolymarketMonitor",
-    message: "Logging polymarket market data received from subgraph",
-    markets,
-    questionID,
-  });
-
   if (!markets.length) {
     throw new Error(`No market found for question ID: ${questionID}`);
   }
