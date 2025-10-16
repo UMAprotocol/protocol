@@ -706,26 +706,24 @@ export async function fetchLatestAIDeepLink(
     return { deeplink: undefined };
   }
   try {
+    const questionId = calculatePolymarketQuestionID(proposal.ancillaryData);
     const response = await params.httpClient.get<UMAAIRetriesLatestResponse>(params.aiConfig.apiUrl, {
       params: {
         limit: 50,
-        search: proposal.proposalHash,
+        search: questionId,
         last_page: false,
         project_id: params.aiConfig.projectId,
       },
     });
 
-    const questionId = calculatePolymarketQuestionID(proposal.ancillaryData);
     const result = response.data?.elements?.find(
-      (element) =>
-        questionId === element.question_id &&
-        element.data.input.timing?.expiration_timestamp === proposal.proposalExpirationTimestamp.toNumber()
+      (element) => element.data.input.timing?.expiration_timestamp === proposal.proposalExpirationTimestamp.toNumber()
     );
 
     if (!result) {
-      logger.debug({
+      logger.error({
         at: "PolymarketMonitor",
-        message: "No AI deeplink found",
+        message: "No AI deeplink found for proposal",
         proposalHash: proposal.proposalHash,
         expirationTimestamp: proposal.proposalExpirationTimestamp.toNumber(),
         questionId: questionId,
