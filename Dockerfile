@@ -21,19 +21,6 @@ RUN yarn
 RUN yarn clean
 RUN yarn build
 
-# Set up additional UMA packages installed in this docker container.
-# Configuer the across v2 relayer as a "across-relayer" base package.
-WORKDIR /across-relayer
-
-# Clode the relayer code and copy it to the across-relayer directory. Remove the package directory.
-RUN git clone https://github.com/across-protocol/relayer-v2.git .
-
-# This command fix a concurrency issue when the package was not found.
-RUN npx -y only-allow npm
-
-# Install depdencies.
-RUN yarn install --frozen-lockfile && yarn build
-
 # Set back the working directory to the protocol directory to default to that package.
 WORKDIR /protocol
 
