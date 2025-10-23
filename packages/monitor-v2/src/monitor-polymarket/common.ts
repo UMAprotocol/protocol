@@ -721,7 +721,7 @@ export async function fetchLatestAIDeepLink(
     );
 
     if (!result) {
-      logger.error({
+      logger.warning({
         at: "PolymarketMonitor",
         message: "No AI deeplink found for proposal",
         proposalHash: proposal.proposalHash,
@@ -732,6 +732,7 @@ export async function fetchLatestAIDeepLink(
           status: response.status,
           statusText: response.statusText,
         },
+        notificationPath: "otb-monitoring",
       });
       return { deeplink: undefined };
     }
