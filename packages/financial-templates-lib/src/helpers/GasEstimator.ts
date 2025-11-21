@@ -295,7 +295,7 @@ export class GasEstimator {
   }
 
   private _extractFastGasPrice(json: { [key: string]: any }, url: string): LondonGasData | LegacyGasData {
-    if (url.includes("etherscan.io") || url.includes("polygonscan.com")) {
+    if (url.includes("etherscan.io")) {
       const isMainnet = url.includes("etherscan.io");
       const etherscanGasResponse = json as EtherscanGasResponse;
       if (etherscanGasResponse.result.suggestBaseFee === undefined)
