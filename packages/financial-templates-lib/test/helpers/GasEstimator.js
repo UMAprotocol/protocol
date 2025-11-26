@@ -96,4 +96,69 @@ describe("GasEstimator.js", function () {
       assert.equal(gasEstimator.networkId, 1);
     });
   });
+
+  describe("London gas invariants (maxFeePerGas >= baseFee)", () => {
+    let dummyLogger;
+
+    beforeEach(() => {
+      dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
+    });
+
+    it("sets maxFeePerGas to at least baseFee when oracle maxFeePerGas is below baseFee", async () => {
+      // Network 1 is London, pass a truthy provider so _getLatestBlockBaseFeePerGasGwei is used.
+      gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 60, /* networkId */ 1, /* provider */ {});
+
+      gasEstimator._getPrice = async () => {
+        // Simulate oracle suggesting a maxFeePerGas (10 gwei) below baseFee (20 gwei)
+        return { maxFeePerGas: 10, maxPriorityFeePerGas: 1 };
+      };
+
+      gasEstimator._getLatestBlockBaseFeePerGasGwei = async () => {
+        // Simulate latest block base fee of 20 gwei
+        return 20;
+      };
+
+      await gasEstimator._update();
+
+      // Invariant: latestMaxFeePerGasGwei must never be below latestBaseFeeGwei.
+      assert.isAtLeast(
+        gasEstimator.latestMaxFeePerGasGwei,
+        gasEstimator.latestBaseFeeGwei,
+        "latestMaxFeePerGasGwei should be >= latestBaseFeeGwei"
+      );
+
+      // And specifically, because oracle maxFeePerGas < baseFee, we expect it to clamp up to baseFee.
+      assert.equal(gasEstimator.latestBaseFeeGwei, 20, "latestBaseFeeGwei should equal stubbed base fee");
+      assert.equal(gasEstimator.latestMaxFeePerGasGwei, 20, "latestMaxFeePerGasGwei should be clamped up to base fee");
+    });
+
+    it("keeps oracle maxFeePerGas when it is already above baseFee", async () => {
+      gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 60, /* networkId */ 1, /* provider */ {});
+
+      gasEstimator._getPrice = async () => {
+        // Simulate oracle suggesting a maxFeePerGas (50 gwei) above baseFee (20 gwei)
+        return { maxFeePerGas: 50, maxPriorityFeePerGas: 1 };
+      };
+
+      gasEstimator._getLatestBlockBaseFeePerGasGwei = async () => {
+        return 20;
+      };
+
+      await gasEstimator._update();
+
+      assert.isAtLeast(
+        gasEstimator.latestMaxFeePerGasGwei,
+        gasEstimator.latestBaseFeeGwei,
+        "latestMaxFeePerGasGwei should be >= latestBaseFeeGwei"
+      );
+
+      // Here baseFee is 20, oracle says 50, so we expect to keep 50 as the max fee.
+      assert.equal(gasEstimator.latestBaseFeeGwei, 20, "latestBaseFeeGwei should equal stubbed base fee");
+      assert.equal(
+        gasEstimator.latestMaxFeePerGasGwei,
+        50,
+        "latestMaxFeePerGasGwei should remain the oracle value when it exceeds base fee"
+      );
+    });
+  });
 });
