@@ -233,17 +233,23 @@ export class GasEstimator {
     ]);
 
     if (this.type == NetworkType.London) {
-      this.latestMaxPriorityFeePerGasGwei = (gasInfo as LondonGasData).maxPriorityFeePerGas;
-      // If we are using a hardcoded maxPriorityFeePerGas value, ensure that maxFeePerGas is not set below it.
-      this.latestMaxFeePerGasGwei = Math.max(
-        (gasInfo as LondonGasData).maxFeePerGas,
-        this.latestMaxPriorityFeePerGasGwei
-      );
+      const londonGasInfo = gasInfo as LondonGasData;
+
+      this.latestMaxPriorityFeePerGasGwei = londonGasInfo.maxPriorityFeePerGas;
+
+      // If we are using a hardcoded or oracle-derived maxPriorityFeePerGas value, ensure that maxFeePerGas is not set
+      // below it.
+      const suggestedMaxFeePerGasGwei = Math.max(londonGasInfo.maxFeePerGas, this.latestMaxPriorityFeePerGasGwei);
 
       // Use the base fee (converted to Gwei) from the most recent block. If the block was not available or errored then
-      // it is set to the latest max fee per gas so we still have some value in the right ballpark to return to the
-      // client implementer.
-      this.latestBaseFeeGwei = latestBlockBaseFeePerGasGwei || this.latestMaxFeePerGasGwei;
+      // fall back to the previous base fee if present, or the suggested max fee so we still have some value in the
+      // right ballpark to return to the client implementer.
+      const baseFeeGwei = latestBlockBaseFeePerGasGwei ?? this.latestBaseFeeGwei ?? suggestedMaxFeePerGasGwei;
+
+      // Ensure we never set maxFeePerGas below the latest base fee, otherwise the node will reject the transaction with
+      // "max fee per gas less than block base fee".
+      this.latestMaxFeePerGasGwei = Math.max(suggestedMaxFeePerGasGwei, baseFeeGwei);
+      this.latestBaseFeeGwei = baseFeeGwei;
     } else this.lastFastPriceGwei = (gasInfo as LegacyGasData).gasPrice;
   }
 
