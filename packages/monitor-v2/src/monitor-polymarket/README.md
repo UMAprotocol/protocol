@@ -102,7 +102,7 @@ When running the notifier locally, you will mainly see two types of logs:
 
 Example:
 
-```json
+```bash
 2025-11-27 10:54:44 [debug]: {
   "at": "PolymarketMonitor",
   "message": "Proposal Alignment Confirmed",
@@ -119,7 +119,7 @@ Example:
 
 Example:
 
-```json
+```bash
 2025-11-27 10:54:44 [error]: {
   "at": "PolymarketMonitor",
   "bot-identifier": "polymarket-polygon-notifier",
