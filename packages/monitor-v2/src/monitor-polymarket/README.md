@@ -30,7 +30,6 @@ All the configuration should be provided with following environment variables:
 - `FILL_EVENTS_LOOKBACK_SECONDS` controls how many seconds of historic fills to consider for each proposal (defaults to `1800`).
 - `FILL_EVENTS_PROPOSAL_GAP_SECONDS` adds a positive buffer after the proposal block before fills are queried, ensuring we skip fills close to proposal timestamp (defaults to `300`).
 
-
 ## Running the Polymarket Notifier Locally
 
 To run the Polymarket notifier on your local machine (outside serverless), follow these steps:
@@ -48,6 +47,7 @@ From any folder where you keep your projects, run:
     git clone https://github.com/UMAprotocol/bot-configs.git
     git clone https://github.com/UMAprotocol/protocol.git
 ```
+
 ---
 
 ### 2. Generate the `.env` file (inside the bot-configs repo)
@@ -65,7 +65,7 @@ This command:
 - Prints the full environment configuration for the `polymarket-polygon-notifier`
 - Removes unnecessary configs (Slack, PagerDuty, Discord, Redis)
 - Appends:
-  - `LOCAL_NO_DATASTORE=true` → run without Google Cloud Datastore  
+  - `LOCAL_NO_DATASTORE=true` → run without Google Cloud Datastore
   - `NODE_OPTIONS=--max-old-space-size=16000` → increase Node memory
 
 Now copy the absolute path of the generated `.env` file, e.g.:
@@ -92,6 +92,7 @@ From the same `monitor-v2` directory, run the notifier pointing to the generated
       node -r dotenv/config ./dist/monitor-polymarket/index.js
 
 This will run the Polymarket notifier locally and print results to the console.
+
 ## What to Expect When Running the Polymarket Notifier
 
 When running the notifier locally, you will mainly see two types of logs:
