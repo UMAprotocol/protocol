@@ -70,7 +70,7 @@ This command:
 
 Now copy the absolute path of the generated `.env` file, e.g.:
 
-    $HOME/UMAprotocol/bot-configs/.env
+    export ENV_PATH=$HOME/UMAprotocol/bot-configs/.env
 
 ---
 
@@ -88,7 +88,48 @@ Navigate to the `monitor-v2` package in the **protocol** repository:
 
 From the same `monitor-v2` directory, run the notifier pointing to the generated `.env` file:
 
-    DOTENV_CONFIG_PATH=$HOME/UMAprotocol/bot-configs/.env \
+    DOTENV_CONFIG_PATH=$ENV_PATH \
       node -r dotenv/config ./dist/monitor-polymarket/index.js
 
 This will run the Polymarket notifier locally and print results to the console.
+## What to Expect When Running the Polymarket Notifier
+
+When running the notifier locally, you will mainly see two types of logs:
+
+---
+
+### 1. Proposals aligned with market prices (no action needed)
+
+Example:
+
+```json
+2025-11-27 10:54:44 [debug]: {
+  "at": "PolymarketMonitor",
+  "message": "Proposal Alignment Confirmed",
+  "mrkdwn": "A price of 0.0 corresponding to outcome 1 was proposed at 1764237601 for the following question:  Solana Up or Down - November 27, 4AM ET. Market sentiment aligns with the proposed price. ✅ In the following transaction: <https://polygonscan.com/tx/0xd4ca8be277461863960fa57aecc43e9404f8a12d15b8c9b861452d83b9cffe11|0xd4c...cffe11> <https://oracle.uma.xyz/request?transactionHash=0xd4ca8be277461863960fa57aecc43e9404f8a12d15b8c9b861452d83b9cffe11&chainId=137&oracleType=OptimisticV2&eventIndex=7 | View in the Oracle UI.>",
+  "notificationPath": "polymarket-notifier",
+  "bot-identifier": "NO_BOT_ID",
+  "run-identifier": "68130d70-66f0-45d9-9e20-523d8d22349c"
+}
+```
+
+---
+
+### 2. Proposals requiring manual review (potential dispute)
+
+Example:
+
+```json
+2025-11-27 10:54:44 [error]: {
+  "at": "PolymarketMonitor",
+  "bot-identifier": "polymarket-polygon-notifier",
+  "level": "error",
+  "message": "Difference between proposed price and market signal! 🚨",
+  "mrkdwn": "A price of 1.0 corresponding to outcome 0 was proposed at 1763677935 for the following question:  Will Trump agree to a tariff agreement with Brazil by November 30?. In the following transaction: <https://polygonscan.com/tx/0x604aedeff5dd6997b7776b6fb3cfd4765f91a6756526b71a0740dee8527136d3|0x604...7136d3> Someone bought loser outcome tokens at a price above the threshold. These are the trades: [{\"price\":0.161,\"type\":\"buy\",\"timestamp\":1763682219,\"amount\":340.01},{\"price\":0.186,\"type\":\"buy\",\"timestamp\":1763682755,\"amount\":60},{\"price\":0.15,\"type\":\"buy\",\"timestamp\":1763683111,\"amount\":500}]. The proposal can be disputed until Fri, 21 Nov 2025 00:32:15 GMT. <https://oracle.uma.xyz/request?transactionHash=0x604aedeff5dd6997b7776b6fb3cfd4765f91a6756526b71a0740dee8527136d3&chainId=137&oracleType=OptimisticV2&eventIndex=917 | View in the Oracle UI.> Please check the market proposal and dispute if necessary.",
+  "notificationPath": "polymarket-notifier",
+  "run-identifier": "85130425-698b-470c-a881-23619679779c",
+  "timestamp": "2025-11-21T00:11:06.267Z"
+}
+```
+
+**ACTION**: Use the link provided in the log (e.g. https://oracle.uma.xyz/request?transactionHash=0x604aedeff5dd6997b7776b6fb3cfd4765f91a6756526b71a0740dee8527136d3&chainId=137&oracleType=OptimisticV2&eventIndex=917) to open the Oracle UI and review the proposal for potential dispute.
