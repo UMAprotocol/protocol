@@ -19,8 +19,15 @@ export { getContractInstanceWithProvider } from "../utils/contracts";
 
 import umaSportsOracleAbi from "./abi/umaSportsOracle.json";
 
-const { Datastore } = require("@google-cloud/datastore");
-const datastore = new Datastore();
+// Opt-in local mode skips Datastore so the monitor can run without GCP access.
+const isLocalNoDatastoreMode = process.env.LOCAL_NO_DATASTORE === "true";
+
+const createDatastoreClient = () => {
+  const { Datastore } = require("@google-cloud/datastore");
+  return new Datastore();
+};
+
+const datastore = isLocalNoDatastoreMode ? null : createDatastoreClient();
 
 import * as s from "superstruct";
 
@@ -756,6 +763,7 @@ export const getProposalKeyToStore = (market: StoredNotifiedProposal | Optimisti
 };
 
 export const isProposalNotified = async (proposal: OptimisticPriceRequest): Promise<boolean> => {
+  if (!datastore) return false;
   const keyName = getProposalKeyToStore(proposal);
   const key = datastore.key(["NotifiedProposals", keyName]);
   const [entity] = await datastore.get(key);
@@ -766,6 +774,7 @@ export const getInitialConfirmationLoggedKey = (marketId: string): string =>
   `polymarket:initial-confirmation-logged:${marketId}`;
 
 export const isInitialConfirmationLogged = async (marketId: string): Promise<boolean> => {
+  if (!datastore) return false;
   const keyName = getInitialConfirmationLoggedKey(marketId);
   const key = datastore.key(["NotifiedProposals", keyName]);
   const [entity] = await datastore.get(key);
@@ -773,6 +782,7 @@ export const isInitialConfirmationLogged = async (marketId: string): Promise<boo
 };
 
 export const markInitialConfirmationLogged = async (marketId: string): Promise<void> => {
+  if (!datastore) return;
   const keyName = getInitialConfirmationLoggedKey(marketId);
   const key = datastore.key(["NotifiedProposals", keyName]);
   await datastore.save({
@@ -785,6 +795,7 @@ export const markInitialConfirmationLogged = async (marketId: string): Promise<v
 };
 
 export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceRequest[]): Promise<void> => {
+  if (!datastore) return;
   const promises = notifiedContracts.map((contract) => {
     const key = datastore.key(["NotifiedProposals", getProposalKeyToStore(contract)]);
     datastore.save({
@@ -800,6 +811,7 @@ export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceR
 export const getNotifiedProposals = async (): Promise<{
   [key: string]: StoredNotifiedProposal;
 }> => {
+  if (!datastore) return {};
   const notifiedProposals = (await datastore.runQuery(datastore.createQuery("NotifiedProposals")))[0];
   return notifiedProposals.reduce((contracts: StoredNotifiedProposal[], contract: StoredNotifiedProposal) => {
     return {
