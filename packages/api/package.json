@@ -1,58 +1,49 @@
 {
   "name": "@uma/api",
-  "version": "0.13.8",
-  "author": "David Adams",
-  "license": "AGPL-3.0-or-later",
-  "main": "build/index.js",
-  "devDependencies": {
-    "@types/cors": "^2.8.12",
-    "@types/isomorphic-fetch": "^0.0.35",
-    "@types/minimist": "^1.2.1",
-    "@types/mocha": "^8.2.0",
-    "@types/node": "^14.14.25",
-    "@types/url-join": "^4.0.0",
-    "@typescript-eslint/parser": "^4.24.0",
-    "ts-mocha": "^8.0.0",
-    "ts-node": "^10.1.0"
+  "version": "3.0.0",
+  "private": true,
+  "description": "UMA Ticketing API (Fastify + BullMQ) to open Discord tickets via env-configured bot",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UMAprotocol/protocol"
   },
-  "dependencies": {
-    "@google-cloud/datastore": "^8.2.1",
-    "@snapshot-labs/snapshot.js": "^0.9.9",
-    "@types/express": "^4.17.11",
-    "@uma/common": "^2.40.0",
-    "@uma/financial-templates-lib": "^2.37.2",
-    "@uma/sdk": "^0.34.13",
-    "body-parser": "^1.19.0",
-    "cors": "^2.8.5",
-    "ethers": "^5.4.2",
-    "express": "^4.17.1",
-    "isomorphic-fetch": "^3.0.0",
-    "lodash": "^4.17.21",
-    "minimist": "^1.2.5",
-    "url-join": "^4.0.1",
-    "web3": "^1.6.0"
-  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
-    "build"
+    "dist/**/*"
   ],
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
-    "test": "ts-mocha --recursive=true ./src/libs/**/*.test.ts ./src/tables/**/*.test.ts",
-    "e2e": "ts-mocha --recursive=true  ./src/**/*.e2e.ts",
-    "test:watch": "ts-mocha --recursive=true ./src/libs/**/*.test.ts ./src/tables/**/*.test.ts -w --watch--extensions ts",
-    "e2e:watch": "ts-mocha --recursive ./src/**/*.e2e.ts -w --watch--extensions ts",
-    "eslint": "eslint './src/**/*.ts'",
-    "prettier": "prettier './**/*.md' './src/**/*.ts'",
-    "lint": "yarn prettier --write && yarn eslint --fix",
-    "api": "node build/start api",
-    "lsp_api": "node build/start lsp_api",
-    "datastore_api": "node build/start datastore_api",
-    "serverless_write": "node build/start serverless_write",
-    "serverless_read": "node build/start serverless_read"
+    "dev": "node --loader ts-node/esm --no-warnings=ExperimentalWarning src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "worker": "node --loader ts-node/esm --no-warnings=ExperimentalWarning src/worker.ts",
+    "start:worker": "node dist/worker.js",
+    "lint": "echo \"No linter configured in this package\"",
+    "clean": "rimraf dist"
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.com/",
-    "access": "public"
+  "dependencies": {
+    "@discordjs/rest": "^2.3.0",
+    "discord-api-types": "^0.37.83",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/sensible": "^6.0.1",
+    "bullmq": "^5.12.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "ioredis": "^5.3.2",
+    "pino": "^9.5.0",
+    "superstruct": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.19.0"
   }
 }
