@@ -21,13 +21,9 @@ async function setupJobMode(
 
   const idleGraceMs = env.WORKER_JOB_IDLE_GRACE_SECONDS * 1000;
   const checkIntervalMs = env.WORKER_JOB_CHECK_INTERVAL_SECONDS * 1000;
-  const maxRuntimeMs = env.WORKER_JOB_MAX_RUNTIME_SECONDS
-    ? env.WORKER_JOB_MAX_RUNTIME_SECONDS * 1000
-    : undefined;
+  const maxRuntimeMs = env.WORKER_JOB_MAX_RUNTIME_SECONDS ? env.WORKER_JOB_MAX_RUNTIME_SECONDS * 1000 : undefined;
 
   let lastObservedWorkAt = Date.now();
-  let interval: NodeJS.Timeout | undefined;
-  let maxRuntimeTimer: NodeJS.Timeout | undefined;
 
   const stopTimers = () => {
     if (interval) clearInterval(interval);
@@ -50,10 +46,7 @@ async function setupJobMode(
 
       const idleForMs = Date.now() - lastObservedWorkAt;
       if (idleForMs >= idleGraceMs) {
-        logger.info(
-          { idleSeconds: Math.floor(idleForMs / 1000) },
-          "Queue idle beyond grace period; stopping worker"
-        );
+        logger.info({ idleSeconds: Math.floor(idleForMs / 1000) }, "Queue idle beyond grace period; stopping worker");
         stopTimers();
         await shutdown("queue idle");
       }
@@ -62,20 +55,17 @@ async function setupJobMode(
     }
   };
 
-  interval = setInterval(() => {
+  const interval = setInterval(() => {
     void checkQueueIdle();
   }, checkIntervalMs);
 
-  if (maxRuntimeMs !== undefined) {
-    maxRuntimeTimer = setTimeout(() => {
-      logger.info(
-        { maxRuntimeSeconds: env.WORKER_JOB_MAX_RUNTIME_SECONDS },
-        "Max runtime reached; stopping worker"
-      );
+  const maxRuntimeTimer = maxRuntimeMs !== undefined
+    ? setTimeout(() => {
+      logger.info({ maxRuntimeSeconds: env.WORKER_JOB_MAX_RUNTIME_SECONDS }, "Max runtime reached; stopping worker");
       stopTimers();
       void shutdown("max runtime reached");
-    }, maxRuntimeMs);
-  }
+    }, maxRuntimeMs)
+    : undefined;
 
   logger.info(
     {

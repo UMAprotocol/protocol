@@ -52,3 +52,11 @@ WORKER_JOB_CHECK_INTERVAL_SECONDS=5
 - Worker modes:
   - `WORKER_MODE=daemon` (default) runs indefinitely, suitable for VMs/containers with a long-lived process manager.
   - `WORKER_MODE=job` is Cloud Run–friendly; the worker exits once the queue has been idle for `WORKER_JOB_IDLE_GRACE_SECONDS` (checked every `WORKER_JOB_CHECK_INTERVAL_SECONDS`) or when `WORKER_JOB_MAX_RUNTIME_SECONDS` is reached (if set). Example: `WORKER_MODE=job WORKER_JOB_IDLE_GRACE_SECONDS=30 WORKER_JOB_CHECK_INTERVAL_SECONDS=5 WORKER_JOB_MAX_RUNTIME_SECONDS=900 node dist/worker.js`.
+
+### Docker (root image)
+
+The root `Dockerfile` builds the whole repo and uses `scripts/runCommand.sh` to execute whatever you pass in `COMMAND`.
+
+- API: `docker run --rm -p 8080:8080 --env-file .env -e COMMAND="yarn workspace @uma/api start" umaprotocol/protocol`
+- Worker (daemon): `docker run --rm --env-file .env -e COMMAND="yarn workspace @uma/api start:worker" umaprotocol/protocol`
+- Worker (job/Cloud Run): add worker-mode envs, e.g. `docker run --rm --env-file .env -e WORKER_MODE=job -e WORKER_JOB_IDLE_GRACE_SECONDS=30 -e WORKER_JOB_CHECK_INTERVAL_SECONDS=5 -e WORKER_JOB_MAX_RUNTIME_SECONDS=900 -e COMMAND="yarn workspace @uma/api start:worker" umaprotocol/protocol`
