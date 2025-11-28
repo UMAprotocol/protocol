@@ -8,7 +8,7 @@ import { createQueue } from "./queue.js";
 import { TicketQueueService } from "./services/TicketService.js";
 import { ticketsRoutes } from "./routes/tickets.js";
 
-export async function buildServer() {
+export async function buildServer(): Promise<{ app: ReturnType<typeof Fastify>; start: () => Promise<void> }> {
   const env = loadEnv();
   const logger = pino({ level: process.env.LOG_LEVEL || "info", name: "ticketing-api" });
   const app = Fastify({ logger });
@@ -33,5 +33,3 @@ export async function buildServer() {
 
   return { app, start };
 }
-
-

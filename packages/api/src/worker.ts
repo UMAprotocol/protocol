@@ -18,11 +18,8 @@ async function main() {
   process.on("SIGTERM", shutdown);
 }
 
-// eslint-disable-next-line unicorn/prefer-top-level-await
 main().catch((err) => {
   // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });
-
-

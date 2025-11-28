@@ -9,7 +9,7 @@ const BodySchema = z.object({
   correlationId: z.string().optional(),
 });
 
-export async function ticketsRoutes(app: FastifyInstance, ticketService: TicketService) {
+export async function ticketsRoutes(app: FastifyInstance, ticketService: TicketService): Promise<void> {
   app.post("/tickets", async (req, reply) => {
     const parsed = BodySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -23,5 +23,3 @@ export async function ticketsRoutes(app: FastifyInstance, ticketService: TicketS
     return reply.status(202).send({ jobId });
   });
 }
-
-

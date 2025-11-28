@@ -1,4 +1,4 @@
-import { Queue, Worker, JobsOptions, QueueOptions, WorkerOptions, QueueEvents } from "bullmq";
+import { Queue, Worker, QueueOptions, WorkerOptions, QueueEvents } from "bullmq";
 import IORedis from "ioredis";
 import pino from "pino";
 import { AppEnv } from "./env.js";
@@ -74,5 +74,3 @@ export function createWorker(env: AppEnv, logger: pino.Logger): Worker<TicketJob
 
   return worker;
 }
-
-

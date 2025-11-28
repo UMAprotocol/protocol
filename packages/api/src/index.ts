@@ -5,7 +5,6 @@ async function main() {
   await start();
 }
 
-// eslint-disable-next-line unicorn/prefer-top-level-await
 main().catch((err) => {
   // eslint-disable-next-line no-console
   console.error(err);
