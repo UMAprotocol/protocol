@@ -4,7 +4,6 @@ import { AppEnv } from "../env.js";
 export type OpenTicketRequest = {
   title: string;
   content: string;
-  correlationId?: string;
 };
 
 export interface TicketService {
@@ -15,8 +14,6 @@ export type TicketJobData = {
   channelId: string;
   title: string;
   content: string;
-  // Control/logging
-  correlationId?: string;
 };
 
 export class TicketQueueService implements TicketService {
@@ -35,7 +32,6 @@ export class TicketQueueService implements TicketService {
         channelId: this.env.DISCORD_CHANNEL_ID,
         title: request.title,
         content: request.content,
-        correlationId: request.correlationId,
       },
       {
         removeOnComplete: { age: 3600, count: 1000 },

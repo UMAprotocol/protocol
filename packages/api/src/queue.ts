@@ -1,6 +1,6 @@
 import { Queue, Worker, QueueOptions, WorkerOptions, QueueEvents } from "bullmq";
 import IORedis from "ioredis";
-import pino from "pino";
+import type { FastifyBaseLogger } from "fastify";
 
 const Redis = IORedis.default || IORedis;
 import { AppEnv } from "./env.js";
@@ -20,7 +20,7 @@ export function createRedisConnection(env: AppEnv): IORedis.RedisOptions {
   };
 }
 
-export function createQueue(env: AppEnv, logger: pino.Logger): Queue<TicketJobData, unknown, string> {
+export function createQueue(env: AppEnv, logger: FastifyBaseLogger): Queue<TicketJobData, unknown, string> {
   const connection = new Redis(createRedisConnection(env));
   const opts: QueueOptions = {
     connection,
@@ -36,7 +36,7 @@ export function createQueue(env: AppEnv, logger: pino.Logger): Queue<TicketJobDa
   return queue;
 }
 
-export function createWorker(env: AppEnv, logger: pino.Logger): Worker<TicketJobData, void, string> {
+export function createWorker(env: AppEnv, logger: FastifyBaseLogger): Worker<TicketJobData, void, string> {
   const connection = new Redis(createRedisConnection(env));
   const workerOpts: WorkerOptions = {
     connection,
@@ -53,13 +53,13 @@ export function createWorker(env: AppEnv, logger: pino.Logger): Worker<TicketJob
     env.QUEUE_NAME,
     async (job) => {
       const data = job.data;
-      logger.info({ jobId: job.id, correlationId: data.correlationId }, "Processing ticket job");
+      logger.info({ jobId: job.id }, "Processing ticket job");
       await poster.postTicket({
         channelId: data.channelId,
         title: data.title,
         content: data.content,
       });
-      logger.info({ jobId: job.id, correlationId: data.correlationId }, "Ticket posted");
+      logger.info({ jobId: job.id }, "Ticket posted");
     },
     workerOpts
   );

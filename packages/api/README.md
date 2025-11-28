@@ -8,8 +8,6 @@ Fastify + BullMQ API to enqueue Discord Ticket Tool messages. Credentials are pr
   - Body:
     - `title` (string, required)
     - `content` (string, required)
-    - `channelKey` (string, required) — key mapped to a Discord channel ID via env
-    - `correlationId` (string, optional)
   - Response: `202 Accepted` with `{ "jobId": "<string>" }`
 
 - GET `/health` — returns `{ ok: true }`
@@ -21,7 +19,7 @@ Copy `.env.example` to `.env` and fill the values:
 ```
 PORT=8080
 DISCORD_BOT_TOKEN=your_bot_token
-DISCORD_CHANNEL_IDS={"verifications-start-here":"123456789012345678"}
+DISCORD_CHANNEL_ID=123456789012345678
 QUEUE_NAME=discord-ticket-queue
 RATE_LIMIT_SECONDS=20
 REDIS_HOST=127.0.0.1
@@ -46,7 +44,7 @@ REDIS_TLS=false
 ### Notes
 
 - The worker enforces one ticket per `RATE_LIMIT_SECONDS` to respect Ticket Tool limits.
-- `DISCORD_CHANNEL_IDS` maps `channelKey` (used by the API payload) to actual Discord channel IDs.
+- `DISCORD_CHANNEL_ID` is configured via environment variable and determines where tickets are posted.
 
 # UMA Api
 

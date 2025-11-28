@@ -31,41 +31,65 @@ export class TicketPoster {
         });
     }
 
-    private removeAnchorTextFromLinks(text: string): string {
-        // Replace [text](url) with url
-        return text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "$2");
+    // Some transports do not support markdown formatted links (e.g. <https://google.com|google.com>). This method removes
+    // the text anchor and leave plain URLs in the message.
+    private removeAnchorTextFromLinks(msg: string): string {
+        const anchorTextRegex = /<([^|]+)\|[^>]+>/g;
+        // $1 is a backreference to the first capture group containing plain URL.
+        return msg.replace(anchorTextRegex, "$1");
     }
 
-    private truncateMessage(message: string, limit: number): string {
+    // Truncate the message if it exceeds the provided character limit. Try to preserve URLs.
+    truncateMessage(message: string, limit: number): string {
         if (limit < TRUNCATED.length) throw new Error("Invalid truncated message limit!");
+
+        // If the message is short enough, return it as is.
         if (message.length <= limit) return message;
 
+        // Regular expression to match URLs.
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const urls = message.match(urlRegex);
+
+        // If there are no URLs, just truncate the end of the message.
         if (urls === null) return message.slice(0, limit - TRUNCATED.length) + TRUNCATED;
 
-        const chunks = message.split(urlRegex);
-        let truncatedLength = message.length;
+        // Split the message into chunks around URLs for further processing.
+        const messageChunks = message.split(urlRegex);
+
+        // Truncate chunks until the message is short enough to fit the character limit. Cycle through the chunks backwards
+        // in one or two rounds. The first round truncates the chunks that are not URLs. The second round also truncates the
+        // URL chunks if the first round did not shorten the message enough. This is done to preserve URLs as much as possible.
+        let truncatedMessageLength = message.length;
         let isUrlRound = false;
+        for (let i = messageChunks.length - 1; i >= 0; i--) {
+            if (truncatedMessageLength <= limit) break; // Stop if the message is short enough.
 
-        for (let i = chunks.length - 1; i >= 0; i--) {
-            if (truncatedLength <= limit) break;
-            if (urls.includes(chunks[i]) && !isUrlRound) continue;
+            if (urls.includes(messageChunks[i]) && !isUrlRound) continue; // Keep URLs from being truncated in the first round.
 
-            if (chunks[i].length > TRUNCATED.length) {
-                const retained = Math.max(0, isUrlRound ? 0 : chunks[i].length - TRUNCATED.length - (truncatedLength - limit));
-                truncatedLength -= chunks[i].length - retained - TRUNCATED.length;
-                chunks[i] = chunks[i].slice(0, retained) + TRUNCATED;
+            // Truncate the chunk and update the truncated message length if it shortens the message. In the second round
+            // truncate the whole URL chunk as there is no point in keeping a part of it.
+            if (messageChunks[i].length > TRUNCATED.length) {
+                const retainedChunkLength = Math.max(
+                    0,
+                    isUrlRound ? 0 : messageChunks[i].length - TRUNCATED.length - (truncatedMessageLength - limit)
+                );
+                truncatedMessageLength -= messageChunks[i].length - retainedChunkLength - TRUNCATED.length;
+                messageChunks[i] = messageChunks[i].slice(0, retainedChunkLength) + TRUNCATED;
             }
 
+            // If the first round is done, reset the counter for the second round truncating URLs.
             if (!isUrlRound && i === 0) {
                 isUrlRound = true;
-                i = chunks.length;
+                i = messageChunks.length;
             }
         }
 
-        const joined = chunks.join("");
-        if (joined.length <= limit) return joined;
+        // Concatenate the chunks back together.
+        const truncatedMessage = messageChunks.join("");
+
+        // In case there are too many chunks to even fit the TRUNCATED values we have to truncate the whole message without
+        // giving any priority to URLs.
+        if (truncatedMessage.length <= limit) return truncatedMessage;
         return message.slice(0, limit - TRUNCATED.length) + TRUNCATED;
     }
 }
