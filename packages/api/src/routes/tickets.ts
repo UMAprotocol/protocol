@@ -5,7 +5,6 @@ import { TicketService } from "../services/TicketService.js";
 const BodySchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
-  channelKey: z.string().min(1),
   correlationId: z.string().optional(),
 });
 
@@ -18,8 +17,8 @@ export async function ticketsRoutes(app: FastifyInstance, ticketService: TicketS
         details: parsed.error.flatten(),
       });
     }
-    const { title, content, channelKey, correlationId } = parsed.data;
-    const { jobId } = await ticketService.enqueue({ title, content, channelKey, correlationId });
+    const { title, content, correlationId } = parsed.data;
+    const { jobId } = await ticketService.enqueue({ title, content, correlationId });
     return reply.status(202).send({ jobId });
   });
 }

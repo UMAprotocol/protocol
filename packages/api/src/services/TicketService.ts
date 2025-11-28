@@ -4,7 +4,6 @@ import { AppEnv } from "../env.js";
 export type OpenTicketRequest = {
   title: string;
   content: string;
-  channelKey: string;
   correlationId?: string;
 };
 
@@ -30,15 +29,10 @@ export class TicketQueueService implements TicketService {
   }
 
   async enqueue(request: OpenTicketRequest): Promise<{ jobId: string }> {
-    const channelId = this.env.DISCORD_CHANNEL_IDS[request.channelKey];
-    if (!channelId) {
-      throw new Error(`Unknown channelKey: ${request.channelKey}`);
-    }
-
     const job = await this.queue.add(
       "open-ticket",
       {
-        channelId,
+        channelId: this.env.DISCORD_CHANNEL_ID,
         title: request.title,
         content: request.content,
         correlationId: request.correlationId,
@@ -51,5 +45,3 @@ export class TicketQueueService implements TicketService {
     return { jobId: job.id as string };
   }
 }
-
-

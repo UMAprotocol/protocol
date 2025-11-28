@@ -3,25 +3,13 @@ import { z } from "zod";
 
 dotenv.config();
 
-const ChannelIdsSchema = z
-  .string()
-  .transform((s) => {
-    try {
-      const parsed = JSON.parse(s);
-      if (parsed && typeof parsed === "object") return parsed as Record<string, string>;
-      throw new Error("DISCORD_CHANNEL_IDS must be a JSON object");
-    } catch (err) {
-      throw new Error("DISCORD_CHANNEL_IDS must be valid JSON object string");
-    }
-  });
-
 const EnvSchema = z.object({
   PORT: z.string().default("8080"),
   NODE_ENV: z.string().default("development"),
 
   // Discord bot auth
   DISCORD_BOT_TOKEN: z.string().min(1, "DISCORD_BOT_TOKEN is required"),
-  DISCORD_CHANNEL_IDS: ChannelIdsSchema, // JSON string mapping channel keys to channel IDs
+  DISCORD_CHANNEL_ID: z.string().min(1, "DISCORD_CHANNEL_ID is required"),
 
   // Queue
   QUEUE_NAME: z.string().default("discord-ticket-queue"),
@@ -46,9 +34,7 @@ const EnvSchema = z.object({
     .transform((v) => (v ? v === "true" : false)),
 });
 
-export type AppEnv = z.infer<typeof EnvSchema> & {
-  DISCORD_CHANNEL_IDS: Record<string, string>;
-};
+export type AppEnv = z.infer<typeof EnvSchema>;
 
 export function loadEnv(): AppEnv {
   const parsed = EnvSchema.safeParse(process.env);
@@ -58,5 +44,3 @@ export function loadEnv(): AppEnv {
   }
   return parsed.data as AppEnv;
 }
-
-
