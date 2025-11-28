@@ -1,34 +1,18 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2021",
-    "module": "ESNext",
+    "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": true,
     "sourceMap": true
   },
-  "include": [
-    "src/**/*"
-  ]
-}
-{
-  "extends": "@tsconfig/node14/tsconfig.json",
-  "include": [
-    "src",
-    "types"
-  ],
-  "compilerOptions": {
-    "resolveJsonModule": true,
-    "outDir": "build",
-    "esModuleInterop": true,
-    "downlevelIteration": true,
-    "declaration": true
-  }
+  "include": ["src/**/*"]
 }

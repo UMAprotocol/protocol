@@ -1,6 +1,8 @@
 import { Queue, Worker, QueueOptions, WorkerOptions, QueueEvents } from "bullmq";
 import IORedis from "ioredis";
 import pino from "pino";
+
+const Redis = IORedis.default || IORedis;
 import { AppEnv } from "./env.js";
 import { TicketJobData } from "./services/TicketService.js";
 import { TicketPoster } from "./discord/TicketPoster.js";
@@ -19,7 +21,7 @@ export function createRedisConnection(env: AppEnv): IORedis.RedisOptions {
 }
 
 export function createQueue(env: AppEnv, logger: pino.Logger): Queue<TicketJobData, unknown, string> {
-  const connection = new IORedis(createRedisConnection(env));
+  const connection = new Redis(createRedisConnection(env));
   const opts: QueueOptions = {
     connection,
   };
@@ -35,7 +37,7 @@ export function createQueue(env: AppEnv, logger: pino.Logger): Queue<TicketJobDa
 }
 
 export function createWorker(env: AppEnv, logger: pino.Logger): Worker<TicketJobData, void, string> {
-  const connection = new IORedis(createRedisConnection(env));
+  const connection = new Redis(createRedisConnection(env));
   const workerOpts: WorkerOptions = {
     connection,
     concurrency: 1,
