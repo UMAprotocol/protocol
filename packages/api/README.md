@@ -5,6 +5,7 @@ Fastify + BullMQ API to enqueue Discord Ticket Tool messages. Credentials are pr
 ### Endpoints
 
 - POST `/tickets`
+
   - Body:
     - `title` (string, required)
     - `content` (string, required)
@@ -36,6 +37,7 @@ WORKER_JOB_CHECK_INTERVAL_SECONDS=5
 ### Development
 
 - API:
+
   ```
   yarn workspace @uma/api dev
   ```
@@ -43,6 +45,8 @@ WORKER_JOB_CHECK_INTERVAL_SECONDS=5
 - Worker:
   ```
   yarn workspace @uma/api worker
+  ```
+
 ```
 
 ### Notes
@@ -60,3 +64,4 @@ The root `Dockerfile` builds the whole repo and uses `scripts/runCommand.sh` to 
 - API: `docker run --rm -p 8080:8080 --env-file .env -e COMMAND="yarn workspace @uma/api start" umaprotocol/protocol`
 - Worker (daemon): `docker run --rm --env-file .env -e COMMAND="yarn workspace @uma/api start:worker" umaprotocol/protocol`
 - Worker (job/Cloud Run): add worker-mode envs, e.g. `docker run --rm --env-file .env -e WORKER_MODE=job -e WORKER_JOB_IDLE_GRACE_SECONDS=30 -e WORKER_JOB_CHECK_INTERVAL_SECONDS=5 -e WORKER_JOB_MAX_RUNTIME_SECONDS=900 -e COMMAND="yarn workspace @uma/api start:worker" umaprotocol/protocol`
+```

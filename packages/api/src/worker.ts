@@ -59,13 +59,17 @@ async function setupJobMode(
     void checkQueueIdle();
   }, checkIntervalMs);
 
-  const maxRuntimeTimer = maxRuntimeMs !== undefined
-    ? setTimeout(() => {
-      logger.info({ maxRuntimeSeconds: env.WORKER_JOB_MAX_RUNTIME_SECONDS }, "Max runtime reached; stopping worker");
-      stopTimers();
-      void shutdown("max runtime reached");
-    }, maxRuntimeMs)
-    : undefined;
+  const maxRuntimeTimer =
+    maxRuntimeMs !== undefined
+      ? setTimeout(() => {
+          logger.info(
+            { maxRuntimeSeconds: env.WORKER_JOB_MAX_RUNTIME_SECONDS },
+            "Max runtime reached; stopping worker"
+          );
+          stopTimers();
+          void shutdown("max runtime reached");
+        }, maxRuntimeMs)
+      : undefined;
 
   logger.info(
     {
