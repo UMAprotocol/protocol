@@ -48,16 +48,31 @@ From any folder where you keep your projects, run:
     git clone https://github.com/UMAprotocol/protocol.git
 ```
 
----
-
-### 2. Generate the `.env` file (inside the bot-configs repo)
-
-From the **root** of the `bot-configs` repository, run:
+Set environment variables to point to your cloned repositories:
 
 ```bash
-  node ./scripts/print-env-file.js ./serverless-bots/uma-config-5m.json polymarket-polygon-notifier \
+    # Replace these with the absolute paths where you cloned the repos
+    export UMA_BOT_CONFIGS="/absolute/path/to/bot-configs"
+    export UMA_PROTOCOL="/absolute/path/to/protocol"
+
+    # If you cloned both repos in the same directory as above, you can do:
+    # export UMA_BOT_CONFIGS="$(pwd)/bot-configs"
+    # export UMA_PROTOCOL="$(pwd)/protocol"
+```
+
+---
+
+### 2. Generate the `.env` file
+
+Run from any directory using the `UMA_BOT_CONFIGS` and `UMA_PROTOCOL` paths:
+
+```bash
+  node "$UMA_BOT_CONFIGS/scripts/print-env-file.js" \
+    "$UMA_BOT_CONFIGS/serverless-bots/uma-config-5m.json" polymarket-polygon-notifier \
     | grep -Ev '^(SLACK_CONFIG|PAGER_DUTY_V2_CONFIG|DISCORD_CONFIG|DISCORD_TICKET_CONFIG|REDIS_URL|NODE_OPTIONS)=' \
-    > .env; printf 'LOCAL_NO_DATASTORE=true\nNODE_OPTIONS=--max-old-space-size=16000\n' >> .env
+    > "$UMA_PROTOCOL/packages/monitor-v2/src/monitor-polymarket/.env.local"; \
+  printf 'LOCAL_NO_DATASTORE=true\nNODE_OPTIONS=--max-old-space-size=16000\n' \
+    >> "$UMA_PROTOCOL/packages/monitor-v2/src/monitor-polymarket/.env.local"
 ```
 
 This command:
@@ -68,9 +83,9 @@ This command:
   - `LOCAL_NO_DATASTORE=true` → run without Google Cloud Datastore
   - `NODE_OPTIONS=--max-old-space-size=16000` → increase Node memory
 
-Now copy the absolute path of the generated `.env` file, e.g.:
+Now point `ENV_PATH` to the generated env file under the protocol repo:
 
-    export ENV_PATH=$HOME/UMAprotocol/bot-configs/.env
+    export ENV_PATH="$UMA_PROTOCOL/packages/monitor-v2/src/monitor-polymarket/.env.local"
 
 ---
 
@@ -78,7 +93,7 @@ Now copy the absolute path of the generated `.env` file, e.g.:
 
 Navigate to the `monitor-v2` package in the **protocol** repository:
 
-    cd $HOME/UMAprotocol/protocol/packages/monitor-v2
+    cd $UMA_PROTOCOL/packages/monitor-v2
     yarn install
     yarn build
 
@@ -88,10 +103,12 @@ Navigate to the `monitor-v2` package in the **protocol** repository:
 
 From the same `monitor-v2` directory, run the notifier pointing to the generated `.env` file:
 
-    DOTENV_CONFIG_PATH=$ENV_PATH \
+    DOTENV_CONFIG_PATH=$ENV_PATH DOTENV_CONFIG_OVERRIDE=true \
       node -r dotenv/config ./dist/monitor-polymarket/index.js
 
 This will run the Polymarket notifier locally and print results to the console.
+
+Note: If you have an existing `.env` file under `packages/monitor-v2` from prior work, it may be loaded by other tooling and conflict with the specified `DOTENV_CONFIG_PATH`. Using `DOTENV_CONFIG_OVERRIDE=true` ensures the variables from `$ENV_PATH` take precedence. Alternatively, temporarily move or rename the local `.env` before running.
 
 ## What to Expect When Running the Polymarket Notifier
 

@@ -717,7 +717,7 @@ export async function fetchLatestAIDeepLink(
     const response = await params.httpClient.get<UMAAIRetriesLatestResponse>(params.aiConfig.apiUrl, {
       params: {
         limit: 50,
-        search: questionId,
+        search: proposal.proposalHash,
         last_page: false,
         project_id: params.aiConfig.projectId,
       },
@@ -728,7 +728,7 @@ export async function fetchLatestAIDeepLink(
     );
 
     if (!result) {
-      logger.warning({
+      logger.debug({
         at: "PolymarketMonitor",
         message: "No AI deeplink found for proposal",
         proposalHash: proposal.proposalHash,
@@ -751,7 +751,7 @@ export async function fetchLatestAIDeepLink(
     logger.debug({
       at: "PolymarketMonitor",
       message: "Failed to fetch AI deeplink",
-      error: error instanceof Error ? error.message : String(error),
+      err: error instanceof Error ? error.message : String(error),
       proposalHash: proposal.proposalHash,
     });
     return { deeplink: undefined };
