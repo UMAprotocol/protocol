@@ -39,12 +39,12 @@ WORKER_JOB_CHECK_INTERVAL_SECONDS=5
 - API:
 
   ```
-  yarn workspace @uma/api dev
+  yarn workspace @uma/discord-ticket-api dev
   ```
 
 - Worker:
   ```
-  yarn workspace @uma/api worker
+  yarn workspace @uma/discord-ticket-api worker
   ```
 
 ```
@@ -61,7 +61,7 @@ WORKER_JOB_CHECK_INTERVAL_SECONDS=5
 
 The root `Dockerfile` builds the whole repo and uses `scripts/runCommand.sh` to execute whatever you pass in `COMMAND`.
 
-- API: `docker run --rm -p 8080:8080 --env-file .env -e COMMAND="yarn workspace @uma/api start" umaprotocol/protocol`
-- Worker (daemon): `docker run --rm --env-file .env -e COMMAND="yarn workspace @uma/api start:worker" umaprotocol/protocol`
-- Worker (job/Cloud Run): add worker-mode envs, e.g. `docker run --rm --env-file .env -e WORKER_MODE=job -e WORKER_JOB_IDLE_GRACE_SECONDS=30 -e WORKER_JOB_CHECK_INTERVAL_SECONDS=5 -e WORKER_JOB_MAX_RUNTIME_SECONDS=900 -e COMMAND="yarn workspace @uma/api start:worker" umaprotocol/protocol`
+- API: `docker run --rm -p 8080:8080 --env-file .env -e COMMAND="yarn workspace @uma/discord-ticket-api start" umaprotocol/protocol`
+- Worker (daemon): `docker run --rm --env-file .env -e COMMAND="yarn workspace @uma/discord-ticket-api start:worker" umaprotocol/protocol`
+- Worker (job/Cloud Run): add worker-mode envs, e.g. `docker run --rm --env-file .env -e WORKER_MODE=job -e WORKER_JOB_IDLE_GRACE_SECONDS=30 -e WORKER_JOB_CHECK_INTERVAL_SECONDS=5 -e WORKER_JOB_MAX_RUNTIME_SECONDS=900 -e COMMAND="yarn workspace @uma/discord-ticket-api start:worker" umaprotocol/protocol`
 ```
