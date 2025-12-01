@@ -62,7 +62,18 @@ Set environment variables to point to your cloned repositories:
 
 ---
 
-### 2. Generate the `.env` file
+### 2. Install bot-configs dependencies
+
+Before generating the `.env` file, you need to install dependencies in the bot-configs repository:
+
+```bash
+cd "$UMA_BOT_CONFIGS"
+yarn install
+```
+
+---
+
+### 3. Generate the `.env` file
 
 Run from any directory using the `UMA_BOT_CONFIGS` and `UMA_PROTOCOL` paths:
 
@@ -89,7 +100,7 @@ Now point `ENV_PATH` to the generated env file under the protocol repo:
 
 ---
 
-### 3. Build the Protocol monitor package
+### 4. Build the Protocol monitor package
 
 Navigate to the `monitor-v2` package in the **protocol** repository:
 
@@ -99,7 +110,7 @@ Navigate to the `monitor-v2` package in the **protocol** repository:
 
 ---
 
-### 4. Run the Polymarket notifier
+### 5. Run the Polymarket notifier
 
 From the same `monitor-v2` directory, run the notifier pointing to the generated `.env` file:
 
