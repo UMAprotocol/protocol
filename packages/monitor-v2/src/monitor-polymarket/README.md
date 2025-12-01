@@ -30,8 +30,6 @@ All the configuration should be provided with following environment variables:
 - `FILL_EVENTS_LOOKBACK_SECONDS` controls how many seconds of historic fills to consider for each proposal (defaults to `1800`).
 - `FILL_EVENTS_PROPOSAL_GAP_SECONDS` adds a positive buffer after the proposal block before fills are queried, ensuring we skip fills close to proposal timestamp (defaults to `300`).
 
-
-
 ## Running the Polymarket Notifier Locally ⚙️
 
 Follow these steps to run the Polymarket notifier on your local machine (outside serverless)
@@ -50,7 +48,7 @@ export UMA_BOT_CONFIGS="/absolute/path/to/bot-configs"
 export UMA_PROTOCOL="/absolute/path/to/protocol"
 ```
 
-----------
+---
 
 ## 2. Install Dependencies (bot-configs) 📦
 
@@ -59,7 +57,7 @@ cd "$UMA_BOT_CONFIGS"
 yarn install
 ```
 
-----------
+---
 
 ## 3. Generate the .env File 🧪
 
@@ -78,7 +76,7 @@ Then export the path:
 export ENV_PATH="$UMA_PROTOCOL/packages/monitor-v2/src/monitor-polymarket/.env.local"
 ```
 
-----------
+---
 
 ## 4. Build the monitor-v2 Package 🔧
 
@@ -88,7 +86,7 @@ yarn install
 yarn build
 ```
 
-----------
+---
 
 ## 5. Run the Polymarket Notifier ▶️
 
@@ -97,13 +95,14 @@ DOTENV_CONFIG_PATH=$ENV_PATH DOTENV_CONFIG_OVERRIDE=true \
   node -r dotenv/config
 ```
 
-###  What to Expect When Running the Polymarket Notifier 👁️ 
+### What to Expect When Running the Polymarket Notifier 👁️
 
 When running the notifier locally, you will mainly see two types of logs:
 
-###  1. Proposals aligned with market prices (no action needed) ✅
+### 1. Proposals aligned with market prices (no action needed) ✅
 
 Example:
+
 ```bash
 2025-11-27  10:54:44 [debug]: {
 	"at":  "PolymarketMonitor",
@@ -117,11 +116,10 @@ Example:
 
 ---
 
-  
-
-###  2.Proposals requiring manual review (potential dispute) 🚨
+### 2.Proposals requiring manual review (potential dispute) 🚨
 
 Example:
+
 ```bash
 
 2025-11-27  10:54:44 [error]: {
