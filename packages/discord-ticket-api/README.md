@@ -47,7 +47,6 @@ WORKER_JOB_CHECK_INTERVAL_SECONDS=5
   yarn workspace @uma/discord-ticket-api worker
   ```
 
-
 ### Notes
 
 - The worker enforces one ticket per `RATE_LIMIT_SECONDS` to respect Ticket Tool limits.
@@ -63,4 +62,7 @@ The root `Dockerfile` builds the whole repo and uses `scripts/runCommand.sh` to 
 - API: `docker run --rm -p 8080:8080 --env-file .env -e COMMAND="yarn workspace @uma/discord-ticket-api start" umaprotocol/protocol`
 - Worker (daemon): `docker run --rm --env-file .env -e COMMAND="yarn workspace @uma/discord-ticket-api start:worker" umaprotocol/protocol`
 - Worker (job/Cloud Run): add worker-mode envs, e.g. `docker run --rm --env-file .env -e WORKER_MODE=job -e WORKER_JOB_IDLE_GRACE_SECONDS=30 -e WORKER_JOB_CHECK_INTERVAL_SECONDS=5 -e WORKER_JOB_MAX_RUNTIME_SECONDS=900 -e COMMAND="yarn workspace @uma/discord-ticket-api start:worker" umaprotocol/protocol`
+
+```
+
 ```
