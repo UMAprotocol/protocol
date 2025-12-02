@@ -1,0 +1,49 @@
+{
+  "name": "@uma/discord-ticket-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "UMA Ticketing API (Fastify + BullMQ) to open Discord tickets via env-configured bot",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UMAprotocol/protocol"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "worker": "tsx src/worker.ts",
+    "start:worker": "node dist/worker.js",
+    "lint": "echo \"No linter configured in this package\"",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^2.6.0",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/sensible": "^6.0.3",
+    "bullmq": "^5.65.0",
+    "discord-api-types": "^0.38.34",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.6.2",
+    "ioredis": "^5.8.2",
+    "pino": "^9.5.0",
+    "superstruct": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.12.32",
+    "rimraf": "^6.1.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18.19.0"
+  }
+}
