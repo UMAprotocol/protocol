@@ -47,7 +47,6 @@ WORKER_JOB_CHECK_INTERVAL_SECONDS=5
   yarn workspace @uma/discord-ticket-api worker
   ```
 
-```
 
 ### Notes
 

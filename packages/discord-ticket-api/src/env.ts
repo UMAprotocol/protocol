@@ -4,8 +4,11 @@ import { z } from "zod";
 dotenv.config();
 
 const EnvSchema = z.object({
-  PORT: z.string().default("8080"),
-  NODE_ENV: z.string().default("development"),
+  PORT: z
+    .string()
+    .default("8080")
+    .transform((s) => Number(s))
+    .pipe(z.number().int().positive()),
 
   // Discord bot auth
   DISCORD_BOT_TOKEN: z.string().min(1, "DISCORD_BOT_TOKEN is required"),
@@ -16,6 +19,17 @@ const EnvSchema = z.object({
   RATE_LIMIT_SECONDS: z
     .string()
     .default("20")
+    .transform((s) => Number(s))
+    .pipe(z.number().int().positive()),
+  JOB_ATTEMPTS: z
+    .string()
+    .default("3")
+    .transform((s) => Number(s))
+    .pipe(z.number().int().positive()),
+  JOB_BACKOFF_TYPE: z.enum(["fixed", "exponential"]).default("exponential"),
+  JOB_BACKOFF_DELAY_MS: z
+    .string()
+    .default("5000")
     .transform((s) => Number(s))
     .pipe(z.number().int().positive()),
 

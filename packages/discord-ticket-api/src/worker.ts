@@ -32,11 +32,7 @@ async function setupJobMode(
 
   const checkQueueIdle = async () => {
     try {
-      const [waiting, delayed, active] = await Promise.all([
-        monitorQueue.getWaitingCount(),
-        monitorQueue.getDelayedCount(),
-        monitorQueue.getActiveCount(),
-      ]);
+      const { waiting, delayed, active } = await monitorQueue.getJobCounts();
       const total = waiting + delayed + active;
       if (total > 0) {
         lastObservedWorkAt = Date.now();
@@ -62,13 +58,13 @@ async function setupJobMode(
   const maxRuntimeTimer =
     maxRuntimeMs !== undefined
       ? setTimeout(() => {
-          logger.info(
-            { maxRuntimeSeconds: env.WORKER_JOB_MAX_RUNTIME_SECONDS },
-            "Max runtime reached; stopping worker"
-          );
-          stopTimers();
-          void shutdown("max runtime reached");
-        }, maxRuntimeMs)
+        logger.info(
+          { maxRuntimeSeconds: env.WORKER_JOB_MAX_RUNTIME_SECONDS },
+          "Max runtime reached; stopping worker"
+        );
+        stopTimers();
+        void shutdown("max runtime reached");
+      }, maxRuntimeMs)
       : undefined;
 
   logger.info(
@@ -86,7 +82,7 @@ async function setupJobMode(
 
 async function main() {
   const env = loadEnv();
-  const logger = pino({ level: process.env.LOG_LEVEL || "info", name: "ticketing-worker" });
+  const logger = pino({ level: process.env.LOG_LEVEL || "info", name: process.env.BOT_IDENTIFIER || "ticketing-worker" });
   const worker = createWorker(env, logger);
   const cleanupFns: CleanupFn[] = [() => worker.close()];
   let shuttingDown = false;

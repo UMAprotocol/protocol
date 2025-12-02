@@ -36,6 +36,11 @@ export class TicketQueueService implements TicketService {
       {
         removeOnComplete: { age: 3600, count: 1000 },
         removeOnFail: { age: 24 * 3600, count: 1000 },
+        attempts: this.env.JOB_ATTEMPTS,
+        backoff: {
+          type: this.env.JOB_BACKOFF_TYPE,
+          delay: this.env.JOB_BACKOFF_DELAY_MS,
+        },
       }
     );
     return { jobId: job.id as string };
