@@ -728,7 +728,10 @@ export async function fetchLatestAIDeepLink(
 
     requestConfig.timeout = params.aiDeeplinkTimeout;
 
-    const response = await params.aiDeeplinkHttpClient.get<UMAAIRetriesLatestResponse>(params.aiConfig.apiUrl, requestConfig);
+    const response = await params.aiDeeplinkHttpClient.get<UMAAIRetriesLatestResponse>(
+      params.aiConfig.apiUrl,
+      requestConfig
+    );
     const duration = Date.now() - startTime;
 
     const result = response.data?.elements?.find(
@@ -777,20 +780,21 @@ export async function fetchLatestAIDeepLink(
         code: axiosError?.code,
         response: axiosError?.response
           ? {
-            status: axiosError.response?.status,
-            statusText: axiosError.response?.statusText,
-            headers: axiosError.response?.headers,
-          }
+              status: axiosError.response?.status,
+              statusText: axiosError.response?.statusText,
+              headers: axiosError.response?.headers,
+            }
           : undefined,
         request: axiosError?.config
           ? {
-            url: axiosError.config?.url,
-            method: axiosError.config?.method,
-            timeout: axiosError.config?.timeout,
-            baseURL: axiosError.config?.baseURL,
-          }
+              url: axiosError.config?.url,
+              method: axiosError.config?.method,
+              timeout: axiosError.config?.timeout,
+              baseURL: axiosError.config?.baseURL,
+            }
           : undefined,
-        isTimeout: axiosError?.code === "ECONNABORTED" || (error instanceof Error && error.message?.includes("timeout")),
+        isTimeout:
+          axiosError?.code === "ECONNABORTED" || (error instanceof Error && error.message?.includes("timeout")),
       },
     });
     return { deeplink: undefined };
@@ -964,17 +968,22 @@ export const initMonitoringParams = async (
     },
   });
 
+  // Create a separate HTTP client for AI deeplink requests with unlimited concurrency
+  // This prevents AI deeplink requests from being queued behind other rate-limited requests
   const aiDeeplinkHttpClient = createHttpClient({
     axios: { timeout: aiDeeplinkTimeout },
     rateLimit: { maxConcurrent: null, minTime: 0 }, // No rate limiting - unlimited concurrency
     retry: {
       retries: retryAttempts,
       baseDelayMs: retryDelayMs,
-      shouldResetTimeout,
+      shouldResetTimeout: false, // Don't reset timeout on retries - keep total time bounded by single timeout + retry delays
       onRetry: (retryCount, err, config) => {
         logger.debug({
           at: "PolymarketMonitor",
-          message: `ai-deeplink-retry attempt #${retryCount} for ${config?.url} after ${err.code}:${err.message}`,
+          message: `ai-deeplink-retry attempt #${retryCount} for ${config?.url}`,
+          error: err.code || err.message,
+          retryCount,
+          timeout: config?.timeout,
         });
       },
     },
