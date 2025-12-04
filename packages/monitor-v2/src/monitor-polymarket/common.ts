@@ -1,6 +1,6 @@
 import { getRetryProvider, paginatedEventQuery as umaPaginatedEventQuery } from "@uma/common";
 import { createHttpClient } from "@uma/toolkit";
-import { AxiosError, AxiosInstance } from "axios";
+import { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 export const paginatedEventQuery = umaPaginatedEventQuery;
 
 import type { Provider } from "@ethersproject/abstract-provider";
@@ -75,10 +75,12 @@ export interface MonitoringParams {
   fillEventsLookbackSeconds: number;
   fillEventsProposalGapSeconds: number;
   httpClient: ReturnType<typeof createHttpClient>;
+  aiDeeplinkHttpClient: ReturnType<typeof createHttpClient>;
   orderBookBatchSize: number;
   ooV2Addresses: string[];
   ooV1Addresses: string[];
   aiConfig?: AIConfig;
+  aiDeeplinkTimeout: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -712,16 +714,25 @@ export async function fetchLatestAIDeepLink(
   if (!params.aiConfig) {
     return { deeplink: undefined };
   }
+  const startTime = Date.now();
   try {
     const questionId = calculatePolymarketQuestionID(proposal.ancillaryData);
-    const response = await params.httpClient.get<UMAAIRetriesLatestResponse>(params.aiConfig.apiUrl, {
+    const requestConfig: AxiosRequestConfig = {
       params: {
         limit: 50,
         search: proposal.proposalHash,
         last_page: false,
         project_id: params.aiConfig.projectId,
       },
-    });
+    };
+
+    requestConfig.timeout = params.aiDeeplinkTimeout;
+
+    const response = await params.aiDeeplinkHttpClient.get<UMAAIRetriesLatestResponse>(
+      params.aiConfig.apiUrl,
+      requestConfig
+    );
+    const duration = Date.now() - startTime;
 
     const result = response.data?.elements?.find(
       (element) => element.data.input.timing?.expiration_timestamp === proposal.proposalExpirationTimestamp.toNumber()
@@ -739,20 +750,52 @@ export async function fetchLatestAIDeepLink(
           status: response.status,
           statusText: response.statusText,
         },
+        durationMs: duration,
         notificationPath: "otb-monitoring",
       });
       return { deeplink: undefined };
     }
 
+    logger.debug({
+      at: "PolymarketMonitor",
+      message: "Successfully fetched AI deeplink",
+      proposalHash: proposal.proposalHash,
+      durationMs: duration,
+    });
+
     return {
       deeplink: `${params.aiConfig.resultsBaseUrl}/${result.id}`,
     };
   } catch (error) {
+    const duration = Date.now() - startTime;
+    const axiosError = error as AxiosError;
+
     logger.debug({
       at: "PolymarketMonitor",
       message: "Failed to fetch AI deeplink",
       err: error instanceof Error ? error.message : String(error),
       proposalHash: proposal.proposalHash,
+      durationMs: duration,
+      errorDetails: {
+        code: axiosError?.code,
+        response: axiosError?.response
+          ? {
+              status: axiosError.response?.status,
+              statusText: axiosError.response?.statusText,
+              headers: axiosError.response?.headers,
+            }
+          : undefined,
+        request: axiosError?.config
+          ? {
+              url: axiosError.config?.url,
+              method: axiosError.config?.method,
+              timeout: axiosError.config?.timeout,
+              baseURL: axiosError.config?.baseURL,
+            }
+          : undefined,
+        isTimeout:
+          axiosError?.code === "ECONNABORTED" || (error instanceof Error && error.message?.includes("timeout")),
+      },
     });
     return { deeplink: undefined };
   }
@@ -902,6 +945,7 @@ export const initMonitoringParams = async (
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
 
   const httpTimeout = env.HTTP_TIMEOUT ? Number(env.HTTP_TIMEOUT) : 10_000;
+  const aiDeeplinkTimeout = env.AI_DEEPLINK_TIMEOUT ? Number(env.AI_DEEPLINK_TIMEOUT) : 10_000;
 
   const shouldResetTimeout = env.SHOULD_RESET_TIMEOUT !== "false";
 
@@ -919,6 +963,27 @@ export const initMonitoringParams = async (
         logger.debug({
           at: "PolymarketMonitor",
           message: `http-retry attempt #${retryCount} for ${config?.url} after ${err.code}:${err.message}`,
+        });
+      },
+    },
+  });
+
+  // Create a separate HTTP client for AI deeplink requests with unlimited concurrency
+  // This prevents AI deeplink requests from being queued behind other rate-limited requests
+  const aiDeeplinkHttpClient = createHttpClient({
+    axios: { timeout: aiDeeplinkTimeout },
+    rateLimit: { maxConcurrent: null, minTime: 0 }, // No rate limiting - unlimited concurrency
+    retry: {
+      retries: retryAttempts,
+      baseDelayMs: retryDelayMs,
+      shouldResetTimeout: false, // Don't reset timeout on retries - keep total time bounded by single timeout + retry delays
+      onRetry: (retryCount, err, config) => {
+        logger.debug({
+          at: "PolymarketMonitor",
+          message: `ai-deeplink-retry attempt #${retryCount} for ${config?.url}`,
+          error: err.code || err.message,
+          retryCount,
+          timeout: config?.timeout,
         });
       },
     },
@@ -947,10 +1012,12 @@ export const initMonitoringParams = async (
     fillEventsLookbackSeconds,
     fillEventsProposalGapSeconds,
     httpClient,
+    aiDeeplinkHttpClient,
     orderBookBatchSize,
     ooV2Addresses,
     ooV1Addresses,
     aiConfig,
+    aiDeeplinkTimeout,
   };
 };
 
