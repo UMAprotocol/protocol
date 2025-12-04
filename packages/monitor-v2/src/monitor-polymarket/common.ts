@@ -222,7 +222,6 @@ export const getPolymarketProposedPriceRequestsOO = async (
     proposeEvents
       .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
       .filter((event) => {
-        return currentTimeBN.lt(event.args.expirationTimestamp);
         const expirationTime = event.args.expirationTimestamp;
         const thresholdTime = expirationTime.sub(threshold);
         // Only keep if current time is greater than (expiration - threshold) but less than expiration.
