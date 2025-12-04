@@ -3,8 +3,8 @@ import Bottleneck from "bottleneck";
 import axiosRetry, { IAxiosRetryConfig } from "axios-retry";
 
 export interface RateLimitOptions {
-  /** Max requests running in parallel (default = 5) */
-  maxConcurrent?: number;
+  /** Max requests running in parallel (default = 5). Set to null for unlimited concurrency. */
+  maxConcurrent?: number | null;
   /** Minimum gap in ms between jobs (default = 200 → ≈5 req/s) */
   minTime?: number;
 }
