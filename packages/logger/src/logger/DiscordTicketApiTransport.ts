@@ -9,10 +9,12 @@ type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
 const Config = ss.object({
   apiUrl: ss.string(),
+  timeoutMs: ss.optional(ss.number()),
 });
 // Config object becomes a type
 // {
 //   apiUrl: string;
+//   timeoutMs?: number;
 // }
 export type Config = ss.Infer<typeof Config>;
 
@@ -37,12 +39,13 @@ export class DiscordTicketApiTransport extends Transport {
   private readonly apiUrl: string;
   private readonly axiosInstance: AxiosInstance;
 
-  constructor(winstonOpts: TransportOptions, { apiUrl }: Config) {
+  constructor(winstonOpts: TransportOptions, { apiUrl, timeoutMs }: Config) {
     super(winstonOpts);
 
     this.apiUrl = apiUrl;
 
     this.axiosInstance = axios.create({
+      timeout: timeoutMs ?? 10000, // Default timeout of 10 seconds
       validateStatus: (status) => {
         return status == 202; // Discord Ticket API enqueues messages with 202 Accepted status
       },
