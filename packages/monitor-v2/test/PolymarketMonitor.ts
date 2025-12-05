@@ -1166,7 +1166,8 @@ describe("PolymarketNotifier", function () {
 
     sandbox.stub(ethers, "Contract").returns({ filters: { OrderFilled: () => ({ topics: [] }) } } as any);
 
-    await commonModule.getOrderFilledEvents(params, ["0xdeadbeef", "0xfeedface"], fromBlockParam);
+    const logger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
+    await commonModule.getOrderFilledEvents(params, ["0xdeadbeef", "0xfeedface"], fromBlockParam, logger);
 
     assert.equal(
       capturedFromBlock,
