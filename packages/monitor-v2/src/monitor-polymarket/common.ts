@@ -655,7 +655,8 @@ const getOrderFilledEventsSlow = async (
 export const getOrderFilledEvents = async (
   params: MonitoringParams,
   clobTokenIds: [string, string],
-  startBlockNumber: number
+  startBlockNumber: number,
+  logger: typeof Logger
 ): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
   try {
     // Check subgraph sync status first
@@ -667,19 +668,38 @@ export const getOrderFilledEvents = async (
       const blockDifference = currentBlockNumber - subgraphBlockNumber;
 
       // If subgraph is behind by more than tolerance, use slow method
-      if (blockDifference >= params.subgraphSyncTolerance) {
+      if (blockDifference > params.subgraphSyncTolerance) {
+        logger.debug({
+          at: "getOrderFilledEvents",
+          message: `Falling back to slow method: subgraph is ${blockDifference} blocks behind (tolerance: ${params.subgraphSyncTolerance})`,
+        });
         return await getOrderFilledEventsSlow(params, clobTokenIds, startBlockNumber);
       }
+
+      // Get the block timestamp from startBlockNumber
+      const startBlock = await params.provider.getBlock(startBlockNumber);
+      const startTimestamp = startBlock.timestamp;
+
+      // Try the fast subgraph version
+      logger.debug({
+        at: "getOrderFilledEvents",
+        message: `Using fast subgraph method: subgraph is ${blockDifference} blocks behind (tolerance: ${params.subgraphSyncTolerance})`,
+      });
+      return await getOrderFilledEventsFromSubgraph(params, clobTokenIds, startTimestamp);
+    } else {
+      // If subgraphBlockNumber is null, we cannot evaluate sync tolerance, so fallback to slow method
+      logger.debug({
+        at: "getOrderFilledEvents",
+        message: "Falling back to slow method: subgraph block number is null, cannot evaluate sync tolerance",
+      });
+      return await getOrderFilledEventsSlow(params, clobTokenIds, startBlockNumber);
     }
-
-    // Get the block timestamp from startBlockNumber
-    const startBlock = await params.provider.getBlock(startBlockNumber);
-    const startTimestamp = startBlock.timestamp;
-
-    // Try the fast subgraph version
-    return await getOrderFilledEventsFromSubgraph(params, clobTokenIds, startTimestamp);
   } catch (error) {
     // Fallback to the slow version if subgraph fails
+    logger.debug({
+      at: "getOrderFilledEvents",
+      message: `Falling back to slow method due to error: ${error instanceof Error ? error.message : String(error)}`,
+    });
     return await getOrderFilledEventsSlow(params, clobTokenIds, startBlockNumber);
   }
 };

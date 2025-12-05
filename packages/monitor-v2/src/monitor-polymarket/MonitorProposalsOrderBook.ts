@@ -122,7 +122,7 @@ export async function processProposal(
     const buyingLoserSide = books[outcome.loser].bids.find((b) => b.price > thresholds.bids);
 
     const fromBlock = Math.max(proposalGapStartBlock, currentBlock - lookbackBlocks);
-    const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock);
+    const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock, logger);
 
     const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
     const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
