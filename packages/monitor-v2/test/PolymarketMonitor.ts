@@ -1220,6 +1220,9 @@ describe("PolymarketNotifier", function () {
     const lookbackBlocks = Math.round((fillEventsLookbackSeconds * commonModule.POLYGON_BLOCKS_PER_HOUR) / 3_600);
     const fromBlockParam = Math.max(proposalBlockNumber, currentBlock - lookbackBlocks);
 
+    // Restore the fetchOrderFilledEvents stub from beforeEach so we can test the real implementation
+    fetchOrderFilledEventsStub.restore();
+
     let capturedFromBlock: number | undefined;
     sandbox.stub(commonModule, "paginatedEventQuery").callsFake(async (_c, _f, searchConfig) => {
       capturedFromBlock = searchConfig.fromBlock;
