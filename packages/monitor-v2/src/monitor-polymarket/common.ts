@@ -1,6 +1,6 @@
 import { getRetryProvider, paginatedEventQuery as umaPaginatedEventQuery } from "@uma/common";
 import { createHttpClient } from "@uma/toolkit";
-import { AxiosError, AxiosInstance } from "axios";
+import { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 export const paginatedEventQuery = umaPaginatedEventQuery;
 
 import type { Provider } from "@ethersproject/abstract-provider";
@@ -75,10 +75,12 @@ export interface MonitoringParams {
   fillEventsLookbackSeconds: number;
   fillEventsProposalGapSeconds: number;
   httpClient: ReturnType<typeof createHttpClient>;
+  aiDeeplinkHttpClient: ReturnType<typeof createHttpClient>;
   orderBookBatchSize: number;
   ooV2Addresses: string[];
   ooV1Addresses: string[];
   aiConfig?: AIConfig;
+  aiDeeplinkTimeout: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -103,6 +105,13 @@ export interface PolymarketTradeInformation {
   type: "buy" | "sell";
   amount: number;
   timestamp: number;
+}
+
+export interface OrderFilledEventWithTrade {
+  blockNumber: number;
+  makerAssetId: string;
+  takerAssetId: string;
+  trade: PolymarketTradeInformation;
 }
 
 export interface PolymarketOrderBook {
@@ -376,9 +385,10 @@ export const getPolymarketMarketInformation = async (
 
 const getTradeInfoFromOrderFilledEvent = async (
   provider: Provider,
-  event: any
+  event: any,
+  blockTimestamp?: number
 ): Promise<PolymarketTradeInformation> => {
-  const blockTimestamp = (await provider.getBlock(event.blockNumber)).timestamp;
+  const timestamp = blockTimestamp ?? (await provider.getBlock(event.blockNumber)).timestamp;
   const isBuy = event.args.makerAssetId.toString() === "0";
   const numerator = (isBuy ? event.args.makerAmountFilled : event.args.takerAmountFilled).mul(1000);
   const denominator = isBuy ? event.args.takerAmountFilled : event.args.makerAmountFilled;
@@ -386,30 +396,28 @@ const getTradeInfoFromOrderFilledEvent = async (
   return {
     price,
     type: isBuy ? "buy" : "sell",
-    timestamp: blockTimestamp,
+    timestamp,
     // Convert to decimal value with 2 decimals
     amount: (isBuy ? event.args.takerAmountFilled : event.args.makerAmountFilled).div(10_000).toNumber() / 100,
   };
 };
 
-export const getOrderFilledEvents = async (
+export const fetchOrderFilledEvents = async (
   params: MonitoringParams,
-  clobTokenIds: [string, string],
-  startBlockNumber: number
-): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
+  startBlockNumber: number,
+  endBlockNumber?: number
+): Promise<OrderFilledEventWithTrade[]> => {
   const ctfExchange = new ethers.Contract(
     params.ctfExchangeAddress,
     require("./abi/ctfExchange.json"),
     params.provider
   );
 
-  const currentBlockNumber = await params.provider.getBlockNumber();
-  const maxBlockLookBack = params.maxBlockLookBack;
-
+  const toBlock = endBlockNumber ?? (await params.provider.getBlockNumber());
   const searchConfig = {
     fromBlock: startBlockNumber,
-    toBlock: currentBlockNumber,
-    maxBlockLookBack,
+    toBlock,
+    maxBlockLookBack: params.maxBlockLookBack,
   };
 
   const events: Event[] = await paginatedEventQuery(
@@ -420,23 +428,59 @@ export const getOrderFilledEvents = async (
     queryFilterSafe
   );
 
-  const outcomeTokenOne = await Promise.all(
-    events
-      .filter((event) => {
-        return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(clobTokenIds[0]);
-      })
-      .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
-  );
+  const blockTimestamps = new Map<number, number>();
+  const getTimestamp = async (blockNumber: number): Promise<number> => {
+    if (!blockTimestamps.has(blockNumber)) {
+      blockTimestamps.set(blockNumber, (await params.provider.getBlock(blockNumber)).timestamp);
+    }
+    return blockTimestamps.get(blockNumber)!;
+  };
 
-  const outcomeTokenTwo = await Promise.all(
-    events
-      .filter((event) => {
-        return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(clobTokenIds[1]);
-      })
-      .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
+  return Promise.all(
+    events.map(async (event) => {
+      const blockTimestamp = await getTimestamp(event.blockNumber);
+      return {
+        blockNumber: event.blockNumber,
+        makerAssetId: event?.args?.makerAssetId.toString(),
+        takerAssetId: event?.args?.takerAssetId.toString(),
+        trade: await getTradeInfoFromOrderFilledEvent(params.provider, event, blockTimestamp),
+      };
+    })
   );
+};
+
+export const filterOrderFilledEvents = (
+  orderFilledEvents: OrderFilledEventWithTrade[],
+  clobTokenIds: [string, string],
+  startBlockNumber: number
+): [PolymarketTradeInformation[], PolymarketTradeInformation[]] => {
+  const [tokenOne, tokenTwo] = clobTokenIds;
+  const eventsWithinWindow = orderFilledEvents.filter((event) => event.blockNumber >= startBlockNumber);
+
+  const outcomeTokenOne = eventsWithinWindow
+    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenOne))
+    .map((event) => event.trade);
+
+  const outcomeTokenTwo = eventsWithinWindow
+    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenTwo))
+    .map((event) => event.trade);
 
   return [outcomeTokenOne, outcomeTokenTwo];
+};
+
+export const getOrderFilledEvents = async (
+  params: MonitoringParams,
+  clobTokenIds: [string, string],
+  startBlockNumber: number,
+  opts?: {
+    toBlock?: number;
+    cachedEvents?: OrderFilledEventWithTrade[];
+  }
+): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
+  const orderFilledEvents =
+    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock));
+
+  return filterOrderFilledEvents(orderFilledEvents, clobTokenIds, startBlockNumber);
 };
 
 export const calculatePolymarketQuestionID = (ancillaryData: string): string => {
@@ -712,16 +756,25 @@ export async function fetchLatestAIDeepLink(
   if (!params.aiConfig) {
     return { deeplink: undefined };
   }
+  const startTime = Date.now();
   try {
     const questionId = calculatePolymarketQuestionID(proposal.ancillaryData);
-    const response = await params.httpClient.get<UMAAIRetriesLatestResponse>(params.aiConfig.apiUrl, {
+    const requestConfig: AxiosRequestConfig = {
       params: {
         limit: 50,
         search: proposal.proposalHash,
         last_page: false,
         project_id: params.aiConfig.projectId,
       },
-    });
+    };
+
+    requestConfig.timeout = params.aiDeeplinkTimeout;
+
+    const response = await params.aiDeeplinkHttpClient.get<UMAAIRetriesLatestResponse>(
+      params.aiConfig.apiUrl,
+      requestConfig
+    );
+    const duration = Date.now() - startTime;
 
     const result = response.data?.elements?.find(
       (element) => element.data.input.timing?.expiration_timestamp === proposal.proposalExpirationTimestamp.toNumber()
@@ -739,20 +792,52 @@ export async function fetchLatestAIDeepLink(
           status: response.status,
           statusText: response.statusText,
         },
+        durationMs: duration,
         notificationPath: "otb-monitoring",
       });
       return { deeplink: undefined };
     }
 
+    logger.debug({
+      at: "PolymarketMonitor",
+      message: "Successfully fetched AI deeplink",
+      proposalHash: proposal.proposalHash,
+      durationMs: duration,
+    });
+
     return {
       deeplink: `${params.aiConfig.resultsBaseUrl}/${result.id}`,
     };
   } catch (error) {
+    const duration = Date.now() - startTime;
+    const axiosError = error as AxiosError;
+
     logger.debug({
       at: "PolymarketMonitor",
       message: "Failed to fetch AI deeplink",
       err: error instanceof Error ? error.message : String(error),
       proposalHash: proposal.proposalHash,
+      durationMs: duration,
+      errorDetails: {
+        code: axiosError?.code,
+        response: axiosError?.response
+          ? {
+              status: axiosError.response?.status,
+              statusText: axiosError.response?.statusText,
+              headers: axiosError.response?.headers,
+            }
+          : undefined,
+        request: axiosError?.config
+          ? {
+              url: axiosError.config?.url,
+              method: axiosError.config?.method,
+              timeout: axiosError.config?.timeout,
+              baseURL: axiosError.config?.baseURL,
+            }
+          : undefined,
+        isTimeout:
+          axiosError?.code === "ECONNABORTED" || (error instanceof Error && error.message?.includes("timeout")),
+      },
     });
     return { deeplink: undefined };
   }
@@ -902,6 +987,7 @@ export const initMonitoringParams = async (
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
 
   const httpTimeout = env.HTTP_TIMEOUT ? Number(env.HTTP_TIMEOUT) : 10_000;
+  const aiDeeplinkTimeout = env.AI_DEEPLINK_TIMEOUT ? Number(env.AI_DEEPLINK_TIMEOUT) : 10_000;
 
   const shouldResetTimeout = env.SHOULD_RESET_TIMEOUT !== "false";
 
@@ -919,6 +1005,27 @@ export const initMonitoringParams = async (
         logger.debug({
           at: "PolymarketMonitor",
           message: `http-retry attempt #${retryCount} for ${config?.url} after ${err.code}:${err.message}`,
+        });
+      },
+    },
+  });
+
+  // Create a separate HTTP client for AI deeplink requests with unlimited concurrency
+  // This prevents AI deeplink requests from being queued behind other rate-limited requests
+  const aiDeeplinkHttpClient = createHttpClient({
+    axios: { timeout: aiDeeplinkTimeout },
+    rateLimit: { maxConcurrent: null, minTime: 0 }, // No rate limiting - unlimited concurrency
+    retry: {
+      retries: retryAttempts,
+      baseDelayMs: retryDelayMs,
+      shouldResetTimeout: false, // Don't reset timeout on retries - keep total time bounded by single timeout + retry delays
+      onRetry: (retryCount, err, config) => {
+        logger.debug({
+          at: "PolymarketMonitor",
+          message: `ai-deeplink-retry attempt #${retryCount} for ${config?.url}`,
+          error: err.code || err.message,
+          retryCount,
+          timeout: config?.timeout,
         });
       },
     },
@@ -947,10 +1054,12 @@ export const initMonitoringParams = async (
     fillEventsLookbackSeconds,
     fillEventsProposalGapSeconds,
     httpClient,
+    aiDeeplinkHttpClient,
     orderBookBatchSize,
     ooV2Addresses,
     ooV1Addresses,
     aiConfig,
+    aiDeeplinkTimeout,
   };
 };
 
