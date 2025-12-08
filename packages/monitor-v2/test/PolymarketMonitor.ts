@@ -1150,11 +1150,13 @@ describe("PolymarketNotifier", function () {
     params.fillEventsLookbackSeconds = 7_200;
 
     const currentBlock = 2_000;
-    const providerStub = { getBlockNumber: sandbox.stub().resolves(currentBlock) } as unknown as Provider;
+    const providerStub = ({ getBlockNumber: sandbox.stub().resolves(currentBlock) } as unknown) as Provider;
     params.provider = providerStub;
 
     const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * (commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600));
-    const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * (commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600));
+    const lookbackBlocks = Math.round(
+      params.fillEventsLookbackSeconds * (commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600)
+    );
 
     const makeProposal = async (proposalBlockNumber: number, hash: string): Promise<OptimisticPriceRequest> => ({
       proposalHash: hash,

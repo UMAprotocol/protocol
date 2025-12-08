@@ -111,8 +111,7 @@ export async function processProposal(
   const isSportsRequest = proposal.requester === params.ctfSportsOracleAddress;
 
   const currentBlock = context?.currentBlock ?? (await params.provider.getBlockNumber());
-  const lookbackBlocks =
-    context?.lookbackBlocks ?? Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
+  const lookbackBlocks = context?.lookbackBlocks ?? Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
   const gapBlocks = context?.gapBlocks ?? Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
   const proposalGapStartBlock = Number(proposal.proposalBlockNumber) + gapBlocks;
 
