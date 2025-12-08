@@ -107,6 +107,13 @@ export interface PolymarketTradeInformation {
   timestamp: number;
 }
 
+export interface OrderFilledEventWithTrade {
+  blockNumber: number;
+  makerAssetId: string;
+  takerAssetId: string;
+  trade: PolymarketTradeInformation;
+}
+
 export interface PolymarketOrderBook {
   market: string;
   asset_id: string;
@@ -378,9 +385,10 @@ export const getPolymarketMarketInformation = async (
 
 const getTradeInfoFromOrderFilledEvent = async (
   provider: Provider,
-  event: any
+  event: any,
+  blockTimestamp?: number
 ): Promise<PolymarketTradeInformation> => {
-  const blockTimestamp = (await provider.getBlock(event.blockNumber)).timestamp;
+  const timestamp = blockTimestamp ?? (await provider.getBlock(event.blockNumber)).timestamp;
   const isBuy = event.args.makerAssetId.toString() === "0";
   const numerator = (isBuy ? event.args.makerAmountFilled : event.args.takerAmountFilled).mul(1000);
   const denominator = isBuy ? event.args.takerAmountFilled : event.args.makerAmountFilled;
@@ -388,30 +396,28 @@ const getTradeInfoFromOrderFilledEvent = async (
   return {
     price,
     type: isBuy ? "buy" : "sell",
-    timestamp: blockTimestamp,
+    timestamp,
     // Convert to decimal value with 2 decimals
     amount: (isBuy ? event.args.takerAmountFilled : event.args.makerAmountFilled).div(10_000).toNumber() / 100,
   };
 };
 
-export const getOrderFilledEvents = async (
+export const fetchOrderFilledEvents = async (
   params: MonitoringParams,
-  clobTokenIds: [string, string],
-  startBlockNumber: number
-): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
+  startBlockNumber: number,
+  endBlockNumber?: number
+): Promise<OrderFilledEventWithTrade[]> => {
   const ctfExchange = new ethers.Contract(
     params.ctfExchangeAddress,
     require("./abi/ctfExchange.json"),
     params.provider
   );
 
-  const currentBlockNumber = await params.provider.getBlockNumber();
-  const maxBlockLookBack = params.maxBlockLookBack;
-
+  const toBlock = endBlockNumber ?? (await params.provider.getBlockNumber());
   const searchConfig = {
     fromBlock: startBlockNumber,
-    toBlock: currentBlockNumber,
-    maxBlockLookBack,
+    toBlock,
+    maxBlockLookBack: params.maxBlockLookBack,
   };
 
   const events: Event[] = await paginatedEventQuery(
@@ -422,23 +428,59 @@ export const getOrderFilledEvents = async (
     queryFilterSafe
   );
 
-  const outcomeTokenOne = await Promise.all(
-    events
-      .filter((event) => {
-        return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(clobTokenIds[0]);
-      })
-      .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
-  );
+  const blockTimestamps = new Map<number, number>();
+  const getTimestamp = async (blockNumber: number): Promise<number> => {
+    if (!blockTimestamps.has(blockNumber)) {
+      blockTimestamps.set(blockNumber, (await params.provider.getBlock(blockNumber)).timestamp);
+    }
+    return blockTimestamps.get(blockNumber)!;
+  };
 
-  const outcomeTokenTwo = await Promise.all(
-    events
-      .filter((event) => {
-        return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(clobTokenIds[1]);
-      })
-      .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
+  return Promise.all(
+    events.map(async (event) => {
+      const blockTimestamp = await getTimestamp(event.blockNumber);
+      return {
+        blockNumber: event.blockNumber,
+        makerAssetId: event?.args?.makerAssetId.toString(),
+        takerAssetId: event?.args?.takerAssetId.toString(),
+        trade: await getTradeInfoFromOrderFilledEvent(params.provider, event, blockTimestamp),
+      };
+    })
   );
+};
+
+export const filterOrderFilledEvents = (
+  orderFilledEvents: OrderFilledEventWithTrade[],
+  clobTokenIds: [string, string],
+  startBlockNumber: number
+): [PolymarketTradeInformation[], PolymarketTradeInformation[]] => {
+  const [tokenOne, tokenTwo] = clobTokenIds;
+  const eventsWithinWindow = orderFilledEvents.filter((event) => event.blockNumber >= startBlockNumber);
+
+  const outcomeTokenOne = eventsWithinWindow
+    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenOne))
+    .map((event) => event.trade);
+
+  const outcomeTokenTwo = eventsWithinWindow
+    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenTwo))
+    .map((event) => event.trade);
 
   return [outcomeTokenOne, outcomeTokenTwo];
+};
+
+export const getOrderFilledEvents = async (
+  params: MonitoringParams,
+  clobTokenIds: [string, string],
+  startBlockNumber: number,
+  opts?: {
+    toBlock?: number;
+    cachedEvents?: OrderFilledEventWithTrade[];
+  }
+): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
+  const orderFilledEvents =
+    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock));
+
+  return filterOrderFilledEvents(orderFilledEvents, clobTokenIds, startBlockNumber);
 };
 
 export const calculatePolymarketQuestionID = (ancillaryData: string): string => {
