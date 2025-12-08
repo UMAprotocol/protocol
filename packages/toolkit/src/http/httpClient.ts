@@ -53,7 +53,7 @@ export function createHttpClient(opts: HttpClientOptions = {}): AxiosInstance {
   });
 
   // Only use Bottleneck if maxConcurrent is not null (null means unlimited, skip rate limiting entirely)
-  const maxConcurrent = opts.rateLimit?.maxConcurrent ?? 5;
+  const maxConcurrent = opts.rateLimit?.maxConcurrent !== undefined ? opts.rateLimit.maxConcurrent : 5;
   if (maxConcurrent !== null) {
     const minTime = opts.rateLimit?.minTime ?? 200;
     const limiter = new Bottleneck({ maxConcurrent, minTime });
