@@ -358,8 +358,5 @@ export async function monitorTransactionsProposedOrderBook(
     })
   );
 
-  Logger.debug({
-    at: "PolymarketMonitor",
-    message: `All ${allProposals.length} proposals have been checked!`,
-  });
+  console.log("All proposals have been checked!");
 }

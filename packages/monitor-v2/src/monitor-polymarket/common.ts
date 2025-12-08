@@ -76,11 +76,9 @@ export interface MonitoringParams {
   fillEventsProposalGapSeconds: number;
   httpClient: ReturnType<typeof createHttpClient>;
   orderBookBatchSize: number;
-  orderBookSubgraphEndpoint: string;
   ooV2Addresses: string[];
   ooV1Addresses: string[];
   aiConfig?: AIConfig;
-  subgraphSyncTolerance: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -229,7 +227,6 @@ export const getPolymarketProposedPriceRequestsOO = async (
     proposeEvents
       .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
       .filter((event) => {
-        return currentTimeBN.lt(event.args.expirationTimestamp);
         const expirationTime = event.args.expirationTimestamp;
         const thresholdTime = expirationTime.sub(threshold);
         // Only keep if current time is greater than (expiration - threshold) but less than expiration.
@@ -383,38 +380,6 @@ export const getPolymarketMarketInformation = async (
     };
   });
 };
-
-interface OrderFilledEventSubgraph {
-  id: string;
-  transactionHash: string;
-  makerAssetId: string;
-  takerAssetId: string;
-  maker: string;
-  taker: string;
-  makerAmountFilled: string;
-  takerAmountFilled: string;
-  fee: string;
-  timestamp: string;
-  orderHash: string;
-}
-
-interface SubgraphOrderFilledResponse {
-  data?: {
-    orderFilledEvents: OrderFilledEventSubgraph[];
-  };
-  errors?: { message: string }[];
-}
-
-interface SubgraphMetaResponse {
-  data?: {
-    _meta: {
-      block: {
-        number: number;
-      };
-    };
-  };
-  errors?: { message: string }[];
-}
 
 const getTradeInfoFromOrderFilledEvent = async (
   provider: Provider,
@@ -984,12 +949,6 @@ export const initMonitoringParams = async (
 
   const orderBookBatchSize = env.ORDER_BOOK_BATCH_SIZE ? Number(env.ORDER_BOOK_BATCH_SIZE) : 499;
 
-  const orderBookSubgraphEndpoint =
-    env.ORDER_BOOK_SUBGRAPH_ENDPOINT ||
-    "https://api.goldsky.com/api/public/project_cl6mb8i9h0003e201j6li0diw/subgraphs/orderbook-subgraph/0.0.1/gn";
-
-  const subgraphSyncTolerance = env.SUBGRAPH_SYNC_TOLERANCE ? Number(env.SUBGRAPH_SYNC_TOLERANCE) : 5;
-
   // Rate limit and retry with exponential backoff and jitter to handle rate limiting and errors from the APIs.
   const httpClient = createHttpClient({
     axios: { timeout: httpTimeout },
@@ -1031,11 +990,9 @@ export const initMonitoringParams = async (
     fillEventsProposalGapSeconds,
     httpClient,
     orderBookBatchSize,
-    orderBookSubgraphEndpoint,
     ooV2Addresses,
     ooV1Addresses,
     aiConfig,
-    subgraphSyncTolerance,
   };
 };
 
