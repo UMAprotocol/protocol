@@ -107,6 +107,13 @@ export interface PolymarketTradeInformation {
   timestamp: number;
 }
 
+export interface OrderFilledEventWithTrade {
+  blockNumber: number;
+  makerAssetId: string;
+  takerAssetId: string;
+  trade: PolymarketTradeInformation;
+}
+
 export interface PolymarketOrderBook {
   market: string;
   asset_id: string;
@@ -411,9 +418,10 @@ interface SubgraphMetaResponse {
 
 const getTradeInfoFromOrderFilledEvent = async (
   provider: Provider,
-  event: any
+  event: any,
+  blockTimestamp?: number
 ): Promise<PolymarketTradeInformation> => {
-  const blockTimestamp = (await provider.getBlock(event.blockNumber)).timestamp;
+  const timestamp = blockTimestamp ?? (await provider.getBlock(event.blockNumber)).timestamp;
   const isBuy = event.args.makerAssetId.toString() === "0";
   const numerator = (isBuy ? event.args.makerAmountFilled : event.args.takerAmountFilled).mul(1000);
   const denominator = isBuy ? event.args.takerAmountFilled : event.args.makerAmountFilled;
@@ -421,209 +429,28 @@ const getTradeInfoFromOrderFilledEvent = async (
   return {
     price,
     type: isBuy ? "buy" : "sell",
-    timestamp: blockTimestamp,
+    timestamp,
     // Convert to decimal value with 2 decimals
     amount: (isBuy ? event.args.takerAmountFilled : event.args.makerAmountFilled).div(10_000).toNumber() / 100,
   };
 };
 
-const getTradeInfoFromSubgraphEvent = (event: OrderFilledEventSubgraph): PolymarketTradeInformation => {
-  const isBuy = event.makerAssetId === "0";
-  const makerAmountFilled = BigNumber.from(event.makerAmountFilled);
-  const takerAmountFilled = BigNumber.from(event.takerAmountFilled);
-
-  const numerator = (isBuy ? makerAmountFilled : takerAmountFilled).mul(1000);
-  const denominator = isBuy ? takerAmountFilled : makerAmountFilled;
-  const price = numerator.div(denominator).toNumber() / 1000;
-
-  return {
-    price,
-    type: isBuy ? "buy" : "sell",
-    timestamp: parseInt(event.timestamp),
-    // Convert to decimal value with 2 decimals
-    amount: (isBuy ? takerAmountFilled : makerAmountFilled).div(10_000).toNumber() / 100,
-  };
-};
-
-const querySubgraphOrderFilledEvents = async (
-  httpClient: AxiosInstance,
-  subgraphEndpoint: string,
-  whereField: "takerAssetId" | "makerAssetId",
-  assetId: string,
-  pageSize = 1000,
-  startTimestamp?: number
-): Promise<OrderFilledEventSubgraph[]> => {
-  const allEvents: OrderFilledEventSubgraph[] = [];
-  let skip = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    // Build where clause with optional timestamp filter
-    const whereClause = startTimestamp
-      ? `{timestamp_gt: ${startTimestamp}, ${whereField}: "${assetId}"}`
-      : `{${whereField}: "${assetId}"}`;
-
-    const query = `
-      {
-        orderFilledEvents(
-          where: ${whereClause},
-          first: ${pageSize},
-          skip: ${skip},
-          orderBy: timestamp,
-          orderDirection: asc
-        ) {
-          id
-          transactionHash
-          makerAssetId
-          takerAssetId
-          maker
-          taker
-          makerAmountFilled
-          takerAmountFilled
-          fee
-          timestamp
-          orderHash
-        }
-      }
-    `;
-
-    const response = await httpClient.post<SubgraphOrderFilledResponse>(subgraphEndpoint, { query });
-
-    if (response.data.errors?.length) {
-      throw new Error(response.data.errors.map((e) => e.message).join("; "));
-    }
-
-    if (!response.data.data?.orderFilledEvents) {
-      throw new Error("Invalid response from subgraph");
-    }
-
-    const events = response.data.data.orderFilledEvents;
-    allEvents.push(...events);
-
-    // If we got fewer events than pageSize, we've reached the end
-    hasMore = events.length === pageSize;
-    skip += pageSize;
-  }
-
-  return allEvents;
-};
-
-const getOrderFilledEventsFromSubgraph = async (
+export const fetchOrderFilledEvents = async (
   params: MonitoringParams,
-  clobTokenIds: [string, string],
-  startTimestamp?: number
-): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
-  // Query 4 combinations: takerAssetId for both tokens, makerAssetId for both tokens
-  const queries = [
-    { whereField: "takerAssetId" as const, assetId: clobTokenIds[0], tokenIndex: 0 },
-    { whereField: "takerAssetId" as const, assetId: clobTokenIds[1], tokenIndex: 1 },
-    { whereField: "makerAssetId" as const, assetId: clobTokenIds[0], tokenIndex: 0 },
-    { whereField: "makerAssetId" as const, assetId: clobTokenIds[1], tokenIndex: 1 },
-  ];
-
-  // Execute all queries in parallel
-  const queryResults = await Promise.all(
-    queries.map((q) =>
-      querySubgraphOrderFilledEvents(
-        params.httpClient,
-        params.orderBookSubgraphEndpoint,
-        q.whereField,
-        q.assetId,
-        1000,
-        startTimestamp
-      )
-    )
-  );
-
-  // Group events by token index, deduplicating per token (same event can appear for both tokens)
-  const tokenOneEventIds = new Set<string>();
-  const tokenTwoEventIds = new Set<string>();
-  const tokenOneEvents: PolymarketTradeInformation[] = [];
-  const tokenTwoEvents: PolymarketTradeInformation[] = [];
-
-  // Process takerAssetId queries (index 0 and 1)
-  queryResults[0].forEach((event) => {
-    if (!tokenOneEventIds.has(event.id)) {
-      tokenOneEventIds.add(event.id);
-      tokenOneEvents.push(getTradeInfoFromSubgraphEvent(event));
-    }
-  });
-  queryResults[1].forEach((event) => {
-    if (!tokenTwoEventIds.has(event.id)) {
-      tokenTwoEventIds.add(event.id);
-      tokenTwoEvents.push(getTradeInfoFromSubgraphEvent(event));
-    }
-  });
-
-  // Process makerAssetId queries (index 2 and 3)
-  queryResults[2].forEach((event) => {
-    if (!tokenOneEventIds.has(event.id)) {
-      tokenOneEventIds.add(event.id);
-      tokenOneEvents.push(getTradeInfoFromSubgraphEvent(event));
-    }
-  });
-  queryResults[3].forEach((event) => {
-    if (!tokenTwoEventIds.has(event.id)) {
-      tokenTwoEventIds.add(event.id);
-      tokenTwoEvents.push(getTradeInfoFromSubgraphEvent(event));
-    }
-  });
-
-  // Sort by timestamp
-  const sortByTimestamp = (events: PolymarketTradeInformation[]): PolymarketTradeInformation[] => {
-    return events.sort((a, b) => a.timestamp - b.timestamp);
-  };
-
-  return [sortByTimestamp(tokenOneEvents), sortByTimestamp(tokenTwoEvents)];
-};
-
-const checkSubgraphSyncStatus = async (httpClient: AxiosInstance, subgraphEndpoint: string): Promise<number | null> => {
-  const query = `
-    {
-      _meta {
-        block {
-          number
-        }
-      }
-    }
-  `;
-
-  try {
-    const response = await httpClient.post<SubgraphMetaResponse>(subgraphEndpoint, { query });
-
-    if (response.data.errors?.length) {
-      throw new Error(response.data.errors.map((e) => e.message).join("; "));
-    }
-
-    if (!response.data.data?._meta?.block?.number) {
-      throw new Error("Invalid response from subgraph meta query");
-    }
-
-    return response.data.data._meta.block.number;
-  } catch (error) {
-    // Return null if we can't check sync status, caller should handle gracefully
-    return null;
-  }
-};
-
-const getOrderFilledEventsSlow = async (
-  params: MonitoringParams,
-  clobTokenIds: [string, string],
-  startBlockNumber: number
-): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
+  startBlockNumber: number,
+  endBlockNumber?: number
+): Promise<OrderFilledEventWithTrade[]> => {
   const ctfExchange = new ethers.Contract(
     params.ctfExchangeAddress,
     require("./abi/ctfExchange.json"),
     params.provider
   );
 
-  const currentBlockNumber = await params.provider.getBlockNumber();
-  const maxBlockLookBack = params.maxBlockLookBack;
-
+  const toBlock = endBlockNumber ?? (await params.provider.getBlockNumber());
   const searchConfig = {
     fromBlock: startBlockNumber,
-    toBlock: currentBlockNumber,
-    maxBlockLookBack,
+    toBlock,
+    maxBlockLookBack: params.maxBlockLookBack,
   };
 
   const events: Event[] = await paginatedEventQuery(
@@ -634,21 +461,42 @@ const getOrderFilledEventsSlow = async (
     queryFilterSafe
   );
 
-  const outcomeTokenOne = await Promise.all(
-    events
-      .filter((event) => {
-        return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(clobTokenIds[0]);
-      })
-      .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
-  );
+  const blockTimestamps = new Map<number, number>();
+  const getTimestamp = async (blockNumber: number): Promise<number> => {
+    if (!blockTimestamps.has(blockNumber)) {
+      blockTimestamps.set(blockNumber, (await params.provider.getBlock(blockNumber)).timestamp);
+    }
+    return blockTimestamps.get(blockNumber)!;
+  };
 
-  const outcomeTokenTwo = await Promise.all(
-    events
-      .filter((event) => {
-        return [event?.args?.takerAssetId.toString(), event?.args?.makerAssetId.toString()].includes(clobTokenIds[1]);
-      })
-      .map((event) => getTradeInfoFromOrderFilledEvent(params.provider, event))
+  return Promise.all(
+    events.map(async (event) => {
+      const blockTimestamp = await getTimestamp(event.blockNumber);
+      return {
+        blockNumber: event.blockNumber,
+        makerAssetId: event?.args?.makerAssetId.toString(),
+        takerAssetId: event?.args?.takerAssetId.toString(),
+        trade: await getTradeInfoFromOrderFilledEvent(params.provider, event, blockTimestamp),
+      };
+    })
   );
+};
+
+export const filterOrderFilledEvents = (
+  orderFilledEvents: OrderFilledEventWithTrade[],
+  clobTokenIds: [string, string],
+  startBlockNumber: number
+): [PolymarketTradeInformation[], PolymarketTradeInformation[]] => {
+  const [tokenOne, tokenTwo] = clobTokenIds;
+  const eventsWithinWindow = orderFilledEvents.filter((event) => event.blockNumber >= startBlockNumber);
+
+  const outcomeTokenOne = eventsWithinWindow
+    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenOne))
+    .map((event) => event.trade);
+
+  const outcomeTokenTwo = eventsWithinWindow
+    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenTwo))
+    .map((event) => event.trade);
 
   return [outcomeTokenOne, outcomeTokenTwo];
 };
@@ -656,33 +504,16 @@ const getOrderFilledEventsSlow = async (
 export const getOrderFilledEvents = async (
   params: MonitoringParams,
   clobTokenIds: [string, string],
-  startBlockNumber: number
-): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
-  try {
-    // Check subgraph sync status first
-    const subgraphBlockNumber = await checkSubgraphSyncStatus(params.httpClient, params.orderBookSubgraphEndpoint);
-
-    if (subgraphBlockNumber !== null) {
-      // Get current block from provider
-      const currentBlockNumber = await params.provider.getBlockNumber();
-      const blockDifference = currentBlockNumber - subgraphBlockNumber;
-
-      // If subgraph is behind by more than tolerance, use slow method
-      if (blockDifference >= params.subgraphSyncTolerance) {
-        return await getOrderFilledEventsSlow(params, clobTokenIds, startBlockNumber);
-      }
-    }
-
-    // Get the block timestamp from startBlockNumber
-    const startBlock = await params.provider.getBlock(startBlockNumber);
-    const startTimestamp = startBlock.timestamp;
-
-    // Try the fast subgraph version
-    return await getOrderFilledEventsFromSubgraph(params, clobTokenIds, startTimestamp);
-  } catch (error) {
-    // Fallback to the slow version if subgraph fails
-    return await getOrderFilledEventsSlow(params, clobTokenIds, startBlockNumber);
+  startBlockNumber: number,
+  opts?: {
+    toBlock?: number;
+    cachedEvents?: OrderFilledEventWithTrade[];
   }
+): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
+  const orderFilledEvents =
+    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock));
+
+  return filterOrderFilledEvents(orderFilledEvents, clobTokenIds, startBlockNumber);
 };
 
 export const calculatePolymarketQuestionID = (ancillaryData: string): string => {
