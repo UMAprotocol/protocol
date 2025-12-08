@@ -3,8 +3,8 @@ import Bottleneck from "bottleneck";
 import axiosRetry, { IAxiosRetryConfig } from "axios-retry";
 
 export interface RateLimitOptions {
-  /** Max requests running in parallel (default = 5) */
-  maxConcurrent?: number;
+  /** Max requests running in parallel (default = 5). Set to null for unlimited concurrency. */
+  maxConcurrent?: number | null;
   /** Minimum gap in ms between jobs (default = 200 → ≈5 req/s) */
   minTime?: number;
 }
@@ -47,15 +47,18 @@ export interface HttpClientOptions {
  * @returns An Axios instance
  */
 export function createHttpClient(opts: HttpClientOptions = {}): AxiosInstance {
-  const { maxConcurrent = 5, minTime = 200 } = opts.rateLimit ?? {};
-  const limiter = new Bottleneck({ maxConcurrent, minTime });
-
   const instance = axios.create({
     timeout: 10_000, // default timeout of 10 seconds
     ...opts.axios,
   });
 
-  instance.interceptors.request.use((cfg) => limiter.schedule(async () => cfg));
+  // Only use Bottleneck if maxConcurrent is not null (null means unlimited, skip rate limiting entirely)
+  const maxConcurrent = opts.rateLimit?.maxConcurrent !== undefined ? opts.rateLimit.maxConcurrent : 5;
+  if (maxConcurrent !== null) {
+    const minTime = opts.rateLimit?.minTime ?? 200;
+    const limiter = new Bottleneck({ maxConcurrent, minTime });
+    instance.interceptors.request.use((cfg) => limiter.schedule(async () => cfg));
+  }
 
   const { retries = 3, retryCondition, onRetry, baseDelayMs = 100, maxJitterMs = 1000, maxDelayMs = 10_000 } =
     opts.retry ?? {};
