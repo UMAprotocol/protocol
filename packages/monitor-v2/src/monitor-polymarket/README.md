@@ -92,7 +92,7 @@ yarn build
 
 ```bash
 DOTENV_CONFIG_PATH=$ENV_PATH DOTENV_CONFIG_OVERRIDE=true \
-  node -r dotenv/config
+  node -r dotenv/config ./dist/monitor-polymarket/index.js
 ```
 
 ### What to Expect When Running the Polymarket Notifier 👁️

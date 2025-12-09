@@ -34,6 +34,8 @@ import {
   PolymarketMarketGraphqlProcessed,
   isInitialConfirmationLogged,
   fetchLatestAIDeepLink,
+  OrderFilledEventWithTrade,
+  fetchOrderFilledEvents,
 } from "./common";
 import * as common from "./common";
 
@@ -47,6 +49,12 @@ function getThresholds() {
 }
 
 const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
+type ProposalProcessingContext = {
+  currentBlock?: number;
+  lookbackBlocks?: number;
+  gapBlocks?: number;
+  orderFilledEvents?: OrderFilledEventWithTrade[];
+};
 
 function outcomeIndexes(
   isSportsMarket: boolean,
@@ -96,14 +104,15 @@ export async function processProposal(
   markets: PolymarketMarketGraphqlProcessed[],
   orderbooks: Record<string, MarketOrderbook>,
   params: MonitoringParams,
-  logger: typeof Logger
+  logger: typeof Logger,
+  context?: ProposalProcessingContext
 ): Promise<boolean /* notified */> {
   const thresholds = getThresholds();
   const isSportsRequest = proposal.requester === params.ctfSportsOracleAddress;
 
-  const currentBlock = await params.provider.getBlockNumber();
-  const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
-  const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
+  const currentBlock = context?.currentBlock ?? (await params.provider.getBlockNumber());
+  const lookbackBlocks = context?.lookbackBlocks ?? Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
+  const gapBlocks = context?.gapBlocks ?? Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
   const proposalGapStartBlock = Number(proposal.proposalBlockNumber) + gapBlocks;
 
   const checkMarket = async (market: PolymarketMarketGraphqlProcessed): Promise<boolean> => {
@@ -122,7 +131,10 @@ export async function processProposal(
     const buyingLoserSide = books[outcome.loser].bids.find((b) => b.price > thresholds.bids);
 
     const fromBlock = Math.max(proposalGapStartBlock, currentBlock - lookbackBlocks);
-    const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock);
+    const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock, {
+      cachedEvents: context?.orderFilledEvents,
+      toBlock: currentBlock,
+    });
 
     const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
     const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
@@ -313,10 +325,31 @@ export async function monitorTransactionsProposedOrderBook(
     activeBundles = survivingBundles;
   }
 
+  if (!activeBundles.length) {
+    console.log("All proposals have been checked!");
+    return;
+  }
+
+  const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
+  const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
+  const currentBlock = await params.provider.getBlockNumber();
+
+  const fromBlocks = activeBundles.map(({ proposal }) =>
+    Math.max(Number(proposal.proposalBlockNumber) + gapBlocks, currentBlock - lookbackBlocks)
+  );
+  const earliestFromBlock = Math.min(...fromBlocks);
+  const orderFilledEventsPromise = fetchOrderFilledEvents(params, earliestFromBlock, currentBlock);
+
   await Promise.all(
     activeBundles.map(async ({ proposal, markets }) => {
       try {
-        const alerted = await processProposal(proposal, markets, orderbookMap, params, logger);
+        const sharedOrderFilledEvents = await orderFilledEventsPromise;
+        const alerted = await processProposal(proposal, markets, orderbookMap, params, logger, {
+          currentBlock,
+          lookbackBlocks,
+          gapBlocks,
+          orderFilledEvents: sharedOrderFilledEvents,
+        });
         if (alerted) await persistNotified(proposal, logger);
       } catch (err) {
         await logErrorAndPersist(proposal, err as Error);

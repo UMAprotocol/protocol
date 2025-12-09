@@ -44,6 +44,7 @@ describe("PolymarketNotifier", function () {
   let deployer: Signer;
   let votingToken: VotingTokenEthers;
   let getNotifiedProposalsStub: sinon.SinonStub;
+  let fetchOrderFilledEventsStub: sinon.SinonStub;
   const identifier = formatBytes32String("TEST_IDENTIFIER");
   const ancillaryData = toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
 
@@ -167,6 +168,7 @@ describe("PolymarketNotifier", function () {
     sandbox.stub(commonModule, "isProposalNotified").resolves(false);
 
     sandbox.stub(commonModule, "fetchLatestAIDeepLink").resolves({ deeplink: undefined });
+    fetchOrderFilledEventsStub = sandbox.stub(commonModule, "fetchOrderFilledEvents").resolves([]);
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
@@ -1143,6 +1145,66 @@ describe("PolymarketNotifier", function () {
     });
   });
 
+  it("fetches OrderFilled events once using the earliest fromBlock across proposals", async function () {
+    const params = await createMonitoringParams();
+    params.fillEventsLookbackSeconds = 7_200;
+
+    const currentBlock = 2_000;
+    const providerStub = ({ getBlockNumber: sandbox.stub().resolves(currentBlock) } as unknown) as Provider;
+    params.provider = providerStub;
+
+    const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * (commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600));
+    const lookbackBlocks = Math.round(
+      params.fillEventsLookbackSeconds * (commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600)
+    );
+
+    const makeProposal = async (proposalBlockNumber: number, hash: string): Promise<OptimisticPriceRequest> => ({
+      proposalHash: hash,
+      requester: params.additionalRequesters[0],
+      proposer: await deployer.getAddress(),
+      identifier,
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: `0xrequest${hash}`,
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 3_600),
+      proposalLogIndex: 0,
+    });
+
+    const proposalA = await makeProposal(1_600, "0xpropA");
+    const proposalB = await makeProposal(1_000, "0xpropB");
+
+    const expectedEarliestFromBlock = Math.min(
+      Math.max(proposalA.proposalBlockNumber + gapBlocks, currentBlock - lookbackBlocks),
+      Math.max(proposalB.proposalBlockNumber + gapBlocks, currentBlock - lookbackBlocks)
+    );
+
+    fetchOrderFilledEventsStub.resetHistory();
+
+    sandbox
+      .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
+      .callsFake(async (_params, version) => (version === "v2" ? [proposalA, proposalB] : []));
+    sandbox.stub(commonModule, "getPolymarketMarketInformation").resolves(marketInfo);
+    sandbox.stub(commonModule, "getPolymarketOrderBooks").resolves(asBooksRecord(emptyOrders));
+    const getOrderFilledEventsSpy = sandbox.spy(commonModule, "getOrderFilledEvents");
+
+    sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(true);
+    sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
+
+    const logger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
+    await monitorTransactionsProposedOrderBook(logger, params);
+
+    sinon.assert.calledOnce(fetchOrderFilledEventsStub);
+    sinon.assert.calledWithExactly(fetchOrderFilledEventsStub, params, expectedEarliestFromBlock, currentBlock);
+    assert.equal(getOrderFilledEventsSpy.callCount, 2, "fills are filtered per proposal");
+    const cachedEventsArgs = getOrderFilledEventsSpy.getCalls().map((call) => call.args[3]?.cachedEvents);
+    assert.isDefined(cachedEventsArgs[0], "cached events are forwarded into per-market filters");
+    assert.strictEqual(cachedEventsArgs[0], cachedEventsArgs[1], "shared event cache is reused across proposals");
+  });
+
   it("getOrderFilledEvents uses the fillEventsLookbackSeconds", async function () {
     const currentBlock = 100_000;
     const fillEventsLookbackSeconds = 3_600; // 1 hour
@@ -1157,6 +1219,9 @@ describe("PolymarketNotifier", function () {
 
     const lookbackBlocks = Math.round((fillEventsLookbackSeconds * commonModule.POLYGON_BLOCKS_PER_HOUR) / 3_600);
     const fromBlockParam = Math.max(proposalBlockNumber, currentBlock - lookbackBlocks);
+
+    // Restore the fetchOrderFilledEvents stub from beforeEach so we can test the real implementation
+    fetchOrderFilledEventsStub.restore();
 
     let capturedFromBlock: number | undefined;
     sandbox.stub(commonModule, "paginatedEventQuery").callsFake(async (_c, _f, searchConfig) => {
