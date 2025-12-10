@@ -55,6 +55,7 @@ const {
  * @param {Object} tokenPriceFeedConfig Configuration to construct the tokenPriceFeed (balancer or uniswap) price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
  * @param {Object} denominatorPriceFeedConfig Configuration to construct the denominator price feed object.
+ * @param {Object} otbVerificationRouterConfig Configuration to construct the OTB verification router API client.
  * @return None or throws an Error.
  */
 async function run({
@@ -73,6 +74,7 @@ async function run({
   tokenPriceFeedConfig,
   medianizerPriceFeedConfig,
   denominatorPriceFeedConfig,
+  otbVerificationRouterConfig,
 }) {
   try {
     const { hexToUtf8 } = web3.utils;
@@ -95,6 +97,7 @@ async function run({
       tokenPriceFeedConfig,
       medianizerPriceFeedConfig,
       denominatorPriceFeedConfig,
+      otbVerificationRouterConfig,
     });
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -352,6 +355,7 @@ async function run({
         optimisticOracleContractEventClient,
         monitorConfig,
         contractProps,
+        otbVerificationRouterConfig,
       });
 
       // Clients must be updated before monitors can run:
@@ -490,6 +494,16 @@ async function Poll(callback) {
       denominatorPriceFeedConfig: denominatorPriceFeedConfigEnv ? JSON.parse(denominatorPriceFeedConfigEnv) : null,
       medianizerPriceFeedConfig: process.env.MEDIANIZER_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
+        : null,
+      // OTB verification router config. This is used to decide if this bot shall trigger the verification ticket.
+      // It is an object with the following properties:
+      // - baseURL: string - The base URL of the verification router API.
+      // - timeout: number - The timeout for the verification router in milliseconds (default is 90_000 milliseconds).
+      // - retries: number - The number of retries for the verification router (default is 3).
+      // - maxConcurrent: number - The maximum number of concurrent requests to the verification router (default is 100).
+      // - chainIds: [number] - The chain IDs that the verification router should be checked (defaults to Polygon mainnet).
+      otbVerificationRouterConfig: process.env.OTB_VERIFICATION_ROUTER_CONFIG
+        ? JSON.parse(process.env.OTB_VERIFICATION_ROUTER_CONFIG)
         : null,
     };
 

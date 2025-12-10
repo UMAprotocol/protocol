@@ -9,9 +9,11 @@ const {
   createFormatFunction,
   ConvertDecimals,
   parseAncillaryData,
+  isRecordStringUnknown,
 } = require("@uma/common");
 const { OptimisticOracleType } = require("@uma/financial-templates-lib");
 const { getAbi } = require("@uma/contracts-node");
+const { createHttpClient } = require("@uma/toolkit");
 
 class OptimisticOracleContractMonitor {
   /**
@@ -21,8 +23,15 @@ class OptimisticOracleContractMonitor {
    * @param {Object} monitorConfig Monitor setting overrides such as log overrides.
    * @param {Object} contractProps Configuration object used to inform logs of key contract information. Example:
    *        E.g. { networkId:1 }
+   * @param {Object} otbVerificationRouterConfig Configuration to construct the OTB verification router API client.
    */
-  constructor({ logger, optimisticOracleContractEventClient, monitorConfig, contractProps }) {
+  constructor({
+    logger,
+    optimisticOracleContractEventClient,
+    monitorConfig,
+    contractProps,
+    otbVerificationRouterConfig,
+  }) {
     this.logger = logger;
 
     // OptimisticOracle Contract event client to read latest contract events.
@@ -84,6 +93,41 @@ class OptimisticOracleContractMonitor {
     this.utf8ToHex = this.web3.utils.utf8ToHex;
     this.padRight = this.web3.utils.padRight;
     this.toChecksumAddress = this.web3.utils.toChecksumAddress;
+
+    const isNonNegativeIntegerOrUndefined = (value) =>
+      typeof value === "undefined" || (typeof value === "number" && Number.isInteger(value) && value >= 0);
+
+    if (otbVerificationRouterConfig !== null) {
+      if (
+        !isRecordStringUnknown(otbVerificationRouterConfig) ||
+        typeof otbVerificationRouterConfig.baseURL !== "string" ||
+        !isNonNegativeIntegerOrUndefined(otbVerificationRouterConfig.timeout) ||
+        !isNonNegativeIntegerOrUndefined(otbVerificationRouterConfig.retries) ||
+        !isNonNegativeIntegerOrUndefined(otbVerificationRouterConfig.maxConcurrent) ||
+        !(
+          (Array.isArray(otbVerificationRouterConfig.chainIds) &&
+            otbVerificationRouterConfig.chainIds.every((chainId) => typeof chainId === "number")) ||
+          typeof otbVerificationRouterConfig.chainIds === "undefined"
+        )
+      )
+        throw new Error("Invalid OTB verification router config");
+      this.otbVerificationRouterChainIds = otbVerificationRouterConfig.chainIds || [137]; // Default to Polygon mainnet.
+      this.otbVerificationRouterClient = createHttpClient({
+        axios: {
+          baseURL: otbVerificationRouterConfig.baseURL,
+          timeout: otbVerificationRouterConfig.timeout || 90_000, // Default timeout of 90 seconds
+        },
+        retry: {
+          retries: otbVerificationRouterConfig.retries || 3,
+          shouldResetTimeout: false, // We want to control global timeout.
+        },
+        rateLimit: {
+          maxRequests: otbVerificationRouterConfig.maxConcurrent || 100,
+        },
+      });
+    } else {
+      this.otbVerificationRouterClient = null;
+    }
   }
 
   // Queries RequestPrice events since the latest query marked by `lastRequestPriceBlockNumber`.
@@ -149,44 +193,52 @@ class OptimisticOracleContractMonitor {
     // Get events that are newer than the last block number we've seen
     latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastProposePriceBlockNumber);
 
-    for (let event of latestEvents) {
-      const mrkdwn =
-        createEtherscanLinkMarkdown(
-          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer,
-          this.contractProps.networkId
-        ) +
-        ` proposed a price for the request made by ${createEtherscanLinkMarkdown(event.requester)} at the timestamp ${
-          event.timestamp
-        } for the identifier: ${event.identifier}. ` +
-        `\nThe proposal price of ${this.formatDecimalString(
-          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
-            ? event.proposedPrice
-            : event.request.proposedPrice
-        )} will expire at ${
-          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
-            ? event.expirationTimestamp
-            : event.request.expirationTime
-        }.\n` +
-        this._formatAncillaryData(event.ancillaryData) +
-        `.\n Collateral currency address is ${createEtherscanLinkMarkdown(
-          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
-        )}. ` +
-        `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}. ${this._generateUILink(
+    await Promise.all(
+      latestEvents.map(async (event) => {
+        // Only open Discord tickets if the proposal is not handled by OTB.
+        const shouldOpenTicket = await this._shouldOpenVerificationTicket(
           event.transactionHash,
           event.logIndex,
-          this.contractProps.networkId
-        )}.`;
+          this.contractProps.chainId
+        );
 
-      // The default log level should be reduced to "info" for funding rate identifiers:
-      this.logger.info({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
-        mrkdwn,
-        discordPaths: ["oo-fact-checking", "oo-events"],
-        discordTicketChannel: "verifications-start-here",
-        notificationPath: "optimistic-oracle",
-      });
-    }
+        const mrkdwn =
+          createEtherscanLinkMarkdown(
+            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer,
+            this.contractProps.networkId
+          ) +
+          ` proposed a price for the request made by ${createEtherscanLinkMarkdown(event.requester)} at the timestamp ${
+            event.timestamp
+          } for the identifier: ${event.identifier}. ` +
+          `\nThe proposal price of ${this.formatDecimalString(
+            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
+              ? event.proposedPrice
+              : event.request.proposedPrice
+          )} will expire at ${
+            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
+              ? event.expirationTimestamp
+              : event.request.expirationTime
+          }.\n` +
+          this._formatAncillaryData(event.ancillaryData) +
+          `.\n Collateral currency address is ${createEtherscanLinkMarkdown(
+            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
+          )}. ` +
+          `tx ${createEtherscanLinkMarkdown(
+            event.transactionHash,
+            this.contractProps.networkId
+          )}. ${this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
+
+        // The default log level should be reduced to "info" for funding rate identifiers:
+        this.logger.info({
+          at: "OptimisticOracleContractMonitor",
+          message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
+          mrkdwn,
+          discordPaths: ["oo-fact-checking", "oo-events"],
+          ...(shouldOpenTicket ? { discordTicketChannel: "verifications-start-here" } : {}),
+          notificationPath: "optimistic-oracle",
+        });
+      })
+    );
     this.lastProposePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
   }
 
@@ -351,6 +403,34 @@ class OptimisticOracleContractMonitor {
         break;
     }
     return `<${this.optimisticOracleUIBaseUrl}/?transactionHash=${transactionHash}&eventIndex=${eventIndex}&chainId=${chainId}&oracleType=${oracleType}|View in UI>`;
+  }
+
+  async _shouldOpenVerificationTicket(transactionHash, eventIndex, chainId) {
+    // If the OTB verification router client is not set up, or the chain ID is not in the list of supported chain IDs,
+    // then we always open a verification ticket.
+    if (
+      this.otbVerificationRouterClient === null ||
+      this.otbVerificationRouterChainIds === undefined ||
+      !this.otbVerificationRouterChainIds.includes(chainId)
+    )
+      return true;
+
+    try {
+      const res = await this.otbVerificationRouterClient.get("/route", { params: { transactionHash, eventIndex } });
+      if (!isRecordStringUnknown(res?.data) || typeof res.data.matched !== "boolean")
+        throw new Error("Invalid response type from OTB verification router");
+
+      // If the response indicates that the verification router matched the request, we do not open a verification ticket.
+      return !res.data.matched;
+    } catch (error) {
+      this.logger.debug({
+        at: "OptimisticOracleContractMonitor",
+        message: "OTB verification router error🚨",
+        error,
+      });
+      // In case of verification router timeouts or any other errors submit the verification ticket from this bot.
+      return true;
+    }
   }
 }
 
