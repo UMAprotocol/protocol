@@ -54,6 +54,7 @@ type ProposalProcessingContext = {
   lookbackBlocks?: number;
   gapBlocks?: number;
   orderFilledEvents?: OrderFilledEventWithTrade[];
+  aiDeeplink?: string;
 };
 
 function outcomeIndexes(
@@ -115,6 +116,9 @@ export async function processProposal(
   const gapBlocks = context?.gapBlocks ?? Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
   const proposalGapStartBlock = Number(proposal.proposalBlockNumber) + gapBlocks;
 
+  // Use AI deeplink from context (fetched in advance)
+  const aiDeeplink = context?.aiDeeplink;
+
   const checkMarket = async (market: PolymarketMarketGraphqlProcessed): Promise<boolean> => {
     const outcome = isSportsRequest
       ? outcomeIndexes(true, proposal, await getSportsMarketData(params, market.questionID))
@@ -138,8 +142,6 @@ export async function processProposal(
 
     const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
     const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
-
-    const { deeplink: aiDeeplink } = await fetchLatestAIDeepLink(proposal, params, logger);
 
     let alerted = false;
 
@@ -340,15 +342,37 @@ export async function monitorTransactionsProposedOrderBook(
   const earliestFromBlock = Math.min(...fromBlocks);
   const orderFilledEventsPromise = fetchOrderFilledEvents(params, earliestFromBlock, currentBlock);
 
+  // Fetch all AI deeplinks in advance and store in memory
+  const aiDeeplinksMap = new Map<string, string>();
+  await Promise.all(
+    activeBundles.map(async ({ proposal }) => {
+      try {
+        const { deeplink } = await fetchLatestAIDeepLink(proposal, params, logger);
+        if (deeplink) {
+          aiDeeplinksMap.set(getProposalKeyToStore(proposal), deeplink);
+        }
+      } catch (err) {
+        logger.warn({
+          at: "PolymarketMonitor",
+          message: "Failed to fetch AI deeplink for proposal",
+          proposalHash: proposal.proposalHash,
+          error: err,
+        });
+      }
+    })
+  );
+
   await Promise.all(
     activeBundles.map(async ({ proposal, markets }) => {
       try {
         const sharedOrderFilledEvents = await orderFilledEventsPromise;
+        const aiDeeplink = aiDeeplinksMap.get(getProposalKeyToStore(proposal));
         const alerted = await processProposal(proposal, markets, orderbookMap, params, logger, {
           currentBlock,
           lookbackBlocks,
           gapBlocks,
           orderFilledEvents: sharedOrderFilledEvents,
+          aiDeeplink,
         });
         if (alerted) await persistNotified(proposal, logger);
       } catch (err) {
