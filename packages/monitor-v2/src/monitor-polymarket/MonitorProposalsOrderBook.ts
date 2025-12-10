@@ -340,7 +340,17 @@ export async function monitorTransactionsProposedOrderBook(
     Math.max(Number(proposal.proposalBlockNumber) + gapBlocks, currentBlock - lookbackBlocks)
   );
   const earliestFromBlock = Math.min(...fromBlocks);
-  const orderFilledEventsPromise = fetchOrderFilledEvents(params, earliestFromBlock, currentBlock);
+
+  // Flatten all clobTokenIds from all markets in all active bundles into a Set
+  const activeTokenIds = new Set<string>();
+  activeBundles.forEach((bundle) => {
+    bundle.markets.forEach((market) => {
+      activeTokenIds.add(market.clobTokenIds[0]);
+      activeTokenIds.add(market.clobTokenIds[1]);
+    });
+  });
+
+  const orderFilledEventsPromise = fetchOrderFilledEvents(params, earliestFromBlock, currentBlock, activeTokenIds);
 
   // Fetch all AI deeplinks in advance and store in memory
   const aiDeeplinksMap = new Map<string, string>();

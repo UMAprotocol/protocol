@@ -405,7 +405,8 @@ const getTradeInfoFromOrderFilledEvent = async (
 export const fetchOrderFilledEvents = async (
   params: MonitoringParams,
   startBlockNumber: number,
-  endBlockNumber?: number
+  endBlockNumber?: number,
+  tokenIds?: Set<string> | string[]
 ): Promise<OrderFilledEventWithTrade[]> => {
   const ctfExchange = new ethers.Contract(
     params.ctfExchangeAddress,
@@ -420,12 +421,25 @@ export const fetchOrderFilledEvents = async (
     maxBlockLookBack: params.maxBlockLookBack,
   };
 
+  // Create a Set for efficient tokenId lookups if provided
+  const tokenIdsSet = tokenIds ? (tokenIds instanceof Set ? tokenIds : new Set(tokenIds)) : undefined;
+
+  // Filter events early during batch fetching to reduce memory usage
+  const eventFilter = tokenIdsSet
+    ? (event: Event) => {
+      const makerAssetId = event?.args?.makerAssetId?.toString();
+      const takerAssetId = event?.args?.takerAssetId?.toString();
+      return tokenIdsSet.has(makerAssetId) || tokenIdsSet.has(takerAssetId);
+    }
+    : undefined;
+
   const events: Event[] = await paginatedEventQuery(
     ctfExchange,
     ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
     searchConfig,
     params.retryAttempts,
-    queryFilterSafe
+    queryFilterSafe,
+    eventFilter
   );
 
   const blockTimestamps = new Map<number, number>();
@@ -477,8 +491,10 @@ export const getOrderFilledEvents = async (
     cachedEvents?: OrderFilledEventWithTrade[];
   }
 ): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
+  // Pass tokenIds to fetchOrderFilledEvents to filter events early during batch fetching
+  const tokenIdsSet = new Set(clobTokenIds);
   const orderFilledEvents =
-    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock));
+    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock, tokenIdsSet));
 
   return filterOrderFilledEvents(orderFilledEvents, clobTokenIds, startBlockNumber);
 };
@@ -822,18 +838,18 @@ export async function fetchLatestAIDeepLink(
         code: axiosError?.code,
         response: axiosError?.response
           ? {
-              status: axiosError.response?.status,
-              statusText: axiosError.response?.statusText,
-              headers: axiosError.response?.headers,
-            }
+            status: axiosError.response?.status,
+            statusText: axiosError.response?.statusText,
+            headers: axiosError.response?.headers,
+          }
           : undefined,
         request: axiosError?.config
           ? {
-              url: axiosError.config?.url,
-              method: axiosError.config?.method,
-              timeout: axiosError.config?.timeout,
-              baseURL: axiosError.config?.baseURL,
-            }
+            url: axiosError.config?.url,
+            method: axiosError.config?.method,
+            timeout: axiosError.config?.timeout,
+            baseURL: axiosError.config?.baseURL,
+          }
           : undefined,
         isTimeout:
           axiosError?.code === "ECONNABORTED" || (error instanceof Error && error.message?.includes("timeout")),

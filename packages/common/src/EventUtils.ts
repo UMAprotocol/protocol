@@ -22,12 +22,15 @@ export async function paginatedEventQuery<T extends Event>(
   retryCount = 0,
   queryFilterFn?: (
     contract: Contract
-  ) => <E extends Event = Event>(filter: EventFilter, fromBlock: number, toBlock: number) => Promise<E[]>
+  ) => <E extends Event = Event>(filter: EventFilter, fromBlock: number, toBlock: number) => Promise<E[]>,
+  eventFilter?: (event: Event) => boolean
 ): Promise<Array<T>> {
   const queryFilter = queryFilterFn ? queryFilterFn(contract) : contract.queryFilter.bind(contract);
   // If the max block look back is set to 0 then we dont need to do any pagination and can query over the whole range.
-  if (searchConfig.maxBlockLookBack === 0)
-    return (await queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;
+  if (searchConfig.maxBlockLookBack === 0) {
+    const events = (await queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;
+    return eventFilter ? events.filter(eventFilter) as Array<T> : events;
+  }
 
   // Compute the number of queries needed. If there is no maxBlockLookBack set then we can execute the whole query in
   // one go. Else, the number of queries is the range over which we are searching, divided by the maxBlockLookBack,
@@ -37,9 +40,17 @@ export async function paginatedEventQuery<T extends Event>(
   try {
     return (
       (
-        await Promise.map(paginatedRanges, ([fromBlock, toBlock]) => queryFilter(filter, fromBlock, toBlock), {
-          concurrency: typeof searchConfig.concurrency == "number" ? searchConfig.concurrency : defaultConcurrency,
-        })
+        await Promise.map(
+          paginatedRanges,
+          async ([fromBlock, toBlock]) => {
+            const batchEvents = await queryFilter(filter, fromBlock, toBlock);
+            // Apply event filter immediately after fetching each batch to reduce memory usage
+            return eventFilter ? batchEvents.filter(eventFilter) : batchEvents;
+          },
+          {
+            concurrency: typeof searchConfig.concurrency == "number" ? searchConfig.concurrency : defaultConcurrency,
+          }
+        )
       )
         .flat()
         // Filter events by block number because ranges can include blocks that are outside the range specified for caching reasons.
@@ -50,7 +61,7 @@ export async function paginatedEventQuery<T extends Event>(
   } catch (error) {
     if (retryCount < maxRetries) {
       await delay(retrySleepTime);
-      return await paginatedEventQuery(contract, filter, searchConfig, retryCount + 1, queryFilterFn);
+      return await paginatedEventQuery(contract, filter, searchConfig, retryCount + 1, queryFilterFn, eventFilter);
     } else throw error;
   }
 }
