@@ -81,6 +81,9 @@ export interface MonitoringParams {
   ooV1Addresses: string[];
   aiConfig?: AIConfig;
   aiDeeplinkTimeout: number;
+  proposalProcessingConcurrency: number;
+  marketProcessingConcurrency: number;
+  paginatedEventQueryConcurrency: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -186,6 +189,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
     fromBlock: startBlockNumber,
     toBlock: currentBlockNumber,
     maxBlockLookBack,
+    concurrency: params.paginatedEventQueryConcurrency,
   };
 
   const oo = await getContractInstanceWithProvider<OptimisticOracleEthers | OptimisticOracleV2Ethers>(
@@ -229,6 +233,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
     proposeEvents
       .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
       .filter((event) => {
+        return currentTimeBN.lt(event.args.expirationTimestamp); // REMOVE THIS
         const expirationTime = event.args.expirationTimestamp;
         const thresholdTime = expirationTime.sub(threshold);
         // Only keep if current time is greater than (expiration - threshold) but less than expiration.
@@ -427,10 +432,10 @@ export const fetchOrderFilledEvents = async (
   // Filter events early during batch fetching to reduce memory usage
   const eventFilter = tokenIdsSet
     ? (event: Event) => {
-      const makerAssetId = event?.args?.makerAssetId?.toString();
-      const takerAssetId = event?.args?.takerAssetId?.toString();
-      return tokenIdsSet.has(makerAssetId) || tokenIdsSet.has(takerAssetId);
-    }
+        const makerAssetId = event?.args?.makerAssetId?.toString();
+        const takerAssetId = event?.args?.takerAssetId?.toString();
+        return tokenIdsSet.has(makerAssetId) || tokenIdsSet.has(takerAssetId);
+      }
     : undefined;
 
   const events: Event[] = await paginatedEventQuery(
@@ -838,18 +843,18 @@ export async function fetchLatestAIDeepLink(
         code: axiosError?.code,
         response: axiosError?.response
           ? {
-            status: axiosError.response?.status,
-            statusText: axiosError.response?.statusText,
-            headers: axiosError.response?.headers,
-          }
+              status: axiosError.response?.status,
+              statusText: axiosError.response?.statusText,
+              headers: axiosError.response?.headers,
+            }
           : undefined,
         request: axiosError?.config
           ? {
-            url: axiosError.config?.url,
-            method: axiosError.config?.method,
-            timeout: axiosError.config?.timeout,
-            baseURL: axiosError.config?.baseURL,
-          }
+              url: axiosError.config?.url,
+              method: axiosError.config?.method,
+              timeout: axiosError.config?.timeout,
+              baseURL: axiosError.config?.baseURL,
+            }
           : undefined,
         isTimeout:
           axiosError?.code === "ECONNABORTED" || (error instanceof Error && error.message?.includes("timeout")),
@@ -999,6 +1004,18 @@ export const initMonitoringParams = async (
     ? Number(env.FILL_EVENTS_PROPOSAL_GAP_SECONDS)
     : 300; // default to 5 minutes
 
+  const proposalProcessingConcurrency = env.PROPOSAL_PROCESSING_CONCURRENCY
+    ? Number(env.PROPOSAL_PROCESSING_CONCURRENCY)
+    : 25; // default to 25 concurrent proposals
+
+  const marketProcessingConcurrency = env.MARKET_PROCESSING_CONCURRENCY
+    ? Number(env.MARKET_PROCESSING_CONCURRENCY)
+    : 25; // default to 25 concurrent markets
+
+  const paginatedEventQueryConcurrency = env.PAGINATED_EVENT_QUERY_CONCURRENCY
+    ? Number(env.PAGINATED_EVENT_QUERY_CONCURRENCY)
+    : 25; // default to 25 concurrent paginated event queries
+
   const maxConcurrentRequests = env.MAX_CONCURRENT_REQUESTS ? Number(env.MAX_CONCURRENT_REQUESTS) : 5;
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
 
@@ -1076,6 +1093,9 @@ export const initMonitoringParams = async (
     ooV1Addresses,
     aiConfig,
     aiDeeplinkTimeout,
+    proposalProcessingConcurrency,
+    marketProcessingConcurrency,
+    paginatedEventQueryConcurrency,
   };
 };
 

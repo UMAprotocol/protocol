@@ -1,3 +1,4 @@
+import { Promise as BluebirdPromise } from "bluebird";
 import { ethers } from "ethers";
 import { tryHexToUtf8String } from "../utils/contracts";
 import {
@@ -210,15 +211,12 @@ export async function processProposal(
     return alerted;
   };
 
-  const marketPromises = markets.map(checkMarket);
+  // Execute market checks with concurrency control using BluebirdPromise.map
+  // Process markets concurrently (up to the concurrency limit) and check if any returned true
+  const results = await BluebirdPromise.map(markets, checkMarket, { concurrency: params.marketProcessingConcurrency });
 
-  // Execute all market checks concurrently; Promise.any resolves when one returns true and throws if all return false.
-  try {
-    await Promise.any(marketPromises.map((proposal) => proposal.then((ok) => (ok ? true : Promise.reject()))));
-    return true; // at least one market alerted
-  } catch {
-    return false; // none of the markets alerted
-  }
+  // Return true if any market alerted, false otherwise
+  return results.some((alerted) => alerted === true);
 }
 
 export async function monitorTransactionsProposedOrderBook(
@@ -372,8 +370,9 @@ export async function monitorTransactionsProposedOrderBook(
     })
   );
 
-  await Promise.all(
-    activeBundles.map(async ({ proposal, markets }) => {
+  await BluebirdPromise.map(
+    activeBundles,
+    async ({ proposal, markets }) => {
       try {
         const sharedOrderFilledEvents = await orderFilledEventsPromise;
         const aiDeeplink = aiDeeplinksMap.get(getProposalKeyToStore(proposal));
@@ -388,8 +387,12 @@ export async function monitorTransactionsProposedOrderBook(
       } catch (err) {
         await logErrorAndPersist(proposal, err as Error);
       }
-    })
+    },
+    { concurrency: params.proposalProcessingConcurrency }
   );
 
-  console.log("All proposals have been checked!");
+  logger.debug({
+    at: "PolymarketMonitor",
+    message: `${activeBundles.length} proposals processed successfully!`,
+  });
 }
