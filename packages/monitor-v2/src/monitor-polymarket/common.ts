@@ -233,7 +233,6 @@ export const getPolymarketProposedPriceRequestsOO = async (
     proposeEvents
       .filter((event) => requesterAddresses.map((r) => r.toLowerCase()).includes(event.args.requester.toLowerCase()))
       .filter((event) => {
-        return currentTimeBN.lt(event.args.expirationTimestamp); // REMOVE THIS
         const expirationTime = event.args.expirationTimestamp;
         const thresholdTime = expirationTime.sub(threshold);
         // Only keep if current time is greater than (expiration - threshold) but less than expiration.
@@ -249,9 +248,8 @@ export const getPolymarketProposedPriceRequestsOO = async (
         return !disputedRequestIds.has(requestId);
       })
       .map(async (event) => {
-        const proposalTimestamp = BigNumber.from(
-          await params.provider.getBlock(event.blockNumber).then((block) => block.timestamp)
-        );
+        const block = await params.provider.getBlock(event.blockNumber);
+        const proposalTimestamp = BigNumber.from(block ? block.timestamp : event.args.timestamp);
         return {
           requestHash: event.transactionHash,
           requestLogIndex: event.logIndex,
