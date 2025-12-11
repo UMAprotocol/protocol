@@ -122,7 +122,7 @@ class OptimisticOracleContractMonitor {
           shouldResetTimeout: false, // We want to control global timeout.
         },
         rateLimit: {
-          maxRequests: otbVerificationRouterConfig.maxConcurrent || 100,
+          maxRequests: otbVerificationRouterConfig.maxConcurrent || 10,
         },
       });
     } else {
