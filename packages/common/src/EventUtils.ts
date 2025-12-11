@@ -8,6 +8,7 @@ const retrySleepTime = 10;
 function delay(s: number) {
   return new Promise((resolve) => setTimeout(resolve, s * 1000));
 }
+
 export interface EventSearchConfig {
   fromBlock: number;
   toBlock: number;
@@ -22,36 +23,59 @@ export async function paginatedEventQuery<T extends Event>(
   retryCount = 0,
   queryFilterFn?: (
     contract: Contract
-  ) => <E extends Event = Event>(filter: EventFilter, fromBlock: number, toBlock: number) => Promise<E[]>
+  ) => <E extends Event = Event>(filter: EventFilter, fromBlock: number, toBlock: number) => Promise<E[]>,
+  eventFilter?: (event: Event) => boolean
 ): Promise<Array<T>> {
   const queryFilter = queryFilterFn ? queryFilterFn(contract) : contract.queryFilter.bind(contract);
+
   // If the max block look back is set to 0 then we dont need to do any pagination and can query over the whole range.
-  if (searchConfig.maxBlockLookBack === 0)
-    return (await queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;
+  if (searchConfig.maxBlockLookBack === 0) {
+    const events = (await queryFilter(filter, searchConfig.fromBlock, searchConfig.toBlock)) as Array<T>;
+    return eventFilter ? (events.filter(eventFilter) as Array<T>) : events;
+  }
 
   // Compute the number of queries needed. If there is no maxBlockLookBack set then we can execute the whole query in
   // one go. Else, the number of queries is the range over which we are searching, divided by the maxBlockLookBack,
   // rounded up. This gives us the number of queries we need to execute to traverse the whole block range.
   const paginatedRanges = getPaginatedBlockRanges(searchConfig);
 
+  // Pre-compute a combined filter so we:
+  //  - always enforce the outer [fromBlock, toBlock] range, and
+  //  - optionally apply the caller-provided eventFilter.
+  const { fromBlock, toBlock } = searchConfig;
+
+  const baseRangeFilter = (event: Event) => event.blockNumber >= fromBlock && event.blockNumber <= toBlock;
+
+  const combinedFilter = eventFilter ? (event: Event) => baseRangeFilter(event) && eventFilter(event) : baseRangeFilter;
+
+  const results: T[] = [];
+
   try {
-    return (
-      (
-        await Promise.map(paginatedRanges, ([fromBlock, toBlock]) => queryFilter(filter, fromBlock, toBlock), {
-          concurrency: typeof searchConfig.concurrency == "number" ? searchConfig.concurrency : defaultConcurrency,
-        })
-      )
-        .flat()
-        // Filter events by block number because ranges can include blocks that are outside the range specified for caching reasons.
-        .filter(
-          (event: Event) => event.blockNumber >= searchConfig.fromBlock && event.blockNumber <= searchConfig.toBlock
-        ) as Array<T>
+    await Promise.map(
+      paginatedRanges,
+      async ([rangeFromBlock, rangeToBlock]) => {
+        const batchEvents = await queryFilter(filter, rangeFromBlock, rangeToBlock);
+
+        // Filter events immediately per batch so discarded events can be GC'd
+        for (const ev of batchEvents) {
+          if (combinedFilter(ev)) {
+            results.push(ev as T);
+          }
+        }
+      },
+      {
+        concurrency: typeof searchConfig.concurrency === "number" ? searchConfig.concurrency : defaultConcurrency,
+      }
     );
+
+    return results;
   } catch (error) {
     if (retryCount < maxRetries) {
       await delay(retrySleepTime);
-      return await paginatedEventQuery(contract, filter, searchConfig, retryCount + 1, queryFilterFn);
-    } else throw error;
+      return paginatedEventQuery(contract, filter, searchConfig, retryCount + 1, queryFilterFn, eventFilter);
+    } else {
+      throw error;
+    }
   }
 }
 
@@ -98,7 +122,7 @@ export function getPaginatedBlockRanges({
     // Each inner range start is just a multiple of the maxBlockLookBack added to the start block.
     const innerFromBlock = flooredStartBlock + maxBlockLookBack * i;
 
-    // The innerFromBlock is just the max range from the innerFromBlock or the outer toBlock, whichever is smaller.
+    // The innerToBlock is just the max range from the innerFromBlock or the outer toBlock, whichever is smaller.
     // The end block should never be larger than the outer toBlock. This is to avoid querying blocks that are in the
     // future.
     const innerToBlock = Math.min(innerFromBlock + maxBlockLookBack - 1, toBlock);
