@@ -81,6 +81,9 @@ export interface MonitoringParams {
   ooV1Addresses: string[];
   aiConfig?: AIConfig;
   aiDeeplinkTimeout: number;
+  proposalProcessingConcurrency: number;
+  marketProcessingConcurrency: number;
+  paginatedEventQueryConcurrency: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -186,6 +189,7 @@ export const getPolymarketProposedPriceRequestsOO = async (
     fromBlock: startBlockNumber,
     toBlock: currentBlockNumber,
     maxBlockLookBack,
+    concurrency: params.paginatedEventQueryConcurrency,
   };
 
   const oo = await getContractInstanceWithProvider<OptimisticOracleEthers | OptimisticOracleV2Ethers>(
@@ -244,9 +248,8 @@ export const getPolymarketProposedPriceRequestsOO = async (
         return !disputedRequestIds.has(requestId);
       })
       .map(async (event) => {
-        const proposalTimestamp = BigNumber.from(
-          await params.provider.getBlock(event.blockNumber).then((block) => block.timestamp)
-        );
+        const block = await params.provider.getBlock(event.blockNumber);
+        const proposalTimestamp = BigNumber.from(block ? block.timestamp : event.args.timestamp);
         return {
           requestHash: event.transactionHash,
           requestLogIndex: event.logIndex,
@@ -405,7 +408,8 @@ const getTradeInfoFromOrderFilledEvent = async (
 export const fetchOrderFilledEvents = async (
   params: MonitoringParams,
   startBlockNumber: number,
-  endBlockNumber?: number
+  endBlockNumber?: number,
+  tokenIds?: Set<string> | string[]
 ): Promise<OrderFilledEventWithTrade[]> => {
   const ctfExchange = new ethers.Contract(
     params.ctfExchangeAddress,
@@ -420,12 +424,25 @@ export const fetchOrderFilledEvents = async (
     maxBlockLookBack: params.maxBlockLookBack,
   };
 
+  // Create a Set for efficient tokenId lookups if provided
+  const tokenIdsSet = tokenIds ? (tokenIds instanceof Set ? tokenIds : new Set(tokenIds)) : undefined;
+
+  // Filter events early during batch fetching to reduce memory usage
+  const eventFilter = tokenIdsSet
+    ? (event: Event) => {
+        const makerAssetId = event?.args?.makerAssetId?.toString();
+        const takerAssetId = event?.args?.takerAssetId?.toString();
+        return tokenIdsSet.has(makerAssetId) || tokenIdsSet.has(takerAssetId);
+      }
+    : undefined;
+
   const events: Event[] = await paginatedEventQuery(
     ctfExchange,
     ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
     searchConfig,
     params.retryAttempts,
-    queryFilterSafe
+    queryFilterSafe,
+    eventFilter
   );
 
   const blockTimestamps = new Map<number, number>();
@@ -477,8 +494,10 @@ export const getOrderFilledEvents = async (
     cachedEvents?: OrderFilledEventWithTrade[];
   }
 ): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
+  // Pass tokenIds to fetchOrderFilledEvents to filter events early during batch fetching
+  const tokenIdsSet = new Set(clobTokenIds);
   const orderFilledEvents =
-    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock));
+    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock, tokenIdsSet));
 
   return filterOrderFilledEvents(orderFilledEvents, clobTokenIds, startBlockNumber);
 };
@@ -983,6 +1002,18 @@ export const initMonitoringParams = async (
     ? Number(env.FILL_EVENTS_PROPOSAL_GAP_SECONDS)
     : 300; // default to 5 minutes
 
+  const proposalProcessingConcurrency = env.PROPOSAL_PROCESSING_CONCURRENCY
+    ? Number(env.PROPOSAL_PROCESSING_CONCURRENCY)
+    : 25; // default to 25 concurrent proposals
+
+  const marketProcessingConcurrency = env.MARKET_PROCESSING_CONCURRENCY
+    ? Number(env.MARKET_PROCESSING_CONCURRENCY)
+    : 25; // default to 25 concurrent markets
+
+  const paginatedEventQueryConcurrency = env.PAGINATED_EVENT_QUERY_CONCURRENCY
+    ? Number(env.PAGINATED_EVENT_QUERY_CONCURRENCY)
+    : 25; // default to 25 concurrent paginated event queries
+
   const maxConcurrentRequests = env.MAX_CONCURRENT_REQUESTS ? Number(env.MAX_CONCURRENT_REQUESTS) : 5;
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
 
@@ -1060,6 +1091,9 @@ export const initMonitoringParams = async (
     ooV1Addresses,
     aiConfig,
     aiDeeplinkTimeout,
+    proposalProcessingConcurrency,
+    marketProcessingConcurrency,
+    paginatedEventQueryConcurrency,
   };
 };
 

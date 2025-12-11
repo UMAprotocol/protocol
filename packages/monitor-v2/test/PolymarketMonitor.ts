@@ -111,6 +111,7 @@ describe("PolymarketNotifier", function () {
       fillEventsLookbackSeconds: 0,
       fillEventsProposalGapSeconds: 300,
       httpClient: createHttpClient(),
+      aiDeeplinkHttpClient: createHttpClient(),
       orderBookBatchSize: 499,
       ooV2Addresses: [oov2.address],
       ooV1Addresses: [oo.address],
@@ -119,6 +120,10 @@ describe("PolymarketNotifier", function () {
         resultsBaseUrl: aiResultsBaseUrl,
         projectId: aiProjectId,
       },
+      aiDeeplinkTimeout: 5000,
+      proposalProcessingConcurrency: 5,
+      marketProcessingConcurrency: 3,
+      paginatedEventQueryConcurrency: 5,
     };
   };
 
@@ -247,7 +252,7 @@ describe("PolymarketNotifier", function () {
     await monitorTransactionsProposedOrderBook(spyLogger, params);
 
     // The spy should have been called as the order book is not empty.
-    assert.equal(spy.callCount, 1);
+    assert.equal(spy.callCount, 2); // 1 error + 1 debug log
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
     assert.equal(spyLogLevel(spy, 0), "error");
@@ -374,8 +379,8 @@ describe("PolymarketNotifier", function () {
       const logger = createNewLogger([new SpyTransport({}, { spy })]);
       await monitorTransactionsProposedOrderBook(logger, params);
 
-      // No per-check or summary logs expected now
-      assert.equal(spy.callCount, 0);
+      // No per-check or summary logs expected now (only debug log)
+      assert.equal(spy.callCount, 1);
       assert.isTrue(setFirstOkStub.notCalled);
     });
 
@@ -445,7 +450,7 @@ describe("PolymarketNotifier", function () {
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    assert.equal(spy.callCount, 1);
+    assert.equal(spy.callCount, 2); // 1 error + 1 debug log
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
     assert.equal(spyLogLevel(spy, 0), "error");
@@ -485,7 +490,7 @@ describe("PolymarketNotifier", function () {
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    assert.equal(spy.callCount, 1);
+    assert.equal(spy.callCount, 2); // 1 error + 1 debug log
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(spy.getCall(0).lastArg.message, "Difference between proposed price and market signal! 🚨");
     assert.equal(spyLogLevel(spy, 0), "error");
@@ -514,7 +519,7 @@ describe("PolymarketNotifier", function () {
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    assert.equal(spy.callCount, 1);
+    assert.equal(spy.callCount, 2); // 1 error + 1 debug log
     assert.equal(spy.getCall(0).lastArg.at, "PolymarketMonitor");
     assert.equal(
       spy.getCall(0).lastArg.message,
@@ -564,8 +569,8 @@ describe("PolymarketNotifier", function () {
     const logger = createNewLogger([new SpyTransport({}, { spy })]);
     await monitorTransactionsProposedOrderBook(logger, await createMonitoringParams());
 
-    // No discrepancy notifications should be logged because proposal is already notified
-    assert.equal(spy.callCount, 0);
+    // No discrepancy notifications should be logged because proposal is already notified (only debug log)
+    assert.equal(spy.callCount, 1);
   });
 
   it("It should not notify if already notified (high volume)", async function () {
@@ -603,8 +608,8 @@ describe("PolymarketNotifier", function () {
     const logger = createNewLogger([new SpyTransport({}, { spy })]);
     await monitorTransactionsProposedOrderBook(logger, await createMonitoringParams());
 
-    // No high volume notifications should be logged because proposal is already notified
-    assert.equal(spy.callCount, 0);
+    // No high volume notifications should be logged because proposal is already notified (only debug log)
+    assert.equal(spy.callCount, 1);
   });
 
   it("It should notify if market polymarket information is not found", async function () {
@@ -791,8 +796,8 @@ describe("PolymarketNotifier", function () {
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
     await monitorTransactionsProposedOrderBook(spyLogger, await createMonitoringParams());
 
-    // The spy should have been called 2 times
-    assert.equal(spy.callCount, 2);
+    // The spy should have been called 3 times (2 errors + 1 debug)
+    assert.equal(spy.callCount, 3);
   });
 
   describe("Sports Market Notifications", function () {
@@ -1198,7 +1203,15 @@ describe("PolymarketNotifier", function () {
     await monitorTransactionsProposedOrderBook(logger, params);
 
     sinon.assert.calledOnce(fetchOrderFilledEventsStub);
-    sinon.assert.calledWithExactly(fetchOrderFilledEventsStub, params, expectedEarliestFromBlock, currentBlock);
+    // fetchOrderFilledEvents now takes activeTokenIds as 4th parameter
+    const expectedTokenIds = new Set(marketInfo[0].clobTokenIds);
+    sinon.assert.calledWithExactly(
+      fetchOrderFilledEventsStub,
+      params,
+      expectedEarliestFromBlock,
+      currentBlock,
+      expectedTokenIds
+    );
     assert.equal(getOrderFilledEventsSpy.callCount, 2, "fills are filtered per proposal");
     const cachedEventsArgs = getOrderFilledEventsSpy.getCalls().map((call) => call.args[3]?.cachedEvents);
     assert.isDefined(cachedEventsArgs[0], "cached events are forwarded into per-market filters");
