@@ -3,6 +3,7 @@ import { createHttpClient } from "@uma/toolkit";
 import { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 export const paginatedEventQuery = umaPaginatedEventQuery;
 
+import { Promise as BluebirdPromise } from "bluebird";
 import type { Provider } from "@ethersproject/abstract-provider";
 
 import { BigNumber, Contract, Event, EventFilter, ethers } from "ethers";
@@ -84,6 +85,7 @@ export interface MonitoringParams {
   proposalProcessingConcurrency: number;
   marketProcessingConcurrency: number;
   paginatedEventQueryConcurrency: number;
+  orderFilledEventsProcessingConcurrency: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -453,8 +455,9 @@ export const fetchOrderFilledEvents = async (
     return blockTimestamps.get(blockNumber)!;
   };
 
-  return Promise.all(
-    events.map(async (event) => {
+  return BluebirdPromise.map(
+    events,
+    async (event) => {
       const blockTimestamp = await getTimestamp(event.blockNumber);
       return {
         blockNumber: event.blockNumber,
@@ -462,7 +465,8 @@ export const fetchOrderFilledEvents = async (
         takerAssetId: event?.args?.takerAssetId.toString(),
         trade: await getTradeInfoFromOrderFilledEvent(params.provider, event, blockTimestamp),
       };
-    })
+    },
+    { concurrency: params.orderFilledEventsProcessingConcurrency }
   );
 };
 
@@ -1014,8 +1018,19 @@ export const initMonitoringParams = async (
     ? Number(env.PAGINATED_EVENT_QUERY_CONCURRENCY)
     : 25; // default to 25 concurrent paginated event queries
 
+  const orderFilledEventsProcessingConcurrency = env.ORDER_FILLED_EVENTS_PROCESSING_CONCURRENCY
+    ? Number(env.ORDER_FILLED_EVENTS_PROCESSING_CONCURRENCY)
+    : 25; // default to 25 concurrent order filled events processing
+
   const maxConcurrentRequests = env.MAX_CONCURRENT_REQUESTS ? Number(env.MAX_CONCURRENT_REQUESTS) : 5;
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
+
+  const aiDeeplinkMaxConcurrentRequests = env.AI_DEEPLINK_MAX_CONCURRENT_REQUESTS
+    ? Number(env.AI_DEEPLINK_MAX_CONCURRENT_REQUESTS)
+    : 10;
+  const aiDeeplinkMinTimeBetweenRequests = env.AI_DEEPLINK_MIN_TIME_BETWEEN_REQUESTS
+    ? Number(env.AI_DEEPLINK_MIN_TIME_BETWEEN_REQUESTS)
+    : 200;
 
   const httpTimeout = env.HTTP_TIMEOUT ? Number(env.HTTP_TIMEOUT) : 10_000;
   const aiDeeplinkTimeout = env.AI_DEEPLINK_TIMEOUT ? Number(env.AI_DEEPLINK_TIMEOUT) : 10_000;
@@ -1041,11 +1056,14 @@ export const initMonitoringParams = async (
     },
   });
 
-  // Create a separate HTTP client for AI deeplink requests with unlimited concurrency
+  // Create a separate HTTP client for AI deeplink requests with configurable rate limiting
   // This prevents AI deeplink requests from being queued behind other rate-limited requests
   const aiDeeplinkHttpClient = createHttpClient({
     axios: { timeout: aiDeeplinkTimeout },
-    rateLimit: { maxConcurrent: null, minTime: 0 }, // No rate limiting - unlimited concurrency
+    rateLimit: {
+      maxConcurrent: aiDeeplinkMaxConcurrentRequests,
+      minTime: aiDeeplinkMinTimeBetweenRequests,
+    },
     retry: {
       retries: retryAttempts,
       baseDelayMs: retryDelayMs,
@@ -1094,6 +1112,7 @@ export const initMonitoringParams = async (
     proposalProcessingConcurrency,
     marketProcessingConcurrency,
     paginatedEventQueryConcurrency,
+    orderFilledEventsProcessingConcurrency,
   };
 };
 
