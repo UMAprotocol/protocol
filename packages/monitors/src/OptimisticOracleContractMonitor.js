@@ -195,8 +195,8 @@ class OptimisticOracleContractMonitor {
 
     await Promise.all(
       latestEvents.map(async (event) => {
-        // Only open Discord tickets if the proposal is not handled by OTB.
-        const shouldOpenTicket = await this._shouldOpenVerificationTicket(
+        // Only submit Discord tickets if the proposal is not handled by OTB.
+        const submitTicket = await this._shouldOpenVerificationTicket(
           event.transactionHash,
           event.logIndex,
           this.contractProps.chainId
@@ -234,7 +234,8 @@ class OptimisticOracleContractMonitor {
           message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
           mrkdwn,
           discordPaths: ["oo-fact-checking", "oo-events"],
-          ...(shouldOpenTicket ? { discordTicketChannel: "verifications-start-here" } : {}),
+          ...(submitTicket ? { discordTicketChannel: "verifications-start-here" } : {}),
+          discordTicketApiParams: { submitTicket },
           notificationPath: "optimistic-oracle",
         });
       })

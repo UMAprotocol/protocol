@@ -1012,9 +1012,10 @@ describe("OptimisticOracleContractMonitor.js", function () {
         },
       });
 
-      // And the emitted log includes the Discord ticket channel
+      // And the emitted log includes the Discord ticket channel and enables Ticket submission via API
       const lastLog = spy.lastCall.args[0];
       assert.equal(lastLog.discordTicketChannel, "verifications-start-here");
+      assert.isTrue(lastLog.discordTicketApiParams.submitTicket);
     });
 
     it("does not open Discord verification ticket when verification router matches", async function () {
@@ -1035,9 +1036,10 @@ describe("OptimisticOracleContractMonitor.js", function () {
 
       await testedContractMonitorV2.checkForProposals();
 
-      // Assert the emitted log does NOT include the Discord ticket channel
+      // Assert the emitted log does NOT include the Discord ticket channel and disables Ticket submission via API
       const lastLog = spy.lastCall.args[0];
       assert.isUndefined(lastLog.discordTicketChannel);
+      assert.isFalse(lastLog.discordTicketApiParams.submitTicket);
     });
   });
 });
