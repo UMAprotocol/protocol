@@ -52,6 +52,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
   let mockOracle;
   let contractProps;
   let monitorConfig;
+  let otbVerificationRouterConfig;
   let spy;
 
   let finder;
@@ -197,24 +198,28 @@ describe("OptimisticOracleContractMonitor.js", function () {
 
     monitorConfig = { optimisticOracleUIBaseUrl: sampleBaseUIUrl };
     contractProps = { networkId: await web3.eth.net.getId(), chainId: await web3.eth.getChainId() };
+    otbVerificationRouterConfig = null;
 
     contractMonitor = new OptimisticOracleContractMonitor({
       logger: spyLogger,
       optimisticOracleContractEventClient: eventClient,
       monitorConfig,
       contractProps,
+      otbVerificationRouterConfig,
     });
     contractMonitorV2 = new OptimisticOracleContractMonitor({
       logger: spyLogger,
       optimisticOracleContractEventClient: eventClientV2,
       monitorConfig,
       contractProps,
+      otbVerificationRouterConfig,
     });
     skinnyContractMonitor = new OptimisticOracleContractMonitor({
       logger: spyLogger,
       optimisticOracleContractEventClient: skinnyEventClient,
       monitorConfig,
       contractProps,
+      otbVerificationRouterConfig,
     });
 
     // Make price requests
@@ -509,6 +514,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
           optimisticOracleContractEventClient: eventClient,
           monitorConfig: { optimisticOracleUIBaseUrl: "https://sampleurl.com/" },
           contractProps,
+          otbVerificationRouterConfig,
         });
         await contractMonitor.checkForRequests();
         await contractMonitor.checkForProposals();
