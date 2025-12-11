@@ -34,6 +34,7 @@ let constructorParams;
 let defaultMonitorConfig;
 let defaultTokenPricefeedConfig;
 let defaultMedianizerPricefeedConfig;
+let defaultOtbVerificationRouterConfig;
 
 let spy;
 let spyLogger;
@@ -190,6 +191,7 @@ describe("index.js", function () {
         defaultMonitorConfig = {};
         defaultTokenPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
         defaultMedianizerPricefeedConfig = {};
+        defaultOtbVerificationRouterConfig = null;
       });
 
       it("OptimisticOracle monitor: Completes one iteration without logging any errors", async function () {
@@ -206,6 +208,7 @@ describe("index.js", function () {
           monitorConfig: defaultMonitorConfig,
           tokenPriceFeedConfig: defaultTokenPricefeedConfig,
           medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
+          otbVerificationRouterConfig: defaultOtbVerificationRouterConfig,
         });
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
@@ -226,6 +229,7 @@ describe("index.js", function () {
           monitorConfig: defaultMonitorConfig,
           tokenPriceFeedConfig: defaultTokenPricefeedConfig,
           medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
+          otbVerificationRouterConfig: defaultOtbVerificationRouterConfig,
         });
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
@@ -256,6 +260,7 @@ describe("index.js", function () {
             monitorConfig: defaultMonitorConfig,
             tokenPriceFeedConfig: defaultTokenPricefeedConfig,
             medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
+            otbVerificationRouterConfig: defaultOtbVerificationRouterConfig,
           });
         } catch (error) {
           errorString = error.toString();
@@ -318,6 +323,7 @@ describe("index.js", function () {
             monitorConfig: { ...defaultMonitorConfig, contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
             tokenPriceFeedConfig: defaultTokenPricefeedConfig,
             medianizerPriceFeedConfig: defaultTokenPricefeedConfig,
+            otbVerificationRouterConfig: defaultOtbVerificationRouterConfig,
           });
         } catch (error) {
           errorThrown = true;
