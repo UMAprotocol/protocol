@@ -124,6 +124,7 @@ describe("PolymarketNotifier", function () {
       proposalProcessingConcurrency: 5,
       marketProcessingConcurrency: 3,
       paginatedEventQueryConcurrency: 5,
+      orderFilledEventsProcessingConcurrency: 25,
     };
   };
 
