@@ -27,12 +27,20 @@ export function createConfig(config: unknown): Config {
 interface DiscordTicketApiInfo {
   message: string;
   mrkdwn: string;
+  discordTicketApiParams: {
+    submitTicket: boolean; // Indicates if the ticket should be submitted
+  };
 }
 
 // Type guard for log info object.
 const isDiscordTicketApiInfo = (info: unknown): info is DiscordTicketApiInfo => {
   if (!isDictionary(info)) return false;
-  return typeof info.message === "string" && typeof info.mrkdwn === "string";
+  return (
+    typeof info.message === "string" &&
+    typeof info.mrkdwn === "string" &&
+    isDictionary(info.discordTicketApiParams) &&
+    typeof info.discordTicketApiParams.submitTicket === "boolean"
+  );
 };
 
 export class DiscordTicketApiTransport extends Transport {
@@ -55,8 +63,8 @@ export class DiscordTicketApiTransport extends Transport {
   // Note: info must be any because that's what the base class uses.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
   async log(info: any, callback: (error?: unknown) => void): Promise<void> {
-    // We only try sending if the logging application has passed required parameters.
-    if (isDiscordTicketApiInfo(info)) {
+    // We only try sending if the logging application has passed required parameters and explicitly requested ticket submission.
+    if (isDiscordTicketApiInfo(info) && info.discordTicketApiParams.submitTicket) {
       const payload = { title: info.message, content: info.mrkdwn };
 
       try {
