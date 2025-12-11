@@ -982,4 +982,62 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.equal(spy.callCount, spyCount + 1);
     });
   });
+  describe("OTB verification router checks", function () {
+    it("opens Discord verification ticket when verification router indicates no match", async function () {
+      // Sufficient to test this on contractMonitorV2 as other flavors should behave the same.
+      const testedContractMonitorV2 = contractMonitorV2;
+      const testedEventClient = eventClientV2;
+      const testedProposalTxn = proposalV2Txn;
+      const testedProposalLogIndex = proposalV2LogIndex;
+
+      await testedEventClient.update();
+
+      // Set up a fake verification router client that returns matched: false (OTB will NOT handle it).
+      const routerGetStub = sinon.stub().resolves({
+        data: { matched: false, rule: null },
+      });
+
+      // Enable verification router logic on this monitor instance
+      testedContractMonitorV2.otbVerificationRouterChainIds = [contractProps.chainId];
+      testedContractMonitorV2.otbVerificationRouterClient = { get: routerGetStub };
+
+      await testedContractMonitorV2.checkForProposals();
+
+      // Assert: verification router was called once with the expected params
+      sinon.assert.calledOnce(routerGetStub);
+      sinon.assert.calledWithMatch(routerGetStub, "/route", {
+        params: {
+          transactionHash: testedProposalTxn.transactionHash,
+          eventIndex: testedProposalLogIndex,
+        },
+      });
+
+      // And the emitted log includes the Discord ticket channel
+      const lastLog = spy.lastCall.args[0];
+      assert.equal(lastLog.discordTicketChannel, "verifications-start-here");
+    });
+
+    it("does not open Discord verification ticket when verification router matches", async function () {
+      // Sufficient to test this on contractMonitorV2 as other flavors should behave the same.
+      const testedContractMonitorV2 = contractMonitorV2;
+      const testedEventClient = eventClientV2;
+
+      await testedEventClient.update();
+
+      // Set up a fake verification router client that returns matched: true (OTB will handle it).
+      const routerGetStub = sinon.stub().resolves({
+        data: { matched: true, rule: {} },
+      });
+
+      // Enable verification router logic on this monitor instance
+      testedContractMonitorV2.otbVerificationRouterChainIds = [contractProps.chainId];
+      testedContractMonitorV2.otbVerificationRouterClient = { get: routerGetStub };
+
+      await testedContractMonitorV2.checkForProposals();
+
+      // Assert the emitted log does NOT include the Discord ticket channel
+      const lastLog = spy.lastCall.args[0];
+      assert.isUndefined(lastLog.discordTicketChannel);
+    });
+  });
 });
