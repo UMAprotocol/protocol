@@ -1,16 +1,17 @@
-// This script can be run against a mainnet fork by spinning a node in a separate terminal with:
-// HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
-// and then running this script with:
-// GCKMS_WALLET=<OPTIONAL-GCKMS-WALLET> \
-// IDENTIFIER=<IDENTIFIER-TO-REMOVE> \
-// UMIP_NUMBER=<UMIP-NUMBER> \
-// NODE_URL_1=<MAINNET-NODE-URL> \
-// NODE_URL_10=<OPTIMISM-NODE-URL> \
-// NODE_URL_137=<POLYGON-NODE-URL> \
-// NODE_URL_8453=<BASE-NODE-URL> \
-// NODE_URL_42161=<ARBITRUM-NODE-URL> \
-// NODE_URL_81457=<BLAST-NODE-URL> \
-// yarn hardhat run packages/scripts/src/admin-proposals/remove-identifier/0_Propose.ts --network <network>
+// This script can be run against a public or forked networks.
+// Export following environment variables:
+// - NODE_URL_1: Mainnet node URL (not required when using localhost for a forked network).
+// - NODE_URL_137: Public or forked Polygon node URL.
+// - NODE_URL_10: Public or forked Optimism node URL.
+// - NODE_URL_42161: Public or forked Arbitrum node URL.
+// - NODE_URL_8453: Public or forked Base node URL.
+// - NODE_URL_81457: Public or forked Blast node URL.
+// - GCKMS_WALLET: GCKMS wallet name, required only on public mainnet.
+// - IDENTIFIER: Identifier to remove.
+// - UMIP_NUMBER: UMIP number to use in the proposal title.
+// Then run the script with:
+//   yarn hardhat run packages/scripts/src/admin-proposals/remove-identifier/0_Propose.ts --network <network>
+// Note: use localhost for the forked network, for L1 mainnet need to export NODE_URL_1 environment variable.
 
 import hre from "hardhat";
 
