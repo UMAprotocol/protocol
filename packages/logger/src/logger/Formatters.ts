@@ -22,9 +22,7 @@ export function bigNumberFormatter(logEntry: LogEntry) {
     // Because winston depends on some non-enumerable symbol properties, we explicitly copy those over, as they are not
     // handled in iterativelyReplaceBigNumbers. This only needs to happen if logEntry is being replaced.
     if (out !== logEntry)
-      Object.getOwnPropertySymbols(logEntry).map(
-        (symbol) => ((out as SymbolRecord)[symbol] = (logEntry as SymbolRecord)[symbol])
-      );
+      Object.getOwnPropertySymbols(logEntry).map((symbol) => (out[symbol] = (logEntry as SymbolRecord)[symbol]));
     return out as LogEntry;
   } catch (_) {
     return logEntry;
