@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
-import pino from "pino";
+import { createPinoLogger, PinoLogger } from "@uma/logger";
 import { AppEnv, loadEnv } from "./env.js";
 import { createRedisConnection, createWorker } from "./queue.js";
 import { TicketJobData } from "./services/TicketService.js";
@@ -10,7 +10,7 @@ type CleanupFn = () => Promise<void>;
 
 async function setupJobMode(
   env: AppEnv,
-  logger: pino.Logger,
+  logger: PinoLogger,
   cleanupFns: CleanupFn[],
   shutdown: (reason: string) => Promise<void>
 ): Promise<void> {
@@ -82,9 +82,9 @@ async function setupJobMode(
 
 async function main() {
   const env = loadEnv();
-  const logger = pino({
+  const logger = createPinoLogger({
     level: process.env.LOG_LEVEL || "info",
-    name: process.env.BOT_IDENTIFIER || "ticketing-worker",
+    botIdentifier: process.env.BOT_IDENTIFIER || "ticketing-worker",
   });
   const worker = createWorker(env, logger);
   const cleanupFns: CleanupFn[] = [() => worker.close()];
