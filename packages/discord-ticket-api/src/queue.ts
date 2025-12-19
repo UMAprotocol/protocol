@@ -73,14 +73,13 @@ export function createQueue(env: AppEnv, logger: FastifyBaseLogger): TicketQueue
   events.on("completed", ({ jobId }) => {
     logger.info({ jobId }, "Queue job completed");
   });
-  events.on("error", (err: unknown) => {
+  events.on("error", (err) => {
     logger.warn({ err, queue: env.QUEUE_NAME }, "QueueEvents error");
   });
 
   // Queue can also surface redis errors; log them to avoid uncaught/no-context stack traces.
   // (Some error conditions originate from underlying Redis sockets, e.g. ECONNRESET.)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (queue as any).on?.("error", (err: unknown) => {
+  queue.on?.("error", (err) => {
     logger.warn({ err, queue: env.QUEUE_NAME }, "Queue error");
   });
 
