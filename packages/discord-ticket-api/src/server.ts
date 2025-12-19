@@ -21,9 +21,13 @@ export async function buildServer(): Promise<{ app: ReturnType<typeof Fastify>; 
   await app.register(cors, { origin: true, credentials: true });
   await app.register(sensible);
 
-  const queue = createQueue(env, app.log);
-  const ticketService = new TicketQueueService(queue, env);
+  const ticketQueue = createQueue(env, app.log);
+  const ticketService = new TicketQueueService(ticketQueue.queue, env);
   await ticketsRoutes(app, ticketService);
+
+  app.addHook("onClose", async () => {
+    await ticketQueue.close();
+  });
 
   app.get("/health", async (_, reply) => {
     return reply.status(200).send({ ok: true });
