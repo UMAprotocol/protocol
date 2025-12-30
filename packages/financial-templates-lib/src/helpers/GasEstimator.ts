@@ -315,7 +315,7 @@ export class GasEstimator {
       if (polygonResponse?.fast?.maxFee === undefined || polygonResponse.fast.maxPriorityFee === undefined)
         throw new Error(`Bad polygon response ${json}`);
 
-      const maxFeePerGas = Number(polygonResponse.fast.maxFee);
+      const maxFeePerGas = Number(polygonResponse.fast.maxFee) * 2;
       const maxPriorityFeePerGas = Number(polygonResponse.fast.maxPriorityFee);
 
       if (Number.isNaN(maxFeePerGas) || Number.isNaN(maxPriorityFeePerGas)) {
