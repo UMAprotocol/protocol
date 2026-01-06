@@ -27,6 +27,7 @@ const {
   MAX_RETRIES,
   RETRY_DELAY,
   MIN_STAKED_TOKENS,
+  PRIORITY_FEE_CAP_GWEI,
 } = process.env;
 
 async function retryAsyncOperation<T>(
@@ -78,7 +79,12 @@ export async function run(): Promise<void> {
   // Minimum UMA tokens staked to be eligible for a rebate
   const minTokens = ethers.utils.parseEther(MIN_STAKED_TOKENS ? MIN_STAKED_TOKENS : "500");
 
+  // Priority fee cap in gwei (default 0.5 gwei)
+  const priorityFeeCapGwei = PRIORITY_FEE_CAP_GWEI ? Number(PRIORITY_FEE_CAP_GWEI) : 0.5;
+  const priorityFeeCapWei = ethers.utils.parseUnits(priorityFeeCapGwei.toString(), "gwei");
+
   console.log("Minimum UMA tokens staked to be eligible for a rebate:", ethers.utils.formatEther(minTokens));
+  console.log("Priority fee cap:", priorityFeeCapGwei, "gwei");
   console.log("Current time:", moment(currentDate).format());
   console.log("Previous Month Start:", moment(prevMonthStart).format(), "& block", fromBlock);
   console.log("Previous Month End:", moment(prevMonthEnd).format(), "& block", toBlock);
@@ -89,7 +95,7 @@ export async function run(): Promise<void> {
   const searchConfig = {
     fromBlock,
     toBlock,
-    maxBlockLookBack: 20000,
+    maxBlockLookBack: 250,
   };
 
   // Find resolved events
@@ -166,14 +172,37 @@ export async function run(): Promise<void> {
 
   console.log(
     `In aggregate, refund ${commitEvents.length} commits and ${revealEvents.length} Reveals` +
-      ` for a total of ${transactionsToRefund.length} transactions`
+    ` for a total of ${transactionsToRefund.length} transactions`
   );
 
   const shareholderPayoutBN: { [address: string]: BigNumber } = {};
+  // Cache blocks to avoid fetching the same block multiple times
+  const blockCache: { [blockNumber: number]: any } = {};
+
   // Now, traverse all transactions and calculate the rebate for each.
   for (const transaction of transactionsToRefund) {
-    // Eth used is the gas used * the gas price.
-    const resultantRebate = transaction.gasUsed.mul(transaction.effectiveGasPrice);
+    // Get the block to extract base fee
+    let block = blockCache[transaction.blockNumber];
+    if (!block) {
+      block = await retryAsyncOperation(
+        async () => await voting.provider.getBlock(transaction.blockNumber)
+      );
+      blockCache[transaction.blockNumber] = block;
+    }
+
+    // Extract base fee from block (EIP-1559)
+    const baseFeePerGas = block.baseFeePerGas || BigNumber.from(0);
+
+    // Calculate priority fee: effectiveGasPrice - baseFeePerGas
+    const priorityFee = transaction.effectiveGasPrice.sub(baseFeePerGas);
+
+    // Cap the priority fee to the configured maximum
+    const cappedPriorityFee = priorityFee.gt(priorityFeeCapWei) ? priorityFeeCapWei : priorityFee;
+
+    // Calculate rebate: gasUsed * (baseFeePerGas + cappedPriorityFee)
+    const gasPriceForRebate = baseFeePerGas.add(cappedPriorityFee);
+    const resultantRebate = transaction.gasUsed.mul(gasPriceForRebate);
+
     // Save the output to the shareholderPayout object. Append to existing value if it exists.
     if (!shareholderPayoutBN[transaction.from]) shareholderPayoutBN[transaction.from] = BigNumber.from(0);
     shareholderPayoutBN[transaction.from] = shareholderPayoutBN[transaction.from].add(resultantRebate);
