@@ -1,7 +1,7 @@
 import { pino, LevelWithSilentOrString, Logger as PinoLogger, LoggerOptions as PinoLoggerOptions } from "pino";
 import { createGcpLoggingPinoConfig } from "@google-cloud/pino-logging-gcp-config";
-import { noBotId } from "./constants";
-import { generateRandomRunId } from "./logger/Logger";
+import { noBotId } from "../constants";
+import { generateRandomRunId } from "../logger/Logger";
 
 export type { PinoLogger };
 export type { PinoLoggerOptions };
