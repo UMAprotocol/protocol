@@ -55,8 +55,8 @@ interface PolygonGasStationResponse {
 export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   1: {
     url: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
-    defaultMaxFeePerGasGwei: 500,
-    defaultMaxPriorityFeePerGasGwei: 1,
+    defaultMaxFeePerGasGwei: 20,
+    defaultMaxPriorityFeePerGasGwei: 0.001,
     type: NetworkType.London,
   },
   10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
