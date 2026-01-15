@@ -2,6 +2,7 @@ import { pino, LevelWithSilentOrString, Logger as PinoLogger, LoggerOptions as P
 import { createGcpLoggingPinoConfig } from "@google-cloud/pino-logging-gcp-config";
 import { noBotId } from "../constants";
 import { generateRandomRunId } from "../logger/Logger";
+import { createPinoTransports } from "./Transports";
 
 export type { PinoLogger };
 export type { PinoLoggerOptions };
@@ -15,9 +16,8 @@ type CustomPinoLoggerOptions = {
 export function createPinoLogger({
   botIdentifier = process.env.BOT_IDENTIFIER || noBotId,
   runIdentifier = process.env.RUN_IDENTIFIER || generateRandomRunId(),
-  level = "info",
 }: Partial<CustomPinoLoggerOptions> = {}): PinoLogger {
-  return pino(createPinoConfig({ botIdentifier, runIdentifier, level }));
+  return pino(createPinoConfig({ botIdentifier, runIdentifier }), createPinoTransports());
 }
 
 export function createPinoConfig({
