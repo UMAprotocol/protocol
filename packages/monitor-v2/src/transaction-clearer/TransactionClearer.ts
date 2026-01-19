@@ -11,24 +11,24 @@ function isLondonFeeData(feeData: FeeData): feeData is { maxFeePerGas: BigNumber
 }
 
 function bumpFeeData(baseFeeData: FeeData, attemptIndex: number, config: NonceBacklogConfig): FeeData {
-  // Calculate multiplier: (numerator/denominator)^(attemptIndex+1)
-  // For attempt 0: 1.2x, attempt 1: 1.44x, attempt 2: 1.73x (with default 12/10)
-  let numerator = BigNumber.from(config.feeBumpNumerator);
-  let denominator = BigNumber.from(config.feeBumpDenominator);
-
-  for (let i = 0; i < attemptIndex; i++) {
-    numerator = numerator.mul(config.feeBumpNumerator);
-    denominator = denominator.mul(config.feeBumpDenominator);
-  }
+  // Calculate multiplier: ((100 + percent) / 100)^(attemptIndex+1)
+  // For attempt 0: 1.2x, attempt 1: 1.44x, attempt 2: 1.73x (with default 20%)
+  const bumpValue = (value: BigNumber): BigNumber => {
+    let bumped = value;
+    for (let i = 0; i <= attemptIndex; i++) {
+      bumped = bumped.mul(100 + config.feeBumpPercent).div(100);
+    }
+    return bumped;
+  };
 
   if (isLondonFeeData(baseFeeData)) {
     return {
-      maxFeePerGas: baseFeeData.maxFeePerGas.mul(numerator).div(denominator),
-      maxPriorityFeePerGas: baseFeeData.maxPriorityFeePerGas.mul(numerator).div(denominator),
+      maxFeePerGas: bumpValue(baseFeeData.maxFeePerGas),
+      maxPriorityFeePerGas: bumpValue(baseFeeData.maxPriorityFeePerGas),
     };
   } else {
     return {
-      gasPrice: baseFeeData.gasPrice.mul(numerator).div(denominator),
+      gasPrice: bumpValue(baseFeeData.gasPrice),
     };
   }
 }
