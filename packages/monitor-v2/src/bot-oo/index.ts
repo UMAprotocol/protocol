@@ -4,28 +4,34 @@ import { BotModes, MonitoringParams, initMonitoringParams, Logger, startupLogLev
 import { settleRequests } from "./SettleRequests";
 
 const logger = Logger;
-const DEFAULT_REPLACEMENT_BUMP_NUMERATOR = 12;
-const DEFAULT_REPLACEMENT_BUMP_DENOMINATOR = 10;
+const DEFAULT_REPLACEMENT_BUMP_PERCENT = 20;
 const DEFAULT_REPLACEMENT_ATTEMPTS = 3;
 
 type NonceBacklogConfig = {
-  replacementBumpNumerator: number;
-  replacementBumpDenominator: number;
+  replacementBumpPercent: number;
   replacementAttempts: number;
 };
 
-const parsePositiveInt = (value: string | undefined, defaultValue: number): number => {
+const parsePositiveInt = (value: string | undefined, defaultValue: number, name: string): number => {
+  if (value === undefined) return defaultValue;
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : defaultValue;
+  if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+    throw new Error(`${name} must be a positive integer, got: ${value}`);
+  }
+  return parsed;
 };
 
 const getNonceBacklogConfig = (env: NodeJS.ProcessEnv): NonceBacklogConfig => ({
-  replacementBumpNumerator: parsePositiveInt(env.NONCE_REPLACEMENT_BUMP_NUMERATOR, DEFAULT_REPLACEMENT_BUMP_NUMERATOR),
-  replacementBumpDenominator: parsePositiveInt(
-    env.NONCE_REPLACEMENT_BUMP_DENOMINATOR,
-    DEFAULT_REPLACEMENT_BUMP_DENOMINATOR
+  replacementBumpPercent: parsePositiveInt(
+    env.NONCE_REPLACEMENT_BUMP_PERCENT,
+    DEFAULT_REPLACEMENT_BUMP_PERCENT,
+    "NONCE_REPLACEMENT_BUMP_PERCENT"
   ),
-  replacementAttempts: parsePositiveInt(env.NONCE_REPLACEMENT_ATTEMPTS, DEFAULT_REPLACEMENT_ATTEMPTS),
+  replacementAttempts: parsePositiveInt(
+    env.NONCE_REPLACEMENT_ATTEMPTS,
+    DEFAULT_REPLACEMENT_ATTEMPTS,
+    "NONCE_REPLACEMENT_ATTEMPTS"
+  ),
 });
 
 function bumpFeeData(
@@ -38,7 +44,7 @@ function bumpFeeData(
   const bumpValue = (value: BigNumber) => {
     let bumped = value;
     for (let i = 0; i < bumps; i++) {
-      bumped = bumped.mul(config.replacementBumpNumerator).div(config.replacementBumpDenominator);
+      bumped = bumped.mul(100 + config.replacementBumpPercent).div(100);
     }
     return bumped;
   };
