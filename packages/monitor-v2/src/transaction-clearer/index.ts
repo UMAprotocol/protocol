@@ -1,3 +1,4 @@
+// Standalone bot for clearing stuck transactions via self-tx replacement.
 import { delay, waitForLogger, GasEstimator } from "@uma/financial-templates-lib";
 import { initMonitoringParams, Logger, startupLogLevel } from "./common";
 import { clearStuckTransactions } from "./TransactionClearer";
