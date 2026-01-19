@@ -35,16 +35,16 @@ yarn hardhat run gas-rebate/VoterGasRebateV2.ts --network mainnet
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OVERRIDE_FROM_BLOCK` | Start block number (overrides automatic date-based calculation) | Auto-calculated from previous month start |
-| `OVERRIDE_TO_BLOCK` | End block number (overrides automatic date-based calculation) | Auto-calculated from previous month end |
-| `MIN_STAKED_TOKENS` | Minimum UMA tokens staked to be eligible for rebate | `500` |
-| `MAX_PRIORITY_FEE_GWEI` | Maximum priority fee to refund (in gwei). Priority fees above this are capped. | `0.001` |
-| `MAX_BLOCK_LOOK_BACK` | Maximum block range for paginated event queries | `20000` |
-| `TRANSACTION_CONCURRENCY` | Number of concurrent RPC requests for fetching transactions/blocks | `50` |
-| `MAX_RETRIES` | Maximum retry attempts for failed RPC calls | `10` |
-| `RETRY_DELAY` | Delay between retries in milliseconds | `1000` |
+| Variable                  | Description                                                                    | Default                                   |
+| ------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------- |
+| `OVERRIDE_FROM_BLOCK`     | Start block number (overrides automatic date-based calculation)                | Auto-calculated from previous month start |
+| `OVERRIDE_TO_BLOCK`       | End block number (overrides automatic date-based calculation)                  | Auto-calculated from previous month end   |
+| `MIN_STAKED_TOKENS`       | Minimum UMA tokens staked to be eligible for rebate                            | `500`                                     |
+| `MAX_PRIORITY_FEE_GWEI`   | Maximum priority fee to refund (in gwei). Priority fees above this are capped. | `0.001`                                   |
+| `MAX_BLOCK_LOOK_BACK`     | Maximum block range for paginated event queries                                | `20000`                                   |
+| `TRANSACTION_CONCURRENCY` | Number of concurrent RPC requests for fetching transactions/blocks             | `50`                                      |
+| `MAX_RETRIES`             | Maximum retry attempts for failed RPC calls                                    | `10`                                      |
+| `RETRY_DELAY`             | Delay between retries in milliseconds                                          | `1000`                                    |
 
 ### Output Format
 
@@ -52,28 +52,28 @@ The script outputs a JSON file to `rebates/Rebate_<N>.json` with the following s
 
 ```json
 {
-    "votingContractAddress": "0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac",
-    "rebate": 63,
-    "fromBlock": 23914921,
-    "toBlock": 24136052,
-    "countVoters": 813,
-    "totalRebateAmount": 3.733496328767278,
-    "shareholderPayout": {
-        "0x156527BC2e57610c23Ac795A1252cAc56453e320": 0.01473407276015984,
-        "0x226DAce98e689118D9199246f8DfBc9115d8B034": 0.003304298094274105
-    }
+  "votingContractAddress": "0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac",
+  "rebate": 63,
+  "fromBlock": 23914921,
+  "toBlock": 24136052,
+  "countVoters": 813,
+  "totalRebateAmount": 3.733496328767278,
+  "shareholderPayout": {
+    "0x156527BC2e57610c23Ac795A1252cAc56453e320": 0.01473407276015984,
+    "0x226DAce98e689118D9199246f8DfBc9115d8B034": 0.003304298094274105
+  }
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `votingContractAddress` | Address of the VotingV2 contract |
-| `rebate` | Sequential rebate number |
-| `fromBlock` | Starting block of the rebate period |
-| `toBlock` | Ending block of the rebate period |
-| `countVoters` | Number of voters receiving rebates |
-| `totalRebateAmount` | Total ETH amount to be rebated |
-| `shareholderPayout` | Map of voter addresses to their rebate amounts (in ETH) |
+| Field                   | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| `votingContractAddress` | Address of the VotingV2 contract                        |
+| `rebate`                | Sequential rebate number                                |
+| `fromBlock`             | Starting block of the rebate period                     |
+| `toBlock`               | Ending block of the rebate period                       |
+| `countVoters`           | Number of voters receiving rebates                      |
+| `totalRebateAmount`     | Total ETH amount to be rebated                          |
+| `shareholderPayout`     | Map of voter addresses to their rebate amounts (in ETH) |
 
 ### Priority Fee Capping
 
