@@ -27,6 +27,8 @@ const {
   MAX_RETRIES,
   RETRY_DELAY,
   MIN_STAKED_TOKENS,
+  MAX_PRIORITY_FEE_GWEI,
+  MAX_BLOCK_LOOK_BACK,
 } = process.env;
 
 async function retryAsyncOperation<T>(
@@ -86,10 +88,11 @@ export async function run(): Promise<void> {
   // Fetch all commit and reveal events.
   const voting = await hre.ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1));
 
+  const maxBlockLookBack = MAX_BLOCK_LOOK_BACK ? Number(MAX_BLOCK_LOOK_BACK) : 20000;
   const searchConfig = {
     fromBlock,
     toBlock,
-    maxBlockLookBack: 20000,
+    maxBlockLookBack,
   };
 
   // Find resolved events
@@ -169,11 +172,46 @@ export async function run(): Promise<void> {
       ` for a total of ${transactionsToRefund.length} transactions`
   );
 
+  // Max priority fee to refund (default 0.001 gwei = 1000000 wei)
+  const maxPriorityFee = ethers.utils.parseUnits(MAX_PRIORITY_FEE_GWEI || "0.001", "gwei");
+  console.log("Max priority fee to refund:", ethers.utils.formatUnits(maxPriorityFee, "gwei"), "gwei");
+
+  // Get unique block numbers from transactions to fetch block data
+  const uniqueBlockNumbers = [...new Set(transactionsToRefund.map((tx) => tx.blockNumber))];
+  console.log(`Fetching base fee data for ${uniqueBlockNumbers.length} unique blocks...`);
+
+  // Fetch block data in parallel to get base fees
+  const blockDataMap = new Map<number, BigNumber>();
+  await Bluebird.map(
+    uniqueBlockNumbers,
+    async (blockNumber) => {
+      const block = await retryAsyncOperation(async () => await voting.provider.getBlock(blockNumber));
+      if (block.baseFeePerGas) {
+        blockDataMap.set(blockNumber, block.baseFeePerGas);
+      }
+    },
+    { concurrency: transactionConcurrency }
+  );
+
   const shareholderPayoutBN: { [address: string]: BigNumber } = {};
   // Now, traverse all transactions and calculate the rebate for each.
   for (const transaction of transactionsToRefund) {
-    // Eth used is the gas used * the gas price.
-    const resultantRebate = transaction.gasUsed.mul(transaction.effectiveGasPrice);
+    const baseFee = blockDataMap.get(transaction.blockNumber);
+    let effectiveGasPriceForRebate: BigNumber;
+
+    if (baseFee) {
+      // Calculate the actual priority fee paid
+      const actualPriorityFee = transaction.effectiveGasPrice.sub(baseFee);
+      // Cap the priority fee at maxPriorityFee
+      const cappedPriorityFee = actualPriorityFee.gt(maxPriorityFee) ? maxPriorityFee : actualPriorityFee;
+      // Rebate = gasUsed * (baseFee + cappedPriorityFee)
+      effectiveGasPriceForRebate = baseFee.add(cappedPriorityFee);
+    } else {
+      // Fallback for pre-EIP-1559 transactions (shouldn't happen on mainnet post-London)
+      effectiveGasPriceForRebate = transaction.effectiveGasPrice;
+    }
+
+    const resultantRebate = transaction.gasUsed.mul(effectiveGasPriceForRebate);
     // Save the output to the shareholderPayout object. Append to existing value if it exists.
     if (!shareholderPayoutBN[transaction.from]) shareholderPayoutBN[transaction.from] = BigNumber.from(0);
     shareholderPayoutBN[transaction.from] = shareholderPayoutBN[transaction.from].add(resultantRebate);
