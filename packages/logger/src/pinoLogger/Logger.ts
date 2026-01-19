@@ -16,8 +16,9 @@ type CustomPinoLoggerOptions = {
 export function createPinoLogger({
   botIdentifier = process.env.BOT_IDENTIFIER || noBotId,
   runIdentifier = process.env.RUN_IDENTIFIER || generateRandomRunId(),
+  level = "info",
 }: Partial<CustomPinoLoggerOptions> = {}): PinoLogger {
-  return pino(createPinoConfig({ botIdentifier, runIdentifier }), createPinoTransports());
+  return pino(createPinoConfig({ botIdentifier, runIdentifier, level }), createPinoTransports({ level }));
 }
 
 export function createPinoConfig({
