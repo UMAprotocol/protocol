@@ -316,7 +316,8 @@ export class GasEstimator {
         throw new Error(`Bad polygon response ${json}`);
 
       const maxFeePerGas = Number(polygonResponse.fast.maxFee) * 2;
-      const maxPriorityFeePerGas = Number(polygonResponse.fast.maxPriorityFee);
+      // Polygon requires minimum 25 gwei priority fee; enforce 30 gwei minimum for safety margin.
+      const maxPriorityFeePerGas = Math.max(Number(polygonResponse.fast.maxPriorityFee), 30);
 
       if (Number.isNaN(maxFeePerGas) || Number.isNaN(maxPriorityFeePerGas)) {
         throw new Error(`Bad polygon response ${json}`);
