@@ -13,7 +13,7 @@ The main script for calculating gas rebates for UMA 2.0 voters. It finds all `Vo
 3. Filters out voters with less than the minimum staked tokens
 4. Deduplicates commit events (only the first commit per voter per round is refunded)
 5. Matches commit events with corresponding reveal events
-6. Calculates gas rebates with a capped priority fee
+6. Calculates gas rebates (with optional priority fee cap)
 7. Saves results to `rebates/Rebate_<N>.json`
 
 ### Usage
@@ -29,22 +29,25 @@ yarn hardhat run gas-rebate/VoterGasRebateV2.ts --network mainnet
 OVERRIDE_FROM_BLOCK=18000000 \
 OVERRIDE_TO_BLOCK=18500000 \
 MIN_STAKED_TOKENS=1000 \
+yarn hardhat run gas-rebate/VoterGasRebateV2.ts --network mainnet
+
+# With priority fee cap (optional)
 MAX_PRIORITY_FEE_GWEI=0.001 \
 yarn hardhat run gas-rebate/VoterGasRebateV2.ts --network mainnet
 ```
 
 ### Environment Variables
 
-| Variable                  | Description                                                                    | Default                                   |
-| ------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------- |
-| `OVERRIDE_FROM_BLOCK`     | Start block number (overrides automatic date-based calculation)                | Auto-calculated from previous month start |
-| `OVERRIDE_TO_BLOCK`       | End block number (overrides automatic date-based calculation)                  | Auto-calculated from previous month end   |
-| `MIN_STAKED_TOKENS`       | Minimum UMA tokens staked to be eligible for rebate                            | `500`                                     |
-| `MAX_PRIORITY_FEE_GWEI`   | Maximum priority fee to refund (in gwei). Priority fees above this are capped. | `0.001`                                   |
-| `MAX_BLOCK_LOOK_BACK`     | Maximum block range for paginated event queries                                | `20000`                                   |
-| `TRANSACTION_CONCURRENCY` | Number of concurrent RPC requests for fetching transactions/blocks             | `50`                                      |
-| `MAX_RETRIES`             | Maximum retry attempts for failed RPC calls                                    | `10`                                      |
-| `RETRY_DELAY`             | Delay between retries in milliseconds                                          | `1000`                                    |
+| Variable                  | Description                                                              | Default                                   |
+| ------------------------- | ------------------------------------------------------------------------ | ----------------------------------------- |
+| `OVERRIDE_FROM_BLOCK`     | Start block number (overrides automatic date-based calculation)          | Auto-calculated from previous month start |
+| `OVERRIDE_TO_BLOCK`       | End block number (overrides automatic date-based calculation)            | Auto-calculated from previous month end   |
+| `MIN_STAKED_TOKENS`       | Minimum UMA tokens staked to be eligible for rebate                      | `500`                                     |
+| `MAX_PRIORITY_FEE_GWEI`   | Maximum priority fee to refund (in gwei). If not set, no cap is applied. | None (no cap)                             |
+| `MAX_BLOCK_LOOK_BACK`     | Maximum block range for paginated event queries                          | `20000`                                   |
+| `TRANSACTION_CONCURRENCY` | Number of concurrent RPC requests for fetching transactions/blocks       | `50`                                      |
+| `MAX_RETRIES`             | Maximum retry attempts for failed RPC calls                              | `10`                                      |
+| `RETRY_DELAY`             | Delay between retries in milliseconds                                    | `1000`                                    |
 
 ### Output Format
 
@@ -75,14 +78,16 @@ The script outputs a JSON file to `rebates/Rebate_<N>.json` with the following s
 | `totalRebateAmount`     | Total ETH amount to be rebated                          |
 | `shareholderPayout`     | Map of voter addresses to their rebate amounts (in ETH) |
 
-### Priority Fee Capping
+### Priority Fee Capping (Optional)
 
-The script caps the priority fee (tip) portion of gas costs to prevent rebating excessive tips. For example, with the default cap of 0.001 gwei:
+By default, the script rebates the full gas cost including any priority fee. You can optionally cap the priority fee (tip) portion to prevent rebating excessive tips by setting `MAX_PRIORITY_FEE_GWEI`.
+
+For example, with `MAX_PRIORITY_FEE_GWEI=0.001`:
 
 - If a voter paid a 0.0005 gwei priority fee, they get rebated the full 0.0005 gwei
 - If a voter paid a 0.002 gwei priority fee, they only get rebated 0.001 gwei
 
-The base fee is always fully rebated. This encourages voters to use reasonable gas settings while still covering network costs.
+The base fee is always fully rebated. Enabling a cap can encourage voters to use reasonable gas settings while still covering network costs.
 
 ## Legacy Scripts
 

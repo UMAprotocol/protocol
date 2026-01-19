@@ -172,9 +172,13 @@ export async function run(): Promise<void> {
       ` for a total of ${transactionsToRefund.length} transactions`
   );
 
-  // Max priority fee to refund (default 0.001 gwei = 1000000 wei)
-  const maxPriorityFee = ethers.utils.parseUnits(MAX_PRIORITY_FEE_GWEI || "0.001", "gwei");
-  console.log("Max priority fee to refund:", ethers.utils.formatUnits(maxPriorityFee, "gwei"), "gwei");
+  // Max priority fee to refund (optional - if not set, no cap is applied)
+  const maxPriorityFee = MAX_PRIORITY_FEE_GWEI ? ethers.utils.parseUnits(MAX_PRIORITY_FEE_GWEI, "gwei") : null;
+  if (maxPriorityFee) {
+    console.log("Max priority fee to refund:", ethers.utils.formatUnits(maxPriorityFee, "gwei"), "gwei");
+  } else {
+    console.log("No priority fee cap applied");
+  }
 
   // Get unique block numbers from transactions to fetch block data
   const uniqueBlockNumbers = [...new Set(transactionsToRefund.map((tx) => tx.blockNumber))];
@@ -202,8 +206,9 @@ export async function run(): Promise<void> {
     if (baseFee) {
       // Calculate the actual priority fee paid
       const actualPriorityFee = transaction.effectiveGasPrice.sub(baseFee);
-      // Cap the priority fee at maxPriorityFee
-      const cappedPriorityFee = actualPriorityFee.gt(maxPriorityFee) ? maxPriorityFee : actualPriorityFee;
+      // Cap the priority fee at maxPriorityFee if set
+      const cappedPriorityFee =
+        maxPriorityFee && actualPriorityFee.gt(maxPriorityFee) ? maxPriorityFee : actualPriorityFee;
       // Rebate = gasUsed * (baseFee + cappedPriorityFee)
       effectiveGasPriceForRebate = baseFee.add(cappedPriorityFee);
     } else {
