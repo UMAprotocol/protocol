@@ -28,8 +28,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const nonceBacklogConfig: NonceBacklogConfig = {
     nonceBacklogThreshold: parsePositiveInt(env.NONCE_BACKLOG_THRESHOLD, 1, "NONCE_BACKLOG_THRESHOLD"),
-    feeBumpPercent: parsePositiveInt(env.FEE_BUMP_PERCENT, 20, "FEE_BUMP_PERCENT"),
-    replacementAttempts: parsePositiveInt(env.REPLACEMENT_ATTEMPTS, 3, "REPLACEMENT_ATTEMPTS"),
+    feeBumpPercent: parsePositiveInt(env.NONCE_REPLACEMENT_BUMP_PERCENT, 20, "NONCE_REPLACEMENT_BUMP_PERCENT"),
+    replacementAttempts: parsePositiveInt(env.NONCE_REPLACEMENT_ATTEMPTS, 3, "NONCE_REPLACEMENT_ATTEMPTS"),
   };
 
   return {
