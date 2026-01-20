@@ -1,8 +1,8 @@
-import Fastify, { FastifyBaseLogger } from "fastify";
+import Fastify from "fastify";
 import helmet from "@fastify/helmet";
 import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
-import { createPinoLogger } from "@uma/logger";
+import { createPinoConfig } from "@uma/logger";
 import { loadEnv } from "./env.js";
 import { createQueue } from "./queue.js";
 import { TicketQueueService } from "./services/TicketService.js";
@@ -10,11 +10,12 @@ import { ticketsRoutes } from "./routes/tickets.js";
 
 export async function buildServer(): Promise<{ app: ReturnType<typeof Fastify>; start: () => Promise<void> }> {
   const env = loadEnv();
-  const logger = createPinoLogger({
-    level: process.env.LOG_LEVEL || "info",
-    botIdentifier: process.env.BOT_IDENTIFIER || "ticketing-api",
-  }) as FastifyBaseLogger;
-  const app = Fastify({ loggerInstance: logger });
+  const app = Fastify({
+    logger: createPinoConfig({
+      level: process.env.LOG_LEVEL || "info",
+      botIdentifier: process.env.BOT_IDENTIFIER || "ticketing-api",
+    }),
+  });
 
   await app.register(helmet);
   await app.register(cors, { origin: true, credentials: true });
