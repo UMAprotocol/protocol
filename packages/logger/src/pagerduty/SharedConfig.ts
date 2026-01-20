@@ -2,6 +2,7 @@
 // Used by both Winston and Pino PagerDuty transports
 import * as ss from "superstruct";
 import { event } from "@pagerduty/pdjs";
+import { removeAnchorTextFromLinks } from "../logger/Formatters";
 
 export type Severity = "critical" | "error" | "warning" | "info";
 export type Action = "trigger" | "acknowledge" | "resolve";
@@ -40,6 +41,11 @@ export function convertLevelToSeverity(level?: string | number): Severity {
 // Send event to PagerDuty V2 API
 // Accepts the whole log object and routing key, extracts necessary fields
 export async function sendPagerDutyEvent(routing_key: string, logObj: any): Promise<void> {
+  // PagerDuty does not support anchor text in links, so we remove it from markdown if it exists.
+  if (typeof logObj.mrkdwn === "string") {
+    logObj.mrkdwn = removeAnchorTextFromLinks(logObj.mrkdwn);
+  }
+
   // Extract fields with fallbacks for both Winston and Pino log formats
   const level = logObj.level;
   const at = logObj.at || logObj.name || "unknown";
