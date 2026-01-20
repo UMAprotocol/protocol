@@ -51,7 +51,7 @@ export async function sendPagerDutyEvent(routing_key: string, logObj: any): Prom
     severity: convertLevelToSeverity(logObj.level),
     source: logObj["bot-identifier"] ? logObj["bot-identifier"] : undefined,
     custom_details: logObj,
-  }
+  };
 
   await event({
     data: {
