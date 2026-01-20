@@ -1,5 +1,6 @@
 import { transport, TransportTargetOptions } from "pino";
-import { Config as PagerDutyV2Config, createConfig as pagerDutyV2CreateConfig } from "./PagerDutyV2Transport";
+import type { Config as PagerDutyV2Config } from "../pagerduty/SharedConfig";
+import { createConfig as pagerDutyV2CreateConfig } from "../pagerduty/SharedConfig";
 import dotenv from "dotenv";
 import minimist from "minimist";
 import path from "path";

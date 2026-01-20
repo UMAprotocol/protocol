@@ -4,14 +4,10 @@ import { event } from "@pagerduty/pdjs";
 
 import { removeAnchorTextFromLinks } from "./Formatters";
 import { TransportError } from "./TransportError";
-import type { Severity, Action, Config } from "../pagerduty/SharedConfig";
-import { createConfig, convertLevelToSeverity } from "../pagerduty/SharedConfig";
+import type { Config, Action } from "../pagerduty/SharedConfig";
+import { convertLevelToSeverity } from "../pagerduty/SharedConfig";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
-
-// Re-export types for backwards compatibility
-export type { Severity, Action, Config };
-export { createConfig };
 
 export class PagerDutyV2Transport extends Transport {
   private readonly integrationKey: string;
