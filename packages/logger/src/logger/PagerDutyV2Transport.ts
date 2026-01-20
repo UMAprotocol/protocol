@@ -2,8 +2,8 @@
 import Transport from "winston-transport";
 
 import { TransportError } from "./TransportError";
-import type { Config } from "../pagerduty/SharedConfig";
-import { sendPagerDutyEvent } from "../pagerduty/SharedConfig";
+import type { Config } from "../shared/PagerDutyV2Transport";
+import { sendPagerDutyEvent } from "../shared/PagerDutyV2Transport";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 

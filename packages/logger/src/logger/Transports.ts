@@ -18,8 +18,8 @@ import {
   DiscordTicketTransport,
 } from "./DiscordTicketTransport";
 import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
-import type { Config as PagerDutyV2Config } from "../pagerduty/SharedConfig";
-import { createConfig as pagerDutyV2CreateConfig } from "../pagerduty/SharedConfig";
+import type { Config as PagerDutyV2Config } from "../shared/PagerDutyV2Transport";
+import { createConfig as pagerDutyV2CreateConfig } from "../shared/PagerDutyV2Transport";
 import { DiscordTransport } from "./DiscordTransport";
 import type Transport from "winston-transport";
 import dotenv from "dotenv";
