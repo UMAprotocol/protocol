@@ -1,4 +1,10 @@
-import { pino, LevelWithSilentOrString, Logger as PinoLogger, LoggerOptions as PinoLoggerOptions } from "pino";
+import {
+  pino,
+  LevelWithSilentOrString,
+  Logger as PinoLogger,
+  LoggerOptions as PinoLoggerOptions,
+  stdSerializers,
+} from "pino";
 import { createGcpLoggingPinoConfig } from "@google-cloud/pino-logging-gcp-config";
 import { noBotId } from "../constants";
 import { generateRandomRunId } from "../logger/Logger";
@@ -26,8 +32,18 @@ export function createPinoConfig({
   runIdentifier = process.env.RUN_IDENTIFIER || generateRandomRunId(),
   level = "info",
 }: Partial<CustomPinoLoggerOptions> = {}): PinoLoggerOptions {
-  return createGcpLoggingPinoConfig(undefined, {
+  const gcpConfig = createGcpLoggingPinoConfig(undefined, {
     level,
     base: { "bot-identifier": botIdentifier, "run-identifier": runIdentifier },
   });
+
+  // Add error serializers to properly log Error objects (matching Winston behavior)
+  return {
+    ...gcpConfig,
+    serializers: {
+      ...gcpConfig.serializers,
+      err: stdSerializers.err,
+      error: stdSerializers.err, // Use err serializer for 'error' field too
+    },
+  };
 }
