@@ -9,7 +9,6 @@ dotenv.config();
 const argv = minimist(process.argv.slice(), {});
 
 interface TransportsConfig {
-  environment?: string;
   level?: string;
   pagerDutyV2Config?: PagerDutyV2Config & { disabled?: boolean };
 }
