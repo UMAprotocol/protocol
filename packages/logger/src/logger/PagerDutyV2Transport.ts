@@ -1,11 +1,10 @@
 // This transport enables winston logging to send messages to pager duty v2 api.
 import Transport from "winston-transport";
-import { event } from "@pagerduty/pdjs";
 
 import { removeAnchorTextFromLinks } from "./Formatters";
 import { TransportError } from "./TransportError";
-import type { Config, Action } from "../pagerduty/SharedConfig";
-import { convertLevelToSeverity } from "../pagerduty/SharedConfig";
+import type { Config } from "../pagerduty/SharedConfig";
+import { sendPagerDutyEvent } from "../pagerduty/SharedConfig";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
@@ -29,19 +28,7 @@ export class PagerDutyV2Transport extends Transport {
       const routing_key = this.customServices[info.notificationPath] ?? this.integrationKey;
       // PagerDuty does not support anchor text in links, so we remove it from markdown if it exists.
       if (typeof info.mrkdwn === "string") info.mrkdwn = removeAnchorTextFromLinks(info.mrkdwn);
-      await event({
-        data: {
-          routing_key,
-          event_action: "trigger" as Action,
-          payload: {
-            summary: `${info.level}: ${info.at} ⭢ ${info.message}`,
-            severity: convertLevelToSeverity(info.level),
-            source: info["bot-identifier"] ? info["bot-identifier"] : undefined,
-            // we can put any structured data in here as long as it is can be repped as json
-            custom_details: info,
-          },
-        },
-      });
+      await sendPagerDutyEvent(routing_key, info);
     } catch (error) {
       // We don't want to emit error if this same transport is used to log transport errors to avoid recursion.
       if (!this.logTransportErrors) return callback(new TransportError("PagerDuty V2", error, info));

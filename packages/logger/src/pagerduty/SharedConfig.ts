@@ -1,6 +1,7 @@
 // Shared PagerDuty V2 configuration and utilities
 // Used by both Winston and Pino PagerDuty transports
 import * as ss from "superstruct";
+import { event } from "@pagerduty/pdjs";
 
 export type Severity = "critical" | "error" | "warning" | "info";
 export type Action = "trigger" | "acknowledge" | "resolve";
@@ -34,4 +35,33 @@ export function convertLevelToSeverity(level?: string | number): Severity {
   if (levelStr === "fatal") return "critical";
   if (levelStr === "info" || levelStr === "critical") return levelStr as Severity;
   return "error";
+}
+
+// Send event to PagerDuty V2 API
+// Accepts the whole log object and routing key, extracts necessary fields
+export async function sendPagerDutyEvent(routing_key: string, logObj: any): Promise<void> {
+  // Extract fields with fallbacks for both Winston and Pino log formats
+  const level = logObj.level;
+  const at = logObj.at || logObj.name || "unknown";
+  const message = logObj.message || logObj.msg || "No message";
+  const botIdentifier = logObj["bot-identifier"] || logObj.botIdentifier;
+
+  const payload: any = {
+    summary: `${level}: ${at} ⭢ ${message}`,
+    severity: convertLevelToSeverity(level),
+    custom_details: logObj,
+  };
+
+  // Only include source if botIdentifier is provided
+  if (botIdentifier) {
+    payload.source = botIdentifier;
+  }
+
+  await event({
+    data: {
+      routing_key,
+      event_action: "trigger" as Action,
+      payload,
+    },
+  });
 }
