@@ -46,21 +46,11 @@ export async function sendPagerDutyEvent(routing_key: string, logObj: any): Prom
     logObj.mrkdwn = removeAnchorTextFromLinks(logObj.mrkdwn);
   }
 
-  // Extract fields with fallbacks for both Winston and Pino log formats
-  const level = logObj.level;
-  const at = logObj.at || logObj.name || "unknown";
-  const message = logObj.message || logObj.msg || "No message";
-  const botIdentifier = logObj["bot-identifier"] || logObj.botIdentifier;
-
   const payload: any = {
-    summary: `${level}: ${at} ⭢ ${message}`,
-    severity: convertLevelToSeverity(level),
+    summary: `${logObj.level}: ${logObj.at} ⭢ ${logObj.message}`,
+    severity: convertLevelToSeverity(logObj.level),
+    source: logObj["bot-identifier"] ? logObj["bot-identifier"] : undefined,
     custom_details: logObj,
-  };
-
-  // Only include source if botIdentifier is provided
-  if (botIdentifier) {
-    payload.source = botIdentifier;
   }
 
   await event({
