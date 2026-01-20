@@ -4,13 +4,8 @@ import { event } from "@pagerduty/pdjs";
 
 import { removeAnchorTextFromLinks } from "./Formatters";
 import { TransportError } from "./TransportError";
-import {
-  type Severity,
-  type Action,
-  type Config,
-  createConfig,
-  convertLevelToSeverity,
-} from "../pagerduty/SharedConfig";
+import type { Severity, Action, Config } from "../pagerduty/SharedConfig";
+import { createConfig, convertLevelToSeverity } from "../pagerduty/SharedConfig";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 

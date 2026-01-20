@@ -3,13 +3,8 @@
 import build from "pino-abstract-transport";
 import type { Transform } from "stream";
 import { event } from "@pagerduty/pdjs";
-import {
-  type Severity,
-  type Action,
-  type Config,
-  createConfig,
-  convertLevelToSeverity,
-} from "../pagerduty/SharedConfig";
+import type { Severity, Action, Config } from "../pagerduty/SharedConfig";
+import { createConfig, convertLevelToSeverity } from "../pagerduty/SharedConfig";
 import { removeAnchorTextFromLinks } from "../logger/Formatters";
 
 // Re-export types for external use
