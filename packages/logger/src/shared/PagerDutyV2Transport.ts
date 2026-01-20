@@ -24,15 +24,12 @@ export function createConfig(config: unknown): Config {
 // PD v2 severity only supports critical, error, warning or info.
 // Handles both Winston string levels and Pino numeric levels.
 export function convertLevelToSeverity(level?: string | number): Severity {
-  if (typeof level === "number") {
-    // Pino uses numeric levels: trace=10, debug=20, info=30, warn=40, error=50, fatal=60
-    if (level >= 60) return "critical";
-    if (level >= 50) return "error";
-    if (level >= 40) return "warning";
-    return "info";
-  }
   if (!level) return "error";
-  const levelStr = String(level).toLowerCase();
+
+  // Convert numeric Pino levels to string names using Pino's built-in mapping
+  const levelStr = typeof level === "number" ? levels.labels[level] : String(level).toLowerCase();
+
+  // Map level names to PagerDuty severity values
   if (levelStr === "warn") return "warning";
   if (levelStr === "fatal") return "critical";
   if (levelStr === "info" || levelStr === "critical") return levelStr as Severity;
