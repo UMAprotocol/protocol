@@ -8,24 +8,16 @@ import { createConfig, sendPagerDutyEvent } from "../shared/PagerDutyV2Transport
 export default async function (opts: Config): Promise<Transform & build.OnUnknown> {
   const config = createConfig(opts);
 
-  return build(
-    async function (source) {
-      for await (const obj of source) {
-        try {
-          // Get routing key from custom services or use default integration key
-          const routing_key = config.customServices?.[obj.notificationPath] ?? config.integrationKey;
-          await sendPagerDutyEvent(routing_key, obj);
-        } catch (error) {
-          // Log transport errors to console to avoid recursion
-          if (config.logTransportErrors) {
-            console.error("PagerDuty v2 transport error:", error);
-          }
-        }
+  return build(async function (source) {
+    for await (const obj of source) {
+      try {
+        // Get routing key from custom services or use default integration key
+        const routing_key = config.customServices?.[obj.notificationPath] ?? config.integrationKey;
+        await sendPagerDutyEvent(routing_key, obj);
+      } catch (error) {
+        // Always log transport errors in Pino since there's no callback mechanism like Winston
+        console.error("PagerDuty v2 transport error:", error);
       }
-    },
-    {
-      // Parse each line as JSON
-      parse: "lines",
     }
-  );
+  });
 }

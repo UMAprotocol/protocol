@@ -2,6 +2,7 @@
 // Used by both Winston and Pino PagerDuty transports
 import * as ss from "superstruct";
 import { event } from "@pagerduty/pdjs";
+import { levels } from "pino";
 import { removeAnchorTextFromLinks } from "../logger/Formatters";
 
 export type Severity = "critical" | "error" | "warning" | "info";
@@ -46,8 +47,11 @@ export async function sendPagerDutyEvent(routing_key: string, logObj: any): Prom
     logObj.mrkdwn = removeAnchorTextFromLinks(logObj.mrkdwn);
   }
 
+  // Convert numeric Pino levels to strings for summary (Winston already uses strings)
+  const levelStr = typeof logObj.level === "number" ? levels.labels[logObj.level] : logObj.level;
+
   const payload: any = {
-    summary: `${logObj.level}: ${logObj.at} ⭢ ${logObj.message}`,
+    summary: `${levelStr}: ${logObj.at} ⭢ ${logObj.message}`,
     severity: convertLevelToSeverity(logObj.level),
     source: logObj["bot-identifier"] ? logObj["bot-identifier"] : undefined,
     custom_details: logObj,
