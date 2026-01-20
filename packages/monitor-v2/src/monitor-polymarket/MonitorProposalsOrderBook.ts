@@ -11,6 +11,7 @@ import {
   calculatePolymarketQuestionID,
   decodeMultipleQueryPriceAtIndex,
   decodeMultipleValuesQuery,
+  fetchOrderFilledEventsbounded,
   getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarketInformation,
@@ -24,6 +25,7 @@ import {
   isProposalNotified,
   ONE_SCALED,
   POLYGON_BLOCKS_PER_HOUR,
+  PolymarketTradeInformation,
   shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
   Logger,
@@ -35,8 +37,6 @@ import {
   PolymarketMarketGraphqlProcessed,
   isInitialConfirmationLogged,
   fetchLatestAIDeepLink,
-  OrderFilledEventWithTrade,
-  fetchOrderFilledEvents,
 } from "./common";
 import * as common from "./common";
 
@@ -54,7 +54,7 @@ type ProposalProcessingContext = {
   currentBlock?: number;
   lookbackBlocks?: number;
   gapBlocks?: number;
-  orderFilledEvents?: OrderFilledEventWithTrade[];
+  boundedTradesMap?: Map<string, PolymarketTradeInformation[]>;
   aiDeeplink?: string;
 };
 
@@ -137,7 +137,7 @@ export async function processProposal(
 
     const fromBlock = Math.max(proposalGapStartBlock, currentBlock - lookbackBlocks);
     const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock, {
-      cachedEvents: context?.orderFilledEvents,
+      boundedTradesMap: context?.boundedTradesMap,
       toBlock: currentBlock,
     });
 
@@ -348,9 +348,18 @@ export async function monitorTransactionsProposedOrderBook(
     });
   });
 
-  const orderFilledEventsPromise = fetchOrderFilledEvents(params, earliestFromBlock, currentBlock, activeTokenIds);
+  // Fetch OrderFilled events with bounded memory to prevent V8 crashes
+  const thresholds = getThresholds();
+  const boundedTradesMapPromise = fetchOrderFilledEventsbounded(
+    params,
+    earliestFromBlock,
+    currentBlock,
+    activeTokenIds,
+    { asks: thresholds.asks, bids: thresholds.bids },
+    params.maxTradesPerToken
+  );
 
-  // Fetch all AI deeplinks in advance and store in memory
+  // Fetch all AI deeplinks in advance
   const aiDeeplinksMap = new Map<string, string>();
   await Promise.all(
     activeBundles.map(async ({ proposal }) => {
@@ -370,17 +379,18 @@ export async function monitorTransactionsProposedOrderBook(
     })
   );
 
+  const boundedTradesMap = await boundedTradesMapPromise;
+
   await BluebirdPromise.map(
     activeBundles,
     async ({ proposal, markets }) => {
       try {
-        const sharedOrderFilledEvents = await orderFilledEventsPromise;
         const aiDeeplink = aiDeeplinksMap.get(getProposalKeyToStore(proposal));
         const alerted = await processProposal(proposal, markets, orderbookMap, params, logger, {
           currentBlock,
           lookbackBlocks,
           gapBlocks,
-          orderFilledEvents: sharedOrderFilledEvents,
+          boundedTradesMap,
           aiDeeplink,
         });
         if (alerted) await persistNotified(proposal, logger);

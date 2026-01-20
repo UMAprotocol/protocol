@@ -86,6 +86,8 @@ export interface MonitoringParams {
   marketProcessingConcurrency: number;
   paginatedEventQueryConcurrency: number;
   orderFilledEventsProcessingConcurrency: number;
+  maxTradesPerToken: number;
+  fillEventsChunkBlocks: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -407,6 +409,93 @@ const getTradeInfoFromOrderFilledEvent = async (
   };
 };
 
+/**
+ * Fetch OrderFilled events with bounded memory
+ *
+ * @returns Map of tokenId -> trades for that token
+ */
+export const fetchOrderFilledEventsbounded = async (
+  params: MonitoringParams,
+  startBlockNumber: number,
+  endBlockNumber: number,
+  tokenIds: Set<string>,
+  thresholds: { asks: number; bids: number },
+  maxTradesPerToken = 50
+): Promise<Map<string, PolymarketTradeInformation[]>> => {
+  const ctfExchange = new ethers.Contract(
+    params.ctfExchangeAddress,
+    require("./abi/ctfExchange.json"),
+    params.provider
+  );
+
+  const result = new Map<string, PolymarketTradeInformation[]>();
+  const blockTimestamps = new Map<number, number>();
+
+  const getTimestamp = async (blockNumber: number): Promise<number> => {
+    if (!blockTimestamps.has(blockNumber)) {
+      blockTimestamps.set(blockNumber, (await params.provider.getBlock(blockNumber)).timestamp);
+    }
+    return blockTimestamps.get(blockNumber)!;
+  };
+
+  const isDiscrepancyRelevant = (type: "buy" | "sell", price: number): boolean =>
+    (type === "sell" && price < thresholds.asks) || (type === "buy" && price > thresholds.bids);
+
+  const addTrade = (tokenId: string, trade: PolymarketTradeInformation): void => {
+    let trades = result.get(tokenId);
+    if (!trades) {
+      trades = [];
+      result.set(tokenId, trades);
+    }
+    if (trades.length < maxTradesPerToken) {
+      trades.push(trade);
+    }
+  };
+
+  const eventFilter = (event: Event): boolean => {
+    const makerAssetId = event?.args?.makerAssetId?.toString();
+    const takerAssetId = event?.args?.takerAssetId?.toString();
+    return tokenIds.has(makerAssetId) || tokenIds.has(takerAssetId);
+  };
+
+  // Process in chunks to avoid accumulating all events in memory
+  for (let fromBlock = startBlockNumber; fromBlock <= endBlockNumber; fromBlock += params.fillEventsChunkBlocks) {
+    const toBlock = Math.min(fromBlock + params.fillEventsChunkBlocks - 1, endBlockNumber);
+
+    const events = await paginatedEventQuery(
+      ctfExchange,
+      ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
+      { fromBlock, toBlock, maxBlockLookBack: params.maxBlockLookBack },
+      params.retryAttempts,
+      queryFilterSafe,
+      eventFilter
+    );
+
+    // Process and aggregate immediately, then discard raw events
+    for (const event of events) {
+      if (!event.args) continue;
+      const makerAssetId = event.args.makerAssetId.toString();
+      const outcomeTokenId = makerAssetId === "0" ? event.args.takerAssetId.toString() : makerAssetId;
+
+      if (!tokenIds.has(outcomeTokenId)) continue;
+
+      const timestamp = await getTimestamp(event.blockNumber);
+      const trade = await getTradeInfoFromOrderFilledEvent(params.provider, event, timestamp);
+
+      if (isDiscrepancyRelevant(trade.type, trade.price)) {
+        addTrade(outcomeTokenId, trade);
+      }
+
+      const takerType: "buy" | "sell" = trade.type === "buy" ? "sell" : "buy";
+      if (isDiscrepancyRelevant(takerType, trade.price)) {
+        addTrade(outcomeTokenId, { ...trade, type: takerType });
+      }
+    }
+  }
+
+  return result;
+};
+
 export const fetchOrderFilledEvents = async (
   params: MonitoringParams,
   startBlockNumber: number,
@@ -496,9 +585,16 @@ export const getOrderFilledEvents = async (
   opts?: {
     toBlock?: number;
     cachedEvents?: OrderFilledEventWithTrade[];
+    boundedTradesMap?: Map<string, PolymarketTradeInformation[]>;
   }
 ): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
-  // Pass tokenIds to fetchOrderFilledEvents to filter events early during batch fetching
+  // If a bounded trades map is provided, use it directly
+  if (opts?.boundedTradesMap) {
+    const [tokenOne, tokenTwo] = clobTokenIds;
+    return [opts.boundedTradesMap.get(tokenOne) ?? [], opts.boundedTradesMap.get(tokenTwo) ?? []];
+  }
+
+  // Legacy path: use cached events array or fetch fresh
   const tokenIdsSet = new Set(clobTokenIds);
   const orderFilledEvents =
     opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock, tokenIdsSet));
@@ -1022,6 +1118,11 @@ export const initMonitoringParams = async (
     ? Number(env.ORDER_FILLED_EVENTS_PROCESSING_CONCURRENCY)
     : 25; // default to 25 concurrent order filled events processing
 
+  const maxTradesPerToken = env.MAX_TRADES_PER_TOKEN ? Number(env.MAX_TRADES_PER_TOKEN) : 50;
+
+  // Chunk size for bounded event fetching (~1 minute on Polygon at 30 blocks/min)
+  const fillEventsChunkBlocks = env.FILL_EVENTS_CHUNK_BLOCKS ? Number(env.FILL_EVENTS_CHUNK_BLOCKS) : 30;
+
   const maxConcurrentRequests = env.MAX_CONCURRENT_REQUESTS ? Number(env.MAX_CONCURRENT_REQUESTS) : 5;
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
 
@@ -1113,6 +1214,8 @@ export const initMonitoringParams = async (
     marketProcessingConcurrency,
     paginatedEventQueryConcurrency,
     orderFilledEventsProcessingConcurrency,
+    maxTradesPerToken,
+    fillEventsChunkBlocks,
   };
 };
 

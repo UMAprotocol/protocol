@@ -125,6 +125,8 @@ describe("PolymarketNotifier", function () {
       marketProcessingConcurrency: 3,
       paginatedEventQueryConcurrency: 5,
       orderFilledEventsProcessingConcurrency: 25,
+      maxTradesPerToken: 50,
+      fillEventsChunkBlocks: 30,
     };
   };
 
@@ -1188,7 +1190,9 @@ describe("PolymarketNotifier", function () {
       Math.max(proposalB.proposalBlockNumber + gapBlocks, currentBlock - lookbackBlocks)
     );
 
-    fetchOrderFilledEventsStub.resetHistory();
+    // Stub fetchOrderFilledEventsbounded to return an empty map
+    const boundedTradesMap = new Map<string, PolymarketTradeInformation[]>();
+    const fetchBoundedStub = sandbox.stub(commonModule, "fetchOrderFilledEventsbounded").resolves(boundedTradesMap);
 
     sandbox
       .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
@@ -1203,20 +1207,17 @@ describe("PolymarketNotifier", function () {
     const logger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
     await monitorTransactionsProposedOrderBook(logger, params);
 
-    sinon.assert.calledOnce(fetchOrderFilledEventsStub);
-    // fetchOrderFilledEvents now takes activeTokenIds as 4th parameter
-    const expectedTokenIds = new Set(marketInfo[0].clobTokenIds);
-    sinon.assert.calledWithExactly(
-      fetchOrderFilledEventsStub,
-      params,
-      expectedEarliestFromBlock,
-      currentBlock,
-      expectedTokenIds
-    );
+    sinon.assert.calledOnce(fetchBoundedStub);
+    // Verify fetchOrderFilledEventsbounded was called with correct earliest fromBlock
+    const callArgs = fetchBoundedStub.firstCall.args;
+    assert.equal(callArgs[1], expectedEarliestFromBlock, "earliest fromBlock passed to bounded fetch");
+    assert.equal(callArgs[2], currentBlock, "currentBlock passed to bounded fetch");
+
+    // getOrderFilledEvents should be called for each proposal, using the boundedTradesMap
     assert.equal(getOrderFilledEventsSpy.callCount, 2, "fills are filtered per proposal");
-    const cachedEventsArgs = getOrderFilledEventsSpy.getCalls().map((call) => call.args[3]?.cachedEvents);
-    assert.isDefined(cachedEventsArgs[0], "cached events are forwarded into per-market filters");
-    assert.strictEqual(cachedEventsArgs[0], cachedEventsArgs[1], "shared event cache is reused across proposals");
+    const boundedMapArgs = getOrderFilledEventsSpy.getCalls().map((call) => call.args[3]?.boundedTradesMap);
+    assert.strictEqual(boundedMapArgs[0], boundedTradesMap, "bounded trades map is forwarded");
+    assert.strictEqual(boundedMapArgs[0], boundedMapArgs[1], "shared bounded map is reused across proposals");
   });
 
   it("getOrderFilledEvents uses the fillEventsLookbackSeconds", async function () {
@@ -1311,7 +1312,12 @@ describe("PolymarketNotifier", function () {
       const params = await createMonitoringParams();
       // Set the parameter to 120 seconds.
       params.checkBeforeExpirationSeconds = 120;
-      const result = await commonModule.getPolymarketProposedPriceRequestsOO(params, "v2", [fakeRequester]);
+      const result = await commonModule.getPolymarketProposedPriceRequestsOO(
+        params,
+        "v2",
+        [fakeRequester],
+        oov2.address
+      );
 
       // Expect that only the event with expirationTime fakeTime+100 (the "close-to-expiration" event) is returned.
       assert.equal(result.length, 1, "Expected one event to pass the expiration filter");
@@ -1323,6 +1329,39 @@ describe("PolymarketNotifier", function () {
 
       dateNowStub.restore();
       paginatedEventQueryStub.restore();
+    });
+  });
+
+  describe("Bounded OrderFilled Events", function () {
+    it("getOrderFilledEvents returns data from boundedTradesMap when provided", async function () {
+      const params = await createMonitoringParams();
+
+      const tokenIds: [string, string] = ["0xtoken1", "0xtoken2"];
+      const trades1: PolymarketTradeInformation[] = [{ price: 0.8, type: "sell", amount: 100, timestamp: 123 }];
+      const trades2: PolymarketTradeInformation[] = [{ price: 0.2, type: "buy", amount: 50, timestamp: 456 }];
+
+      const boundedTradesMap = new Map<string, PolymarketTradeInformation[]>();
+      boundedTradesMap.set(tokenIds[0], trades1);
+      boundedTradesMap.set(tokenIds[1], trades2);
+
+      const result = await commonModule.getOrderFilledEvents(params, tokenIds, 1000, { boundedTradesMap });
+
+      assert.deepEqual(result[0], trades1, "token1 trades returned");
+      assert.deepEqual(result[1], trades2, "token2 trades returned");
+    });
+
+    it("getOrderFilledEvents returns empty arrays for missing tokens in boundedTradesMap", async function () {
+      const params = await createMonitoringParams();
+
+      const tokenIds: [string, string] = ["0xtoken1", "0xtoken2"];
+      const boundedTradesMap = new Map<string, PolymarketTradeInformation[]>();
+      // Only token1 has data
+      boundedTradesMap.set(tokenIds[0], [{ price: 0.8, type: "sell", amount: 100, timestamp: 123 }]);
+
+      const result = await commonModule.getOrderFilledEvents(params, tokenIds, 1000, { boundedTradesMap });
+
+      assert.equal(result[0].length, 1, "token1 has trades");
+      assert.deepEqual(result[1], [], "token2 returns empty array");
     });
   });
 });
