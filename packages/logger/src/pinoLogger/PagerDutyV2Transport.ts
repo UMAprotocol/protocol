@@ -22,11 +22,8 @@ export default async function (opts: Config): Promise<Transform & build.OnUnknow
           const at = obj.at || obj.name || "unknown";
           const level = obj.level;
 
-          // Remove anchor text from markdown if present
-          let mrkdwn = obj.mrkdwn;
-          if (typeof mrkdwn === "string") {
-            mrkdwn = removeAnchorTextFromLinks(mrkdwn);
-          }
+          // PagerDuty does not support anchor text in links, so we remove it from markdown if it exists.
+          if (typeof obj.mrkdwn === "string") obj.mrkdwn = removeAnchorTextFromLinks(obj.mrkdwn);
 
           // Send event to PagerDuty
           await event({
