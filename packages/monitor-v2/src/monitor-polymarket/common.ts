@@ -768,7 +768,7 @@ export interface UMAAIRetry {
   data: {
     input: {
       timing?: {
-        expiration_timestamp?: number;
+        expiration_time?: string;
       };
     };
   };
@@ -813,9 +813,12 @@ export async function fetchLatestAIDeepLink(
     );
     const duration = Date.now() - startTime;
 
-    const result = response.data?.elements?.find(
-      (element) => element.data.input.timing?.expiration_timestamp === proposal.proposalExpirationTimestamp.toNumber()
-    );
+    const result = response.data?.elements?.find((element) => {
+      const expirationTime = element.data.input.timing?.expiration_time;
+      if (!expirationTime) return false;
+      const expirationTimestamp = Math.floor(new Date(expirationTime).getTime() / 1000);
+      return expirationTimestamp === proposal.proposalExpirationTimestamp.toNumber();
+    });
 
     if (!result) {
       logger.debug({
