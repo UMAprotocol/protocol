@@ -390,7 +390,13 @@ export const getPolymarketMarketInformation = async (
   });
 };
 
-const getTradeInfoFromOrderFilledEvent = async (
+/**
+ * Extracts trade info from an OrderFilled event, from the MAKER's perspective.
+ * - If maker provided USDC (makerAssetId=0), they were BUYING tokens
+ * - If maker provided tokens, they were SELLING tokens
+ * The caller should derive the taker's perspective by flipping the type.
+ */
+const getMakerTradeInfoFromOrderFilledEvent = async (
   provider: Provider,
   event: any,
   blockTimestamp?: number
@@ -412,13 +418,16 @@ const getTradeInfoFromOrderFilledEvent = async (
 /**
  * Fetch OrderFilled events with bounded memory
  *
+ * @param winnerTokenIds - Token IDs where we only care about sells below asks threshold
+ * @param loserTokenIds - Token IDs where we only care about buys above bids threshold
  * @returns Map of tokenId -> trades for that token
  */
 export const fetchOrderFilledEventsBounded = async (
   params: MonitoringParams,
   startBlockNumber: number,
   endBlockNumber: number,
-  tokenIds: Set<string>,
+  winnerTokenIds: Set<string>,
+  loserTokenIds: Set<string>,
   thresholds: { asks: number; bids: number },
   maxTradesPerToken = 50
 ): Promise<Map<string, PolymarketTradeInformation[]>> => {
@@ -431,6 +440,9 @@ export const fetchOrderFilledEventsBounded = async (
   const result = new Map<string, PolymarketTradeInformation[]>();
   const blockTimestamps = new Map<number, number>();
 
+  // Combine all token IDs for the event filter
+  const allTokenIds = new Set([...winnerTokenIds, ...loserTokenIds]);
+
   const getTimestamp = async (blockNumber: number): Promise<number> => {
     if (!blockTimestamps.has(blockNumber)) {
       blockTimestamps.set(blockNumber, (await params.provider.getBlock(blockNumber)).timestamp);
@@ -438,8 +450,16 @@ export const fetchOrderFilledEventsBounded = async (
     return blockTimestamps.get(blockNumber)!;
   };
 
-  const isDiscrepancyRelevant = (type: "buy" | "sell", price: number): boolean =>
-    (type === "sell" && price < thresholds.asks) || (type === "buy" && price > thresholds.bids);
+  // Filter based on token role: winners care about sells, losers care about buys
+  const isDiscrepancyRelevant = (tokenId: string, type: "buy" | "sell", price: number): boolean => {
+    if (winnerTokenIds.has(tokenId)) {
+      return type === "sell" && price < thresholds.asks;
+    }
+    if (loserTokenIds.has(tokenId)) {
+      return type === "buy" && price > thresholds.bids;
+    }
+    return false;
+  };
 
   const addTrade = (tokenId: string, trade: PolymarketTradeInformation): void => {
     let trades = result.get(tokenId);
@@ -455,7 +475,7 @@ export const fetchOrderFilledEventsBounded = async (
   const eventFilter = (event: Event): boolean => {
     const makerAssetId = event?.args?.makerAssetId?.toString();
     const takerAssetId = event?.args?.takerAssetId?.toString();
-    return tokenIds.has(makerAssetId) || tokenIds.has(takerAssetId);
+    return allTokenIds.has(makerAssetId) || allTokenIds.has(takerAssetId);
   };
 
   // Process in chunks to avoid accumulating all events in memory
@@ -477,17 +497,22 @@ export const fetchOrderFilledEventsBounded = async (
       const makerAssetId = event.args.makerAssetId.toString();
       const outcomeTokenId = makerAssetId === "0" ? event.args.takerAssetId.toString() : makerAssetId;
 
-      if (!tokenIds.has(outcomeTokenId)) continue;
+      if (!allTokenIds.has(outcomeTokenId)) continue;
 
       const timestamp = await getTimestamp(event.blockNumber);
-      const trade = await getTradeInfoFromOrderFilledEvent(params.provider, event, timestamp);
+      const trade = await getMakerTradeInfoFromOrderFilledEvent(params.provider, event, timestamp);
 
-      if (isDiscrepancyRelevant(trade.type, trade.price)) {
+      // Check both sides of the trade: maker's perspective and taker's perspective
+      // trade.type is from maker's POV; takerType is the opposite
+      // With context-aware filtering, only ONE side will ever match per trade:
+      // - Winner token: captures sells (either maker or taker selling)
+      // - Loser token: captures buys (either maker or taker buying)
+      if (isDiscrepancyRelevant(outcomeTokenId, trade.type, trade.price)) {
         addTrade(outcomeTokenId, trade);
       }
 
       const takerType: "buy" | "sell" = trade.type === "buy" ? "sell" : "buy";
-      if (isDiscrepancyRelevant(takerType, trade.price)) {
+      if (isDiscrepancyRelevant(outcomeTokenId, takerType, trade.price)) {
         addTrade(outcomeTokenId, { ...trade, type: takerType });
       }
     }
@@ -552,7 +577,7 @@ export const fetchOrderFilledEvents = async (
         blockNumber: event.blockNumber,
         makerAssetId: event?.args?.makerAssetId.toString(),
         takerAssetId: event?.args?.takerAssetId.toString(),
-        trade: await getTradeInfoFromOrderFilledEvent(params.provider, event, blockTimestamp),
+        trade: await getMakerTradeInfoFromOrderFilledEvent(params.provider, event, blockTimestamp),
       };
     },
     { concurrency: params.orderFilledEventsProcessingConcurrency }

@@ -11,7 +11,7 @@ import {
   calculatePolymarketQuestionID,
   decodeMultipleQueryPriceAtIndex,
   decodeMultipleValuesQuery,
-  fetchOrderFilledEventsbounded,
+  fetchOrderFilledEventsBounded,
   getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarketInformation,
@@ -339,22 +339,39 @@ export async function monitorTransactionsProposedOrderBook(
   );
   const earliestFromBlock = Math.min(...fromBlocks);
 
-  // Flatten all clobTokenIds from all markets in all active bundles into a Set
-  const activeTokenIds = new Set<string>();
-  activeBundles.forEach((bundle) => {
-    bundle.markets.forEach((market) => {
-      activeTokenIds.add(market.clobTokenIds[0]);
-      activeTokenIds.add(market.clobTokenIds[1]);
-    });
-  });
+  // Pre-compute winner/loser for each market to enable targeted event filtering
+  const winnerTokenIds = new Set<string>();
+  const loserTokenIds = new Set<string>();
+
+  await Promise.all(
+    activeBundles.map(async ({ proposal, markets }) => {
+      const isSportsRequest = proposal.requester === params.ctfSportsOracleAddress;
+
+      await Promise.all(
+        markets.map(async (market) => {
+          const outcome = isSportsRequest
+            ? outcomeIndexes(true, proposal, await getSportsMarketData(params, market.questionID))
+            : outcomeIndexes(false, proposal);
+
+          // Skip draw/unresolvable outcomes
+          if (outcome.winner === -1) return;
+
+          winnerTokenIds.add(market.clobTokenIds[outcome.winner]);
+          loserTokenIds.add(market.clobTokenIds[outcome.loser]);
+        })
+      );
+    })
+  );
 
   // Fetch OrderFilled events with bounded memory to prevent V8 crashes
+  // Only collect sells for winner tokens and buys for loser tokens
   const thresholds = getThresholds();
-  const boundedTradesMapPromise = fetchOrderFilledEventsbounded(
+  const boundedTradesMapPromise = fetchOrderFilledEventsBounded(
     params,
     earliestFromBlock,
     currentBlock,
-    activeTokenIds,
+    winnerTokenIds,
+    loserTokenIds,
     { asks: thresholds.asks, bids: thresholds.bids },
     params.maxTradesPerToken
   );

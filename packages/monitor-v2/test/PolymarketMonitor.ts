@@ -1190,9 +1190,9 @@ describe("PolymarketNotifier", function () {
       Math.max(proposalB.proposalBlockNumber + gapBlocks, currentBlock - lookbackBlocks)
     );
 
-    // Stub fetchOrderFilledEventsbounded to return an empty map
+    // Stub fetchOrderFilledEventsBounded to return an empty map
     const boundedTradesMap = new Map<string, PolymarketTradeInformation[]>();
-    const fetchBoundedStub = sandbox.stub(commonModule, "fetchOrderFilledEventsbounded").resolves(boundedTradesMap);
+    const fetchBoundedStub = sandbox.stub(commonModule, "fetchOrderFilledEventsBounded").resolves(boundedTradesMap);
 
     sandbox
       .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
@@ -1208,7 +1208,7 @@ describe("PolymarketNotifier", function () {
     await monitorTransactionsProposedOrderBook(logger, params);
 
     sinon.assert.calledOnce(fetchBoundedStub);
-    // Verify fetchOrderFilledEventsbounded was called with correct earliest fromBlock
+    // Verify fetchOrderFilledEventsBounded was called with correct earliest fromBlock
     const callArgs = fetchBoundedStub.firstCall.args;
     assert.equal(callArgs[1], expectedEarliestFromBlock, "earliest fromBlock passed to bounded fetch");
     assert.equal(callArgs[2], currentBlock, "currentBlock passed to bounded fetch");
