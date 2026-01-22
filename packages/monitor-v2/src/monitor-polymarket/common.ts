@@ -476,7 +476,7 @@ export const fetchOrderFilledEventsBounded = async (
     const events = await paginatedEventQuery(
       ctfExchange,
       ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
-      { fromBlock, toBlock, maxBlockLookBack: params.maxBlockLookBack },
+      { fromBlock, toBlock, maxBlockLookBack: 0 }, // Disable internal pagination - we chunk externally
       params.retryAttempts,
       queryFilterSafe,
       eventFilter
