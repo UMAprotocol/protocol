@@ -414,7 +414,7 @@ const getTradeInfoFromOrderFilledEvent = async (
  *
  * @returns Map of tokenId -> trades for that token
  */
-export const fetchOrderFilledEventsbounded = async (
+export const fetchOrderFilledEventsBounded = async (
   params: MonitoringParams,
   startBlockNumber: number,
   endBlockNumber: number,
