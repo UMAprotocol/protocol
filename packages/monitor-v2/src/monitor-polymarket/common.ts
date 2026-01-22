@@ -3,7 +3,6 @@ import { createHttpClient } from "@uma/toolkit";
 import { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 export const paginatedEventQuery = umaPaginatedEventQuery;
 
-import { Promise as BluebirdPromise } from "bluebird";
 import type { Provider } from "@ethersproject/abstract-provider";
 
 import { BigNumber, Contract, Event, EventFilter, ethers } from "ethers";
@@ -85,7 +84,6 @@ export interface MonitoringParams {
   proposalProcessingConcurrency: number;
   marketProcessingConcurrency: number;
   paginatedEventQueryConcurrency: number;
-  orderFilledEventsProcessingConcurrency: number;
   maxTradesPerToken: number;
   fillEventsChunkBlocks: number;
 }
@@ -112,13 +110,6 @@ export interface PolymarketTradeInformation {
   type: "buy" | "sell";
   amount: number;
   timestamp: number;
-}
-
-export interface OrderFilledEventWithTrade {
-  blockNumber: number;
-  makerAssetId: string;
-  takerAssetId: string;
-  trade: PolymarketTradeInformation;
 }
 
 export interface PolymarketOrderBook {
@@ -521,110 +512,12 @@ export const fetchOrderFilledEventsBounded = async (
   return result;
 };
 
-export const fetchOrderFilledEvents = async (
-  params: MonitoringParams,
-  startBlockNumber: number,
-  endBlockNumber?: number,
-  tokenIds?: Set<string> | string[]
-): Promise<OrderFilledEventWithTrade[]> => {
-  const ctfExchange = new ethers.Contract(
-    params.ctfExchangeAddress,
-    require("./abi/ctfExchange.json"),
-    params.provider
-  );
-
-  const toBlock = endBlockNumber ?? (await params.provider.getBlockNumber());
-  const searchConfig = {
-    fromBlock: startBlockNumber,
-    toBlock,
-    maxBlockLookBack: params.maxBlockLookBack,
-  };
-
-  // Create a Set for efficient tokenId lookups if provided
-  const tokenIdsSet = tokenIds ? (tokenIds instanceof Set ? tokenIds : new Set(tokenIds)) : undefined;
-
-  // Filter events early during batch fetching to reduce memory usage
-  const eventFilter = tokenIdsSet
-    ? (event: Event) => {
-        const makerAssetId = event?.args?.makerAssetId?.toString();
-        const takerAssetId = event?.args?.takerAssetId?.toString();
-        return tokenIdsSet.has(makerAssetId) || tokenIdsSet.has(takerAssetId);
-      }
-    : undefined;
-
-  const events: Event[] = await paginatedEventQuery(
-    ctfExchange,
-    ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
-    searchConfig,
-    params.retryAttempts,
-    queryFilterSafe,
-    eventFilter
-  );
-
-  const blockTimestamps = new Map<number, number>();
-  const getTimestamp = async (blockNumber: number): Promise<number> => {
-    if (!blockTimestamps.has(blockNumber)) {
-      blockTimestamps.set(blockNumber, (await params.provider.getBlock(blockNumber)).timestamp);
-    }
-    return blockTimestamps.get(blockNumber)!;
-  };
-
-  return BluebirdPromise.map(
-    events,
-    async (event) => {
-      const blockTimestamp = await getTimestamp(event.blockNumber);
-      return {
-        blockNumber: event.blockNumber,
-        makerAssetId: event?.args?.makerAssetId.toString(),
-        takerAssetId: event?.args?.takerAssetId.toString(),
-        trade: await getMakerTradeInfoFromOrderFilledEvent(params.provider, event, blockTimestamp),
-      };
-    },
-    { concurrency: params.orderFilledEventsProcessingConcurrency }
-  );
-};
-
-export const filterOrderFilledEvents = (
-  orderFilledEvents: OrderFilledEventWithTrade[],
+export const getOrderFilledEvents = (
   clobTokenIds: [string, string],
-  startBlockNumber: number
+  boundedTradesMap: Map<string, PolymarketTradeInformation[]>
 ): [PolymarketTradeInformation[], PolymarketTradeInformation[]] => {
   const [tokenOne, tokenTwo] = clobTokenIds;
-  const eventsWithinWindow = orderFilledEvents.filter((event) => event.blockNumber >= startBlockNumber);
-
-  const outcomeTokenOne = eventsWithinWindow
-    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenOne))
-    .map((event) => event.trade);
-
-  const outcomeTokenTwo = eventsWithinWindow
-    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenTwo))
-    .map((event) => event.trade);
-
-  return [outcomeTokenOne, outcomeTokenTwo];
-};
-
-export const getOrderFilledEvents = async (
-  params: MonitoringParams,
-  clobTokenIds: [string, string],
-  startBlockNumber: number,
-  opts?: {
-    toBlock?: number;
-    cachedEvents?: OrderFilledEventWithTrade[];
-    boundedTradesMap?: Map<string, PolymarketTradeInformation[]>;
-  }
-): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
-  // If a bounded trades map is provided, use it directly
-  if (opts?.boundedTradesMap) {
-    const [tokenOne, tokenTwo] = clobTokenIds;
-    return [opts.boundedTradesMap.get(tokenOne) ?? [], opts.boundedTradesMap.get(tokenTwo) ?? []];
-  }
-
-  // Legacy path: use cached events array or fetch fresh
-  const tokenIdsSet = new Set(clobTokenIds);
-  const orderFilledEvents =
-    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock, tokenIdsSet));
-
-  return filterOrderFilledEvents(orderFilledEvents, clobTokenIds, startBlockNumber);
+  return [boundedTradesMap.get(tokenOne) ?? [], boundedTradesMap.get(tokenTwo) ?? []];
 };
 
 export const calculatePolymarketQuestionID = (ancillaryData: string): string => {
@@ -1139,10 +1032,6 @@ export const initMonitoringParams = async (
     ? Number(env.PAGINATED_EVENT_QUERY_CONCURRENCY)
     : 25; // default to 25 concurrent paginated event queries
 
-  const orderFilledEventsProcessingConcurrency = env.ORDER_FILLED_EVENTS_PROCESSING_CONCURRENCY
-    ? Number(env.ORDER_FILLED_EVENTS_PROCESSING_CONCURRENCY)
-    : 25; // default to 25 concurrent order filled events processing
-
   const maxTradesPerToken = env.MAX_TRADES_PER_TOKEN ? Number(env.MAX_TRADES_PER_TOKEN) : 50;
 
   // Chunk size for bounded event fetching (~1 minute on Polygon at 30 blocks/min)
@@ -1238,7 +1127,6 @@ export const initMonitoringParams = async (
     proposalProcessingConcurrency,
     marketProcessingConcurrency,
     paginatedEventQueryConcurrency,
-    orderFilledEventsProcessingConcurrency,
     maxTradesPerToken,
     fillEventsChunkBlocks,
   };

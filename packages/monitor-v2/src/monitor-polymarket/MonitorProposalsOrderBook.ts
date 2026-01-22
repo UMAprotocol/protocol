@@ -51,10 +51,7 @@ function getThresholds() {
 
 const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
 type ProposalProcessingContext = {
-  currentBlock?: number;
-  lookbackBlocks?: number;
-  gapBlocks?: number;
-  boundedTradesMap?: Map<string, PolymarketTradeInformation[]>;
+  boundedTradesMap: Map<string, PolymarketTradeInformation[]>;
   aiDeeplink?: string;
 };
 
@@ -107,18 +104,11 @@ export async function processProposal(
   orderbooks: Record<string, MarketOrderbook>,
   params: MonitoringParams,
   logger: typeof Logger,
-  context?: ProposalProcessingContext
+  context: ProposalProcessingContext
 ): Promise<boolean /* notified */> {
   const thresholds = getThresholds();
   const isSportsRequest = proposal.requester === params.ctfSportsOracleAddress;
-
-  const currentBlock = context?.currentBlock ?? (await params.provider.getBlockNumber());
-  const lookbackBlocks = context?.lookbackBlocks ?? Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
-  const gapBlocks = context?.gapBlocks ?? Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
-  const proposalGapStartBlock = Number(proposal.proposalBlockNumber) + gapBlocks;
-
-  // Use AI deeplink from context (fetched in advance)
-  const aiDeeplink = context?.aiDeeplink;
+  const aiDeeplink = context.aiDeeplink;
 
   const checkMarket = async (market: PolymarketMarketGraphqlProcessed): Promise<boolean> => {
     const outcome = isSportsRequest
@@ -135,11 +125,7 @@ export async function processProposal(
     const sellingWinnerSide = books[outcome.winner].asks.find((a) => a.price < thresholds.asks);
     const buyingLoserSide = books[outcome.loser].bids.find((b) => b.price > thresholds.bids);
 
-    const fromBlock = Math.max(proposalGapStartBlock, currentBlock - lookbackBlocks);
-    const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock, {
-      boundedTradesMap: context?.boundedTradesMap,
-      toBlock: currentBlock,
-    });
+    const fills = getOrderFilledEvents(market.clobTokenIds, context.boundedTradesMap);
 
     const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
     const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
@@ -404,9 +390,6 @@ export async function monitorTransactionsProposedOrderBook(
       try {
         const aiDeeplink = aiDeeplinksMap.get(getProposalKeyToStore(proposal));
         const alerted = await processProposal(proposal, markets, orderbookMap, params, logger, {
-          currentBlock,
-          lookbackBlocks,
-          gapBlocks,
           boundedTradesMap,
           aiDeeplink,
         });
