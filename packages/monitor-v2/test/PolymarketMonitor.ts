@@ -757,11 +757,18 @@ describe("PolymarketNotifier", function () {
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     const tx = await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+    const receipt = await tx.wait();
+    // Find the ProposePrice event to get the correct logIndex
+    const proposePriceEvent = receipt.events?.find((e) => e.event === "ProposePrice");
+    const proposalLogIndex = proposePriceEvent?.logIndex ?? 0;
 
     getNotifiedProposalsStub.restore();
     const getNotifiedProposalsMock = sandbox.stub();
     getNotifiedProposalsMock.resolves({
-      [getProposalKeyToStore({ proposalHash: tx.hash })]: { proposalHash: tx.hash },
+      [getProposalKeyToStore({ proposalHash: tx.hash, proposalLogIndex })]: {
+        proposalHash: tx.hash,
+        proposalLogIndex,
+      },
     });
     sandbox.stub(commonModule, "getNotifiedProposals").callsFake(getNotifiedProposalsMock);
 
@@ -771,6 +778,36 @@ describe("PolymarketNotifier", function () {
 
     // Already notified proposals should not trigger any logs.
     assert.equal(spy.callCount, 0);
+  });
+
+  it("Should differentiate proposals by logIndex when multiple proposals exist in the same transaction", async function () {
+    // This test verifies that proposals with the same transaction hash but different logIndex
+    // are keyed separately, so if one proposal from a tx is notified, others are not skipped.
+    const txHash = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
+    const proposal1 = { proposalHash: txHash, proposalLogIndex: 0 };
+    const proposal2 = { proposalHash: txHash, proposalLogIndex: 1 };
+    const proposal3 = { proposalHash: txHash, proposalLogIndex: 2 };
+
+    // Each proposal should have a unique key
+    const key1 = getProposalKeyToStore(proposal1);
+    const key2 = getProposalKeyToStore(proposal2);
+    const key3 = getProposalKeyToStore(proposal3);
+
+    assert.notEqual(key1, key2, "Proposals with different logIndex should have different keys");
+    assert.notEqual(key2, key3, "Proposals with different logIndex should have different keys");
+    assert.notEqual(key1, key3, "Proposals with different logIndex should have different keys");
+
+    // Keys should include both txHash and logIndex
+    assert.equal(key1, `${txHash}:0`);
+    assert.equal(key2, `${txHash}:1`);
+    assert.equal(key3, `${txHash}:2`);
+
+    // Verify that notifiedKeys Set correctly filters only matching proposals
+    const notifiedKeys = new Set([key1]); // Only proposal1 was notified
+    assert.isTrue(notifiedKeys.has(getProposalKeyToStore(proposal1)), "proposal1 should be in notified set");
+    assert.isFalse(notifiedKeys.has(getProposalKeyToStore(proposal2)), "proposal2 should NOT be in notified set");
+    assert.isFalse(notifiedKeys.has(getProposalKeyToStore(proposal3)), "proposal3 should NOT be in notified set");
   });
 
   it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
