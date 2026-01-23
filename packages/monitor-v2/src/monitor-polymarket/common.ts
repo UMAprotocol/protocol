@@ -163,6 +163,7 @@ export interface OptimisticPriceRequest {
 
 interface StoredNotifiedProposal {
   proposalHash: string;
+  proposalLogIndex: number;
 }
 
 export enum MarketType {
@@ -899,7 +900,7 @@ export async function fetchLatestAIDeepLink(
 }
 
 export const getProposalKeyToStore = (market: StoredNotifiedProposal | OptimisticPriceRequest): string => {
-  return market.proposalHash;
+  return `${market.proposalHash}:${market.proposalLogIndex}`;
 };
 
 export const isProposalNotified = async (proposal: OptimisticPriceRequest): Promise<boolean> => {
@@ -942,6 +943,7 @@ export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceR
       key: key,
       data: {
         proposalHash: contract.proposalHash,
+        proposalLogIndex: contract.proposalLogIndex,
       },
     });
   });
