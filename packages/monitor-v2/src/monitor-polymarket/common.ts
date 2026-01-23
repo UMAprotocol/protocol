@@ -37,6 +37,25 @@ export const ONE_SCALED = ethers.utils.parseUnits("1", 18);
 
 export const POLYGON_BLOCKS_PER_HOUR = 1800;
 
+/**
+ * Determines if a trade represents a discrepancy based on token role and thresholds.
+ * - Winner tokens: discrepancy if selling below asks threshold (selling cheap when should win)
+ * - Loser tokens: discrepancy if buying above bids threshold (buying expensive when should lose)
+ */
+export const isDiscrepantTrade = (
+  trade: { type: "buy" | "sell"; price: number },
+  tokenRole: "winner" | "loser",
+  thresholds: { asks: number; bids: number }
+): boolean => {
+  if (tokenRole === "winner") {
+    return trade.type === "sell" && trade.price < thresholds.asks;
+  }
+  if (tokenRole === "loser") {
+    return trade.type === "buy" && trade.price > thresholds.bids;
+  }
+  return false;
+};
+
 // Get Polymarket initializer whitelist from env
 const getPolymarketInitializerWhitelist = (): string[] => {
   const envWhitelist = process.env.POLYMARKET_INITIALIZER_WHITELIST;
@@ -441,15 +460,11 @@ export const fetchOrderFilledEventsBounded = async (
     return blockTimestamps.get(blockNumber)!;
   };
 
-  // Filter based on token role: winners care about sells, losers care about buys
+  // Helper to determine token role and check if trade is a discrepancy
   const isDiscrepancyRelevant = (tokenId: string, type: "buy" | "sell", price: number): boolean => {
-    if (winnerTokenIds.has(tokenId)) {
-      return type === "sell" && price < thresholds.asks;
-    }
-    if (loserTokenIds.has(tokenId)) {
-      return type === "buy" && price > thresholds.bids;
-    }
-    return false;
+    const tokenRole = winnerTokenIds.has(tokenId) ? "winner" : loserTokenIds.has(tokenId) ? "loser" : null;
+    if (!tokenRole) return false;
+    return isDiscrepantTrade({ type, price }, tokenRole, thresholds);
   };
 
   const addTrade = (tokenId: string, trade: PolymarketTradeInformation): void => {

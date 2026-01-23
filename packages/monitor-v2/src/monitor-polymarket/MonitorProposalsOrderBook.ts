@@ -21,6 +21,7 @@ import {
   getProposalKeyToStore,
   getSportsMarketData,
   getSportsPayouts,
+  isDiscrepantTrade,
   isUnresolvable,
   isProposalNotified,
   ONE_SCALED,
@@ -127,8 +128,8 @@ export async function processProposal(
 
     const fills = getOrderFilledEvents(market.clobTokenIds, context.boundedTradesMap);
 
-    const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
-    const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
+    const soldWinner = fills[outcome.winner].filter((f) => isDiscrepantTrade(f, "winner", thresholds));
+    const boughtLoser = fills[outcome.loser].filter((f) => isDiscrepantTrade(f, "loser", thresholds));
 
     let alerted = false;
 
