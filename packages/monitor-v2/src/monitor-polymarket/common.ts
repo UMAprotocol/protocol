@@ -3,7 +3,6 @@ import { createHttpClient } from "@uma/toolkit";
 import { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 export const paginatedEventQuery = umaPaginatedEventQuery;
 
-import { Promise as BluebirdPromise } from "bluebird";
 import type { Provider } from "@ethersproject/abstract-provider";
 
 import { BigNumber, Contract, Event, EventFilter, ethers } from "ethers";
@@ -37,6 +36,25 @@ export { Logger };
 export const ONE_SCALED = ethers.utils.parseUnits("1", 18);
 
 export const POLYGON_BLOCKS_PER_HOUR = 1800;
+
+/**
+ * Determines if a trade represents a discrepancy based on token role and thresholds.
+ * - Winner tokens: discrepancy if selling below asks threshold (selling cheap when should win)
+ * - Loser tokens: discrepancy if buying above bids threshold (buying expensive when should lose)
+ */
+export const isDiscrepantTrade = (
+  trade: { type: "buy" | "sell"; price: number },
+  tokenRole: "winner" | "loser",
+  thresholds: { asks: number; bids: number }
+): boolean => {
+  if (tokenRole === "winner") {
+    return trade.type === "sell" && trade.price < thresholds.asks;
+  }
+  if (tokenRole === "loser") {
+    return trade.type === "buy" && trade.price > thresholds.bids;
+  }
+  return false;
+};
 
 // Get Polymarket initializer whitelist from env
 const getPolymarketInitializerWhitelist = (): string[] => {
@@ -85,7 +103,8 @@ export interface MonitoringParams {
   proposalProcessingConcurrency: number;
   marketProcessingConcurrency: number;
   paginatedEventQueryConcurrency: number;
-  orderFilledEventsProcessingConcurrency: number;
+  maxTradesPerToken: number;
+  fillEventsChunkBlocks: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -110,13 +129,6 @@ export interface PolymarketTradeInformation {
   type: "buy" | "sell";
   amount: number;
   timestamp: number;
-}
-
-export interface OrderFilledEventWithTrade {
-  blockNumber: number;
-  makerAssetId: string;
-  takerAssetId: string;
-  trade: PolymarketTradeInformation;
 }
 
 export interface PolymarketOrderBook {
@@ -388,7 +400,13 @@ export const getPolymarketMarketInformation = async (
   });
 };
 
-const getTradeInfoFromOrderFilledEvent = async (
+/**
+ * Extracts trade info from an OrderFilled event, from the MAKER's perspective.
+ * - If maker provided USDC (makerAssetId=0), they were BUYING tokens
+ * - If maker provided tokens, they were SELLING tokens
+ * The caller should derive the taker's perspective by flipping the type.
+ */
+const getMakerTradeInfoFromOrderFilledEvent = async (
   provider: Provider,
   event: any,
   blockTimestamp?: number
@@ -407,47 +425,34 @@ const getTradeInfoFromOrderFilledEvent = async (
   };
 };
 
-export const fetchOrderFilledEvents = async (
+/**
+ * Fetch OrderFilled events with bounded memory
+ *
+ * @param winnerTokenIds - Token IDs where we only care about sells below asks threshold
+ * @param loserTokenIds - Token IDs where we only care about buys above bids threshold
+ * @returns Map of tokenId -> trades for that token
+ */
+export const fetchOrderFilledEventsBounded = async (
   params: MonitoringParams,
   startBlockNumber: number,
-  endBlockNumber?: number,
-  tokenIds?: Set<string> | string[]
-): Promise<OrderFilledEventWithTrade[]> => {
+  endBlockNumber: number,
+  winnerTokenIds: Set<string>,
+  loserTokenIds: Set<string>,
+  thresholds: { asks: number; bids: number },
+  maxTradesPerToken = 50
+): Promise<Map<string, PolymarketTradeInformation[]>> => {
   const ctfExchange = new ethers.Contract(
     params.ctfExchangeAddress,
     require("./abi/ctfExchange.json"),
     params.provider
   );
 
-  const toBlock = endBlockNumber ?? (await params.provider.getBlockNumber());
-  const searchConfig = {
-    fromBlock: startBlockNumber,
-    toBlock,
-    maxBlockLookBack: params.maxBlockLookBack,
-  };
-
-  // Create a Set for efficient tokenId lookups if provided
-  const tokenIdsSet = tokenIds ? (tokenIds instanceof Set ? tokenIds : new Set(tokenIds)) : undefined;
-
-  // Filter events early during batch fetching to reduce memory usage
-  const eventFilter = tokenIdsSet
-    ? (event: Event) => {
-        const makerAssetId = event?.args?.makerAssetId?.toString();
-        const takerAssetId = event?.args?.takerAssetId?.toString();
-        return tokenIdsSet.has(makerAssetId) || tokenIdsSet.has(takerAssetId);
-      }
-    : undefined;
-
-  const events: Event[] = await paginatedEventQuery(
-    ctfExchange,
-    ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
-    searchConfig,
-    params.retryAttempts,
-    queryFilterSafe,
-    eventFilter
-  );
-
+  const result = new Map<string, PolymarketTradeInformation[]>();
   const blockTimestamps = new Map<number, number>();
+
+  // Combine all token IDs for the event filter
+  const allTokenIds = new Set([...winnerTokenIds, ...loserTokenIds]);
+
   const getTimestamp = async (blockNumber: number): Promise<number> => {
     if (!blockTimestamps.has(blockNumber)) {
       blockTimestamps.set(blockNumber, (await params.provider.getBlock(blockNumber)).timestamp);
@@ -455,55 +460,79 @@ export const fetchOrderFilledEvents = async (
     return blockTimestamps.get(blockNumber)!;
   };
 
-  return BluebirdPromise.map(
-    events,
-    async (event) => {
-      const blockTimestamp = await getTimestamp(event.blockNumber);
-      return {
-        blockNumber: event.blockNumber,
-        makerAssetId: event?.args?.makerAssetId.toString(),
-        takerAssetId: event?.args?.takerAssetId.toString(),
-        trade: await getTradeInfoFromOrderFilledEvent(params.provider, event, blockTimestamp),
-      };
-    },
-    { concurrency: params.orderFilledEventsProcessingConcurrency }
-  );
+  // Helper to determine token role and check if trade is a discrepancy
+  const isDiscrepancyRelevant = (tokenId: string, type: "buy" | "sell", price: number): boolean => {
+    const tokenRole = winnerTokenIds.has(tokenId) ? "winner" : loserTokenIds.has(tokenId) ? "loser" : null;
+    if (!tokenRole) return false;
+    return isDiscrepantTrade({ type, price }, tokenRole, thresholds);
+  };
+
+  const addTrade = (tokenId: string, trade: PolymarketTradeInformation): void => {
+    let trades = result.get(tokenId);
+    if (!trades) {
+      trades = [];
+      result.set(tokenId, trades);
+    }
+    if (trades.length < maxTradesPerToken) {
+      trades.push(trade);
+    }
+  };
+
+  const eventFilter = (event: Event): boolean => {
+    const makerAssetId = event?.args?.makerAssetId?.toString();
+    const takerAssetId = event?.args?.takerAssetId?.toString();
+    return allTokenIds.has(makerAssetId) || allTokenIds.has(takerAssetId);
+  };
+
+  // Process in chunks to avoid accumulating all events in memory
+  for (let fromBlock = startBlockNumber; fromBlock <= endBlockNumber; fromBlock += params.fillEventsChunkBlocks) {
+    const toBlock = Math.min(fromBlock + params.fillEventsChunkBlocks - 1, endBlockNumber);
+
+    const events = await paginatedEventQuery(
+      ctfExchange,
+      ctfExchange.filters.OrderFilled(null, null, null, null, null, null, null, null),
+      { fromBlock, toBlock, maxBlockLookBack: 0 }, // Disable internal pagination - we chunk externally
+      params.retryAttempts,
+      queryFilterSafe,
+      eventFilter
+    );
+
+    // Process and aggregate immediately, then discard raw events
+    for (const event of events) {
+      if (!event.args) continue;
+      const makerAssetId = event.args.makerAssetId.toString();
+      const outcomeTokenId = makerAssetId === "0" ? event.args.takerAssetId.toString() : makerAssetId;
+
+      if (!allTokenIds.has(outcomeTokenId)) continue;
+
+      const timestamp = await getTimestamp(event.blockNumber);
+      const trade = await getMakerTradeInfoFromOrderFilledEvent(params.provider, event, timestamp);
+
+      // Check both sides of the trade: maker's perspective and taker's perspective
+      // trade.type is from maker's POV; takerType is the opposite
+      // With context-aware filtering, only ONE side will ever match per trade:
+      // - Winner token: captures sells (either maker or taker selling)
+      // - Loser token: captures buys (either maker or taker buying)
+      if (isDiscrepancyRelevant(outcomeTokenId, trade.type, trade.price)) {
+        addTrade(outcomeTokenId, trade);
+      }
+
+      const takerType: "buy" | "sell" = trade.type === "buy" ? "sell" : "buy";
+      if (isDiscrepancyRelevant(outcomeTokenId, takerType, trade.price)) {
+        addTrade(outcomeTokenId, { ...trade, type: takerType });
+      }
+    }
+  }
+
+  return result;
 };
 
-export const filterOrderFilledEvents = (
-  orderFilledEvents: OrderFilledEventWithTrade[],
+export const getOrderFilledEvents = (
   clobTokenIds: [string, string],
-  startBlockNumber: number
+  boundedTradesMap: Map<string, PolymarketTradeInformation[]>
 ): [PolymarketTradeInformation[], PolymarketTradeInformation[]] => {
   const [tokenOne, tokenTwo] = clobTokenIds;
-  const eventsWithinWindow = orderFilledEvents.filter((event) => event.blockNumber >= startBlockNumber);
-
-  const outcomeTokenOne = eventsWithinWindow
-    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenOne))
-    .map((event) => event.trade);
-
-  const outcomeTokenTwo = eventsWithinWindow
-    .filter((event) => [event.takerAssetId, event.makerAssetId].includes(tokenTwo))
-    .map((event) => event.trade);
-
-  return [outcomeTokenOne, outcomeTokenTwo];
-};
-
-export const getOrderFilledEvents = async (
-  params: MonitoringParams,
-  clobTokenIds: [string, string],
-  startBlockNumber: number,
-  opts?: {
-    toBlock?: number;
-    cachedEvents?: OrderFilledEventWithTrade[];
-  }
-): Promise<[PolymarketTradeInformation[], PolymarketTradeInformation[]]> => {
-  // Pass tokenIds to fetchOrderFilledEvents to filter events early during batch fetching
-  const tokenIdsSet = new Set(clobTokenIds);
-  const orderFilledEvents =
-    opts?.cachedEvents ?? (await fetchOrderFilledEvents(params, startBlockNumber, opts?.toBlock, tokenIdsSet));
-
-  return filterOrderFilledEvents(orderFilledEvents, clobTokenIds, startBlockNumber);
+  return [boundedTradesMap.get(tokenOne) ?? [], boundedTradesMap.get(tokenTwo) ?? []];
 };
 
 export const calculatePolymarketQuestionID = (ancillaryData: string): string => {
@@ -754,7 +783,7 @@ export interface UMAAIRetry {
   data: {
     input: {
       timing?: {
-        expiration_timestamp?: number;
+        expiration_time?: string;
       };
     };
   };
@@ -799,9 +828,12 @@ export async function fetchLatestAIDeepLink(
     );
     const duration = Date.now() - startTime;
 
-    const result = response.data?.elements?.find(
-      (element) => element.data.input.timing?.expiration_timestamp === proposal.proposalExpirationTimestamp.toNumber()
-    );
+    const result = response.data?.elements?.find((element) => {
+      const expirationTime = element.data.input.timing?.expiration_time;
+      if (!expirationTime) return false;
+      const expirationTimestamp = Math.floor(new Date(expirationTime).getTime() / 1000);
+      return expirationTimestamp === proposal.proposalExpirationTimestamp.toNumber();
+    });
 
     if (!result) {
       logger.debug({
@@ -1018,9 +1050,10 @@ export const initMonitoringParams = async (
     ? Number(env.PAGINATED_EVENT_QUERY_CONCURRENCY)
     : 25; // default to 25 concurrent paginated event queries
 
-  const orderFilledEventsProcessingConcurrency = env.ORDER_FILLED_EVENTS_PROCESSING_CONCURRENCY
-    ? Number(env.ORDER_FILLED_EVENTS_PROCESSING_CONCURRENCY)
-    : 25; // default to 25 concurrent order filled events processing
+  const maxTradesPerToken = env.MAX_TRADES_PER_TOKEN ? Number(env.MAX_TRADES_PER_TOKEN) : 50;
+
+  // Chunk size for bounded event fetching (~1 minute on Polygon at 30 blocks/min)
+  const fillEventsChunkBlocks = env.FILL_EVENTS_CHUNK_BLOCKS ? Number(env.FILL_EVENTS_CHUNK_BLOCKS) : 30;
 
   const maxConcurrentRequests = env.MAX_CONCURRENT_REQUESTS ? Number(env.MAX_CONCURRENT_REQUESTS) : 5;
   const minTimeBetweenRequests = env.MIN_TIME_BETWEEN_REQUESTS ? Number(env.MIN_TIME_BETWEEN_REQUESTS) : 200;
@@ -1112,7 +1145,8 @@ export const initMonitoringParams = async (
     proposalProcessingConcurrency,
     marketProcessingConcurrency,
     paginatedEventQueryConcurrency,
-    orderFilledEventsProcessingConcurrency,
+    maxTradesPerToken,
+    fillEventsChunkBlocks,
   };
 };
 

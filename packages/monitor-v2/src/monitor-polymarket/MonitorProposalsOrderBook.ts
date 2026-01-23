@@ -11,6 +11,7 @@ import {
   calculatePolymarketQuestionID,
   decodeMultipleQueryPriceAtIndex,
   decodeMultipleValuesQuery,
+  fetchOrderFilledEventsBounded,
   getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarketInformation,
@@ -20,10 +21,12 @@ import {
   getProposalKeyToStore,
   getSportsMarketData,
   getSportsPayouts,
+  isDiscrepantTrade,
   isUnresolvable,
   isProposalNotified,
   ONE_SCALED,
   POLYGON_BLOCKS_PER_HOUR,
+  PolymarketTradeInformation,
   shouldIgnoreThirdPartyProposal,
   storeNotifiedProposals,
   Logger,
@@ -35,8 +38,6 @@ import {
   PolymarketMarketGraphqlProcessed,
   isInitialConfirmationLogged,
   fetchLatestAIDeepLink,
-  OrderFilledEventWithTrade,
-  fetchOrderFilledEvents,
 } from "./common";
 import * as common from "./common";
 
@@ -51,10 +52,7 @@ function getThresholds() {
 
 const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
 type ProposalProcessingContext = {
-  currentBlock?: number;
-  lookbackBlocks?: number;
-  gapBlocks?: number;
-  orderFilledEvents?: OrderFilledEventWithTrade[];
+  boundedTradesMap: Map<string, PolymarketTradeInformation[]>;
   aiDeeplink?: string;
 };
 
@@ -107,18 +105,11 @@ export async function processProposal(
   orderbooks: Record<string, MarketOrderbook>,
   params: MonitoringParams,
   logger: typeof Logger,
-  context?: ProposalProcessingContext
+  context: ProposalProcessingContext
 ): Promise<boolean /* notified */> {
   const thresholds = getThresholds();
   const isSportsRequest = proposal.requester === params.ctfSportsOracleAddress;
-
-  const currentBlock = context?.currentBlock ?? (await params.provider.getBlockNumber());
-  const lookbackBlocks = context?.lookbackBlocks ?? Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
-  const gapBlocks = context?.gapBlocks ?? Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
-  const proposalGapStartBlock = Number(proposal.proposalBlockNumber) + gapBlocks;
-
-  // Use AI deeplink from context (fetched in advance)
-  const aiDeeplink = context?.aiDeeplink;
+  const aiDeeplink = context.aiDeeplink;
 
   const checkMarket = async (market: PolymarketMarketGraphqlProcessed): Promise<boolean> => {
     const outcome = isSportsRequest
@@ -135,14 +126,10 @@ export async function processProposal(
     const sellingWinnerSide = books[outcome.winner].asks.find((a) => a.price < thresholds.asks);
     const buyingLoserSide = books[outcome.loser].bids.find((b) => b.price > thresholds.bids);
 
-    const fromBlock = Math.max(proposalGapStartBlock, currentBlock - lookbackBlocks);
-    const fills = await getOrderFilledEvents(params, market.clobTokenIds, fromBlock, {
-      cachedEvents: context?.orderFilledEvents,
-      toBlock: currentBlock,
-    });
+    const fills = getOrderFilledEvents(market.clobTokenIds, context.boundedTradesMap);
 
-    const soldWinner = fills[outcome.winner].filter((f) => f.type === "sell" && f.price < thresholds.asks);
-    const boughtLoser = fills[outcome.loser].filter((f) => f.type === "buy" && f.price > thresholds.bids);
+    const soldWinner = fills[outcome.winner].filter((f) => isDiscrepantTrade(f, "winner", thresholds));
+    const boughtLoser = fills[outcome.loser].filter((f) => isDiscrepantTrade(f, "loser", thresholds));
 
     let alerted = false;
 
@@ -339,18 +326,44 @@ export async function monitorTransactionsProposedOrderBook(
   );
   const earliestFromBlock = Math.min(...fromBlocks);
 
-  // Flatten all clobTokenIds from all markets in all active bundles into a Set
-  const activeTokenIds = new Set<string>();
-  activeBundles.forEach((bundle) => {
-    bundle.markets.forEach((market) => {
-      activeTokenIds.add(market.clobTokenIds[0]);
-      activeTokenIds.add(market.clobTokenIds[1]);
-    });
-  });
+  // Pre-compute winner/loser for each market to enable targeted event filtering
+  const winnerTokenIds = new Set<string>();
+  const loserTokenIds = new Set<string>();
 
-  const orderFilledEventsPromise = fetchOrderFilledEvents(params, earliestFromBlock, currentBlock, activeTokenIds);
+  await Promise.all(
+    activeBundles.map(async ({ proposal, markets }) => {
+      const isSportsRequest = proposal.requester === params.ctfSportsOracleAddress;
 
-  // Fetch all AI deeplinks in advance and store in memory
+      await Promise.all(
+        markets.map(async (market) => {
+          const outcome = isSportsRequest
+            ? outcomeIndexes(true, proposal, await getSportsMarketData(params, market.questionID))
+            : outcomeIndexes(false, proposal);
+
+          // Skip draw/unresolvable outcomes
+          if (outcome.winner === -1) return;
+
+          winnerTokenIds.add(market.clobTokenIds[outcome.winner]);
+          loserTokenIds.add(market.clobTokenIds[outcome.loser]);
+        })
+      );
+    })
+  );
+
+  // Fetch OrderFilled events with bounded memory to prevent V8 crashes
+  // Only collect sells for winner tokens and buys for loser tokens
+  const thresholds = getThresholds();
+  const boundedTradesMapPromise = fetchOrderFilledEventsBounded(
+    params,
+    earliestFromBlock,
+    currentBlock,
+    winnerTokenIds,
+    loserTokenIds,
+    { asks: thresholds.asks, bids: thresholds.bids },
+    params.maxTradesPerToken
+  );
+
+  // Fetch all AI deeplinks in advance
   const aiDeeplinksMap = new Map<string, string>();
   await Promise.all(
     activeBundles.map(async ({ proposal }) => {
@@ -370,17 +383,15 @@ export async function monitorTransactionsProposedOrderBook(
     })
   );
 
+  const boundedTradesMap = await boundedTradesMapPromise;
+
   await BluebirdPromise.map(
     activeBundles,
     async ({ proposal, markets }) => {
       try {
-        const sharedOrderFilledEvents = await orderFilledEventsPromise;
         const aiDeeplink = aiDeeplinksMap.get(getProposalKeyToStore(proposal));
         const alerted = await processProposal(proposal, markets, orderbookMap, params, logger, {
-          currentBlock,
-          lookbackBlocks,
-          gapBlocks,
-          orderFilledEvents: sharedOrderFilledEvents,
+          boundedTradesMap,
           aiDeeplink,
         });
         if (alerted) await persistNotified(proposal, logger);

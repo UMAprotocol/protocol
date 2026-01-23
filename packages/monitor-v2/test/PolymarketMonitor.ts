@@ -26,10 +26,7 @@ import {
   PolymarketTradeInformation,
   Underdog,
 } from "../src/monitor-polymarket/common";
-import {
-  monitorTransactionsProposedOrderBook,
-  processProposal,
-} from "../src/monitor-polymarket/MonitorProposalsOrderBook";
+import { monitorTransactionsProposedOrderBook } from "../src/monitor-polymarket/MonitorProposalsOrderBook";
 import { tryHexToUtf8String } from "../src/utils/contracts";
 import { umaEcosystemFixture } from "./fixtures/UmaEcosystem.Fixture";
 import { formatBytes32String, getContractFactory, hre, Provider, Signer, toUtf8Bytes } from "./utils";
@@ -44,7 +41,6 @@ describe("PolymarketNotifier", function () {
   let deployer: Signer;
   let votingToken: VotingTokenEthers;
   let getNotifiedProposalsStub: sinon.SinonStub;
-  let fetchOrderFilledEventsStub: sinon.SinonStub;
   const identifier = formatBytes32String("TEST_IDENTIFIER");
   const ancillaryData = toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
 
@@ -124,7 +120,8 @@ describe("PolymarketNotifier", function () {
       proposalProcessingConcurrency: 5,
       marketProcessingConcurrency: 3,
       paginatedEventQueryConcurrency: 5,
-      orderFilledEventsProcessingConcurrency: 25,
+      maxTradesPerToken: 50,
+      fillEventsChunkBlocks: 30,
     };
   };
 
@@ -174,7 +171,6 @@ describe("PolymarketNotifier", function () {
     sandbox.stub(commonModule, "isProposalNotified").resolves(false);
 
     sandbox.stub(commonModule, "fetchLatestAIDeepLink").resolves({ deeplink: undefined });
-    fetchOrderFilledEventsStub = sandbox.stub(commonModule, "fetchOrderFilledEvents").resolves([]);
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
@@ -190,6 +186,12 @@ describe("PolymarketNotifier", function () {
   function mockFunctionWithReturnValue(functionName: CommonModuleFunctions, mockValue: any) {
     const mockDataFunction = sandbox.stub();
     mockDataFunction.resolves(mockValue);
+    sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
+  }
+
+  function mockSyncFunctionWithReturnValue(functionName: CommonModuleFunctions, mockValue: any) {
+    const mockDataFunction = sandbox.stub();
+    mockDataFunction.returns(mockValue);
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
 
@@ -242,7 +244,7 @@ describe("PolymarketNotifier", function () {
 
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(orders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
-    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -285,7 +287,7 @@ describe("PolymarketNotifier", function () {
       // Default stubs common to these tests
       sandbox.stub(commonModule, "getPolymarketMarketInformation").resolves(marketInfo);
       sandbox.stub(commonModule, "getPolymarketOrderBooks").resolves(asBooksRecord(emptyOrders));
-      sandbox.stub(commonModule, "getOrderFilledEvents").resolves([[], []]);
+      sandbox.stub(commonModule, "getOrderFilledEvents").returns([[], []]);
     });
 
     it("First check, no discrepancy → summary only; flag set.", async function () {
@@ -418,7 +420,7 @@ describe("PolymarketNotifier", function () {
   it("It should not notify if order book is empty", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
-    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
@@ -442,7 +444,7 @@ describe("PolymarketNotifier", function () {
     ];
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
-    mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -482,7 +484,7 @@ describe("PolymarketNotifier", function () {
     ];
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
-    mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -511,7 +513,7 @@ describe("PolymarketNotifier", function () {
   it("It should notify if there are proposals with high volume", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
-    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -541,7 +543,7 @@ describe("PolymarketNotifier", function () {
 
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(orders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
-    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -581,7 +583,7 @@ describe("PolymarketNotifier", function () {
 
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
-    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -615,7 +617,7 @@ describe("PolymarketNotifier", function () {
 
   it("It should notify if market polymarket information is not found", async function () {
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
-    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
     mockFunctionThrowsError("getPolymarketMarketInformation", "Market not found");
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
@@ -671,7 +673,7 @@ describe("PolymarketNotifier", function () {
     });
 
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
-    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     // Calculate the actual questionID that will be generated from our ancillary data
     const expectedQuestionID = ethers.utils.keccak256(ancillaryDataHex);
@@ -717,7 +719,7 @@ describe("PolymarketNotifier", function () {
     });
 
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
-    mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
 
     // Calculate the actual questionID that will be generated from our ancillary data
     const expectedQuestionID = ethers.utils.keccak256(ethers.utils.hexlify(ancillaryData));
@@ -753,7 +755,7 @@ describe("PolymarketNotifier", function () {
     ];
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
-    mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     const tx = await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -788,7 +790,7 @@ describe("PolymarketNotifier", function () {
 
     mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
     mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
-    mockFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
+    mockSyncFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
 
     await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
     await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
@@ -863,7 +865,7 @@ describe("PolymarketNotifier", function () {
         },
       ];
       mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(sportsOrderBook));
-      mockFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+      mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
       mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
 
       const spy = sinon.spy();
@@ -1054,103 +1056,6 @@ describe("PolymarketNotifier", function () {
     });
   });
 
-  describe("processProposal proposal gap", function () {
-    it("applies the default proposal gap when the lookback window would include the proposal block", async function () {
-      const params = await createMonitoringParams();
-      params.fillEventsLookbackSeconds = 7_200; // 2 hours
-
-      const currentBlock = 2_000;
-      const getBlockNumberStub = sandbox.stub().resolves(currentBlock);
-      params.provider = ({ getBlockNumber: getBlockNumberStub } as unknown) as Provider;
-
-      const proposalBlockNumber = 900;
-      const proposal: OptimisticPriceRequest = {
-        proposalHash: "0xdefaultgap",
-        requester: params.additionalRequesters[0],
-        proposer: await deployer.getAddress(),
-        identifier,
-        proposedPrice: ONE,
-        requestTimestamp: ethers.BigNumber.from(Date.now()),
-        proposalBlockNumber,
-        ancillaryData: ethers.utils.hexlify(ancillaryData),
-        requestHash: "0xdefaultgaprequest",
-        requestLogIndex: 0,
-        proposalTimestamp: ethers.BigNumber.from(Date.now()),
-        proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 3_600),
-        proposalLogIndex: 0,
-      };
-
-      let capturedFromBlock: number | undefined;
-      sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(async (_params, _tokenIds, fromBlock) => {
-        capturedFromBlock = fromBlock;
-        return emptyTradeInformation;
-      });
-
-      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
-      sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
-
-      const logger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
-
-      await processProposal(proposal, marketInfo, asBooksRecord(emptyOrders), params, logger);
-
-      assert.isDefined(capturedFromBlock, "getOrderFilledEvents should be called");
-      const blocksPerSecond = commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600;
-      const expectedFromBlock = Math.max(
-        proposalBlockNumber + Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond),
-        currentBlock - Math.round(params.fillEventsLookbackSeconds * blocksPerSecond)
-      );
-      assert.equal(capturedFromBlock, expectedFromBlock);
-    });
-
-    it("uses the configured proposal gap when provided", async function () {
-      const params = await createMonitoringParams();
-      params.fillEventsLookbackSeconds = 7_200;
-      params.fillEventsProposalGapSeconds = 600; // 10 minutes
-
-      const currentBlock = 2_000;
-      const getBlockNumberStub = sandbox.stub().resolves(currentBlock);
-      params.provider = ({ getBlockNumber: getBlockNumberStub } as unknown) as Provider;
-
-      const proposalBlockNumber = 900;
-      const proposal: OptimisticPriceRequest = {
-        proposalHash: "0xcustomgap",
-        requester: params.additionalRequesters[0],
-        proposer: await deployer.getAddress(),
-        identifier,
-        proposedPrice: ONE,
-        requestTimestamp: ethers.BigNumber.from(Date.now()),
-        proposalBlockNumber,
-        ancillaryData: ethers.utils.hexlify(ancillaryData),
-        requestHash: "0xcustomgaprequest",
-        requestLogIndex: 0,
-        proposalTimestamp: ethers.BigNumber.from(Date.now()),
-        proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 3_600),
-        proposalLogIndex: 0,
-      };
-
-      let capturedFromBlock: number | undefined;
-      sandbox.stub(commonModule, "getOrderFilledEvents").callsFake(async (_params, _tokenIds, fromBlock) => {
-        capturedFromBlock = fromBlock;
-        return emptyTradeInformation;
-      });
-
-      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(false);
-      sandbox.stub(commonModule, "markInitialConfirmationLogged").resolves();
-
-      const logger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
-
-      await processProposal(proposal, marketInfo, asBooksRecord(emptyOrders), params, logger);
-
-      assert.isDefined(capturedFromBlock, "getOrderFilledEvents should be called");
-      const blocksPerSecond = commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600;
-      const expectedFromBlock = Math.max(
-        proposalBlockNumber + Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond),
-        currentBlock - Math.round(params.fillEventsLookbackSeconds * blocksPerSecond)
-      );
-      assert.equal(capturedFromBlock, expectedFromBlock);
-    });
-  });
-
   it("fetches OrderFilled events once using the earliest fromBlock across proposals", async function () {
     const params = await createMonitoringParams();
     params.fillEventsLookbackSeconds = 7_200;
@@ -1188,7 +1093,9 @@ describe("PolymarketNotifier", function () {
       Math.max(proposalB.proposalBlockNumber + gapBlocks, currentBlock - lookbackBlocks)
     );
 
-    fetchOrderFilledEventsStub.resetHistory();
+    // Stub fetchOrderFilledEventsBounded to return an empty map
+    const boundedTradesMap = new Map<string, PolymarketTradeInformation[]>();
+    const fetchBoundedStub = sandbox.stub(commonModule, "fetchOrderFilledEventsBounded").resolves(boundedTradesMap);
 
     sandbox
       .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
@@ -1203,55 +1110,18 @@ describe("PolymarketNotifier", function () {
     const logger = createNewLogger([new SpyTransport({}, { spy: sinon.spy() })]);
     await monitorTransactionsProposedOrderBook(logger, params);
 
-    sinon.assert.calledOnce(fetchOrderFilledEventsStub);
-    // fetchOrderFilledEvents now takes activeTokenIds as 4th parameter
-    const expectedTokenIds = new Set(marketInfo[0].clobTokenIds);
-    sinon.assert.calledWithExactly(
-      fetchOrderFilledEventsStub,
-      params,
-      expectedEarliestFromBlock,
-      currentBlock,
-      expectedTokenIds
-    );
+    sinon.assert.calledOnce(fetchBoundedStub);
+    // Verify fetchOrderFilledEventsBounded was called with correct earliest fromBlock
+    const callArgs = fetchBoundedStub.firstCall.args;
+    assert.equal(callArgs[1], expectedEarliestFromBlock, "earliest fromBlock passed to bounded fetch");
+    assert.equal(callArgs[2], currentBlock, "currentBlock passed to bounded fetch");
+
+    // getOrderFilledEvents should be called for each proposal, using the boundedTradesMap
     assert.equal(getOrderFilledEventsSpy.callCount, 2, "fills are filtered per proposal");
-    const cachedEventsArgs = getOrderFilledEventsSpy.getCalls().map((call) => call.args[3]?.cachedEvents);
-    assert.isDefined(cachedEventsArgs[0], "cached events are forwarded into per-market filters");
-    assert.strictEqual(cachedEventsArgs[0], cachedEventsArgs[1], "shared event cache is reused across proposals");
-  });
-
-  it("getOrderFilledEvents uses the fillEventsLookbackSeconds", async function () {
-    const currentBlock = 100_000;
-    const fillEventsLookbackSeconds = 3_600; // 1 hour
-    const proposalBlockNumber = 95_000; // anchor block
-
-    const params = await createMonitoringParams();
-    params.fillEventsLookbackSeconds = fillEventsLookbackSeconds;
-
-    const providerStub = new ethers.providers.JsonRpcProvider();
-    sandbox.stub(providerStub, "getBlockNumber").resolves(currentBlock);
-    params.provider = providerStub as any;
-
-    const lookbackBlocks = Math.round((fillEventsLookbackSeconds * commonModule.POLYGON_BLOCKS_PER_HOUR) / 3_600);
-    const fromBlockParam = Math.max(proposalBlockNumber, currentBlock - lookbackBlocks);
-
-    // Restore the fetchOrderFilledEvents stub from beforeEach so we can test the real implementation
-    fetchOrderFilledEventsStub.restore();
-
-    let capturedFromBlock: number | undefined;
-    sandbox.stub(commonModule, "paginatedEventQuery").callsFake(async (_c, _f, searchConfig) => {
-      capturedFromBlock = searchConfig.fromBlock;
-      return [];
-    });
-
-    sandbox.stub(ethers, "Contract").returns({ filters: { OrderFilled: () => ({ topics: [] }) } } as any);
-
-    await commonModule.getOrderFilledEvents(params, ["0xdeadbeef", "0xfeedface"], fromBlockParam);
-
-    assert.equal(
-      capturedFromBlock,
-      fromBlockParam,
-      "`fromBlock` passed to paginatedEventQuery must equal the caller-computed value"
-    );
+    // The new signature is getOrderFilledEvents(clobTokenIds, boundedTradesMap), so args[1] is boundedTradesMap
+    const boundedMapArgs = getOrderFilledEventsSpy.getCalls().map((call) => call.args[1]);
+    assert.strictEqual(boundedMapArgs[0], boundedTradesMap, "bounded trades map is forwarded");
+    assert.strictEqual(boundedMapArgs[0], boundedMapArgs[1], "shared bounded map is reused across proposals");
   });
 
   describe("getPolymarketProposedPriceRequestsOO Filtering", function () {
@@ -1311,7 +1181,12 @@ describe("PolymarketNotifier", function () {
       const params = await createMonitoringParams();
       // Set the parameter to 120 seconds.
       params.checkBeforeExpirationSeconds = 120;
-      const result = await commonModule.getPolymarketProposedPriceRequestsOO(params, "v2", [fakeRequester]);
+      const result = await commonModule.getPolymarketProposedPriceRequestsOO(
+        params,
+        "v2",
+        [fakeRequester],
+        oov2.address
+      );
 
       // Expect that only the event with expirationTime fakeTime+100 (the "close-to-expiration" event) is returned.
       assert.equal(result.length, 1, "Expected one event to pass the expiration filter");
@@ -1323,6 +1198,35 @@ describe("PolymarketNotifier", function () {
 
       dateNowStub.restore();
       paginatedEventQueryStub.restore();
+    });
+  });
+
+  describe("Bounded OrderFilled Events", function () {
+    it("getOrderFilledEvents returns data from boundedTradesMap", function () {
+      const tokenIds: [string, string] = ["0xtoken1", "0xtoken2"];
+      const trades1: PolymarketTradeInformation[] = [{ price: 0.8, type: "sell", amount: 100, timestamp: 123 }];
+      const trades2: PolymarketTradeInformation[] = [{ price: 0.2, type: "buy", amount: 50, timestamp: 456 }];
+
+      const boundedTradesMap = new Map<string, PolymarketTradeInformation[]>();
+      boundedTradesMap.set(tokenIds[0], trades1);
+      boundedTradesMap.set(tokenIds[1], trades2);
+
+      const result = commonModule.getOrderFilledEvents(tokenIds, boundedTradesMap);
+
+      assert.deepEqual(result[0], trades1, "token1 trades returned");
+      assert.deepEqual(result[1], trades2, "token2 trades returned");
+    });
+
+    it("getOrderFilledEvents returns empty arrays for missing tokens in boundedTradesMap", function () {
+      const tokenIds: [string, string] = ["0xtoken1", "0xtoken2"];
+      const boundedTradesMap = new Map<string, PolymarketTradeInformation[]>();
+      // Only token1 has data
+      boundedTradesMap.set(tokenIds[0], [{ price: 0.8, type: "sell", amount: 100, timestamp: 123 }]);
+
+      const result = commonModule.getOrderFilledEvents(tokenIds, boundedTradesMap);
+
+      assert.equal(result[0].length, 1, "token1 has trades");
+      assert.deepEqual(result[1], [], "token2 returns empty array");
     });
   });
 });
