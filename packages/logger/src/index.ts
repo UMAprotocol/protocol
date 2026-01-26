@@ -5,4 +5,5 @@ export * from "./logger/Logger";
 export * from "./logger/SpyTransport";
 export * from "./logger/ConsoleTransport";
 export * from "./logger/Formatters";
-export * from "./pinoLogger";
+export * from "./pinoLogger/Logger";
+export * from "./pinoLogger/Transports";
