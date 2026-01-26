@@ -16,7 +16,7 @@ export default async function (opts: Config): Promise<Transform & build.OnUnknow
         await sendPagerDutyEvent(routing_key, obj);
       } catch (error) {
         // Always log transport errors in Pino since there's no callback mechanism like Winston
-        console.error("PagerDuty v2 transport error:", error);
+        console.error("PagerDuty v2 transport error:", error, { logObj: obj });
       }
     }
   });

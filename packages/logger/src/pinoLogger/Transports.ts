@@ -1,6 +1,7 @@
 import { transport, TransportTargetOptions } from "pino";
 import type { Config as PagerDutyV2Config } from "../shared/PagerDutyV2Transport";
 import { createConfig as pagerDutyV2CreateConfig } from "../shared/PagerDutyV2Transport";
+import { isRecordStringUnknown } from "@uma/common";
 import dotenv from "dotenv";
 import minimist from "minimist";
 import path from "path";
@@ -29,14 +30,26 @@ export function createPinoTransports(transportsConfig: TransportsConfig = {}): R
     // Add PagerDuty V2 transport if configured
     if (transportsConfig.pagerDutyV2Config || process.env.PAGER_DUTY_V2_CONFIG) {
       // to disable pdv2, pass in a "disabled=true" in configs or env.
-      const { disabled = false, ...pagerDutyV2Config } =
-        transportsConfig.pagerDutyV2Config ?? JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null");
+      let pagerDutyV2Config;
+      try {
+        pagerDutyV2Config =
+          transportsConfig.pagerDutyV2Config ?? JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null");
+        if (!isRecordStringUnknown(pagerDutyV2Config)) {
+          throw new Error("Invalid PAGER_DUTY_V2_CONFIG object");
+        }
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          throw new Error(`Failed to parse PAGER_DUTY_V2_CONFIG environment variable as JSON: ${error.message}`);
+        }
+        throw error;
+      }
+      const { disabled, ...config } = pagerDutyV2Config;
       // this will throw an error if an invalid configuration is present
       if (!disabled) {
         targets.push({
           target: path.join(__dirname, "PagerDutyV2Transport.js"),
           level: "error",
-          options: pagerDutyV2CreateConfig(pagerDutyV2Config),
+          options: pagerDutyV2CreateConfig(config),
         });
       }
     }
