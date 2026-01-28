@@ -426,7 +426,8 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if there are sell trades over the threshold", async function () {
-    const currentTimestamp = Math.floor(Date.now() / 1000);
+    // Use a timestamp slightly in the future to ensure it passes the fromTimestamp filter
+    const currentTimestamp = Math.floor(Date.now() / 1000) + 10;
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
         {
@@ -467,7 +468,8 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if there are buy trades over the threshold", async function () {
-    const currentTimestamp = Math.floor(Date.now() / 1000);
+    // Use a timestamp slightly in the future to ensure it passes the fromTimestamp filter
+    const currentTimestamp = Math.floor(Date.now() / 1000) + 10;
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
       [
@@ -739,7 +741,8 @@ describe("PolymarketNotifier", function () {
 
   it("It should not notify if already notified", async function () {
     sandbox.restore();
-    const currentTimestamp = Math.floor(Date.now() / 1000);
+    // Use a timestamp slightly in the future to ensure it passes the fromTimestamp filter
+    const currentTimestamp = Math.floor(Date.now() / 1000) + 10;
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
       [
@@ -811,7 +814,9 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
-    const currentTimestamp = Math.floor(Date.now() / 1000);
+    // Use a timestamp slightly in the future to ensure it passes the fromTimestamp filter
+    // (the main code computes fromTimestamp from Date.now() which runs after this)
+    const currentTimestamp = Math.floor(Date.now() / 1000) + 10;
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
         {
