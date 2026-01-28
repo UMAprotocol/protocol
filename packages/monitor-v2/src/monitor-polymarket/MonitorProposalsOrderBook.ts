@@ -54,6 +54,7 @@ const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
 type ProposalProcessingContext = {
   boundedTradesMap: Map<string, PolymarketTradeInformation[]>;
   aiDeeplink?: string;
+  fromTimestamp: number;
 };
 
 function outcomeIndexes(
@@ -128,8 +129,13 @@ export async function processProposal(
 
     const fills = getOrderFilledEvents(market.clobTokenIds, context.boundedTradesMap);
 
-    const soldWinner = fills[outcome.winner].filter((f) => isDiscrepantTrade(f, "winner", thresholds));
-    const boughtLoser = fills[outcome.loser].filter((f) => isDiscrepantTrade(f, "loser", thresholds));
+    // Filter trades by proposal-specific fromTimestamp and price thresholds
+    const soldWinner = fills[outcome.winner].filter(
+      (f) => f.timestamp >= context.fromTimestamp && isDiscrepantTrade(f, "winner", thresholds)
+    );
+    const boughtLoser = fills[outcome.loser].filter(
+      (f) => f.timestamp >= context.fromTimestamp && isDiscrepantTrade(f, "loser", thresholds)
+    );
 
     let alerted = false;
 
@@ -320,11 +326,20 @@ export async function monitorTransactionsProposedOrderBook(
   const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
   const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
   const currentBlock = await params.provider.getBlockNumber();
+  const currentTimestamp = Math.floor(Date.now() / 1000);
 
   const fromBlocks = activeBundles.map(({ proposal }) =>
     Math.max(Number(proposal.proposalBlockNumber) + gapBlocks, currentBlock - lookbackBlocks)
   );
   const earliestFromBlock = Math.min(...fromBlocks);
+
+  // Pre-compute fromTimestamp for each proposal to enable per-proposal trade filtering
+  const fromTimestampsMap = new Map<string, number>();
+  for (let i = 0; i < activeBundles.length; i++) {
+    const proposalKey = getProposalKeyToStore(activeBundles[i].proposal);
+    const fromTimestamp = currentTimestamp - Math.round((currentBlock - fromBlocks[i]) / blocksPerSecond);
+    fromTimestampsMap.set(proposalKey, fromTimestamp);
+  }
 
   // Pre-compute winner/loser for each market to enable targeted event filtering
   const winnerTokenIds = new Set<string>();
@@ -374,10 +389,13 @@ export async function monitorTransactionsProposedOrderBook(
     activeBundles,
     async ({ proposal, markets }) => {
       try {
-        const aiDeeplink = aiDeeplinksMap.get(getProposalKeyToStore(proposal));
+        const proposalKey = getProposalKeyToStore(proposal);
+        const aiDeeplink = aiDeeplinksMap.get(proposalKey);
+        const fromTimestamp = fromTimestampsMap.get(proposalKey)!;
         const alerted = await processProposal(proposal, markets, orderbookMap, params, logger, {
           boundedTradesMap,
           aiDeeplink,
+          fromTimestamp,
         });
         if (alerted) await persistNotified(proposal, logger);
       } catch (err) {

@@ -41,6 +41,7 @@ describe("PolymarketNotifier", function () {
   let deployer: Signer;
   let votingToken: VotingTokenEthers;
   let getNotifiedProposalsStub: sinon.SinonStub;
+  let fetchBoundedStub: sinon.SinonStub;
   const identifier = formatBytes32String("TEST_IDENTIFIER");
   const ancillaryData = toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`);
 
@@ -102,8 +103,8 @@ describe("PolymarketNotifier", function () {
       retryAttempts: 3,
       retryDelayMs: 1000,
       checkBeforeExpirationSeconds: Date.now() + 1000 * 60 * 60 * 24,
-      fillEventsLookbackSeconds: 0,
-      fillEventsProposalGapSeconds: 300,
+      fillEventsLookbackSeconds: 3600, // 1 hour lookback to ensure trades can be fetched
+      fillEventsProposalGapSeconds: 0, // No gap for tests - ensures trades aren't filtered by timestamp
       httpClient: createHttpClient(),
       orderBookBatchSize: 499,
       ooV2Addresses: [oov2.address],
@@ -161,6 +162,10 @@ describe("PolymarketNotifier", function () {
     storeNotifiedProposalsMock.returns(Promise.resolve());
     sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
     sandbox.stub(commonModule, "isProposalNotified").resolves(false);
+
+    // Mock fetchOrderFilledEventsBounded to avoid actual blockchain queries with fake addresses
+    // Tests that need to override this should call fetchBoundedStub.restore() first
+    fetchBoundedStub = sandbox.stub(commonModule, "fetchOrderFilledEventsBounded").resolves(new Map());
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
@@ -421,13 +426,14 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if there are sell trades over the threshold", async function () {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
         {
           price: 0.9,
           type: "sell",
           amount: 100,
-          timestamp: 123,
+          timestamp: currentTimestamp,
         },
       ],
       [],
@@ -461,6 +467,7 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if there are buy trades over the threshold", async function () {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
       [
@@ -468,7 +475,7 @@ describe("PolymarketNotifier", function () {
           price: 0.1,
           type: "buy",
           amount: 100,
-          timestamp: 123,
+          timestamp: currentTimestamp,
         },
       ],
     ];
@@ -732,6 +739,7 @@ describe("PolymarketNotifier", function () {
 
   it("It should not notify if already notified", async function () {
     sandbox.restore();
+    const currentTimestamp = Math.floor(Date.now() / 1000);
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
       [
@@ -739,7 +747,7 @@ describe("PolymarketNotifier", function () {
           price: 0.1,
           type: "buy",
           amount: 100,
-          timestamp: 123,
+          timestamp: currentTimestamp,
         },
       ],
     ];
@@ -803,13 +811,14 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
         {
           price: 0.9,
           type: "sell",
           amount: 100,
-          timestamp: 123,
+          timestamp: currentTimestamp,
         },
       ],
       [],
@@ -1120,9 +1129,10 @@ describe("PolymarketNotifier", function () {
       Math.max(proposalB.proposalBlockNumber + gapBlocks, currentBlock - lookbackBlocks)
     );
 
-    // Stub fetchOrderFilledEventsBounded to return an empty map
+    // Restore the default stub and re-stub to verify call arguments
     const boundedTradesMap = new Map<string, PolymarketTradeInformation[]>();
-    const fetchBoundedStub = sandbox.stub(commonModule, "fetchOrderFilledEventsBounded").resolves(boundedTradesMap);
+    fetchBoundedStub.restore();
+    fetchBoundedStub = sandbox.stub(commonModule, "fetchOrderFilledEventsBounded").resolves(boundedTradesMap);
 
     sandbox
       .stub(commonModule, "getPolymarketProposedPriceRequestsOO")
