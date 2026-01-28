@@ -12,6 +12,7 @@ import {
   decodeMultipleQueryPriceAtIndex,
   decodeMultipleValuesQuery,
   fetchOrderFilledEventsBounded,
+  generateAIDeepLink,
   getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarketInformation,
@@ -37,7 +38,6 @@ import {
   OptimisticPriceRequest,
   PolymarketMarketGraphqlProcessed,
   isInitialConfirmationLogged,
-  fetchLatestAIDeepLink,
 } from "./common";
 import * as common from "./common";
 
@@ -239,7 +239,7 @@ export async function monitorTransactionsProposedOrderBook(
   const tokenIds = new Set<string>();
 
   const logErrorAndPersist = async (proposal: OptimisticPriceRequest, err: Error) => {
-    const { deeplink: aiDeeplink } = await fetchLatestAIDeepLink(proposal, params, logger);
+    const aiDeeplink = generateAIDeepLink(proposal.proposalHash, proposal.proposalLogIndex, params.aiResultsBaseUrl);
     await logFailedMarketProposalVerification(logger, params.chainId, proposal, err as Error, aiDeeplink);
     await persistNotified(proposal, logger);
   };
@@ -353,7 +353,7 @@ export async function monitorTransactionsProposedOrderBook(
   // Fetch OrderFilled events with bounded memory to prevent V8 crashes
   // Only collect sells for winner tokens and buys for loser tokens
   const thresholds = getThresholds();
-  const boundedTradesMapPromise = fetchOrderFilledEventsBounded(
+  const boundedTradesMap = await fetchOrderFilledEventsBounded(
     params,
     earliestFromBlock,
     currentBlock,
@@ -363,27 +363,12 @@ export async function monitorTransactionsProposedOrderBook(
     params.maxTradesPerToken
   );
 
-  // Fetch all AI deeplinks in advance
+  // Generate AI deeplinks synchronously for each proposal
   const aiDeeplinksMap = new Map<string, string>();
-  await Promise.all(
-    activeBundles.map(async ({ proposal }) => {
-      try {
-        const { deeplink } = await fetchLatestAIDeepLink(proposal, params, logger);
-        if (deeplink) {
-          aiDeeplinksMap.set(getProposalKeyToStore(proposal), deeplink);
-        }
-      } catch (err) {
-        logger.warn({
-          at: "PolymarketMonitor",
-          message: "Failed to fetch AI deeplink for proposal",
-          proposalHash: proposal.proposalHash,
-          error: err,
-        });
-      }
-    })
-  );
-
-  const boundedTradesMap = await boundedTradesMapPromise;
+  for (const { proposal } of activeBundles) {
+    const deeplink = generateAIDeepLink(proposal.proposalHash, proposal.proposalLogIndex, params.aiResultsBaseUrl);
+    aiDeeplinksMap.set(getProposalKeyToStore(proposal), deeplink);
+  }
 
   await BluebirdPromise.map(
     activeBundles,
