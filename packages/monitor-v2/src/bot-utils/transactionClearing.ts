@@ -115,7 +115,12 @@ export async function clearStuckTransactions(
   const baseFeeData = gasEstimator.getCurrentFastPriceEthers();
 
   // Clear all stuck nonces from latestNonce to pendingNonce - 1
-  for (let nonce = latestNonce; nonce < pendingNonce; nonce++) {
+  // Track current state as it may change during clearing
+  let currentLatestNonce = latestNonce;
+  let currentPendingNonce = pendingNonce;
+
+  while (currentLatestNonce < currentPendingNonce) {
+    const nonce = currentLatestNonce;
     let cleared = false;
 
     for (let attempt = 0; attempt < nonceBacklogConfig.replacementAttempts; attempt++) {
@@ -177,17 +182,35 @@ export async function clearStuckTransactions(
         nonce,
         maxAttempts: nonceBacklogConfig.replacementAttempts,
       });
+
+      // Re-evaluate nonce state before continuing - the stuck tx may have been
+      // cleared by another source, or new transactions may have been submitted
+      const refreshed = await getNonces(provider, botAddress);
+      currentLatestNonce = refreshed.latestNonce;
+      currentPendingNonce = refreshed.pendingNonce;
+
+      logger.info({
+        at: "TransactionClearer",
+        message: "Re-evaluated nonce state after failed clearing attempt",
+        botAddress,
+        previousNonce: nonce,
+        newLatestNonce: currentLatestNonce,
+        newPendingNonce: currentPendingNonce,
+      });
+    } else {
+      // Move to next nonce after successful clear
+      currentLatestNonce++;
     }
   }
 
-  // Verify final state
+  // Verify final state - once we start clearing, we aim to clear all pending transactions
   const { latestNonce: finalLatestNonce, pendingNonce: finalPendingNonce } = await getNonces(provider, botAddress);
   const finalBacklog = finalPendingNonce - finalLatestNonce;
 
-  if (finalBacklog < nonceBacklogConfig.nonceBacklogThreshold) {
+  if (finalBacklog === 0) {
     logger.info({
       at: "TransactionClearer",
-      message: "Successfully cleared nonce backlog",
+      message: "Successfully cleared all pending transactions",
       botAddress,
       previousBacklog: backlog,
       finalBacklog,
@@ -195,7 +218,7 @@ export async function clearStuckTransactions(
   } else {
     logger.warn({
       at: "TransactionClearer",
-      message: "Nonce backlog still present after clearing attempt",
+      message: "Some pending transactions remain after clearing attempt",
       botAddress,
       previousBacklog: backlog,
       finalBacklog,
