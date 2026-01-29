@@ -4,6 +4,12 @@
 # Interactive script to run the Polymarket notifier in one-shot mode
 #
 
+# Ensure we're running in bash (not sh)
+if [ -z "$BASH_VERSION" ]; then
+    echo "Error: This script requires bash. Please run with: bash $0" >&2
+    exit 1
+fi
+
 set -e
 
 # Colors for output
@@ -70,7 +76,7 @@ echo ""
 # Check for bot-configs repository
 prompt "Enter the path to your bot-configs repository (required for .env generation):"
 echo "  If you don't have it, clone it first:"
-echo "  git clone https://github.com/UMAprotocol/bot-configs.git"
+echo "  git clone git@github.com:UMAprotocol/bot-configs.git"
 echo ""
 read -r UMA_BOT_CONFIGS
 
@@ -189,17 +195,19 @@ else
 fi
 
 if [[ "$BUILD_NEEDED" == "true" ]]; then
-    info "Building monitor-v2 package..."
-    cd "$MONITOR_V2_DIR"
+    info "Building from monorepo root (required for dependencies)..."
+    cd "$UMA_PROTOCOL"
 
     prompt "Do you need to install dependencies first? (y/N)"
     read -r INSTALL_DEPS
     if [[ "$INSTALL_DEPS" =~ ^[Yy]$ ]]; then
+        info "Installing monorepo dependencies..."
         yarn install
     fi
 
+    info "Building monorepo (this may take a few minutes on first run)..."
     yarn build
-    success "monitor-v2 built successfully"
+    success "Monorepo built successfully"
 else
     info "Skipping build, using existing dist"
 fi

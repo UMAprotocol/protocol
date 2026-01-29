@@ -34,11 +34,27 @@ All the configuration should be provided with following environment variables:
 
 Follow these steps to run the Polymarket notifier on your local machine (outside serverless)
 
+### Quick Start: Interactive Script
+
+For a guided setup experience, use the interactive runner script:
+
+```bash
+./packages/monitor-v2/src/monitor-polymarket/run-local.sh
+```
+
+This script will walk you through all the steps below automatically.
+
+---
+
+### Manual Setup
+
+If you prefer to set things up manually, follow these steps:
+
 ## 1. Clone the Required Repositories 📁
 
 ```bash
-git clone https://github.com/UMAprotocol/bot-configs.git
-git clone https://github.com/UMAprotocol/protocol.git
+git clone git@github.com:UMAprotocol/bot-configs.git
+git clone git@github.com:UMAprotocol/protocol.git
 ```
 
 Set the paths:
@@ -78,13 +94,17 @@ export ENV_PATH="$UMA_PROTOCOL/packages/monitor-v2/src/monitor-polymarket/.env.l
 
 ---
 
-## 4. Build the monitor-v2 Package 🔧
+## 4. Build the Monorepo 🔧
+
+Build from the monorepo root (required for inter-package dependencies):
 
 ```bash
-cd "$UMA_PROTOCOL/packages/monitor-v2"
+cd "$UMA_PROTOCOL"
 yarn install
 yarn build
 ```
+
+> **Note:** On a fresh clone, you must build from the root. The monitor-v2 package depends on other packages in the monorepo.
 
 ---
 
