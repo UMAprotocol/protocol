@@ -426,25 +426,26 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if there are sell trades over the threshold", async function () {
-    // Use a timestamp slightly in the future to ensure it passes the fromTimestamp filter
-    const currentTimestamp = Math.floor(Date.now() / 1000) + 10;
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+    // Use block timestamp after contract calls to ensure trade passes the filter
+    const currentBlock = await ethers.provider.getBlock("latest");
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
         {
           price: 0.9,
           type: "sell",
           amount: 100,
-          timestamp: currentTimestamp,
+          timestamp: currentBlock.timestamp,
         },
       ],
       [],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockSyncFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
-
-    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
-    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
@@ -468,8 +469,14 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify if there are buy trades over the threshold", async function () {
-    // Use a timestamp slightly in the future to ensure it passes the fromTimestamp filter
-    const currentTimestamp = Math.floor(Date.now() / 1000) + 10;
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+    // Use block timestamp after contract calls to ensure trade passes the filter
+    const currentBlock = await ethers.provider.getBlock("latest");
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
       [
@@ -477,16 +484,11 @@ describe("PolymarketNotifier", function () {
           price: 0.1,
           type: "buy",
           amount: 100,
-          timestamp: currentTimestamp,
+          timestamp: currentBlock.timestamp,
         },
       ],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockSyncFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
-
-    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
-    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
@@ -741,8 +743,14 @@ describe("PolymarketNotifier", function () {
 
   it("It should not notify if already notified", async function () {
     sandbox.restore();
-    // Use a timestamp slightly in the future to ensure it passes the fromTimestamp filter
-    const currentTimestamp = Math.floor(Date.now() / 1000) + 10;
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
+
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    const tx = await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+    // Use block timestamp after contract calls to ensure trade passes the filter
+    const currentBlock = await ethers.provider.getBlock("latest");
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [],
       [
@@ -750,16 +758,11 @@ describe("PolymarketNotifier", function () {
           price: 0.1,
           type: "buy",
           amount: 100,
-          timestamp: currentTimestamp,
+          timestamp: currentBlock.timestamp,
         },
       ],
     ];
-    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", marketInfo);
     mockSyncFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
-
-    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
-    const tx = await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
     const receipt = await tx.wait();
     // Find the ProposePrice event to get the correct logIndex
     const proposePriceEvent = receipt.events?.find((e) => e.event === "ProposePrice");
@@ -814,27 +817,26 @@ describe("PolymarketNotifier", function () {
   });
 
   it("It should notify two times if there are buy trades over the threshold and it's a high volume market proposal", async function () {
-    // Use a timestamp slightly in the future to ensure it passes the fromTimestamp filter
-    // (the main code computes fromTimestamp from Date.now() which runs after this)
-    const currentTimestamp = Math.floor(Date.now() / 1000) + 10;
+    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
+
+    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+    // Use block timestamp after contract calls to ensure trade passes the filter
+    const currentBlock = await ethers.provider.getBlock("latest");
     const orderFilledEvents: [PolymarketTradeInformation[], PolymarketTradeInformation[]] = [
       [
         {
           price: 0.9,
           type: "sell",
           amount: 100,
-          timestamp: currentTimestamp,
+          timestamp: currentBlock.timestamp,
         },
       ],
       [],
     ];
-
-    mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
-    mockFunctionWithReturnValue("getPolymarketMarketInformation", [{ ...marketInfo[0], volumeNum: 2_000_000 }]);
     mockSyncFunctionWithReturnValue("getOrderFilledEvents", orderFilledEvents);
-
-    await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
-    await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
 
     const spy = sinon.spy();
     const spyLogger = createNewLogger([new SpyTransport({}, { spy: spy })]);
