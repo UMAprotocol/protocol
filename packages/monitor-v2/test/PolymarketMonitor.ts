@@ -85,9 +85,7 @@ describe("PolymarketNotifier", function () {
     const ctfSportsOracleAddress = "0x1234";
     const graphqlEndpoint = "endpoint";
     const apiEndpoint = "endpoint";
-    const aiApiUrl = "https://ai.example.com/api";
     const aiResultsBaseUrl = "https://ai.example.com/results";
-    const aiProjectId = "test-project";
 
     return {
       ctfExchangeAddress,
@@ -107,16 +105,10 @@ describe("PolymarketNotifier", function () {
       fillEventsLookbackSeconds: 0,
       fillEventsProposalGapSeconds: 300,
       httpClient: createHttpClient(),
-      aiDeeplinkHttpClient: createHttpClient(),
       orderBookBatchSize: 499,
       ooV2Addresses: [oov2.address],
       ooV1Addresses: [oo.address],
-      aiConfig: {
-        apiUrl: aiApiUrl,
-        resultsBaseUrl: aiResultsBaseUrl,
-        projectId: aiProjectId,
-      },
-      aiDeeplinkTimeout: 5000,
+      aiResultsBaseUrl,
       proposalProcessingConcurrency: 5,
       marketProcessingConcurrency: 3,
       paginatedEventQueryConcurrency: 5,
@@ -169,8 +161,6 @@ describe("PolymarketNotifier", function () {
     storeNotifiedProposalsMock.returns(Promise.resolve());
     sandbox.stub(commonModule, "storeNotifiedProposals").callsFake(storeNotifiedProposalsMock);
     sandbox.stub(commonModule, "isProposalNotified").resolves(false);
-
-    sandbox.stub(commonModule, "fetchLatestAIDeepLink").resolves({ deeplink: undefined });
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
