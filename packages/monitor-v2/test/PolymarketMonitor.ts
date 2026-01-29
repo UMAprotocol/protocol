@@ -1107,7 +1107,7 @@ describe("PolymarketNotifier", function () {
     const currentTimestamp = 1700000000;
     const providerStub = ({
       getBlockNumber: sandbox.stub().resolves(currentBlock),
-      getBlock: sandbox.stub().resolves({ timestamp: currentTimestamp }),
+      getBlock: sandbox.stub().resolves({ number: currentBlock, timestamp: currentTimestamp }),
     } as unknown) as Provider;
     params.provider = providerStub;
 
@@ -1187,7 +1187,7 @@ describe("PolymarketNotifier", function () {
     const currentTimestamp = 1700000000; // seconds
     const providerStub = ({
       getBlockNumber: sandbox.stub().resolves(currentBlock),
-      getBlock: sandbox.stub().resolves({ timestamp: currentTimestamp }),
+      getBlock: sandbox.stub().resolves({ number: currentBlock, timestamp: currentTimestamp }),
     } as unknown) as Provider;
     params.provider = providerStub;
 

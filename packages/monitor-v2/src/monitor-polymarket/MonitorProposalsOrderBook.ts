@@ -325,8 +325,9 @@ export async function monitorTransactionsProposedOrderBook(
 
   const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
   const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
-  const currentBlock = await params.provider.getBlockNumber();
-  const currentTimestamp = (await params.provider.getBlock(currentBlock)).timestamp;
+  const latestBlock = await params.provider.getBlock("latest");
+  const currentBlock = latestBlock.number;
+  const currentTimestamp = latestBlock.timestamp;
 
   // Augment bundles with per-proposal context (tradeFilterFromTimestamp, aiDeeplink)
   const augmentedBundles = activeBundles.map(({ proposal, markets }) => {
