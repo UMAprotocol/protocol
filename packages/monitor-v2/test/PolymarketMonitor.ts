@@ -1102,7 +1102,11 @@ describe("PolymarketNotifier", function () {
     params.fillEventsLookbackSeconds = 7_200;
 
     const currentBlock = 2_000;
-    const providerStub = ({ getBlockNumber: sandbox.stub().resolves(currentBlock) } as unknown) as Provider;
+    const currentTimestamp = 1700000000;
+    const providerStub = ({
+      getBlockNumber: sandbox.stub().resolves(currentBlock),
+      getBlock: sandbox.stub().resolves({ timestamp: currentTimestamp }),
+    } as unknown) as Provider;
     params.provider = providerStub;
 
     const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * (commonModule.POLYGON_BLOCKS_PER_HOUR / 3_600));
@@ -1178,13 +1182,12 @@ describe("PolymarketNotifier", function () {
     const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
 
     const currentBlock = 10_000;
-    const providerStub = ({ getBlockNumber: sandbox.stub().resolves(currentBlock) } as unknown) as Provider;
+    const currentTimestamp = 1700000000; // seconds
+    const providerStub = ({
+      getBlockNumber: sandbox.stub().resolves(currentBlock),
+      getBlock: sandbox.stub().resolves({ timestamp: currentTimestamp }),
+    } as unknown) as Provider;
     params.provider = providerStub;
-
-    // Fix Date.now() to a known timestamp for predictable calculations
-    const fixedNow = 1700000000 * 1000; // milliseconds
-    const currentTimestamp = fixedNow / 1000; // seconds
-    sandbox.stub(Date, "now").returns(fixedNow);
 
     // Proposal A: created at block 5000 (older)
     // fromBlock for A = max(5000 + gapBlocks, 10000 - lookbackBlocks) = 5000 + 900 = 5900

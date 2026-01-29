@@ -54,7 +54,7 @@ const blocksPerSecond = POLYGON_BLOCKS_PER_HOUR / 3_600;
 type ProposalProcessingContext = {
   boundedTradesMap: Map<string, PolymarketTradeInformation[]>;
   aiDeeplink: string;
-  fromTimestamp: number;
+  tradeFilterFromTimestamp: number;
 };
 
 function outcomeIndexes(
@@ -129,12 +129,12 @@ export async function processProposal(
 
     const fills = getOrderFilledEvents(market.clobTokenIds, context.boundedTradesMap);
 
-    // Filter trades by proposal-specific fromTimestamp and price thresholds
+    // Filter trades by proposal-specific tradeFilterFromTimestamp and price thresholds
     const soldWinner = fills[outcome.winner].filter(
-      (f) => f.timestamp >= context.fromTimestamp && isDiscrepantTrade(f, "winner", thresholds)
+      (f) => f.timestamp >= context.tradeFilterFromTimestamp && isDiscrepantTrade(f, "winner", thresholds)
     );
     const boughtLoser = fills[outcome.loser].filter(
-      (f) => f.timestamp >= context.fromTimestamp && isDiscrepantTrade(f, "loser", thresholds)
+      (f) => f.timestamp >= context.tradeFilterFromTimestamp && isDiscrepantTrade(f, "loser", thresholds)
     );
 
     let alerted = false;
@@ -326,14 +326,14 @@ export async function monitorTransactionsProposedOrderBook(
   const lookbackBlocks = Math.round(params.fillEventsLookbackSeconds * blocksPerSecond);
   const gapBlocks = Math.round(params.fillEventsProposalGapSeconds * blocksPerSecond);
   const currentBlock = await params.provider.getBlockNumber();
-  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const currentTimestamp = (await params.provider.getBlock(currentBlock)).timestamp;
 
-  // Augment bundles with per-proposal context (fromTimestamp, aiDeeplink)
+  // Augment bundles with per-proposal context (tradeFilterFromTimestamp, aiDeeplink)
   const augmentedBundles = activeBundles.map(({ proposal, markets }) => {
     const fromBlock = Math.max(Number(proposal.proposalBlockNumber) + gapBlocks, currentBlock - lookbackBlocks);
-    const fromTimestamp = currentTimestamp - Math.round((currentBlock - fromBlock) / blocksPerSecond);
+    const tradeFilterFromTimestamp = currentTimestamp - Math.round((currentBlock - fromBlock) / blocksPerSecond);
     const aiDeeplink = generateAIDeepLink(proposal.proposalHash, proposal.proposalLogIndex, params.aiResultsBaseUrl);
-    return { proposal, markets, fromBlock, fromTimestamp, aiDeeplink };
+    return { proposal, markets, fromBlock, tradeFilterFromTimestamp, aiDeeplink };
   });
 
   const earliestFromBlock = Math.min(...augmentedBundles.map((b) => b.fromBlock));
@@ -377,12 +377,12 @@ export async function monitorTransactionsProposedOrderBook(
 
   await BluebirdPromise.map(
     augmentedBundles,
-    async ({ proposal, markets, fromTimestamp, aiDeeplink }) => {
+    async ({ proposal, markets, tradeFilterFromTimestamp, aiDeeplink }) => {
       try {
         const alerted = await processProposal(proposal, markets, orderbookMap, params, logger, {
           boundedTradesMap,
           aiDeeplink,
-          fromTimestamp,
+          tradeFilterFromTimestamp,
         });
         if (alerted) await persistNotified(proposal, logger);
       } catch (err) {
