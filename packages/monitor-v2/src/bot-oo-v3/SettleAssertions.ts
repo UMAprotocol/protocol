@@ -6,9 +6,14 @@ import {
 import { computeEventSearch } from "../bot-utils/events";
 import { logSettleAssertion } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV3Ethers } from "./common";
+import type { GasEstimator } from "@uma/financial-templates-lib";
 import { getSettleTxErrorLogLevel } from "../bot-utils/errors";
 
-export async function settleAssertions(logger: typeof Logger, params: MonitoringParams): Promise<void> {
+export async function settleAssertions(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  gasEstimator: GasEstimator
+): Promise<void> {
   const oo = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>("OptimisticOracleV3", params.provider);
 
   const searchConfig = await computeEventSearch(
@@ -73,7 +78,9 @@ export async function settleAssertions(logger: typeof Logger, params: Monitoring
     }
 
     try {
-      const populatedTx = await oo.populateTransaction.settleAssertion(assertion.args.assertionId);
+      const populatedTx = await oo.populateTransaction.settleAssertion(assertion.args.assertionId, {
+        ...gasEstimator.getCurrentFastPriceEthers(),
+      });
 
       const tx = await runEthersContractTransaction(ooWithSigner, populatedTx, params.gasLimitMultiplier);
       const receipt = await tx.wait();
