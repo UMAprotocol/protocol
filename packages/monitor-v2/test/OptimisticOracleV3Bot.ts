@@ -1,5 +1,5 @@
 import { ExpandedERC20Ethers, MockOracleAncillaryEthers, OptimisticOracleV3Ethers } from "@uma/contracts-node";
-import { spyLogIncludes, spyLogLevel } from "@uma/financial-templates-lib";
+import { spyLogIncludes, spyLogLevel, GasEstimator } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import { MonitoringParams } from "../src/bot-oo-v3/common";
 import { settleAssertions } from "../src/bot-oo-v3/SettleAssertions";
@@ -22,8 +22,16 @@ describe("OptimisticOracleV3Bot", function () {
   let deployer: Signer;
   let asserter: Signer;
   let disputer: Signer;
+  let gasEstimator: GasEstimator;
 
   const claim = toUtf8Bytes("This is just a test claim");
+
+  before(async function () {
+    const { logger } = makeSpyLogger();
+    const network = await ethers.provider.getNetwork();
+    gasEstimator = new GasEstimator(logger, undefined, network.chainId, ethers.provider);
+    await gasEstimator.update();
+  });
 
   beforeEach(async function () {
     // Signer from ethers and hardhat-ethers are not version compatible, thus, we cannot use the SignerWithAddress.
@@ -58,14 +66,14 @@ describe("OptimisticOracleV3Bot", function () {
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const { spy, logger } = makeSpyLogger();
-    await settleAssertions(logger, await createMonitoringParams());
+    await settleAssertions(logger, await createMonitoringParams(), gasEstimator);
 
     // No logs should be generated as there are no assertions to settle.
     assert.isNull(spy.getCall(0));
 
     // move time forward to the execution time.
     await hardhatTime.increase(defaultLiveness);
-    await settleAssertions(logger, await createMonitoringParams());
+    await settleAssertions(logger, await createMonitoringParams(), gasEstimator);
 
     const settledIndex = spy
       .getCalls()
@@ -80,7 +88,7 @@ describe("OptimisticOracleV3Bot", function () {
     assert.equal(spy.getCall(settledIndex).lastArg.notificationPath, "optimistic-oracle");
 
     spy.resetHistory();
-    await settleAssertions(logger, await createMonitoringParams());
+    await settleAssertions(logger, await createMonitoringParams(), gasEstimator);
     // There should be no logs as there are no assertions to settle.
     assert.isNull(spy.getCall(0));
   });
@@ -108,7 +116,7 @@ describe("OptimisticOracleV3Bot", function () {
 
     // Call monitorAssertions directly for the block when the assertion was made.
     const { spy, logger } = makeSpyLogger();
-    await settleAssertions(logger, await createMonitoringParams());
+    await settleAssertions(logger, await createMonitoringParams(), gasEstimator);
 
     // No logs should be generated as there are no assertions to settle.
     assert.isNull(spy.getCall(0));
@@ -118,7 +126,7 @@ describe("OptimisticOracleV3Bot", function () {
       .connect(disputer)
       .pushPrice(oracleRequest.identifier, oracleRequest.time, oracleRequest.ancillaryData, 0);
 
-    await settleAssertions(logger, await createMonitoringParams());
+    await settleAssertions(logger, await createMonitoringParams(), gasEstimator);
 
     const settledIndex = spy
       .getCalls()
@@ -133,7 +141,7 @@ describe("OptimisticOracleV3Bot", function () {
     assert.equal(spy.getCall(settledIndex).lastArg.notificationPath, "optimistic-oracle");
 
     spy.resetHistory();
-    await settleAssertions(logger, await createMonitoringParams());
+    await settleAssertions(logger, await createMonitoringParams(), gasEstimator);
     // There should be no logs as there are no assertions to settle.
     assert.isNull(spy.getCall(0));
   });
