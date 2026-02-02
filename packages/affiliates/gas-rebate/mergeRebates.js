@@ -39,9 +39,9 @@ function validateBlockRanges(first, second) {
   // Validate that files are in correct order
   if (first.toBlock >= second.fromBlock) {
     throw new Error(
-      `Files are not in correct order or overlap.\n` +
+      "Files are not in correct order or overlap.\n" +
         `First file ends at block ${first.toBlock}, second file starts at block ${second.fromBlock}.\n` +
-        `The first file must end before the second file starts.`
+        "The first file must end before the second file starts."
     );
   }
 
@@ -49,7 +49,7 @@ function validateBlockRanges(first, second) {
   const gap = second.fromBlock - first.toBlock;
   if (gap > 1) {
     throw new Error(
-      `Gap detected between block ranges.\n` +
+      "Gap detected between block ranges.\n" +
         `First file ends at block ${first.toBlock}, second file starts at block ${second.fromBlock}.\n` +
         `Gap: ${gap} blocks. Expected contiguous ranges (gap of at most 1 block).`
     );
@@ -59,7 +59,7 @@ function validateBlockRanges(first, second) {
 function validateVotingContracts(first, second) {
   if (first.votingContractAddress !== second.votingContractAddress) {
     throw new Error(
-      `Voting contract addresses do not match.\n` +
+      "Voting contract addresses do not match.\n" +
         `First file: ${first.votingContractAddress}\n` +
         `Second file: ${second.votingContractAddress}`
     );
@@ -131,7 +131,7 @@ function main() {
   console.log("\nValidating and merging...");
   const merged = mergeRebates(first, second);
 
-  console.log(`\nMerged result:`);
+  console.log("\nMerged result:");
   console.log(`  Block range: ${merged.fromBlock} - ${merged.toBlock}`);
   console.log(`  Voters: ${merged.countVoters}`);
   console.log(`  Total: ${merged.totalRebateAmount} ETH`);
