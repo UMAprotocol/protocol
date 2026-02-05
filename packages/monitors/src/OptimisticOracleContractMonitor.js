@@ -66,6 +66,12 @@ class OptimisticOracleContractMonitor {
         value: "https://oracle.uma.xyz",
         isValid: (x) => typeof x === "string",
       },
+      managedOOV2PreUpgradeBlock: {
+        // Block number before ManagedOptimisticOracleV2 upgrade for detecting the upgrade.
+        // Set this to the block number just before the upgrade transaction for each network.
+        value: null,
+        isValid: (x) => x === null || (typeof x === "number" && x > 0),
+      },
     };
 
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
@@ -86,6 +92,9 @@ class OptimisticOracleContractMonitor {
       },
     };
     Object.assign(this, createObjectFromDefaultProps({ contractProps }, defaultContractProps));
+
+    // Flag to track if this is upgraded ManagedOptimisticOracleV2. Initialized to null and detected on first use.
+    this.isManagedOOV2Upgraded = null;
 
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
@@ -188,6 +197,11 @@ class OptimisticOracleContractMonitor {
       lastProposePriceBlockNumber: this.lastProposePriceBlockNumber,
     });
 
+    // Initialize ManagedOptimisticOracleV2 upgrade detection on first call
+    if (this.isManagedOOV2Upgraded === null) {
+      this.isManagedOOV2Upgraded = await this._detectManagedOOV2Upgraded();
+    }
+
     let latestEvents = this.optimisticOracleContractEventClient.getAllProposePriceEvents();
 
     // Get events that are newer than the last block number we've seen
@@ -202,6 +216,16 @@ class OptimisticOracleContractMonitor {
           this.contractProps.chainId
         );
 
+        const expirationTime =
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
+            ? event.expirationTimestamp
+            : event.request.expirationTime;
+
+        // Adjust expiration message for upgraded ManagedOptimisticOracleV2
+        const expirationMessage = this.isManagedOOV2Upgraded
+          ? `can be settled after ${expirationTime} (but remains disputable until settled)`
+          : `will expire at ${expirationTime}`;
+
         const mrkdwn =
           createEtherscanLinkMarkdown(
             this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer,
@@ -214,11 +238,7 @@ class OptimisticOracleContractMonitor {
             this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
               ? event.proposedPrice
               : event.request.proposedPrice
-          )} will expire at ${
-            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
-              ? event.expirationTimestamp
-              : event.request.expirationTime
-          }.\n` +
+          )} ${expirationMessage}.\n` +
           this._formatAncillaryData(event.ancillaryData) +
           `.\n Collateral currency address is ${createEtherscanLinkMarkdown(
             this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
@@ -404,6 +424,54 @@ class OptimisticOracleContractMonitor {
         break;
     }
     return `<${this.optimisticOracleUIBaseUrl}/?transactionHash=${transactionHash}&eventIndex=${eventIndex}&chainId=${chainId}&oracleType=${oracleType}|View in UI>`;
+  }
+
+  // Detects if the monitored contract is an upgraded ManagedOptimisticOracleV2 with new dispute window behavior.
+  // Returns true if this is a UUPS proxy that has been upgraded, false otherwise.
+  async _detectManagedOOV2Upgraded() {
+    // Only check if this is OptimisticOracleV2
+    if (this.oracleType !== OptimisticOracleType.OptimisticOracleV2) {
+      return false;
+    }
+
+    // Cannot detect upgrade without pre-upgrade block configured
+    if (this.managedOOV2PreUpgradeBlock === null) {
+      return false;
+    }
+
+    // EIP-1967 implementation slot for UUPS proxies
+    const EIP1967_IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+
+    try {
+      // Read the implementation slot at current block
+      const currentImplementation = await this.web3.eth.getStorageAt(
+        this.optimisticOracleContract.options.address,
+        EIP1967_IMPLEMENTATION_SLOT
+      );
+
+      // If the slot is empty (all zeros), this is not a UUPS proxy
+      if (!currentImplementation || currentImplementation === "0x" + "0".repeat(64)) {
+        return false;
+      }
+
+      // Read the implementation slot at pre-upgrade block
+      const preUpgradeImplementation = await this.web3.eth.getStorageAt(
+        this.optimisticOracleContract.options.address,
+        EIP1967_IMPLEMENTATION_SLOT,
+        this.managedOOV2PreUpgradeBlock
+      );
+
+      // Compare raw bytes32 values - if they differ, the contract has been upgraded
+      return currentImplementation !== preUpgradeImplementation;
+    } catch (error) {
+      // If we encounter any errors during detection, log and return false
+      this.logger.warn({
+        at: "OptimisticOracleContractMonitor",
+        message: "Error detecting ManagedOptimisticOracleV2 upgrade",
+        error: error.message,
+      });
+      return false;
+    }
   }
 
   async _shouldOpenVerificationTicket(transactionHash, eventIndex, chainId) {
