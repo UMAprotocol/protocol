@@ -111,9 +111,6 @@ export async function clearStuckTransactions(
     threshold: nonceBacklogConfig.nonceBacklogThreshold,
   });
 
-  // Get base fee data from gas estimator
-  const baseFeeData = gasEstimator.getCurrentFastPriceEthers();
-
   // Clear all stuck nonces from latestNonce to pendingNonce - 1
   // Track current state as it may change during clearing
   let currentLatestNonce = latestNonce;
@@ -122,6 +119,9 @@ export async function clearStuckTransactions(
   while (currentLatestNonce < currentPendingNonce) {
     const nonce = currentLatestNonce;
     let cleared = false;
+
+    // Refresh base fee data for each nonce to handle rising gas prices
+    const baseFeeData = gasEstimator.getCurrentFastPriceEthers();
 
     for (let attempt = 0; attempt < nonceBacklogConfig.replacementAttempts; attempt++) {
       const feeData = bumpFeeData(baseFeeData, attempt, nonceBacklogConfig);
@@ -186,6 +186,7 @@ export async function clearStuckTransactions(
       // Re-evaluate nonce state before continuing - the stuck tx may have been
       // cleared by another source, or new transactions may have been submitted
       const refreshed = await getNonces(provider, botAddress);
+      const previousLatestNonce = currentLatestNonce;
       currentLatestNonce = refreshed.latestNonce;
       currentPendingNonce = refreshed.pendingNonce;
 
@@ -197,6 +198,18 @@ export async function clearStuckTransactions(
         newLatestNonce: currentLatestNonce,
         newPendingNonce: currentPendingNonce,
       });
+
+      // If latestNonce hasn't advanced, we're stuck (e.g., underpriced, out of funds).
+      // Exit to avoid infinite loop - will retry on next bot cycle with fresh gas prices.
+      if (currentLatestNonce === previousLatestNonce) {
+        logger.error({
+          at: "TransactionClearer",
+          message: "Nonce did not advance after failed clearing attempts, exiting to prevent infinite loop",
+          botAddress,
+          stuckNonce: nonce,
+        });
+        break;
+      }
     } else {
       // Move to next nonce after successful clear
       currentLatestNonce++;
