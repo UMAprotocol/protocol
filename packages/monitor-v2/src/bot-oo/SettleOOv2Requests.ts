@@ -37,10 +37,13 @@ export async function settleOOv2Requests(
 
   const requestsToSettle = proposals.filter((e) => !settledKeys.has(requestKey(e.args)));
 
+  const signerAddress = await params.signer.getAddress();
+
   const settleableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
       await oo.callStatic.settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData, {
         blockTag: params.settleableCheckBlock,
+        from: signerAddress,
       });
       logger.debug({
         at: "OOv2Bot",
