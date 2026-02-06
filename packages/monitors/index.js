@@ -481,6 +481,7 @@ async function Poll(callback) {
       //       "requestedPrice":"info"                       // OptimisticOracleContractMonitor price requested
       //   },
       //  "optimisticOracleUIBaseUrl": "https://example.com/" // This is the base URL for the Optimistic Oracle UI.
+      //  "managedOOV2PreUpgradeBlock": 12345678             // Block number before ManagedOptimisticOracleV2 upgrade (for detecting upgraded contracts).
       // }
       monitorConfig: process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : {},
       // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
