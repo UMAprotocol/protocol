@@ -224,7 +224,7 @@ To run a package script in _every_ package that has a script by that name, you s
 yarn lerna run <script> --stream
 ```
 
-Note: the stream argument is just to force lerna to stream the output so you get realtime logs, but it's not required.
+Note: the stream argument is just to force lerna to stream the output so you get real-time logs, but it's not required.
 
 ### Coverage 🔎
 
