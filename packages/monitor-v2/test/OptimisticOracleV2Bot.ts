@@ -16,6 +16,9 @@ import { hre, Signer, toUtf8Bytes, toUtf8String } from "./utils";
 import { makeMonitoringParamsOO } from "./helpers/monitoring";
 import { makeSpyLogger } from "./helpers/logging";
 import { advanceTimerPastLiveness } from "./helpers/time";
+import { addGlobalHardhatTestingAddress } from "@uma/common";
+import { defaultCurrency } from "./constants";
+import { getContractFactory } from "./utils";
 
 const ethers = hre.ethers;
 
@@ -192,5 +195,107 @@ describe("OptimisticOracleV2Bot", function () {
     }
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "No settlement logs should be generated on subsequent runs");
+  });
+
+  it("Settles multiple requests in a single multicall batch", async function () {
+    // Deploy an OOv2 with MultiCaller (mimics ManagedOptimisticOracleV2).
+    const [deployer] = (await ethers.getSigners()) as Signer[];
+    const uma = await umaEcosystemFixture();
+
+    const mcBondToken = (await (await getContractFactory("ExpandedERC20", deployer)).deploy(
+      defaultCurrency.name,
+      defaultCurrency.symbol,
+      defaultCurrency.decimals
+    )) as ExpandedERC20Ethers;
+    await uma.collateralWhitelist.addToWhitelist(mcBondToken.address);
+    await uma.store.setFinalFee(mcBondToken.address, { rawValue: defaultCurrency.finalFee });
+    await uma.identifierWhitelist.addSupportedIdentifier(defaultOptimisticOracleV2Identifier);
+
+    // Deploy the combined OOv2+MultiCaller contract via hardhat compilation.
+    const oov2McFactory = await ethers.getContractFactory("OptimisticOracleV2Multicaller", deployer);
+    const oov2Mc = (await oov2McFactory.deploy(
+      defaultLiveness,
+      uma.finder.address,
+      uma.timer.address
+    )) as OptimisticOracleV2Ethers;
+    addGlobalHardhatTestingAddress("OptimisticOracleV2", oov2Mc.address);
+
+    // Mint bonds and approve.
+    const bond = ethers.utils.parseEther("5000");
+    await mcBondToken.addMinter(await deployer.getAddress());
+    await mcBondToken.mint(await deployer.getAddress(), bond);
+    await mcBondToken.approve(oov2Mc.address, bond);
+
+    // Create 3 requests with different ancillary data.
+    const ancillaryDataItems = [
+      toUtf8Bytes("Multicall question 1"),
+      toUtf8Bytes("Multicall question 2"),
+      toUtf8Bytes("Multicall question 3"),
+    ];
+
+    let lastProposeBlock = 0;
+    for (const data of ancillaryDataItems) {
+      await (
+        await oov2Mc.requestPrice(defaultOptimisticOracleV2Identifier, 0, data, mcBondToken.address, 0)
+      ).wait();
+      const proposeReceipt = await (
+        await oov2Mc.proposePrice(
+          await deployer.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          data,
+          ethers.utils.parseEther("1")
+        )
+      ).wait();
+      lastProposeBlock = proposeReceipt.blockNumber!;
+    }
+
+    // Move timer past liveness for all proposals.
+    await advanceTimerPastLiveness(uma.timer, lastProposeBlock, defaultLiveness);
+
+    const { spy, logger } = makeSpyLogger();
+    const params = await makeMonitoringParamsOO("OptimisticOracleV2", oov2Mc.address, {
+      settleRequestsEnabled: false,
+    });
+    params.settleBatchSize = 10; // Larger than 3, so all go in one batch.
+
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    // Verify all 3 requests were settled and each was logged individually.
+    const settleLogs = spy.getCalls().filter((c) => c.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settleLogs.length, 3, "Expected 3 settlement logs");
+
+    // All 3 settlements should share the same tx hash (single multicall transaction).
+    // The tx hash is embedded in the mrkdwn field via createEtherscanLinkMarkdown.
+    const txHashes = settleLogs.map((c) => {
+      const mrkdwn: string = c.lastArg.mrkdwn;
+      // Extract tx hash - it appears after "settled in transaction " in the mrkdwn.
+      const match = mrkdwn.match(/0x[a-fA-F0-9]{64}/);
+      return match ? match[0] : null;
+    });
+    assert.isNotNull(txHashes[0], "Expected to find tx hash in log");
+    assert.equal(txHashes[0], txHashes[1], "All settlements should be in the same tx");
+    assert.equal(txHashes[1], txHashes[2], "All settlements should be in the same tx");
+
+    // Verify each ancillary data appears in the logs.
+    for (const data of ancillaryDataItems) {
+      const dataStr = toUtf8String(data);
+      const found = settleLogs.some((c) => c.lastArg.mrkdwn.includes(dataStr));
+      assert.isTrue(found, `Expected settlement log to include ancillary data: ${dataStr}`);
+    }
+
+    // Subsequent run should produce no settlement logs.
+    spy.resetHistory();
+    {
+      const params2 = await makeMonitoringParamsOO("OptimisticOracleV2", oov2Mc.address, {
+        settleRequestsEnabled: false,
+      });
+      params2.settleBatchSize = 10;
+      await gasEstimator.update();
+      await settleRequests(logger, params2, gasEstimator);
+    }
+    const subsequentLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(subsequentLogs.length, 0, "No settlement logs should be generated on subsequent runs");
   });
 });

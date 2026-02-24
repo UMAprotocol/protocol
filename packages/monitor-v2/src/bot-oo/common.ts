@@ -16,6 +16,7 @@ export interface MonitoringParams extends BaseMonitoringParams {
   contractAddress: string;
   settleableCheckBlock: number; // Block number to check for settleable requests, defaults to 5 minutes ago
   executionDeadline?: number; // Timestamp in sec for when to stop settling, defaults to 4 minutes from now in serverless
+  settleBatchSize: number; // Number of settle calls to batch via multicall (requires MultiCaller on contract), defaults to 1
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -47,6 +48,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const settleTimeout = Number(env.SETTLE_TIMEOUT) || 4 * 60; // Default to 4 minutes from now in serverless
   const executionDeadline = base.pollingDelay === 0 ? currentTimestamp + settleTimeout : undefined;
 
+  const settleBatchSize = Math.max(1, Number(env.SETTLE_BATCH_SIZE) || 1);
+
   return {
     ...base,
     botModes,
@@ -54,6 +57,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     contractAddress,
     settleableCheckBlock,
     executionDeadline,
+    settleBatchSize,
   };
 };
 
