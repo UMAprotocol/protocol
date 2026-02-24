@@ -40,6 +40,7 @@ export async function makeMonitoringParamsOO(
     gasLimitMultiplier: 150,
     oracleType,
     contractAddress,
+    settleBatchSize: 1,
   };
 }
 
