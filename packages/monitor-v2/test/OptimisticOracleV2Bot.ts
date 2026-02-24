@@ -235,9 +235,7 @@ describe("OptimisticOracleV2Bot", function () {
 
     let lastProposeBlock = 0;
     for (const data of ancillaryDataItems) {
-      await (
-        await oov2Mc.requestPrice(defaultOptimisticOracleV2Identifier, 0, data, mcBondToken.address, 0)
-      ).wait();
+      await (await oov2Mc.requestPrice(defaultOptimisticOracleV2Identifier, 0, data, mcBondToken.address, 0)).wait();
       const proposeReceipt = await (
         await oov2Mc.proposePrice(
           await deployer.getAddress(),
