@@ -213,7 +213,8 @@ if [[ "$GENERATE_ENV" == "true" ]]; then
 
     # Set POLLING_DELAY=0 for one-shot mode
     if grep -q '^POLLING_DELAY=' "$ENV_FILE"; then
-        sed -i '' 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
+        sed -i.bak 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
+        rm -f "${ENV_FILE}.bak"
     else
         echo 'POLLING_DELAY=0' >> "$ENV_FILE"
     fi
