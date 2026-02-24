@@ -40,6 +40,48 @@ prompt() {
     echo -e "${GREEN}[?]${NC} $1"
 }
 
+# Ensure a repo is on master and up to date.
+# Usage: ensure_repo_up_to_date <repo_path> <repo_name>
+ensure_repo_up_to_date() {
+    local repo_path="$1"
+    local repo_name="$2"
+    local current_branch
+
+    current_branch="$(git -C "$repo_path" rev-parse --abbrev-ref HEAD)"
+
+    if [[ "$current_branch" != "master" ]]; then
+        warn "$repo_name is on branch '$current_branch', not 'master'."
+        prompt "Switch $repo_name to master? (y/N)"
+        read -r SWITCH_BRANCH
+        if [[ "$SWITCH_BRANCH" =~ ^[Yy]$ ]]; then
+            git -C "$repo_path" checkout master
+            success "$repo_name switched to master"
+        else
+            info "Skipping branch switch for $repo_name (staying on '$current_branch')"
+            return
+        fi
+    fi
+
+    git -C "$repo_path" fetch origin master --quiet
+    local local_rev remote_rev
+    local_rev="$(git -C "$repo_path" rev-parse HEAD)"
+    remote_rev="$(git -C "$repo_path" rev-parse origin/master)"
+
+    if [[ "$local_rev" != "$remote_rev" ]]; then
+        warn "$repo_name master is behind origin/master."
+        prompt "Pull latest changes for $repo_name? (y/N)"
+        read -r PULL_CHANGES
+        if [[ "$PULL_CHANGES" =~ ^[Yy]$ ]]; then
+            git -C "$repo_path" pull origin master
+            success "$repo_name is now up to date"
+        else
+            info "Skipping pull for $repo_name"
+        fi
+    else
+        success "$repo_name master is up to date"
+    fi
+}
+
 # Header
 echo ""
 echo "=============================================="
@@ -100,6 +142,11 @@ fi
 success "bot-configs path: $UMA_BOT_CONFIGS"
 echo ""
 
+# Ensure both repos are on master and up to date
+ensure_repo_up_to_date "$UMA_PROTOCOL" "UMA Protocol"
+ensure_repo_up_to_date "$UMA_BOT_CONFIGS" "bot-configs"
+echo ""
+
 # Export paths
 export UMA_PROTOCOL
 export UMA_BOT_CONFIGS
@@ -156,7 +203,7 @@ if [[ "$GENERATE_ENV" == "true" ]]; then
 
     # Set POLLING_DELAY=0 for one-shot mode
     if grep -q '^POLLING_DELAY=' "$ENV_FILE"; then
-        sed -i 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
+        sed -i '' 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
     else
         echo 'POLLING_DELAY=0' >> "$ENV_FILE"
     fi
@@ -166,7 +213,7 @@ else
     info "Using existing .env.local file"
     # Ensure POLLING_DELAY=0 for one-shot mode
     if grep -q '^POLLING_DELAY=' "$ENV_FILE"; then
-        sed -i 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
+        sed -i '' 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
     else
         echo 'POLLING_DELAY=0' >> "$ENV_FILE"
     fi
