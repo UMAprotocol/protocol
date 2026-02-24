@@ -230,6 +230,13 @@ else
         echo 'POLLING_DELAY=0' >> "$ENV_FILE"
     fi
 fi
+
+# Clean up temp bot-configs clone (contains sensitive data)
+if [[ "$BOT_CONFIGS_CLONED_TEMP" == "true" ]]; then
+    info "Removing temporary bot-configs clone..."
+    rm -rf "$UMA_BOT_CONFIGS"
+    success "Temporary bot-configs removed"
+fi
 echo ""
 
 # Step 4: Build monitor-v2
