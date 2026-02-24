@@ -116,35 +116,38 @@ success "UMA Protocol path: $UMA_PROTOCOL"
 echo ""
 
 # Check for bot-configs repository
-prompt "Enter the path to your bot-configs repository (required for .env generation):"
-echo "  If you don't have it, clone it first:"
-echo "  git clone git@github.com:UMAprotocol/bot-configs.git"
-echo ""
+BOT_CONFIGS_CLONED_TEMP=false
+prompt "Enter the path to your bot-configs repository, or press Enter to clone into a temp directory:"
 read -r UMA_BOT_CONFIGS
 
 if [[ -z "$UMA_BOT_CONFIGS" ]]; then
-    error "bot-configs path is required"
-    exit 1
-fi
+    UMA_BOT_CONFIGS="$(mktemp -d)/bot-configs"
+    info "Cloning bot-configs into $UMA_BOT_CONFIGS..."
+    git clone git@github.com:UMAprotocol/bot-configs.git "$UMA_BOT_CONFIGS"
+    BOT_CONFIGS_CLONED_TEMP=true
+    success "bot-configs cloned to: $UMA_BOT_CONFIGS"
+else
+    # Expand ~ if present
+    UMA_BOT_CONFIGS="${UMA_BOT_CONFIGS/#\~/$HOME}"
 
-# Expand ~ if present
-UMA_BOT_CONFIGS="${UMA_BOT_CONFIGS/#\~/$HOME}"
+    if [[ ! -d "$UMA_BOT_CONFIGS" ]]; then
+        error "bot-configs directory not found: $UMA_BOT_CONFIGS"
+        exit 1
+    fi
 
-if [[ ! -d "$UMA_BOT_CONFIGS" ]]; then
-    error "bot-configs directory not found: $UMA_BOT_CONFIGS"
-    exit 1
+    if [[ ! -f "$UMA_BOT_CONFIGS/scripts/print-env-file.js" ]]; then
+        error "Invalid bot-configs repository: scripts/print-env-file.js not found"
+        exit 1
+    fi
+    success "bot-configs path: $UMA_BOT_CONFIGS"
 fi
-
-if [[ ! -f "$UMA_BOT_CONFIGS/scripts/print-env-file.js" ]]; then
-    error "Invalid bot-configs repository: scripts/print-env-file.js not found"
-    exit 1
-fi
-success "bot-configs path: $UMA_BOT_CONFIGS"
 echo ""
 
 # Ensure both repos are on master and up to date
 ensure_repo_up_to_date "$UMA_PROTOCOL" "UMA Protocol"
-ensure_repo_up_to_date "$UMA_BOT_CONFIGS" "bot-configs"
+if [[ "$BOT_CONFIGS_CLONED_TEMP" != "true" ]]; then
+    ensure_repo_up_to_date "$UMA_BOT_CONFIGS" "bot-configs"
+fi
 echo ""
 
 # Export paths
@@ -157,16 +160,23 @@ echo "  Step 2: Install Dependencies (bot-configs)"
 echo "=============================================="
 echo ""
 
-prompt "Do you need to install/update dependencies in bot-configs? (y/N)"
-read -r INSTALL_BOT_CONFIGS_DEPS
-
-if [[ "$INSTALL_BOT_CONFIGS_DEPS" =~ ^[Yy]$ ]]; then
-    info "Installing dependencies in bot-configs..."
+if [[ "$BOT_CONFIGS_CLONED_TEMP" == "true" ]]; then
+    info "Installing dependencies in freshly cloned bot-configs..."
     cd "$UMA_BOT_CONFIGS"
     yarn install
     success "bot-configs dependencies installed"
 else
-    info "Skipping bot-configs dependency installation"
+    prompt "Do you need to install/update dependencies in bot-configs? (y/N)"
+    read -r INSTALL_BOT_CONFIGS_DEPS
+
+    if [[ "$INSTALL_BOT_CONFIGS_DEPS" =~ ^[Yy]$ ]]; then
+        info "Installing dependencies in bot-configs..."
+        cd "$UMA_BOT_CONFIGS"
+        yarn install
+        success "bot-configs dependencies installed"
+    else
+        info "Skipping bot-configs dependency installation"
+    fi
 fi
 echo ""
 
