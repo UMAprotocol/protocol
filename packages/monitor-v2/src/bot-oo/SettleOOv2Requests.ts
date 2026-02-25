@@ -9,7 +9,7 @@ import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV2Ethers } from "./common";
 import { requestKey } from "./requestKey";
 import type { GasEstimator } from "@uma/financial-templates-lib";
-import { getSettleTxErrorLogLevel } from "../bot-utils/errors";
+import { getSettleTxErrorLogFields, getSettleTxErrorLogLevel } from "../bot-utils/errors";
 
 const MULTICALL_ABI = ["function multicall(bytes[] calldata data) external returns (bytes[] memory results)"];
 
@@ -136,7 +136,7 @@ async function settleOneByOne(
         at: "OOv2Bot",
         message: "Request settlement failed",
         requestKey: requestKey(req.args),
-        error,
+        ...getSettleTxErrorLogFields(error),
         notificationPath: "optimistic-oracle",
       });
       continue;
@@ -231,7 +231,7 @@ async function settleInBatches(
         at: "OOv2Bot",
         message: "Multicall batch failed, falling back to one-by-one settlement",
         batchSize: batch.length,
-        error,
+        ...getSettleTxErrorLogFields(error),
       });
       await settleOneByOne(logger, params, oo, batch, gasEstimator);
       settled += batch.length;
