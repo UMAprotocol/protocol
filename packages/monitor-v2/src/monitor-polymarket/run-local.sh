@@ -40,6 +40,48 @@ prompt() {
     echo -e "${GREEN}[?]${NC} $1"
 }
 
+# Ensure a repo is on master and up to date.
+# Usage: ensure_repo_up_to_date <repo_path> <repo_name>
+ensure_repo_up_to_date() {
+    local repo_path="$1"
+    local repo_name="$2"
+    local current_branch
+
+    current_branch="$(git -C "$repo_path" rev-parse --abbrev-ref HEAD)"
+
+    if [[ "$current_branch" != "master" ]]; then
+        warn "$repo_name is on branch '$current_branch', not 'master'."
+        prompt "Switch $repo_name to master? (y/N)"
+        read -r SWITCH_BRANCH
+        if [[ "$SWITCH_BRANCH" =~ ^[Yy]$ ]]; then
+            git -C "$repo_path" checkout master
+            success "$repo_name switched to master"
+        else
+            info "Skipping branch switch for $repo_name (staying on '$current_branch')"
+            return
+        fi
+    fi
+
+    git -C "$repo_path" fetch origin master --quiet
+    local local_rev remote_rev
+    local_rev="$(git -C "$repo_path" rev-parse HEAD)"
+    remote_rev="$(git -C "$repo_path" rev-parse origin/master)"
+
+    if [[ "$local_rev" != "$remote_rev" ]]; then
+        warn "$repo_name master is behind origin/master."
+        prompt "Pull latest changes for $repo_name? (y/N)"
+        read -r PULL_CHANGES
+        if [[ "$PULL_CHANGES" =~ ^[Yy]$ ]]; then
+            git -C "$repo_path" pull origin master
+            success "$repo_name is now up to date"
+        else
+            info "Skipping pull for $repo_name"
+        fi
+    else
+        success "$repo_name master is up to date"
+    fi
+}
+
 # Header
 echo ""
 echo "=============================================="
@@ -74,30 +116,38 @@ success "UMA Protocol path: $UMA_PROTOCOL"
 echo ""
 
 # Check for bot-configs repository
-prompt "Enter the path to your bot-configs repository (required for .env generation):"
-echo "  If you don't have it, clone it first:"
-echo "  git clone git@github.com:UMAprotocol/bot-configs.git"
-echo ""
+BOT_CONFIGS_CLONED_TEMP=false
+prompt "Enter the path to your bot-configs repository, or press Enter to clone into a temp directory:"
 read -r UMA_BOT_CONFIGS
 
 if [[ -z "$UMA_BOT_CONFIGS" ]]; then
-    error "bot-configs path is required"
-    exit 1
-fi
+    UMA_BOT_CONFIGS="$(mktemp -d)/bot-configs"
+    info "Cloning bot-configs into $UMA_BOT_CONFIGS..."
+    git clone git@github.com:UMAprotocol/bot-configs.git "$UMA_BOT_CONFIGS"
+    BOT_CONFIGS_CLONED_TEMP=true
+    success "bot-configs cloned to: $UMA_BOT_CONFIGS"
+else
+    # Expand ~ if present
+    UMA_BOT_CONFIGS="${UMA_BOT_CONFIGS/#\~/$HOME}"
 
-# Expand ~ if present
-UMA_BOT_CONFIGS="${UMA_BOT_CONFIGS/#\~/$HOME}"
+    if [[ ! -d "$UMA_BOT_CONFIGS" ]]; then
+        error "bot-configs directory not found: $UMA_BOT_CONFIGS"
+        exit 1
+    fi
 
-if [[ ! -d "$UMA_BOT_CONFIGS" ]]; then
-    error "bot-configs directory not found: $UMA_BOT_CONFIGS"
-    exit 1
+    if [[ ! -f "$UMA_BOT_CONFIGS/scripts/print-env-file.js" ]]; then
+        error "Invalid bot-configs repository: scripts/print-env-file.js not found"
+        exit 1
+    fi
+    success "bot-configs path: $UMA_BOT_CONFIGS"
 fi
+echo ""
 
-if [[ ! -f "$UMA_BOT_CONFIGS/scripts/print-env-file.js" ]]; then
-    error "Invalid bot-configs repository: scripts/print-env-file.js not found"
-    exit 1
+# Ensure both repos are on master and up to date
+ensure_repo_up_to_date "$UMA_PROTOCOL" "UMA Protocol"
+if [[ "$BOT_CONFIGS_CLONED_TEMP" != "true" ]]; then
+    ensure_repo_up_to_date "$UMA_BOT_CONFIGS" "bot-configs"
 fi
-success "bot-configs path: $UMA_BOT_CONFIGS"
 echo ""
 
 # Export paths
@@ -110,16 +160,23 @@ echo "  Step 2: Install Dependencies (bot-configs)"
 echo "=============================================="
 echo ""
 
-prompt "Do you need to install/update dependencies in bot-configs? (y/N)"
-read -r INSTALL_BOT_CONFIGS_DEPS
-
-if [[ "$INSTALL_BOT_CONFIGS_DEPS" =~ ^[Yy]$ ]]; then
-    info "Installing dependencies in bot-configs..."
+if [[ "$BOT_CONFIGS_CLONED_TEMP" == "true" ]]; then
+    info "Installing dependencies in freshly cloned bot-configs..."
     cd "$UMA_BOT_CONFIGS"
     yarn install
     success "bot-configs dependencies installed"
 else
-    info "Skipping bot-configs dependency installation"
+    prompt "Do you need to install/update dependencies in bot-configs? (y/N)"
+    read -r INSTALL_BOT_CONFIGS_DEPS
+
+    if [[ "$INSTALL_BOT_CONFIGS_DEPS" =~ ^[Yy]$ ]]; then
+        info "Installing dependencies in bot-configs..."
+        cd "$UMA_BOT_CONFIGS"
+        yarn install
+        success "bot-configs dependencies installed"
+    else
+        info "Skipping bot-configs dependency installation"
+    fi
 fi
 echo ""
 
@@ -156,7 +213,8 @@ if [[ "$GENERATE_ENV" == "true" ]]; then
 
     # Set POLLING_DELAY=0 for one-shot mode
     if grep -q '^POLLING_DELAY=' "$ENV_FILE"; then
-        sed -i 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
+        sed -i.bak 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
+        rm -f "${ENV_FILE}.bak"
     else
         echo 'POLLING_DELAY=0' >> "$ENV_FILE"
     fi
@@ -166,10 +224,18 @@ else
     info "Using existing .env.local file"
     # Ensure POLLING_DELAY=0 for one-shot mode
     if grep -q '^POLLING_DELAY=' "$ENV_FILE"; then
-        sed -i 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
+        sed -i.bak 's/^POLLING_DELAY=.*/POLLING_DELAY=0/' "$ENV_FILE"
+        rm -f "${ENV_FILE}.bak"
     else
         echo 'POLLING_DELAY=0' >> "$ENV_FILE"
     fi
+fi
+
+# Clean up temp bot-configs clone (contains sensitive data)
+if [[ "$BOT_CONFIGS_CLONED_TEMP" == "true" ]]; then
+    info "Removing temporary bot-configs clone..."
+    rm -rf "$UMA_BOT_CONFIGS"
+    success "Temporary bot-configs removed"
 fi
 echo ""
 
