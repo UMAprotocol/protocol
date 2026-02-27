@@ -73,7 +73,7 @@ async function runExport() {
   console.log(" 3. Validating deployed contracts are owned by new governor...");
 
   // The Financial Contracts Admin, identifierWhiteList and Voting are all
-  // ownable and should be owned by the the new governor
+  // ownable and should be owned by the new governor
   await contractOwnedByNewGovernor(FinancialContractsAdmin);
   await contractOwnedByNewGovernor(IdentifierWhitelist);
   await contractOwnedByNewGovernor(Voting);
