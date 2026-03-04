@@ -39,13 +39,80 @@ export async function settleOOv2Requests(
     params.maxBlockLookBack
   );
 
-  const proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Querying ProposePrice events",
+    fromBlock: searchConfig.fromBlock,
+    toBlock: searchConfig.toBlock,
+    maxBlockLookBack: searchConfig.maxBlockLookBack,
+  });
+  const proposalsStartedAt = Date.now();
+  let proposals: ProposePriceEvent[];
+  try {
+    proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
+    logger.debug({
+      at: "OOv2Bot",
+      message: "Queried ProposePrice events",
+      count: proposals.length,
+      elapsedMs: Date.now() - proposalsStartedAt,
+    });
+  } catch (error) {
+    logger.error({
+      at: "OOv2Bot",
+      message: "Failed querying ProposePrice events",
+      fromBlock: searchConfig.fromBlock,
+      toBlock: searchConfig.toBlock,
+      maxBlockLookBack: searchConfig.maxBlockLookBack,
+      ...getSettleTxErrorLogFields(error),
+    });
+    throw error;
+  }
 
-  const settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Querying Settle events",
+    fromBlock: searchConfig.fromBlock,
+    toBlock: searchConfig.toBlock,
+    maxBlockLookBack: searchConfig.maxBlockLookBack,
+  });
+  const settlementsStartedAt = Date.now();
+  let settlements: SettleEvent[];
+  try {
+    settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
+    logger.debug({
+      at: "OOv2Bot",
+      message: "Queried Settle events",
+      count: settlements.length,
+      elapsedMs: Date.now() - settlementsStartedAt,
+    });
+  } catch (error) {
+    logger.error({
+      at: "OOv2Bot",
+      message: "Failed querying Settle events",
+      fromBlock: searchConfig.fromBlock,
+      toBlock: searchConfig.toBlock,
+      maxBlockLookBack: searchConfig.maxBlockLookBack,
+      ...getSettleTxErrorLogFields(error),
+    });
+    throw error;
+  }
 
   const settledKeys = new Set(settlements.map((e) => requestKey(e.args)));
 
   const requestsToSettle = proposals.filter((e) => !settledKeys.has(requestKey(e.args)));
+
+  const requestsToSettleTxCount =
+    params.settleBatchSize > 1 ? Math.ceil(requestsToSettle.length / params.settleBatchSize) : requestsToSettle.length;
+
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Settlement candidates",
+    totalProposals: proposals.length,
+    settlements: settlements.length,
+    requestsToSettle: requestsToSettle.length,
+    settleTxCount: requestsToSettleTxCount,
+    settleBatchSize: params.settleBatchSize,
+  });
 
   const signerAddress = await params.signer.getAddress();
 
@@ -65,6 +132,15 @@ export async function settleOOv2Requests(
       });
       return req;
     } catch (err) {
+      logger.debug({
+        at: "OOv2Bot",
+        message: "Settle simulation failed",
+        requestKey: requestKey(req.args),
+        requester: req.args.requester,
+        identifier: req.args.identifier,
+        timestamp: req.args.timestamp.toString(),
+        ...getSettleTxErrorLogFields(err),
+      });
       return null;
     }
   });
@@ -72,6 +148,22 @@ export async function settleOOv2Requests(
   const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter(
     (req): req is ProposePriceEvent => req !== null
   );
+
+  const settleableTxCount =
+    params.settleBatchSize > 1
+      ? Math.ceil(settleableRequests.length / params.settleBatchSize)
+      : settleableRequests.length;
+
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Settlement processing",
+    totalProposals: proposals.length,
+    settlements: settlements.length,
+    requestsToSettle: requestsToSettle.length,
+    settleableRequests: settleableRequests.length,
+    settleTxCount: settleableTxCount,
+    settleBatchSize: params.settleBatchSize,
+  });
 
   if (settleableRequests.length > 0) {
     logger.debug({
