@@ -39,9 +39,63 @@ export async function settleOOv2Requests(
     params.maxBlockLookBack
   );
 
-  const proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Querying ProposePrice events",
+    fromBlock: searchConfig.fromBlock,
+    toBlock: searchConfig.toBlock,
+    maxBlockLookBack: searchConfig.maxBlockLookBack,
+  });
+  const proposalsStartedAt = Date.now();
+  let proposals: ProposePriceEvent[];
+  try {
+    proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
+    logger.debug({
+      at: "OOv2Bot",
+      message: "Queried ProposePrice events",
+      count: proposals.length,
+      elapsedMs: Date.now() - proposalsStartedAt,
+    });
+  } catch (error) {
+    logger.error({
+      at: "OOv2Bot",
+      message: "Failed querying ProposePrice events",
+      fromBlock: searchConfig.fromBlock,
+      toBlock: searchConfig.toBlock,
+      maxBlockLookBack: searchConfig.maxBlockLookBack,
+      ...getSettleTxErrorLogFields(error),
+    });
+    throw error;
+  }
 
-  const settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Querying Settle events",
+    fromBlock: searchConfig.fromBlock,
+    toBlock: searchConfig.toBlock,
+    maxBlockLookBack: searchConfig.maxBlockLookBack,
+  });
+  const settlementsStartedAt = Date.now();
+  let settlements: SettleEvent[];
+  try {
+    settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
+    logger.debug({
+      at: "OOv2Bot",
+      message: "Queried Settle events",
+      count: settlements.length,
+      elapsedMs: Date.now() - settlementsStartedAt,
+    });
+  } catch (error) {
+    logger.error({
+      at: "OOv2Bot",
+      message: "Failed querying Settle events",
+      fromBlock: searchConfig.fromBlock,
+      toBlock: searchConfig.toBlock,
+      maxBlockLookBack: searchConfig.maxBlockLookBack,
+      ...getSettleTxErrorLogFields(error),
+    });
+    throw error;
+  }
 
   const settledKeys = new Set(settlements.map((e) => requestKey(e.args)));
 
