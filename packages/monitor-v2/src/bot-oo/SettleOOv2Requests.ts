@@ -47,6 +47,19 @@ export async function settleOOv2Requests(
 
   const requestsToSettle = proposals.filter((e) => !settledKeys.has(requestKey(e.args)));
 
+  const requestsToSettleTxCount =
+    params.settleBatchSize > 1 ? Math.ceil(requestsToSettle.length / params.settleBatchSize) : requestsToSettle.length;
+
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Settlement candidates",
+    totalProposals: proposals.length,
+    settlements: settlements.length,
+    requestsToSettle: requestsToSettle.length,
+    settleTxCount: requestsToSettleTxCount,
+    settleBatchSize: params.settleBatchSize,
+  });
+
   const signerAddress = await params.signer.getAddress();
 
   const settleableRequestsPromises = requestsToSettle.map(async (req) => {
@@ -65,6 +78,15 @@ export async function settleOOv2Requests(
       });
       return req;
     } catch (err) {
+      logger.debug({
+        at: "OOv2Bot",
+        message: "Settle simulation failed",
+        requestKey: requestKey(req.args),
+        requester: req.args.requester,
+        identifier: req.args.identifier,
+        timestamp: req.args.timestamp.toString(),
+        ...getSettleTxErrorLogFields(err),
+      });
       return null;
     }
   });
@@ -72,6 +94,22 @@ export async function settleOOv2Requests(
   const settleableRequests = (await Promise.all(settleableRequestsPromises)).filter(
     (req): req is ProposePriceEvent => req !== null
   );
+
+  const settleableTxCount =
+    params.settleBatchSize > 1
+      ? Math.ceil(settleableRequests.length / params.settleBatchSize)
+      : settleableRequests.length;
+
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Settlement processing",
+    totalProposals: proposals.length,
+    settlements: settlements.length,
+    requestsToSettle: requestsToSettle.length,
+    settleableRequests: settleableRequests.length,
+    settleTxCount: settleableTxCount,
+    settleBatchSize: params.settleBatchSize,
+  });
 
   if (settleableRequests.length > 0) {
     logger.debug({
