@@ -14,7 +14,6 @@
     "@uma/financial-templates-lib": "^2.37.2",
     "dotenv": "^6.2.0",
     "ethers": "^5.4.2",
-    "hardhat": "^2.12.6",
     "lodash": "^4.17.21",
     "minimist": "^1.2.0",
     "web3": "^1.6.0",
