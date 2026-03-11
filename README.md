@@ -159,7 +159,7 @@ const { importedObject } = require("@uma/some-package")
 ```
 
 Note: the require will resolve to the `main` file specified in the `package.json` file. If you'd like to import a different file, you
-should ensure that that file is exported in the `files` directive inside the `package.json` file. Once you're sure of that, you can
+should ensure that the file is exported in the `files` directive inside the `package.json` file. Once you're sure of that, you can
 import it using the following syntax:
 
 ```js
