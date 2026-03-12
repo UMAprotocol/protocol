@@ -103,6 +103,7 @@ export interface MonitoringParams {
   paginatedEventQueryConcurrency: number;
   maxTradesPerToken: number;
   fillEventsChunkBlocks: number;
+  failureGracePeriodSeconds: number;
 }
 interface PolymarketMarketGraphql {
   question: string;
@@ -851,6 +852,35 @@ export const getNotifiedProposals = async (): Promise<{
   }, {});
 };
 
+export interface FailedProposalRecord {
+  firstFailureAt: string;
+  failureCount: number;
+  lastError: string;
+}
+
+export const getFailedProposal = async (proposalKey: string): Promise<FailedProposalRecord | null> => {
+  if (!datastore) return null;
+  const key = datastore.key(["FailedProposals", proposalKey]);
+  const [entity] = await datastore.get(key);
+  return entity ? (entity as FailedProposalRecord) : null;
+};
+
+export const storeFailedProposal = async (proposalKey: string, record: FailedProposalRecord): Promise<void> => {
+  if (!datastore) return;
+  const key = datastore.key(["FailedProposals", proposalKey]);
+  await datastore.save({ key, data: record });
+};
+
+export const removeFailedProposal = async (proposalKey: string): Promise<void> => {
+  if (!datastore) return;
+  try {
+    const key = datastore.key(["FailedProposals", proposalKey]);
+    await datastore.delete(key);
+  } catch {
+    // Ignore — entity may not exist
+  }
+};
+
 export const parseEnvList = (env: NodeJS.ProcessEnv, key: string, defaultValue: string[]): string[] => {
   const rawValue = env[key];
   if (!rawValue) return defaultValue;
@@ -895,8 +925,8 @@ export const initMonitoringParams = async (
   const pollingDelay = env.POLLING_DELAY ? Number(env.POLLING_DELAY) : 60;
 
   const maxBlockLookBack = env.MAX_BLOCK_LOOK_BACK ? Number(env.MAX_BLOCK_LOOK_BACK) : 3499;
-  const retryAttempts = env.RETRY_ATTEMPTS ? Number(env.RETRY_ATTEMPTS) : 1;
-  const retryDelayMs = env.RETRY_DELAY_MS ? Number(env.RETRY_DELAY_MS) : 0;
+  const retryAttempts = env.RETRY_ATTEMPTS ? Number(env.RETRY_ATTEMPTS) : 3;
+  const retryDelayMs = env.RETRY_DELAY_MS ? Number(env.RETRY_DELAY_MS) : 1000;
 
   const unknownProposalNotificationInterval = env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL
     ? Number(env.UNKNOWN_PROPOSAL_NOTIFICATION_INTERVAL)
@@ -935,6 +965,12 @@ export const initMonitoringParams = async (
   const shouldResetTimeout = env.SHOULD_RESET_TIMEOUT !== "false";
 
   const orderBookBatchSize = env.ORDER_BOOK_BATCH_SIZE ? Number(env.ORDER_BOOK_BATCH_SIZE) : 499;
+
+  // Grace period before alerting on failures. 0 = alert immediately (original behavior).
+  // Default 630s = 11 minutes = 2 consecutive 5-minute serverless runs + 30s buffer.
+  const failureGracePeriodSeconds = env.FAILURE_GRACE_PERIOD_SECONDS
+    ? Number(env.FAILURE_GRACE_PERIOD_SECONDS)
+    : 630;
 
   // Rate limit and retry with exponential backoff and jitter to handle rate limiting and errors from the APIs.
   const httpClient = createHttpClient({
@@ -985,6 +1021,7 @@ export const initMonitoringParams = async (
     paginatedEventQueryConcurrency,
     maxTradesPerToken,
     fillEventsChunkBlocks,
+    failureGracePeriodSeconds,
   };
 };
 
