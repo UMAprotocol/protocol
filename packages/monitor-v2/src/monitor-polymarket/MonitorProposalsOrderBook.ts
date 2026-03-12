@@ -13,6 +13,7 @@ import {
   decodeMultipleValuesQuery,
   fetchOrderFilledEventsBounded,
   generateAIDeepLink,
+  getFailedProposal,
   getNotifiedProposals,
   getOrderFilledEvents,
   getPolymarketMarketInformation,
@@ -28,7 +29,9 @@ import {
   ONE_SCALED,
   POLYGON_BLOCKS_PER_HOUR,
   PolymarketTradeInformation,
+  removeFailedProposal,
   shouldIgnoreThirdPartyProposal,
+  storeFailedProposal,
   storeNotifiedProposals,
   Logger,
   Market,
@@ -246,8 +249,53 @@ export async function monitorTransactionsProposedOrderBook(
 
   const logErrorAndPersist = async (proposal: OptimisticPriceRequest, err: Error) => {
     const aiDeeplink = generateAIDeepLink(proposal.proposalHash, proposal.proposalLogIndex, params.aiResultsBaseUrl);
-    await logFailedMarketProposalVerification(logger, params.chainId, proposal, err as Error, aiDeeplink);
+
+    // When grace period is 0, alert immediately (original behavior).
+    if (params.failureGracePeriodSeconds <= 0) {
+      await logFailedMarketProposalVerification(logger, params.chainId, proposal, err, aiDeeplink);
+      await persistNotified(proposal, logger);
+      return;
+    }
+
+    const proposalKey = getProposalKeyToStore(proposal);
+    const failureRecord = await getFailedProposal(proposalKey);
+    const now = Date.now();
+
+    if (!failureRecord) {
+      await storeFailedProposal(proposalKey, {
+        firstFailureAt: new Date(now).toISOString(),
+        failureCount: 1,
+        lastError: err.message,
+      });
+      logger.warn({
+        at: "PolymarketMonitor",
+        message: "Check failed, will retry before alerting",
+        proposalHash: proposal.proposalHash,
+        error: err.message,
+      });
+      return;
+    }
+
+    const elapsed = now - new Date(failureRecord.firstFailureAt).getTime();
+    if (elapsed < params.failureGracePeriodSeconds * 1000) {
+      await storeFailedProposal(proposalKey, {
+        ...failureRecord,
+        failureCount: failureRecord.failureCount + 1,
+        lastError: err.message,
+      });
+      logger.warn({
+        at: "PolymarketMonitor",
+        message: `Check failed (attempt ${failureRecord.failureCount + 1}), still within grace period`,
+        proposalHash: proposal.proposalHash,
+        error: err.message,
+      });
+      return;
+    }
+
+    // Grace period exceeded — alert and persist as notified.
+    await logFailedMarketProposalVerification(logger, params.chainId, proposal, err, aiDeeplink);
     await persistNotified(proposal, logger);
+    await removeFailedProposal(proposalKey);
   };
 
   await Promise.all(
@@ -386,6 +434,7 @@ export async function monitorTransactionsProposedOrderBook(
           tradeFilterFromTimestamp,
         });
         if (alerted) await persistNotified(proposal, logger);
+        if (params.failureGracePeriodSeconds > 0) await removeFailedProposal(getProposalKeyToStore(proposal));
       } catch (err) {
         await logErrorAndPersist(proposal, err as Error);
       }

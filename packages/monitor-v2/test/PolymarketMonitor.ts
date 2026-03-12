@@ -115,6 +115,7 @@ describe("PolymarketNotifier", function () {
       paginatedEventQueryConcurrency: 5,
       maxTradesPerToken: 50,
       fillEventsChunkBlocks: 30,
+      failureGracePeriodSeconds: 0, // Disable grace period by default to preserve existing test behavior
     };
   };
 
@@ -166,6 +167,11 @@ describe("PolymarketNotifier", function () {
     // Mock fetchOrderFilledEventsBounded to avoid actual blockchain queries with fake addresses
     // Tests that need to override this should call fetchBoundedStub.restore() first
     fetchBoundedStub = sandbox.stub(commonModule, "fetchOrderFilledEventsBounded").resolves(new Map());
+
+    // Stub failure grace period Datastore functions (no-ops by default)
+    sandbox.stub(commonModule, "getFailedProposal").resolves(null);
+    sandbox.stub(commonModule, "storeFailedProposal").resolves();
+    sandbox.stub(commonModule, "removeFailedProposal").resolves();
 
     // Fund staker and stake tokens.
     const TEN_MILLION = ethers.utils.parseEther("10000000");
@@ -1391,6 +1397,211 @@ describe("PolymarketNotifier", function () {
 
       assert.equal(result[0].length, 1, "token1 has trades");
       assert.deepEqual(result[1], [], "token2 returns empty array");
+    });
+  });
+
+  describe("failure grace period", function () {
+    const makeGracePeriodParams = async (gracePeriodSeconds: number) => {
+      const base = await createMonitoringParams();
+      return { ...base, failureGracePeriodSeconds: gracePeriodSeconds };
+    };
+
+    const makeMockProposal = async (): Promise<OptimisticPriceRequest> => ({
+      proposalHash: "0xgracetest",
+      requester: await deployer.getAddress(),
+      proposer: await deployer.getAddress(),
+      identifier: "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000",
+      proposedPrice: ONE,
+      requestTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalBlockNumber: 12345,
+      ancillaryData: ethers.utils.hexlify(ancillaryData),
+      requestHash: "0xrequesthash",
+      requestLogIndex: 0,
+      proposalTimestamp: ethers.BigNumber.from(Date.now()),
+      proposalExpirationTimestamp: ethers.BigNumber.from(Date.now() + 1000 * 60 * 60 * 24),
+      proposalLogIndex: 0,
+    });
+
+    it("First failure within grace period: warns but does not alert", async function () {
+      const params = await makeGracePeriodParams(900); // 15 min grace period
+
+      const mockProposal = await makeMockProposal();
+      sandbox.stub(commonModule, "getPolymarketProposedPriceRequestsOO").callsFake(async (_p, v) => {
+        return v === "v2" ? [mockProposal] : [];
+      });
+
+      mockFunctionThrowsError("getPolymarketMarketInformation", "Network timeout");
+      mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+      mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+      // getFailedProposal returns null (first failure)
+      // storeFailedProposal and removeFailedProposal already stubbed in beforeEach
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const spyLogger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+      // Should get a warn log, NOT an error alert
+      const warnLogs = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .filter((a) => a?.message === "Check failed, will retry before alerting");
+      assert.equal(warnLogs.length, 1, "Should log a warning for first failure");
+
+      // Should NOT have the "Failed to verify" error notification
+      const errorLogs = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .filter((a) => a?.message?.includes("Failed to verify proposed market"));
+      assert.equal(errorLogs.length, 0, "Should not send error notification on first failure");
+
+      // storeFailedProposal should have been called
+      assert.isTrue((commonModule.storeFailedProposal as sinon.SinonStub).calledOnce, "Should store failure record");
+    });
+
+    it("Subsequent failure within grace period: warns with attempt count", async function () {
+      const params = await makeGracePeriodParams(900);
+
+      const mockProposal = await makeMockProposal();
+      sandbox.stub(commonModule, "getPolymarketProposedPriceRequestsOO").callsFake(async (_p, v) => {
+        return v === "v2" ? [mockProposal] : [];
+      });
+
+      mockFunctionThrowsError("getPolymarketMarketInformation", "Network timeout");
+      mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+      mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+      // Simulate existing failure record from a recent first failure (within grace period)
+      (commonModule.getFailedProposal as sinon.SinonStub).resolves({
+        firstFailureAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 min ago
+        failureCount: 1,
+        lastError: "Previous error",
+      });
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const spyLogger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+      // Should get a warn log with attempt count
+      const warnLogs = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .filter((a) => a?.message?.includes("still within grace period"));
+      assert.equal(warnLogs.length, 1, "Should log retry warning");
+      assert.include(warnLogs[0].message, "attempt 2", "Should include attempt count");
+
+      // Should NOT have error notification
+      const errorLogs = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .filter((a) => a?.message?.includes("Failed to verify proposed market"));
+      assert.equal(errorLogs.length, 0, "Should not alert within grace period");
+    });
+
+    it("Failure after grace period exceeded: sends alert and cleans up", async function () {
+      const params = await makeGracePeriodParams(900);
+
+      const mockProposal = await makeMockProposal();
+      sandbox.stub(commonModule, "getPolymarketProposedPriceRequestsOO").callsFake(async (_p, v) => {
+        return v === "v2" ? [mockProposal] : [];
+      });
+
+      mockFunctionThrowsError("getPolymarketMarketInformation", "Network timeout");
+      mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+      mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+      // Simulate failure record from 20 min ago (exceeds 15 min grace period)
+      (commonModule.getFailedProposal as sinon.SinonStub).resolves({
+        firstFailureAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(), // 20 min ago
+        failureCount: 3,
+        lastError: "Previous error",
+      });
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const spyLogger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+      // Should now have the "Failed to verify" error notification
+      const errorLogs = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .filter((a) => a?.message?.includes("Failed to verify proposed market"));
+      assert.equal(errorLogs.length, 1, "Should send error alert after grace period");
+
+      // removeFailedProposal should have been called to clean up
+      assert.isTrue(
+        (commonModule.removeFailedProposal as sinon.SinonStub).called,
+        "Should remove failure record after alerting"
+      );
+    });
+
+    it("Successful check clears any prior failure record", async function () {
+      const params = await makeGracePeriodParams(900);
+
+      const mockProposal = await makeMockProposal();
+      sandbox.stub(commonModule, "getPolymarketProposedPriceRequestsOO").callsFake(async (_p, v) => {
+        return v === "v2" ? [mockProposal] : [];
+      });
+
+      sandbox.stub(commonModule, "getPolymarketMarketInformation").resolves(marketInfo);
+      sandbox.stub(commonModule, "getPolymarketOrderBooks").resolves(asBooksRecord(emptyOrders));
+      sandbox.stub(commonModule, "getOrderFilledEvents").returns([[], []]);
+      sandbox.stub(commonModule, "isInitialConfirmationLogged").resolves(true);
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const spyLogger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+      // removeFailedProposal should have been called on the success path
+      assert.isTrue(
+        (commonModule.removeFailedProposal as sinon.SinonStub).called,
+        "Should clean up failure record on success"
+      );
+    });
+
+    it("Grace period of 0 alerts immediately (backward-compatible)", async function () {
+      const params = await makeGracePeriodParams(0);
+
+      const mockProposal = await makeMockProposal();
+      sandbox.stub(commonModule, "getPolymarketProposedPriceRequestsOO").callsFake(async (_p, v) => {
+        return v === "v2" ? [mockProposal] : [];
+      });
+
+      mockFunctionThrowsError("getPolymarketMarketInformation", "Network timeout");
+      mockFunctionWithReturnValue("getPolymarketOrderBooks", asBooksRecord(emptyOrders));
+      mockSyncFunctionWithReturnValue("getOrderFilledEvents", emptyTradeInformation);
+
+      await oov2.requestPrice(identifier, 1, ancillaryData, votingToken.address, 0);
+      await oov2.proposePrice(await deployer.getAddress(), identifier, 1, ancillaryData, ONE);
+
+      const spy = sinon.spy();
+      const spyLogger = createNewLogger([new SpyTransport({}, { spy })]);
+      await monitorTransactionsProposedOrderBook(spyLogger, params);
+
+      // Should get the immediate error alert (no grace period)
+      const errorLogs = spy
+        .getCalls()
+        .map((c) => c.lastArg)
+        .filter((a) => a?.message?.includes("Failed to verify proposed market"));
+      assert.equal(errorLogs.length, 1, "Grace period of 0 should alert immediately");
+
+      // Should NOT have called storeFailedProposal (skips grace period logic entirely)
+      assert.isFalse(
+        (commonModule.storeFailedProposal as sinon.SinonStub).called,
+        "Should not store failure record when grace period is 0"
+      );
     });
   });
 });
