@@ -1459,10 +1459,7 @@ describe("PolymarketNotifier", function () {
       assert.equal(errorLogs.length, 0, "Should not send error notification on first failure");
 
       // storeFailedProposal should have been called
-      assert.isTrue(
-        (commonModule.storeFailedProposal as sinon.SinonStub).calledOnce,
-        "Should store failure record"
-      );
+      assert.isTrue((commonModule.storeFailedProposal as sinon.SinonStub).calledOnce, "Should store failure record");
     });
 
     it("Subsequent failure within grace period: warns with attempt count", async function () {

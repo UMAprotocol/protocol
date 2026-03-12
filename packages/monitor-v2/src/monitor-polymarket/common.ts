@@ -968,9 +968,7 @@ export const initMonitoringParams = async (
 
   // Grace period before alerting on failures. 0 = alert immediately (original behavior).
   // Default 630s = 11 minutes = 2 consecutive 5-minute serverless runs + 30s buffer.
-  const failureGracePeriodSeconds = env.FAILURE_GRACE_PERIOD_SECONDS
-    ? Number(env.FAILURE_GRACE_PERIOD_SECONDS)
-    : 630;
+  const failureGracePeriodSeconds = env.FAILURE_GRACE_PERIOD_SECONDS ? Number(env.FAILURE_GRACE_PERIOD_SECONDS) : 630;
 
   // Rate limit and retry with exponential backoff and jitter to handle rate limiting and errors from the APIs.
   const httpClient = createHttpClient({
