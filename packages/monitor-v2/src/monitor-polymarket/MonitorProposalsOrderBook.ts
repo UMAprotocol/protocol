@@ -434,7 +434,7 @@ export async function monitorTransactionsProposedOrderBook(
           tradeFilterFromTimestamp,
         });
         if (alerted) await persistNotified(proposal, logger);
-        await removeFailedProposal(getProposalKeyToStore(proposal));
+        if (params.failureGracePeriodSeconds > 0) await removeFailedProposal(getProposalKeyToStore(proposal));
       } catch (err) {
         await logErrorAndPersist(proposal, err as Error);
       }
