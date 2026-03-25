@@ -983,6 +983,63 @@ describe("OptimisticOracleContractMonitor.js", function () {
     });
   });
   describe("ManagedOptimisticOracleV2 upgrade detection", function () {
+    it("Generates a managed OOv2 UI link for OOv2 UUPS proxies", async function () {
+      const testMonitor = new OptimisticOracleContractMonitor({
+        logger: spyLogger,
+        optimisticOracleContractEventClient: eventClientV2,
+        monitorConfig: { optimisticOracleUIBaseUrl: sampleBaseUIUrl },
+        contractProps,
+        otbVerificationRouterConfig,
+      });
+      const originalGetStorageAt = web3.eth.getStorageAt;
+      web3.eth.getStorageAt = sinon.stub().resolves("0x" + "0".repeat(24) + "2222222222222222222222222222222222222222");
+
+      assert.equal(
+        await testMonitor._generateUILink("0x123", 7, contractProps.chainId),
+        `<${sampleBaseUIUrl}/?transactionHash=0x123&eventIndex=7&chainId=${contractProps.chainId}&oracleType=Managed+Optimistic+Oracle+V2|View in UI>`
+      );
+
+      web3.eth.getStorageAt = originalGetStorageAt;
+    });
+
+    it("Caches OOv2 UI link managed detection", async function () {
+      const testMonitor = new OptimisticOracleContractMonitor({
+        logger: spyLogger,
+        optimisticOracleContractEventClient: eventClientV2,
+        monitorConfig: { optimisticOracleUIBaseUrl: sampleBaseUIUrl },
+        contractProps,
+        otbVerificationRouterConfig,
+      });
+      const originalGetStorageAt = web3.eth.getStorageAt;
+      web3.eth.getStorageAt = sinon.stub().resolves("0x" + "0".repeat(24) + "2222222222222222222222222222222222222222");
+
+      await testMonitor._generateUILink("0x123", 7, contractProps.chainId);
+      await testMonitor._generateUILink("0x456", 9, contractProps.chainId);
+
+      assert.equal(web3.eth.getStorageAt.callCount, 1);
+
+      web3.eth.getStorageAt = originalGetStorageAt;
+    });
+
+    it("Falls back to standard OOv2 UI link when managed detection fails", async function () {
+      const testMonitor = new OptimisticOracleContractMonitor({
+        logger: spyLogger,
+        optimisticOracleContractEventClient: eventClientV2,
+        monitorConfig: { optimisticOracleUIBaseUrl: sampleBaseUIUrl },
+        contractProps,
+        otbVerificationRouterConfig,
+      });
+      const originalGetStorageAt = web3.eth.getStorageAt;
+      web3.eth.getStorageAt = sinon.stub().rejects(new Error("storage read failed"));
+
+      assert.equal(
+        await testMonitor._generateUILink("0x123", 7, contractProps.chainId),
+        `<${sampleBaseUIUrl}/?transactionHash=0x123&eventIndex=7&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V2|View in UI>`
+      );
+
+      web3.eth.getStorageAt = originalGetStorageAt;
+    });
+
     it("Uses standard message when managedOOV2PreUpgradeBlock is not configured", async function () {
       // Create monitor without managedOOV2PreUpgradeBlock config
       const testMonitor = new OptimisticOracleContractMonitor({
