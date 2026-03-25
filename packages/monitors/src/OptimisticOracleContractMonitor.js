@@ -444,10 +444,12 @@ class OptimisticOracleContractMonitor {
 
   _getCurrentImplementation() {
     if (this.currentImplementationPromise === null) {
-      this.currentImplementationPromise = this.web3.eth.getStorageAt(
-        this.optimisticOracleContract.options.address,
-        EIP1967_IMPLEMENTATION_SLOT
-      );
+      this.currentImplementationPromise = this.web3.eth
+        .getStorageAt(this.optimisticOracleContract.options.address, EIP1967_IMPLEMENTATION_SLOT)
+        .catch((error) => {
+          this.currentImplementationPromise = null;
+          throw error;
+        });
     }
     return this.currentImplementationPromise;
   }

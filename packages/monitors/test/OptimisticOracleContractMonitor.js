@@ -1021,7 +1021,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       web3.eth.getStorageAt = originalGetStorageAt;
     });
 
-    it("Falls back to standard OOv2 UI link when managed detection fails", async function () {
+    it("Retries OOv2 managed detection after an initial failure", async function () {
       const testMonitor = new OptimisticOracleContractMonitor({
         logger: spyLogger,
         optimisticOracleContractEventClient: eventClientV2,
@@ -1030,12 +1030,20 @@ describe("OptimisticOracleContractMonitor.js", function () {
         otbVerificationRouterConfig,
       });
       const originalGetStorageAt = web3.eth.getStorageAt;
-      web3.eth.getStorageAt = sinon.stub().rejects(new Error("storage read failed"));
+      const getStorageAtStub = sinon.stub();
+      getStorageAtStub.onFirstCall().rejects(new Error("storage read failed"));
+      getStorageAtStub.onSecondCall().resolves("0x" + "0".repeat(24) + "2222222222222222222222222222222222222222");
+      web3.eth.getStorageAt = getStorageAtStub;
 
       assert.equal(
         await testMonitor._generateUILink("0x123", 7, contractProps.chainId),
         `<${sampleBaseUIUrl}/?transactionHash=0x123&eventIndex=7&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V2|View in UI>`
       );
+      assert.equal(
+        await testMonitor._generateUILink("0x456", 9, contractProps.chainId),
+        `<${sampleBaseUIUrl}/?transactionHash=0x456&eventIndex=9&chainId=${contractProps.chainId}&oracleType=Managed+Optimistic+Oracle+V2|View in UI>`
+      );
+      assert.equal(getStorageAtStub.callCount, 2);
 
       web3.eth.getStorageAt = originalGetStorageAt;
     });
