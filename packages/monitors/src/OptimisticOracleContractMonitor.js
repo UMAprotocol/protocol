@@ -95,9 +95,8 @@ class OptimisticOracleContractMonitor {
     };
     Object.assign(this, createObjectFromDefaultProps({ contractProps }, defaultContractProps));
 
-    // Flag to track if this is upgraded ManagedOptimisticOracleV2. Initialized to null and detected on first use.
-    this.isManagedOOV2Upgraded = null;
     this.currentImplementationPromise = null;
+    this.preUpgradeImplementationPromise = null;
 
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
@@ -200,10 +199,7 @@ class OptimisticOracleContractMonitor {
       lastProposePriceBlockNumber: this.lastProposePriceBlockNumber,
     });
 
-    // Initialize ManagedOptimisticOracleV2 upgrade detection on first call
-    if (this.isManagedOOV2Upgraded === null) {
-      this.isManagedOOV2Upgraded = await this._detectManagedOOV2Upgraded();
-    }
+    const isManagedOOV2Upgraded = await this._detectManagedOOV2Upgraded();
 
     let latestEvents = this.optimisticOracleContractEventClient.getAllProposePriceEvents();
 
@@ -225,7 +221,7 @@ class OptimisticOracleContractMonitor {
             : event.request.expirationTime;
 
         // Adjust expiration message for upgraded ManagedOptimisticOracleV2
-        const expirationMessage = this.isManagedOOV2Upgraded
+        const expirationMessage = isManagedOOV2Upgraded
           ? `can be settled after ${expirationTime} (but remains disputable until settled)`
           : `will expire at ${expirationTime}`;
 
@@ -454,6 +450,26 @@ class OptimisticOracleContractMonitor {
     return this.currentImplementationPromise;
   }
 
+  _getFreshCurrentImplementation() {
+    return this.web3.eth.getStorageAt(this.optimisticOracleContract.options.address, EIP1967_IMPLEMENTATION_SLOT);
+  }
+
+  _getPreUpgradeImplementation() {
+    if (this.preUpgradeImplementationPromise === null) {
+      this.preUpgradeImplementationPromise = this.web3.eth
+        .getStorageAt(
+          this.optimisticOracleContract.options.address,
+          EIP1967_IMPLEMENTATION_SLOT,
+          this.managedOOV2PreUpgradeBlock
+        )
+        .catch((error) => {
+          this.preUpgradeImplementationPromise = null;
+          throw error;
+        });
+    }
+    return this.preUpgradeImplementationPromise;
+  }
+
   _hasImplementationAddress(implementation) {
     return !!implementation && implementation !== "0x" + "0".repeat(64);
   }
@@ -473,7 +489,7 @@ class OptimisticOracleContractMonitor {
 
     try {
       // Read the implementation slot at current block
-      const currentImplementation = await this._getCurrentImplementation();
+      const currentImplementation = await this._getFreshCurrentImplementation();
 
       // If the slot is empty (all zeros), this is not a UUPS proxy
       if (!this._hasImplementationAddress(currentImplementation)) {
@@ -481,11 +497,7 @@ class OptimisticOracleContractMonitor {
       }
 
       // Read the implementation slot at pre-upgrade block
-      const preUpgradeImplementation = await this.web3.eth.getStorageAt(
-        this.optimisticOracleContract.options.address,
-        EIP1967_IMPLEMENTATION_SLOT,
-        this.managedOOV2PreUpgradeBlock
-      );
+      const preUpgradeImplementation = await this._getPreUpgradeImplementation();
 
       // Compare raw bytes32 values - if they differ, the contract has been upgraded
       return currentImplementation !== preUpgradeImplementation;
