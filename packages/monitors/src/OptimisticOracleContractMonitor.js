@@ -15,6 +15,8 @@ const { OptimisticOracleType } = require("@uma/financial-templates-lib");
 const { getAbi } = require("@uma/contracts-node");
 const { createHttpClient } = require("@uma/toolkit");
 
+const EIP1967_IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+
 class OptimisticOracleContractMonitor {
   /**
    * @notice Constructs new contract monitor module.
@@ -93,8 +95,8 @@ class OptimisticOracleContractMonitor {
     };
     Object.assign(this, createObjectFromDefaultProps({ contractProps }, defaultContractProps));
 
-    // Flag to track if this is upgraded ManagedOptimisticOracleV2. Initialized to null and detected on first use.
-    this.isManagedOOV2Upgraded = null;
+    this.currentImplementationPromise = null;
+    this.preUpgradeImplementationPromise = null;
 
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
@@ -173,7 +175,7 @@ class OptimisticOracleContractMonitor {
         )}. tx: ${createEtherscanLinkMarkdown(
           event.transactionHash,
           this.contractProps.networkId
-        )}. ${this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
+        )}. ${await this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
@@ -197,10 +199,7 @@ class OptimisticOracleContractMonitor {
       lastProposePriceBlockNumber: this.lastProposePriceBlockNumber,
     });
 
-    // Initialize ManagedOptimisticOracleV2 upgrade detection on first call
-    if (this.isManagedOOV2Upgraded === null) {
-      this.isManagedOOV2Upgraded = await this._detectManagedOOV2Upgraded();
-    }
+    const isManagedOOV2Upgraded = await this._detectManagedOOV2Upgraded();
 
     let latestEvents = this.optimisticOracleContractEventClient.getAllProposePriceEvents();
 
@@ -222,7 +221,7 @@ class OptimisticOracleContractMonitor {
             : event.request.expirationTime;
 
         // Adjust expiration message for upgraded ManagedOptimisticOracleV2
-        const expirationMessage = this.isManagedOOV2Upgraded
+        const expirationMessage = isManagedOOV2Upgraded
           ? `can be settled after ${expirationTime} (but remains disputable until settled)`
           : `will expire at ${expirationTime}`;
 
@@ -246,7 +245,7 @@ class OptimisticOracleContractMonitor {
           `tx ${createEtherscanLinkMarkdown(
             event.transactionHash,
             this.contractProps.networkId
-          )}. ${this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
+          )}. ${await this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
 
         // The default log level should be reduced to "info" for funding rate identifiers:
         this.logger.info({
@@ -296,7 +295,7 @@ class OptimisticOracleContractMonitor {
         `. tx: ${createEtherscanLinkMarkdown(
           event.transactionHash,
           this.contractProps.networkId
-        )}. ${this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
+        )}. ${await this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
 
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
@@ -360,7 +359,7 @@ class OptimisticOracleContractMonitor {
         `. tx: ${createEtherscanLinkMarkdown(
           event.transactionHash,
           this.contractProps.networkId
-        )}. ${this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
+        )}. ${await this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
@@ -410,20 +409,69 @@ class OptimisticOracleContractMonitor {
     }
   }
 
-  _generateUILink(transactionHash, eventIndex, chainId) {
+  async _generateUILink(transactionHash, eventIndex, chainId) {
     let oracleType;
     switch (this.oracleType) {
       case OptimisticOracleType.OptimisticOracle:
         oracleType = "Optimistic+Oracle+V1";
         break;
       case OptimisticOracleType.OptimisticOracleV2:
-        oracleType = "Optimistic+Oracle+V2";
+        oracleType = (await this._isManagedOOV2()) ? "Managed+Optimistic+Oracle+V2" : "Optimistic+Oracle+V2";
         break;
       case OptimisticOracleType.SkinnyOptimisticOracle:
         oracleType = "Skinny+Optimistic+Oracle";
         break;
     }
     return `<${this.optimisticOracleUIBaseUrl}/?transactionHash=${transactionHash}&eventIndex=${eventIndex}&chainId=${chainId}&oracleType=${oracleType}|View in UI>`;
+  }
+
+  async _isManagedOOV2() {
+    if (this.oracleType !== OptimisticOracleType.OptimisticOracleV2) {
+      return false;
+    }
+
+    try {
+      const currentImplementation = await this._getCurrentImplementation();
+      return this._hasImplementationAddress(currentImplementation);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  _getCurrentImplementation() {
+    if (this.currentImplementationPromise === null) {
+      this.currentImplementationPromise = this.web3.eth
+        .getStorageAt(this.optimisticOracleContract.options.address, EIP1967_IMPLEMENTATION_SLOT)
+        .catch((error) => {
+          this.currentImplementationPromise = null;
+          throw error;
+        });
+    }
+    return this.currentImplementationPromise;
+  }
+
+  _getFreshCurrentImplementation() {
+    return this.web3.eth.getStorageAt(this.optimisticOracleContract.options.address, EIP1967_IMPLEMENTATION_SLOT);
+  }
+
+  _getPreUpgradeImplementation() {
+    if (this.preUpgradeImplementationPromise === null) {
+      this.preUpgradeImplementationPromise = this.web3.eth
+        .getStorageAt(
+          this.optimisticOracleContract.options.address,
+          EIP1967_IMPLEMENTATION_SLOT,
+          this.managedOOV2PreUpgradeBlock
+        )
+        .catch((error) => {
+          this.preUpgradeImplementationPromise = null;
+          throw error;
+        });
+    }
+    return this.preUpgradeImplementationPromise;
+  }
+
+  _hasImplementationAddress(implementation) {
+    return !!implementation && implementation !== "0x" + "0".repeat(64);
   }
 
   // Detects if the monitored contract is an upgraded ManagedOptimisticOracleV2 with new dispute window behavior.
@@ -439,27 +487,17 @@ class OptimisticOracleContractMonitor {
       return false;
     }
 
-    // EIP-1967 implementation slot for UUPS proxies
-    const EIP1967_IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
-
     try {
       // Read the implementation slot at current block
-      const currentImplementation = await this.web3.eth.getStorageAt(
-        this.optimisticOracleContract.options.address,
-        EIP1967_IMPLEMENTATION_SLOT
-      );
+      const currentImplementation = await this._getFreshCurrentImplementation();
 
       // If the slot is empty (all zeros), this is not a UUPS proxy
-      if (!currentImplementation || currentImplementation === "0x" + "0".repeat(64)) {
+      if (!this._hasImplementationAddress(currentImplementation)) {
         return false;
       }
 
       // Read the implementation slot at pre-upgrade block
-      const preUpgradeImplementation = await this.web3.eth.getStorageAt(
-        this.optimisticOracleContract.options.address,
-        EIP1967_IMPLEMENTATION_SLOT,
-        this.managedOOV2PreUpgradeBlock
-      );
+      const preUpgradeImplementation = await this._getPreUpgradeImplementation();
 
       // Compare raw bytes32 values - if they differ, the contract has been upgraded
       return currentImplementation !== preUpgradeImplementation;

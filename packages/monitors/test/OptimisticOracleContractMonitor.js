@@ -983,6 +983,71 @@ describe("OptimisticOracleContractMonitor.js", function () {
     });
   });
   describe("ManagedOptimisticOracleV2 upgrade detection", function () {
+    it("Generates a managed OOv2 UI link for OOv2 UUPS proxies", async function () {
+      const testMonitor = new OptimisticOracleContractMonitor({
+        logger: spyLogger,
+        optimisticOracleContractEventClient: eventClientV2,
+        monitorConfig: { optimisticOracleUIBaseUrl: sampleBaseUIUrl },
+        contractProps,
+        otbVerificationRouterConfig,
+      });
+      const originalGetStorageAt = web3.eth.getStorageAt;
+      web3.eth.getStorageAt = sinon.stub().resolves("0x" + "0".repeat(24) + "2222222222222222222222222222222222222222");
+
+      assert.equal(
+        await testMonitor._generateUILink("0x123", 7, contractProps.chainId),
+        `<${sampleBaseUIUrl}/?transactionHash=0x123&eventIndex=7&chainId=${contractProps.chainId}&oracleType=Managed+Optimistic+Oracle+V2|View in UI>`
+      );
+
+      web3.eth.getStorageAt = originalGetStorageAt;
+    });
+
+    it("Caches OOv2 UI link managed detection", async function () {
+      const testMonitor = new OptimisticOracleContractMonitor({
+        logger: spyLogger,
+        optimisticOracleContractEventClient: eventClientV2,
+        monitorConfig: { optimisticOracleUIBaseUrl: sampleBaseUIUrl },
+        contractProps,
+        otbVerificationRouterConfig,
+      });
+      const originalGetStorageAt = web3.eth.getStorageAt;
+      web3.eth.getStorageAt = sinon.stub().resolves("0x" + "0".repeat(24) + "2222222222222222222222222222222222222222");
+
+      await testMonitor._generateUILink("0x123", 7, contractProps.chainId);
+      await testMonitor._generateUILink("0x456", 9, contractProps.chainId);
+
+      assert.equal(web3.eth.getStorageAt.callCount, 1);
+
+      web3.eth.getStorageAt = originalGetStorageAt;
+    });
+
+    it("Retries OOv2 managed detection after an initial failure", async function () {
+      const testMonitor = new OptimisticOracleContractMonitor({
+        logger: spyLogger,
+        optimisticOracleContractEventClient: eventClientV2,
+        monitorConfig: { optimisticOracleUIBaseUrl: sampleBaseUIUrl },
+        contractProps,
+        otbVerificationRouterConfig,
+      });
+      const originalGetStorageAt = web3.eth.getStorageAt;
+      const getStorageAtStub = sinon.stub();
+      getStorageAtStub.onFirstCall().rejects(new Error("storage read failed"));
+      getStorageAtStub.onSecondCall().resolves("0x" + "0".repeat(24) + "2222222222222222222222222222222222222222");
+      web3.eth.getStorageAt = getStorageAtStub;
+
+      assert.equal(
+        await testMonitor._generateUILink("0x123", 7, contractProps.chainId),
+        `<${sampleBaseUIUrl}/?transactionHash=0x123&eventIndex=7&chainId=${contractProps.chainId}&oracleType=Optimistic+Oracle+V2|View in UI>`
+      );
+      assert.equal(
+        await testMonitor._generateUILink("0x456", 9, contractProps.chainId),
+        `<${sampleBaseUIUrl}/?transactionHash=0x456&eventIndex=9&chainId=${contractProps.chainId}&oracleType=Managed+Optimistic+Oracle+V2|View in UI>`
+      );
+      assert.equal(getStorageAtStub.callCount, 2);
+
+      web3.eth.getStorageAt = originalGetStorageAt;
+    });
+
     it("Uses standard message when managedOOV2PreUpgradeBlock is not configured", async function () {
       // Create monitor without managedOOV2PreUpgradeBlock config
       const testMonitor = new OptimisticOracleContractMonitor({
@@ -1092,7 +1157,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isFalse(lastSpyLogIncludes(spy, "will expire at"));
     });
 
-    it("Caches detection result and doesn't check again on subsequent calls", async function () {
+    it("Refreshes current implementation on subsequent upgrade checks", async function () {
       // Create monitor with managedOOV2PreUpgradeBlock configured
       const testMonitor = new OptimisticOracleContractMonitor({
         logger: spyLogger,
@@ -1110,23 +1175,18 @@ describe("OptimisticOracleContractMonitor.js", function () {
       const newImplementation = "0x" + "0".repeat(24) + "2222222222222222222222222222222222222222";
       const originalGetStorageAt = web3.eth.getStorageAt;
       const getStorageAtStub = sinon.stub();
-      getStorageAtStub.onFirstCall().resolves(newImplementation);
-      getStorageAtStub.onSecondCall().resolves(oldImplementation);
+      getStorageAtStub.onCall(0).resolves(oldImplementation); // First current block read
+      getStorageAtStub.onCall(1).resolves(oldImplementation); // Cached pre-upgrade block read
+      getStorageAtStub.onCall(2).resolves(newImplementation); // Second current block read
       web3.eth.getStorageAt = getStorageAtStub;
 
-      // First call - should trigger detection
-      await eventClientV2.update();
-      await testMonitor.checkForProposals();
+      assert.isFalse(await testMonitor._detectManagedOOV2Upgraded());
+      assert.isTrue(await testMonitor._detectManagedOOV2Upgraded());
 
-      // Second call - should use cached result
-      await eventClientV2.update();
-      await testMonitor.checkForProposals();
-
-      // Restore original method
       web3.eth.getStorageAt = originalGetStorageAt;
 
-      // getStorageAt should only be called twice (once for current, once for pre-upgrade), not four times
-      assert.equal(getStorageAtStub.callCount, 2);
+      // Current implementation should be read fresh each time, while the pre-upgrade slot stays cached.
+      assert.equal(getStorageAtStub.callCount, 3);
     });
   });
   describe("OTB verification router checks", function () {
