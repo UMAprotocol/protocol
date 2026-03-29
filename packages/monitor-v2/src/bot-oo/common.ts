@@ -8,7 +8,7 @@ export type OracleType = "OptimisticOracle" | "SkinnyOptimisticOracle" | "Optimi
 
 export interface BotModes {
   settleRequestsEnabled: boolean;
-  settleOnlyDisputed: boolean;
+  settleOnlyDisputed: boolean; // Only supported for OptimisticOracleV2; ignored for OOv1 and SkinnyOO.
 }
 
 export interface MonitoringParams extends BaseMonitoringParams {
