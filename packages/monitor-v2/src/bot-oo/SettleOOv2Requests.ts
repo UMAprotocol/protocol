@@ -116,8 +116,30 @@ export async function settleOOv2Requests(
 
   const signerAddress = await params.signer.getAddress();
 
+  // State.Resolved = 5: disputed and DVM price is available (settleable after dispute).
+  const STATE_RESOLVED = 5;
+
   const settleableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
+      // When settleOnlyDisputed is enabled, check on-chain state and skip undisputed requests.
+      if (params.botModes.settleOnlyDisputed) {
+        const state = await oo.getState(
+          req.args.requester,
+          req.args.identifier,
+          req.args.timestamp,
+          req.args.ancillaryData
+        );
+        if (state !== STATE_RESOLVED) {
+          logger.debug({
+            at: "OOv2Bot",
+            message: "Skipping non-disputed request (settleOnlyDisputed)",
+            requestKey: requestKey(req.args),
+            state,
+          });
+          return null;
+        }
+      }
+
       await oo.callStatic.settle(req.args.requester, req.args.identifier, req.args.timestamp, req.args.ancillaryData, {
         blockTag: params.settleableCheckBlock,
         from: signerAddress,

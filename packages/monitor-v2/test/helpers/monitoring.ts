@@ -24,7 +24,8 @@ export async function makeMonitoringParamsOO(
   const [signer] = await ethers.getSigners();
   const defaultBotModes: BotModesOO = {
     settleRequestsEnabled: false,
-  } as BotModesOO;
+    settleOnlyDisputed: false,
+  };
 
   const mergedBotModes = { ...defaultBotModes, ...botModes } as BotModesOO;
 

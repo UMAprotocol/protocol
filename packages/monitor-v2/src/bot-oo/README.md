@@ -34,6 +34,7 @@ node ./packages/monitor-v2/dist/bot-oo/index.js
 - `GAS_LIMIT_MULTIPLIER`: Percent multiplier on estimated gas (default `150`).
 - `SETTLE_DELAY`: Lookback period in seconds to detect settleable requests (default `300`).
 - `SETTLE_TIMEOUT`: Timeout in seconds for submitting settlement transactions in serverless mode (default `240`).
+- `SETTLE_ONLY_DISPUTED`: When `true`, only settle requests that have been disputed (`false` by default).
 
 ## Behavior
 

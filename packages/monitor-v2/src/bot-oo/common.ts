@@ -8,6 +8,7 @@ export type OracleType = "OptimisticOracle" | "SkinnyOptimisticOracle" | "Optimi
 
 export interface BotModes {
   settleRequestsEnabled: boolean;
+  settleOnlyDisputed: boolean;
 }
 
 export interface MonitoringParams extends BaseMonitoringParams {
@@ -24,6 +25,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   const botModes = {
     settleRequestsEnabled: env.SETTLEMENTS_ENABLED === "true",
+    settleOnlyDisputed: env.SETTLE_ONLY_DISPUTED === "true",
   };
 
   if (!env.ORACLE_ADDRESS) throw new Error("ORACLE_ADDRESS must be defined in env");

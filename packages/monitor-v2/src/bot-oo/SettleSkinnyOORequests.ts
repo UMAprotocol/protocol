@@ -80,9 +80,23 @@ export async function settleSkinnyOORequests(
   disputes.forEach(pushIfLatest);
 
   // Exclude already settled requests.
-  const candidatesToSettle: SkinnyEvent[] = Array.from(byKey.entries())
+  let candidatesToSettle: SkinnyEvent[] = Array.from(byKey.entries())
     .filter(([key]) => !settledKeys.has(key))
     .map(([, evt]) => evt);
+
+  // When settleOnlyDisputed is enabled, restrict to requests that have a DisputePrice event.
+  if (params.botModes.settleOnlyDisputed) {
+    const disputedKeys = new Set(disputes.map((e) => requestKey(toRequestKeyArgs(e.args))));
+    const beforeCount = candidatesToSettle.length;
+    candidatesToSettle = candidatesToSettle.filter((e) => disputedKeys.has(requestKey(toRequestKeyArgs(e.args))));
+    logger.debug({
+      at: "SkinnyOOBot",
+      message: "Filtered to disputed-only requests",
+      before: beforeCount,
+      after: candidatesToSettle.length,
+      skipped: beforeCount - candidatesToSettle.length,
+    });
+  }
 
   const settleableRequestsPromises = candidatesToSettle.map(async (req) => {
     try {
