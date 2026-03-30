@@ -296,4 +296,80 @@ describe("OptimisticOracleV2Bot", function () {
     const subsequentLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(subsequentLogs.length, 0, "No settlement logs should be generated on subsequent runs");
   });
+
+  it("settleOnlyDisputed skips undisputed expired proposals", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    const proposeReceipt = await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    // Move timer past liveness — request is settleable but was never disputed.
+    await advanceTimerPastLiveness(timer, proposeReceipt.blockNumber!, defaultLiveness);
+
+    const { spy, logger } = makeSpyLogger();
+    const params = await makeMonitoringParamsOO("OptimisticOracleV2", optimisticOracleV2.address, {
+      settleRequestsEnabled: false,
+      settleOnlyDisputed: true,
+    });
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 0, "Undisputed request should not be settled when settleOnlyDisputed is true");
+  });
+
+  it("settleOnlyDisputed settles disputed request once DVM resolved", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    await (
+      await optimisticOracleV2
+        .connect(disputer)
+        .disputePrice(await requester.getAddress(), defaultOptimisticOracleV2Identifier, 0, ancillaryData)
+    ).wait();
+
+    // Resolve in DVM via MockOracle.
+    const pending = await mockOracle.getPendingQueries();
+    const last = pending[pending.length - 1]!;
+    await (
+      await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
+    ).wait();
+
+    const { spy, logger } = makeSpyLogger();
+    const params = await makeMonitoringParamsOO("OptimisticOracleV2", optimisticOracleV2.address, {
+      settleRequestsEnabled: false,
+      settleOnlyDisputed: true,
+    });
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    const settledIndex = spy
+      .getCalls()
+      .findIndex((c) => c.lastArg?.message === "Price Request Settled ✅" && c.lastArg?.at === "OOv2Bot");
+    assert.isAbove(settledIndex, -1, "Disputed request should be settled when settleOnlyDisputed is true");
+  });
 });
