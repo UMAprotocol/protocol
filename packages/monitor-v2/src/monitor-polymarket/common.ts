@@ -355,9 +355,10 @@ export const getPolymarketMarketInformation = async (
   params: MonitoringParams,
   questionID: string
 ): Promise<PolymarketMarketGraphqlProcessed[]> => {
+  // Gamma currently rejects LOWER(...) on these fields, so query with the exact hash we computed.
   const query = `
     {
-      markets(where: "LOWER(question_id) = LOWER('${questionID}') or LOWER(neg_risk_request_id) = LOWER('${questionID}') or LOWER(game_id) = LOWER('${questionID}')") {
+      markets(where: "question_id = '${questionID}' or neg_risk_request_id = '${questionID}' or game_id = '${questionID}'") {
         clobTokenIds
         volumeNum
         outcomes
@@ -827,7 +828,7 @@ export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceR
   if (!datastore) return;
   const promises = notifiedContracts.map((contract) => {
     const key = datastore.key(["NotifiedProposals", getProposalKeyToStore(contract)]);
-    datastore.save({
+    return datastore.save({
       key: key,
       data: {
         proposalHash: contract.proposalHash,
