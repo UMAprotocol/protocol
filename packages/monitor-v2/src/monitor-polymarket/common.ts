@@ -36,6 +36,15 @@ export { Logger };
 export const ONE_SCALED = ethers.utils.parseUnits("1", 18);
 
 export const POLYGON_BLOCKS_PER_HOUR = 1800;
+const NEG_RISK_OPERATOR_ADDRESSES = [
+  "0x71523d0f655B41E805Cec45b17163f528B59B820",
+  "0x661992aebf6BecF7BA5abB66f6b0Bf62Aa7a2E93",
+];
+const LEGACY_NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296";
+const NEG_RISK_OPERATOR_ABI = [
+  "function questionIds(bytes32) view returns (bytes32)",
+  "function nrAdapter() view returns (address)",
+];
 
 /**
  * Determines if a trade represents a discrepancy based on token role and thresholds.
@@ -111,6 +120,13 @@ interface PolymarketMarketResponse {
   volumeNum: number;
   clobTokenIds: string;
   questionID: string;
+}
+
+interface ClobMarketResponse {
+  market_slug?: string;
+  market_id?: string | number | null;
+  id?: string | number | null;
+  error?: string;
 }
 
 export interface PolymarketMarketGraphqlProcessed {
@@ -294,11 +310,6 @@ export const extractInitializerFromAncillaryData = (ancillaryData: string): stri
   return null;
 };
 
-export const extractMarketIdFromAncillaryData = (ancillaryData: string): string | null => {
-  const marketIdMatch = ancillaryData.match(/market_id:\s*([0-9]+)/i);
-  return marketIdMatch ? marketIdMatch[1] : null;
-};
-
 // Get reward amount from contract's requests mapping via eth_call
 export const getRewardForProposal = async (
   params: MonitoringParams,
@@ -359,7 +370,7 @@ export const getPolymarketMarketInformation = async (
   logger: typeof Logger,
   params: MonitoringParams,
   questionID: string,
-  marketId?: string
+  requesterAddress?: string
 ): Promise<PolymarketMarketGraphqlProcessed[]> => {
   const processMarket = (market: PolymarketMarketResponse): PolymarketMarketGraphqlProcessed => {
     return {
@@ -370,53 +381,89 @@ export const getPolymarketMarketInformation = async (
     };
   };
 
-  if (marketId) {
-    const gammaApiBaseUrl = params.graphqlEndpoint.replace(/\/query\/?$/, "");
-    const { data } = await params.httpClient.get<PolymarketMarketResponse>(`${gammaApiBaseUrl}/markets/${marketId}`);
+  const gammaApiBaseUrl = params.graphqlEndpoint.replace(/\/query\/?$/, "");
 
-    if (!data) {
-      throw new Error(`No market found for market ID: ${marketId}`);
+  const getConditionId = (adapter: string, targetQuestionId: string): string =>
+    ethers.utils.solidityKeccak256(["address", "bytes32", "uint256"], [adapter, targetQuestionId, 2]);
+
+  const getStandardConditionIds = (targetQuestionId: string): string[] => {
+    if (!requesterAddress) return [];
+
+    try {
+      return [getConditionId(ethers.utils.getAddress(requesterAddress), targetQuestionId)];
+    } catch {
+      return [];
     }
+  };
 
-    return [processMarket(data)];
-  }
+  const getNegRiskConditionIds = async (): Promise<string[]> => {
+    for (const operatorAddress of NEG_RISK_OPERATOR_ADDRESSES) {
+      try {
+        const operator = new ethers.Contract(operatorAddress, NEG_RISK_OPERATOR_ABI, params.provider);
+        const negRiskQuestionId: string = await operator.questionIds(questionID);
 
-  // Gamma currently rejects LOWER(...) on these fields, so query with the exact hash we computed.
-  const query = `
-    {
-      markets(where: "question_id = '${questionID}' or neg_risk_request_id = '${questionID}' or game_id = '${questionID}'") {
-        clobTokenIds
-        volumeNum
-        outcomes
-        outcomePrices
-        question
-        questionID
+        if (!negRiskQuestionId || negRiskQuestionId === ethers.constants.HashZero) continue;
+
+        const adapterCandidates = new Set<string>([LEGACY_NEG_RISK_ADAPTER]);
+        try {
+          adapterCandidates.add(await operator.nrAdapter());
+        } catch {
+          // Ignore adapter lookup failures and keep the legacy fallback.
+        }
+
+        return [...adapterCandidates].reduce<string[]>((conditionIds, address) => {
+          try {
+            conditionIds.push(getConditionId(ethers.utils.getAddress(address), negRiskQuestionId));
+          } catch {
+            // Ignore malformed adapter addresses and continue.
+          }
+          return conditionIds;
+        }, []);
+      } catch {
+        // Ignore operator lookup failures and try the next operator.
       }
     }
-    `;
-  const { data } = await params.httpClient.post<GraphQLResponse<{ markets: PolymarketMarketResponse[] }>>(
-    params.graphqlEndpoint,
-    { query },
-    {
-      headers: { authorization: `Bearer ${params.polymarketApiKey}` },
+
+    return [];
+  };
+
+  const findClobMarket = async (): Promise<ClobMarketResponse | null> => {
+    const conditionIds = [...getStandardConditionIds(questionID), ...(await getNegRiskConditionIds())];
+
+    for (const conditionId of conditionIds) {
+      try {
+        const { data } = await params.httpClient.get<ClobMarketResponse>(`${params.apiEndpoint}/markets/${conditionId}`);
+        if (data && !data.error) return data;
+      } catch (error) {
+        const axiosError = error as AxiosError<{ error?: string }>;
+        if (axiosError.response?.status === 404) continue;
+        throw error;
+      }
     }
-  );
 
-  if (data.errors?.length) {
-    throw new Error(data.errors.map((e) => e.message).join("; "));
-  }
+    return null;
+  };
 
-  if (!data.data?.markets) {
-    throw new Error("No markets found");
-  }
+  const fetchGammaMarket = async (clobMarket: ClobMarketResponse): Promise<PolymarketMarketResponse> => {
+    const candidateUrls = [
+      clobMarket.market_slug ? `${gammaApiBaseUrl}/markets/slug/${encodeURIComponent(clobMarket.market_slug)}` : null,
+      clobMarket.market_id != null ? `${gammaApiBaseUrl}/markets/${clobMarket.market_id}` : null,
+      clobMarket.id != null ? `${gammaApiBaseUrl}/markets/${clobMarket.id}` : null,
+    ].filter((url): url is string => Boolean(url));
 
-  const { markets } = data.data;
+    for (const url of candidateUrls) {
+      const { data } = await params.httpClient.get<PolymarketMarketResponse | PolymarketMarketResponse[]>(url);
+      const market = Array.isArray(data) ? data[0] : data;
+      if (market) return market;
+    }
 
-  if (!markets.length) {
-    throw new Error(`No market found for question ID: ${questionID}`);
-  }
+    throw new Error(`No Gamma market found for question ID: ${questionID}`);
+  };
 
-  return markets.map(processMarket);
+  const clobMarket = await findClobMarket();
+  if (!clobMarket) throw new Error(`No market found for question ID: ${questionID}`);
+
+  return [processMarket(await fetchGammaMarket(clobMarket))];
 };
 
 /**

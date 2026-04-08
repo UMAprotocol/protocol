@@ -11,11 +11,11 @@ import {
 import { createNewLogger, spyLogIncludes, spyLogLevel, SpyTransport } from "@uma/financial-templates-lib";
 import { createHttpClient } from "@uma/toolkit";
 import { assert } from "chai";
+import { ethers as ethersLib } from "ethers";
 import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
 import {
   encodeMultipleQuery,
-  extractMarketIdFromAncillaryData,
   getProposalKeyToStore,
   getSportsPayouts,
   MarketOrderbook,
@@ -197,12 +197,53 @@ describe("PolymarketNotifier", function () {
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
 
-  it("extracts market_id from ancillary data", async function () {
-    const marketId = extractMarketIdFromAncillaryData(
-      `q: title: Will Querétaro FC win on 2026-02-22?, market_id: 1272207 res_data: p1: 0, p2: 1`
+  it("resolves markets through CLOB condition lookup and Gamma slug lookup", async function () {
+    const params = await createMonitoringParams();
+    params.apiEndpoint = "https://clob.polymarket.com";
+    params.graphqlEndpoint = "https://gamma-api.polymarket.com/query";
+
+    const questionId = "0x6e0a8c466f66bc6f7d3f113d3dcf019035adf909fd6efcca0368c3bec245914b";
+    const requesterAddress = "0x157ce2d672854c848c9b79c49a8cc6cc89176a49";
+    const marketSlug = "mex-que-jua-2026-02-22-que";
+    const conditionId = ethersLib.utils.solidityKeccak256(
+      ["address", "bytes32", "uint256"],
+      [requesterAddress, questionId, 2]
     );
 
-    assert.equal(marketId, "1272207");
+    const postStub = sandbox.stub(params.httpClient, "post");
+    const getStub = sandbox.stub(params.httpClient, "get").callsFake(async (url: string) => {
+      if (url === `${params.apiEndpoint}/markets/${conditionId}`) {
+        return { data: { market_slug: marketSlug } };
+      }
+
+      if (url === `https://gamma-api.polymarket.com/markets/slug/${marketSlug}`) {
+        return {
+          data: {
+            clobTokenIds: JSON.stringify(["0x1234", "0x1235"]),
+            volumeNum: 200_000,
+            outcomes: JSON.stringify(["Yes", "No"]),
+            outcomePrices: JSON.stringify(["0.0005", "0.9995"]),
+            question: "Will Querétaro FC win on 2026-02-22?",
+            questionID: questionId,
+          },
+        };
+      }
+
+      throw { response: { status: 404 } };
+    });
+
+    const markets = await commonModule.getPolymarketMarketInformation(
+      commonModule.Logger,
+      params,
+      questionId,
+      requesterAddress
+    );
+
+    assert.equal(markets[0].questionID, questionId);
+    assert.equal(markets[0].question, "Will Querétaro FC win on 2026-02-22?");
+    assert.isTrue(getStub.calledWith(`${params.apiEndpoint}/markets/${conditionId}`));
+    assert.isTrue(getStub.calledWith(`https://gamma-api.polymarket.com/markets/slug/${marketSlug}`));
+    assert.isTrue(postStub.notCalled);
   });
 
   it("It should notify if there are orders over the threshold", async function () {
