@@ -252,18 +252,25 @@ export async function monitorTransactionsProposedOrderBook(
 
   await Promise.all(
     allProposals.map(async ({ proposal, version }) => {
+      const ancillaryDataString = tryHexToUtf8String(proposal.ancillaryData);
       const questionID = calculatePolymarketQuestionID(proposal.ancillaryData);
+      const marketId = common.extractMarketIdFromAncillaryData(ancillaryDataString);
 
       try {
-        const markets = await getPolymarketMarketInformation(logger, params, questionID);
+        const markets = await getPolymarketMarketInformation(logger, params, questionID, marketId ?? undefined);
         markets.forEach((market) => {
           tokenIds.add(market.clobTokenIds[0]);
           tokenIds.add(market.clobTokenIds[1]);
         });
         bundles.push({ proposal, markets });
       } catch (error) {
+        const noMarketFound =
+          error instanceof Error &&
+          (error.message.includes(`No market found for question ID: ${questionID}`) ||
+            (marketId != null && error.message.includes(`No market found for market ID: ${marketId}`)));
+
         // Check if this is the specific "No market found" error for 3rd party proposals
-        if (error instanceof Error && error.message.includes(`No market found for question ID: ${questionID}`)) {
+        if (noMarketFound) {
           // Apply 3rd party proposal filtering logic
           const shouldIgnore = await shouldIgnoreThirdPartyProposal(params, proposal, version);
           if (shouldIgnore) {
@@ -271,6 +278,7 @@ export async function monitorTransactionsProposedOrderBook(
             logger.info({
               at: "PolymarketMonitor",
               message: "Ignoring 3rd party Polymarket proposal based on filtering criteria",
+              marketId,
               questionID,
               proposalHash: proposal.proposalHash,
               requester: proposal.requester,

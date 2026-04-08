@@ -15,6 +15,7 @@ import sinon from "sinon";
 import * as commonModule from "../src/monitor-polymarket/common";
 import {
   encodeMultipleQuery,
+  extractMarketIdFromAncillaryData,
   getProposalKeyToStore,
   getSportsPayouts,
   MarketOrderbook,
@@ -195,6 +196,14 @@ describe("PolymarketNotifier", function () {
     mockDataFunction.rejects(new Error(errorMessage));
     sandbox.stub(commonModule, functionName).callsFake(mockDataFunction);
   }
+
+  it("extracts market_id from ancillary data", async function () {
+    const marketId = extractMarketIdFromAncillaryData(
+      `q: title: Will Querétaro FC win on 2026-02-22?, market_id: 1272207 res_data: p1: 0, p2: 1`
+    );
+
+    assert.equal(marketId, "1272207");
+  });
 
   it("It should notify if there are orders over the threshold", async function () {
     const params = await createMonitoringParams();

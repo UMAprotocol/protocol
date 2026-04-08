@@ -104,7 +104,7 @@ export interface MonitoringParams {
   maxTradesPerToken: number;
   fillEventsChunkBlocks: number;
 }
-interface PolymarketMarketGraphql {
+interface PolymarketMarketResponse {
   question: string;
   outcomes: string;
   outcomePrices: string;
@@ -294,6 +294,11 @@ export const extractInitializerFromAncillaryData = (ancillaryData: string): stri
   return null;
 };
 
+export const extractMarketIdFromAncillaryData = (ancillaryData: string): string | null => {
+  const marketIdMatch = ancillaryData.match(/market_id:\s*([0-9]+)/i);
+  return marketIdMatch ? marketIdMatch[1] : null;
+};
+
 // Get reward amount from contract's requests mapping via eth_call
 export const getRewardForProposal = async (
   params: MonitoringParams,
@@ -353,8 +358,29 @@ export const shouldIgnoreThirdPartyProposal = async (
 export const getPolymarketMarketInformation = async (
   logger: typeof Logger,
   params: MonitoringParams,
-  questionID: string
+  questionID: string,
+  marketId?: string
 ): Promise<PolymarketMarketGraphqlProcessed[]> => {
+  const processMarket = (market: PolymarketMarketResponse): PolymarketMarketGraphqlProcessed => {
+    return {
+      ...market,
+      outcomes: JSON.parse(market.outcomes),
+      outcomePrices: JSON.parse(market.outcomePrices),
+      clobTokenIds: JSON.parse(market.clobTokenIds),
+    };
+  };
+
+  if (marketId) {
+    const gammaApiBaseUrl = params.graphqlEndpoint.replace(/\/query\/?$/, "");
+    const { data } = await params.httpClient.get<PolymarketMarketResponse>(`${gammaApiBaseUrl}/markets/${marketId}`);
+
+    if (!data) {
+      throw new Error(`No market found for market ID: ${marketId}`);
+    }
+
+    return [processMarket(data)];
+  }
+
   // Gamma currently rejects LOWER(...) on these fields, so query with the exact hash we computed.
   const query = `
     {
@@ -368,7 +394,7 @@ export const getPolymarketMarketInformation = async (
       }
     }
     `;
-  const { data } = await params.httpClient.post<GraphQLResponse<{ markets: PolymarketMarketGraphql[] }>>(
+  const { data } = await params.httpClient.post<GraphQLResponse<{ markets: PolymarketMarketResponse[] }>>(
     params.graphqlEndpoint,
     { query },
     {
@@ -390,14 +416,7 @@ export const getPolymarketMarketInformation = async (
     throw new Error(`No market found for question ID: ${questionID}`);
   }
 
-  return markets.map((market) => {
-    return {
-      ...market,
-      outcomes: JSON.parse(market.outcomes),
-      outcomePrices: JSON.parse(market.outcomePrices),
-      clobTokenIds: JSON.parse(market.clobTokenIds),
-    };
-  });
+  return markets.map(processMarket);
 };
 
 /**
