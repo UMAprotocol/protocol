@@ -355,11 +355,10 @@ export const getPolymarketMarketInformation = async (
   params: MonitoringParams,
   questionID: string
 ): Promise<PolymarketMarketGraphqlProcessed[]> => {
-  const normalizedQuestionID = questionID.toLowerCase();
-  // Gamma currently rejects LOWER(...) on these fields, but direct lowercase equality works.
+  // Gamma currently rejects LOWER(...) on these fields, so query with the exact hash we computed.
   const query = `
     {
-      markets(where: "question_id = '${normalizedQuestionID}' or neg_risk_request_id = '${normalizedQuestionID}' or game_id = '${normalizedQuestionID}'") {
+      markets(where: "question_id = '${questionID}' or neg_risk_request_id = '${questionID}' or game_id = '${questionID}'") {
         clobTokenIds
         volumeNum
         outcomes
