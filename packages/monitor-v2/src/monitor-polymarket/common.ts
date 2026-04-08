@@ -355,9 +355,11 @@ export const getPolymarketMarketInformation = async (
   params: MonitoringParams,
   questionID: string
 ): Promise<PolymarketMarketGraphqlProcessed[]> => {
+  const normalizedQuestionID = questionID.toLowerCase();
+  // Gamma currently rejects LOWER(...) on these fields, but direct lowercase equality works.
   const query = `
     {
-      markets(where: "LOWER(question_id) = LOWER('${questionID}') or LOWER(neg_risk_request_id) = LOWER('${questionID}') or LOWER(game_id) = LOWER('${questionID}')") {
+      markets(where: "question_id = '${normalizedQuestionID}' or neg_risk_request_id = '${normalizedQuestionID}' or game_id = '${normalizedQuestionID}'") {
         clobTokenIds
         volumeNum
         outcomes
@@ -827,7 +829,7 @@ export const storeNotifiedProposals = async (notifiedContracts: OptimisticPriceR
   if (!datastore) return;
   const promises = notifiedContracts.map((contract) => {
     const key = datastore.key(["NotifiedProposals", getProposalKeyToStore(contract)]);
-    datastore.save({
+    return datastore.save({
       key: key,
       data: {
         proposalHash: contract.proposalHash,
