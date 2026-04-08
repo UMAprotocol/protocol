@@ -80,11 +80,6 @@ const getPolymarketInitializerWhitelist = (): string[] => {
   return [];
 };
 
-interface GraphQLResponse<T> {
-  data?: T;
-  errors?: { message: string }[];
-}
-
 export interface MonitoringParams {
   ctfExchangeAddress: string;
   ctfSportsOracleAddress: string;
@@ -432,7 +427,9 @@ export const getPolymarketMarketInformation = async (
 
     for (const conditionId of conditionIds) {
       try {
-        const { data } = await params.httpClient.get<ClobMarketResponse>(`${params.apiEndpoint}/markets/${conditionId}`);
+        const { data } = await params.httpClient.get<ClobMarketResponse>(
+          `${params.apiEndpoint}/markets/${conditionId}`
+        );
         if (data && !data.error) return data;
       } catch (error) {
         const axiosError = error as AxiosError<{ error?: string }>;
