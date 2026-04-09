@@ -209,6 +209,8 @@ describe("PolymarketNotifier", function () {
       ["address", "bytes32", "uint256"],
       [requesterAddress, questionId, 2]
     );
+    const providerCallStub = sandbox.stub().rejects(new Error("neg-risk lookup should not run"));
+    params.provider = ({ _isProvider: true, call: providerCallStub } as unknown) as Provider;
 
     const postStub = sandbox.stub(params.httpClient, "post");
     const getStub = sandbox.stub(params.httpClient, "get").callsFake(async (url: string) => {
@@ -241,8 +243,62 @@ describe("PolymarketNotifier", function () {
 
     assert.equal(markets[0].questionID, questionId);
     assert.equal(markets[0].question, "Will Querétaro FC win on 2026-02-22?");
+    assert.isTrue(providerCallStub.notCalled);
     assert.isTrue(getStub.calledWith(`${params.apiEndpoint}/markets/${conditionId}`));
     assert.isTrue(getStub.calledWith(`https://gamma-api.polymarket.com/markets/slug/${marketSlug}`));
+    assert.isTrue(postStub.notCalled);
+  });
+
+  it("continues Gamma fallback URLs after a 404 on the slug lookup", async function () {
+    const params = await createMonitoringParams();
+    params.apiEndpoint = "https://clob.polymarket.com";
+    params.graphqlEndpoint = "https://gamma-api.polymarket.com/query";
+
+    const questionId = "0x6e0a8c466f66bc6f7d3f113d3dcf019035adf909fd6efcca0368c3bec245914b";
+    const requesterAddress = "0x157ce2d672854c848c9b79c49a8cc6cc89176a49";
+    const marketSlug = "stale-market-slug";
+    const marketId = "1272207";
+    const conditionId = ethersLib.utils.solidityKeccak256(
+      ["address", "bytes32", "uint256"],
+      [requesterAddress, questionId, 2]
+    );
+
+    const postStub = sandbox.stub(params.httpClient, "post");
+    const getStub = sandbox.stub(params.httpClient, "get").callsFake(async (url: string) => {
+      if (url === `${params.apiEndpoint}/markets/${conditionId}`) {
+        return { data: { market_slug: marketSlug, market_id: marketId } };
+      }
+
+      if (url === `https://gamma-api.polymarket.com/markets/slug/${marketSlug}`) {
+        throw { response: { status: 404 } };
+      }
+
+      if (url === `https://gamma-api.polymarket.com/markets/${marketId}`) {
+        return {
+          data: {
+            clobTokenIds: JSON.stringify(["0x1234", "0x1235"]),
+            volumeNum: 200_000,
+            outcomes: JSON.stringify(["Yes", "No"]),
+            outcomePrices: JSON.stringify(["0.0005", "0.9995"]),
+            question: "Will Querétaro FC win on 2026-02-22?",
+            questionID: questionId,
+          },
+        };
+      }
+
+      throw { response: { status: 404 } };
+    });
+
+    const markets = await commonModule.getPolymarketMarketInformation(
+      commonModule.Logger,
+      params,
+      questionId,
+      requesterAddress
+    );
+
+    assert.equal(markets[0].questionID, questionId);
+    assert.isTrue(getStub.calledWith(`https://gamma-api.polymarket.com/markets/slug/${marketSlug}`));
+    assert.isTrue(getStub.calledWith(`https://gamma-api.polymarket.com/markets/${marketId}`));
     assert.isTrue(postStub.notCalled);
   });
 
@@ -321,6 +377,100 @@ describe("PolymarketNotifier", function () {
     assert.isTrue(getStub.calledWith(`${params.apiEndpoint}/markets/${standardConditionId}`));
     assert.isTrue(getStub.calledWith(`${params.apiEndpoint}/markets/${negRiskConditionId}`));
     assert.isTrue(getStub.calledWith(`https://gamma-api.polymarket.com/markets/slug/${marketSlug}`));
+    assert.isTrue(postStub.notCalled);
+  });
+
+  it("returns every sports market from the Gamma event after the canonical CLOB lookup succeeds", async function () {
+    const params = await createMonitoringParams();
+    params.apiEndpoint = "https://clob.polymarket.com";
+    params.graphqlEndpoint = "https://gamma-api.polymarket.com/query";
+
+    const questionId = "0x303df379b982e189dc6aea356cad409cd18b8bc634a95e318b5e7ef025ab4400";
+    const requesterAddress = "0x157ce2d672854c848c9b79c49a8cc6cc89176a49";
+    const marketSlug = "mex-que-jua-2026-02-22-que";
+    const eventId = "189646";
+    params.ctfSportsOracleAddress = requesterAddress;
+
+    const conditionId = ethersLib.utils.solidityKeccak256(
+      ["address", "bytes32", "uint256"],
+      [requesterAddress, questionId, 2]
+    );
+
+    const postStub = sandbox.stub(params.httpClient, "post");
+    const getStub = sandbox.stub(params.httpClient, "get").callsFake(async (url: string) => {
+      if (url === `${params.apiEndpoint}/markets/${conditionId}`) {
+        return { data: { market_slug: marketSlug } };
+      }
+
+      if (url === `https://gamma-api.polymarket.com/markets/slug/${marketSlug}`) {
+        return {
+          data: {
+            clobTokenIds: JSON.stringify(["0x1234", "0x1235"]),
+            volumeNum: 200_000,
+            outcomes: JSON.stringify(["Yes", "No"]),
+            outcomePrices: JSON.stringify(["0.0005", "0.9995"]),
+            question: "Will Querétaro FC win on 2026-02-22?",
+            questionID: questionId,
+            events: [{ id: eventId }],
+          },
+        };
+      }
+
+      if (url === `https://gamma-api.polymarket.com/events/${eventId}`) {
+        return {
+          data: {
+            markets: [
+              {
+                clobTokenIds: JSON.stringify(["0x1234", "0x1235"]),
+                volumeNum: 200_000,
+                outcomes: JSON.stringify(["Yes", "No"]),
+                outcomePrices: JSON.stringify(["0.0005", "0.9995"]),
+                question: "Will Querétaro FC win on 2026-02-22?",
+                questionID: "0x303df379b982e189dc6aea356cad409cd18b8bc634a95e318b5e7ef025ab4400",
+              },
+              {
+                clobTokenIds: JSON.stringify(["0x2234", "0x2235"]),
+                volumeNum: 125_000,
+                outcomes: JSON.stringify(["Yes", "No"]),
+                outcomePrices: JSON.stringify(["0.5", "0.5"]),
+                question: "Will Querétaro FC vs. FC Juárez end in a draw?",
+                questionID: "0x303df379b982e189dc6aea356cad409cd18b8bc634a95e318b5e7ef025ab4401",
+              },
+              {
+                clobTokenIds: JSON.stringify(["0x3234", "0x3235"]),
+                volumeNum: 150_000,
+                outcomes: JSON.stringify(["Yes", "No"]),
+                outcomePrices: JSON.stringify(["0.1", "0.9"]),
+                question: "Will FC Juárez win on 2026-02-22?",
+                questionID: "0x303df379b982e189dc6aea356cad409cd18b8bc634a95e318b5e7ef025ab4402",
+              },
+            ],
+          },
+        };
+      }
+
+      throw { response: { status: 404 } };
+    });
+
+    const markets = await commonModule.getPolymarketMarketInformation(
+      commonModule.Logger,
+      params,
+      questionId,
+      requesterAddress
+    );
+
+    assert.equal(markets.length, 3);
+    assert.deepEqual(
+      markets.map((market) => market.questionID),
+      [
+        "0x303df379b982e189dc6aea356cad409cd18b8bc634a95e318b5e7ef025ab4400",
+        "0x303df379b982e189dc6aea356cad409cd18b8bc634a95e318b5e7ef025ab4401",
+        "0x303df379b982e189dc6aea356cad409cd18b8bc634a95e318b5e7ef025ab4402",
+      ]
+    );
+    assert.isTrue(getStub.calledWith(`${params.apiEndpoint}/markets/${conditionId}`));
+    assert.isTrue(getStub.calledWith(`https://gamma-api.polymarket.com/markets/slug/${marketSlug}`));
+    assert.isTrue(getStub.calledWith(`https://gamma-api.polymarket.com/events/${eventId}`));
     assert.isTrue(postStub.notCalled);
   });
 

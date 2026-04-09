@@ -112,9 +112,10 @@ interface PolymarketMarketResponse {
   question: string;
   outcomes: string;
   outcomePrices: string;
-  volumeNum: number;
+  volumeNum: number | string;
   clobTokenIds: string;
   questionID: string;
+  events?: { id?: string | number | null }[];
 }
 
 interface ClobMarketResponse {
@@ -122,6 +123,10 @@ interface ClobMarketResponse {
   market_id?: string | number | null;
   id?: string | number | null;
   error?: string;
+}
+
+interface GammaEventResponse {
+  markets?: PolymarketMarketResponse[];
 }
 
 export interface PolymarketMarketGraphqlProcessed {
@@ -367,14 +372,29 @@ export const getPolymarketMarketInformation = async (
   questionID: string,
   requesterAddress?: string
 ): Promise<PolymarketMarketGraphqlProcessed[]> => {
+  const isSportsRequester =
+    requesterAddress != null && requesterAddress.toLowerCase() === params.ctfSportsOracleAddress.toLowerCase();
+
   const processMarket = (market: PolymarketMarketResponse): PolymarketMarketGraphqlProcessed => {
     return {
       ...market,
+      volumeNum: Number(market.volumeNum),
       outcomes: JSON.parse(market.outcomes),
       outcomePrices: JSON.parse(market.outcomePrices),
       clobTokenIds: JSON.parse(market.clobTokenIds),
     };
   };
+
+  const isProcessableMarket = (
+    market: Partial<PolymarketMarketResponse> | undefined
+  ): market is PolymarketMarketResponse =>
+    market != null &&
+    typeof market.question === "string" &&
+    typeof market.outcomes === "string" &&
+    typeof market.outcomePrices === "string" &&
+    (typeof market.volumeNum === "number" || typeof market.volumeNum === "string") &&
+    typeof market.clobTokenIds === "string" &&
+    typeof market.questionID === "string";
 
   const gammaApiBaseUrl = params.graphqlEndpoint.replace(/\/query\/?$/, "");
 
@@ -422,9 +442,7 @@ export const getPolymarketMarketInformation = async (
     return [];
   };
 
-  const findClobMarket = async (): Promise<ClobMarketResponse | null> => {
-    const conditionIds = [...getStandardConditionIds(questionID), ...(await getNegRiskConditionIds())];
-
+  const findClobMarketForConditionIds = async (conditionIds: string[]): Promise<ClobMarketResponse | null> => {
     for (const conditionId of conditionIds) {
       try {
         const { data } = await params.httpClient.get<ClobMarketResponse>(
@@ -441,6 +459,13 @@ export const getPolymarketMarketInformation = async (
     return null;
   };
 
+  const findClobMarket = async (): Promise<ClobMarketResponse | null> => {
+    const standardClobMarket = await findClobMarketForConditionIds(getStandardConditionIds(questionID));
+    if (standardClobMarket) return standardClobMarket;
+
+    return findClobMarketForConditionIds(await getNegRiskConditionIds());
+  };
+
   const fetchGammaMarket = async (clobMarket: ClobMarketResponse): Promise<PolymarketMarketResponse> => {
     const candidateUrls = [
       clobMarket.market_slug ? `${gammaApiBaseUrl}/markets/slug/${encodeURIComponent(clobMarket.market_slug)}` : null,
@@ -449,18 +474,52 @@ export const getPolymarketMarketInformation = async (
     ].filter((url): url is string => Boolean(url));
 
     for (const url of candidateUrls) {
-      const { data } = await params.httpClient.get<PolymarketMarketResponse | PolymarketMarketResponse[]>(url);
-      const market = Array.isArray(data) ? data[0] : data;
-      if (market) return market;
+      try {
+        const { data } = await params.httpClient.get<PolymarketMarketResponse | PolymarketMarketResponse[]>(url);
+        const market = Array.isArray(data) ? data[0] : data;
+        if (market) return market;
+      } catch (error) {
+        const axiosError = error as AxiosError<{ error?: string }>;
+        if (axiosError.response?.status === 404) continue;
+        throw error;
+      }
     }
 
     throw new Error(`No Gamma market found for question ID: ${questionID}`);
   };
 
+  const fetchGammaEventMarkets = async (eventId: string | number): Promise<PolymarketMarketResponse[]> => {
+    const { data } = await params.httpClient.get<GammaEventResponse>(
+      `${gammaApiBaseUrl}/events/${encodeURIComponent(String(eventId))}`
+    );
+
+    const markets = (data.markets ?? []).filter(isProcessableMarket);
+    if (!markets.length) {
+      throw new Error(`No Gamma event markets found for question ID: ${questionID}`);
+    }
+
+    return [...new Map(markets.map((market) => [market.questionID.toLowerCase(), market])).values()];
+  };
+
   const clobMarket = await findClobMarket();
   if (!clobMarket) throw new Error(`No market found for question ID: ${questionID}`);
 
-  return [processMarket(await fetchGammaMarket(clobMarket))];
+  const primaryMarket = await fetchGammaMarket(clobMarket);
+  if (!isSportsRequester) return [processMarket(primaryMarket)];
+
+  const eventId = primaryMarket.events?.find((event) => event.id != null)?.id;
+  if (eventId == null) {
+    logger.warn({
+      at: "PolymarketMonitor",
+      message: "Sports market resolved without Gamma event context; falling back to the primary market only",
+      questionID,
+      requesterAddress,
+      marketQuestionID: primaryMarket.questionID,
+    });
+    return [processMarket(primaryMarket)];
+  }
+
+  return (await fetchGammaEventMarkets(eventId)).map(processMarket);
 };
 
 /**
