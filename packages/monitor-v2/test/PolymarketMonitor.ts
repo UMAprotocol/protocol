@@ -281,7 +281,7 @@ describe("PolymarketNotifier", function () {
       }
       throw new Error("unexpected call data");
     });
-    params.provider = { _isProvider: true, call: providerCallStub } as unknown as Provider;
+    params.provider = ({ _isProvider: true, call: providerCallStub } as unknown) as Provider;
 
     const postStub = sandbox.stub(params.httpClient, "post");
     const getStub = sandbox.stub(params.httpClient, "get").callsFake(async (url: string) => {
