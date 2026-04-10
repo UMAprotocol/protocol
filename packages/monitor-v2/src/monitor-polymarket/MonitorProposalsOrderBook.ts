@@ -255,7 +255,7 @@ export async function monitorTransactionsProposedOrderBook(
       const questionID = calculatePolymarketQuestionID(proposal.ancillaryData);
 
       try {
-        const markets = await getPolymarketMarketInformation(logger, params, questionID);
+        const markets = await getPolymarketMarketInformation(logger, params, questionID, proposal.requester);
         markets.forEach((market) => {
           tokenIds.add(market.clobTokenIds[0]);
           tokenIds.add(market.clobTokenIds[1]);
