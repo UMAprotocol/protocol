@@ -36,7 +36,7 @@ OVERRIDE_TO_BLOCK=18500000 \
 MIN_STAKED_TOKENS=1000 \
 yarn hardhat run ./gas-rebate/VoterGasRebateV2.ts --network mainnet
 
-# With priority fee cap (optional)
+# Override the default priority fee cap
 CUSTOM_NODE_URL="<mainnet-rpc-url>" \
 MAX_PRIORITY_FEE_GWEI=0.001 \
 yarn hardhat run ./gas-rebate/VoterGasRebateV2.ts --network mainnet
@@ -48,8 +48,8 @@ yarn hardhat run ./gas-rebate/VoterGasRebateV2.ts --network mainnet
 | ------------------------- | ------------------------------------------------------------------------ | ----------------------------------------- |
 | `OVERRIDE_FROM_BLOCK`     | Start block number (overrides automatic date-based calculation)          | Auto-calculated from previous month start |
 | `OVERRIDE_TO_BLOCK`       | End block number (overrides automatic date-based calculation)            | Auto-calculated from previous month end   |
-| `MIN_STAKED_TOKENS`       | Minimum UMA tokens staked to be eligible for rebate                      | `500`                                     |
-| `MAX_PRIORITY_FEE_GWEI`   | Maximum priority fee to refund (in gwei). If not set, no cap is applied. | None (no cap)                             |
+| `MIN_STAKED_TOKENS`       | Minimum UMA tokens staked to be eligible for rebate                      | `1000`                                    |
+| `MAX_PRIORITY_FEE_GWEI`   | Maximum priority fee to refund (in gwei)                                 | `0.001`                                   |
 | `MAX_BLOCK_LOOK_BACK`     | Maximum block range for VotingV2 event queries                           | `250`                                     |
 | `TRANSACTION_CONCURRENCY` | Number of concurrent RPC requests for fetching transactions/blocks       | `50`                                      |
 | `MAX_RETRIES`             | Maximum retry attempts for failed RPC calls                              | `10`                                      |
@@ -230,16 +230,16 @@ Overpayments are not clawed back by this workflow. Report zero and negative delt
 - Generated payout total equals audit summary total.
 - Historical rebates unchanged.
 
-### Priority Fee Capping (Optional)
+### Priority Fee Capping
 
-By default, the script rebates the full gas cost including any priority fee. You can optionally cap the priority fee (tip) portion to prevent rebating excessive tips by setting `MAX_PRIORITY_FEE_GWEI`.
+By default, the script fully rebates base fee and caps the priority fee (tip) portion at `0.001` gwei. You can override the cap by setting `MAX_PRIORITY_FEE_GWEI`.
 
 For example, with `MAX_PRIORITY_FEE_GWEI=0.001`:
 
 - If a voter paid a 0.0005 gwei priority fee, they get rebated the full 0.0005 gwei
 - If a voter paid a 0.002 gwei priority fee, they only get rebated 0.001 gwei
 
-The base fee is always fully rebated. Enabling a cap can encourage voters to use reasonable gas settings while still covering network costs.
+The base fee is always fully rebated. The default cap encourages voters to use reasonable gas settings while still covering network costs.
 
 ## Legacy Scripts
 

@@ -26,6 +26,9 @@ const {
   MAX_BLOCK_LOOK_BACK,
 } = process.env;
 
+const DEFAULT_MIN_STAKED_TOKENS = "1000";
+const DEFAULT_MAX_PRIORITY_FEE_GWEI = "0.001";
+
 export async function run(): Promise<void> {
   console.log("Running UMA2.0 Gas rebate script! This script assumes you are running it for the previous month🍌.");
 
@@ -52,8 +55,11 @@ export async function run(): Promise<void> {
     : (await findBlockNumberAtTimestamp(getWeb3(), prevMonthEnd.getTime() / 1000)).blockNumber;
 
   // Minimum UMA tokens staked to be eligible for a rebate
-  const minTokens = ethers.utils.parseEther(MIN_STAKED_TOKENS ? MIN_STAKED_TOKENS : "500");
-  const maxPriorityFee = MAX_PRIORITY_FEE_GWEI ? ethers.utils.parseUnits(MAX_PRIORITY_FEE_GWEI, "gwei") : null;
+  const minTokens = ethers.utils.parseEther(MIN_STAKED_TOKENS ? MIN_STAKED_TOKENS : DEFAULT_MIN_STAKED_TOKENS);
+  const maxPriorityFee = ethers.utils.parseUnits(
+    MAX_PRIORITY_FEE_GWEI ? MAX_PRIORITY_FEE_GWEI : DEFAULT_MAX_PRIORITY_FEE_GWEI,
+    "gwei"
+  );
   const maxBlockLookBack = MAX_BLOCK_LOOK_BACK ? Number(MAX_BLOCK_LOOK_BACK) : 250;
   const retryConfig = {
     retries: MAX_RETRIES ? Number(MAX_RETRIES) : 10,
