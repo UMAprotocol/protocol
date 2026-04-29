@@ -4,20 +4,15 @@
 // used in UMA tokens. The script aggregates the gas rebates by voter and saves the results to a file. // It is designed
 // to not require any run time parameters by always running it one month after the desired output month.
 
-import { TransactionReceipt } from "@ethersproject/abstract-provider";
 import "@nomiclabs/hardhat-ethers";
-import { findBlockNumberAtTimestamp, getWeb3, paginatedEventQuery } from "@uma/common";
+import { findBlockNumberAtTimestamp, getWeb3 } from "@uma/common";
 import { getAddress } from "@uma/contracts-node";
-import {
-  VoteCommittedEvent,
-  VoteRevealedEvent,
-} from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
-import Bluebird from "bluebird";
-import { BigNumber, Event } from "ethers";
+import type { VotingV2 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
 import fs from "fs";
 import hre from "hardhat";
 import moment from "moment";
 import path from "path";
+import { calculateVoterGasRebateV2, writeMonthlyAuditReports } from "./voterGasRebateV2Utils";
 const { ethers } = hre;
 
 const {
@@ -30,27 +25,6 @@ const {
   MAX_PRIORITY_FEE_GWEI,
   MAX_BLOCK_LOOK_BACK,
 } = process.env;
-
-async function retryAsyncOperation<T>(
-  operation: () => Promise<T>,
-  retries = MAX_RETRIES ? Number(MAX_RETRIES) : 10,
-  delay = RETRY_DELAY ? Number(RETRY_DELAY) : 1000
-): Promise<T> {
-  let attempt = 0;
-  while (attempt < retries) {
-    try {
-      return await operation();
-    } catch (error) {
-      attempt++;
-      if (attempt < retries) {
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      } else {
-        throw new Error(`Operation failed after ${retries} attempts: ${error}`);
-      }
-    }
-  }
-  throw new Error("This should never be reached");
-}
 
 export async function run(): Promise<void> {
   console.log("Running UMA2.0 Gas rebate script! This script assumes you are running it for the previous month🍌.");
@@ -79,158 +53,69 @@ export async function run(): Promise<void> {
 
   // Minimum UMA tokens staked to be eligible for a rebate
   const minTokens = ethers.utils.parseEther(MIN_STAKED_TOKENS ? MIN_STAKED_TOKENS : "500");
+  const maxPriorityFee = MAX_PRIORITY_FEE_GWEI ? ethers.utils.parseUnits(MAX_PRIORITY_FEE_GWEI, "gwei") : null;
+  const maxBlockLookBack = MAX_BLOCK_LOOK_BACK ? Number(MAX_BLOCK_LOOK_BACK) : 250;
+  const retryConfig = {
+    retries: MAX_RETRIES ? Number(MAX_RETRIES) : 10,
+    delay: RETRY_DELAY ? Number(RETRY_DELAY) : 1000,
+  };
 
   console.log("Minimum UMA tokens staked to be eligible for a rebate:", ethers.utils.formatEther(minTokens));
   console.log("Current time:", moment(currentDate).format());
   console.log("Previous Month Start:", moment(prevMonthStart).format(), "& block", fromBlock);
   console.log("Previous Month End:", moment(prevMonthEnd).format(), "& block", toBlock);
-
-  // Fetch all commit and reveal events.
-  const voting = await hre.ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1));
-
-  const maxBlockLookBack = MAX_BLOCK_LOOK_BACK ? Number(MAX_BLOCK_LOOK_BACK) : 20000;
-  const searchConfig = {
+  console.log("Gas rebate V2 config:", {
     fromBlock,
     toBlock,
+    minStakedTokens: ethers.utils.formatEther(minTokens),
+    maxPriorityFeeGwei: maxPriorityFee ? ethers.utils.formatUnits(maxPriorityFee, "gwei") : null,
     maxBlockLookBack,
-  };
-
-  // Find resolved events
-  const commitEvents = await paginatedEventQuery<VoteCommittedEvent>(
-    voting,
-    voting.filters.VoteCommitted(),
-    searchConfig
-  );
-  const revealEvents = await paginatedEventQuery<VoteRevealedEvent>(
-    voting,
-    voting.filters.VoteRevealed(),
-    searchConfig
-  );
-
-  // Filter out events with less than the minimum UMA tokens staked
-  const revealEventsMinBalance = revealEvents.filter((event) => event.args.numTokens.gte(minTokens));
-
-  // Filter out duplicate commit events as we only refund the first commit event per voter per round
-  const uniqueCommitEvents = new Map<string, VoteCommittedEvent>();
-
-  // Sort first by blockNumber (asc) and then by logIndex (asc) as a tiebreaker
-  const sortedCommitEvents = commitEvents.sort((a, b) => {
-    if (a.blockNumber !== b.blockNumber) {
-      return a.blockNumber - b.blockNumber; // Sort by blockNumber (asc)
-    }
-    return a.logIndex - b.logIndex; // Sort by logIndex (asc) within the same block
+    transactionConcurrency,
   });
-  for (const event of sortedCommitEvents) {
-    const key = `${event.args.voter}-${event.args.roundId}-${event.args.identifier}-${event.args.time}-${event.args.ancillaryData}`;
-    if (!uniqueCommitEvents.has(key)) {
-      uniqueCommitEvents.set(key, event);
-    }
+
+  // Fetch all commit and reveal events.
+  const voting = (await hre.ethers.getContractAt("VotingV2", await getAddress("VotingV2", 1))) as VotingV2;
+
+  const rebateComputation = await calculateVoterGasRebateV2({
+    voting,
+    fromBlock,
+    toBlock,
+    minTokens,
+    maxBlockLookBack,
+    transactionConcurrency,
+    maxPriorityFee,
+    retryConfig,
+  });
+
+  console.log("VotingV2 event collection stats:", rebateComputation.eventCollectionStats);
+  if (rebateComputation.anomalies.length > 0) {
+    console.log("VotingV2 event collection anomalies:", rebateComputation.anomalies);
   }
 
-  // Filter out commit events that don't have a corresponding reveal event
-  const matchingCommitEvents = revealEventsMinBalance
-    .map((event) =>
-      uniqueCommitEvents.get(
-        `${event.args.voter}-${event.args.roundId}-${event.args.identifier}-${event.args.time}-${event.args.ancillaryData}`
-      )
-    )
-    .filter((event) => event !== undefined);
-
-  // For each event find the associated transaction. We want to refund all transactions that were sent by voters.
-  // Function to process events sequentially
-  const getTransactionsFromEvents = async (events: Event[]) => {
-    const transactions = await Bluebird.map(
-      events,
-      async (event) => {
-        return await retryAsyncOperation(
-          async () => await voting.provider.getTransactionReceipt(event.transactionHash)
-        );
-      },
-      { concurrency: transactionConcurrency }
-    );
-    return transactions;
-  };
-
-  const commitTransactions = await getTransactionsFromEvents(matchingCommitEvents);
-  const revealTransactions = await getTransactionsFromEvents(revealEventsMinBalance);
-
-  // The transactions to refund are the union of the commit and reveal transactions. We need to remove any duplicates
-  // as a voter could have done multiple commits and reveals in the same transaction due to multicall. If we refund
-  // the full gas used within a transaction then we will refund for all commit-reveal operations within that tx.
-  const transactionsToRefund = [...commitTransactions, ...revealTransactions].reduce(
-    (accumulator: TransactionReceipt[], current) => {
-      if (!accumulator.find((transaction) => transaction.transactionHash === current.transactionHash))
-        accumulator.push(current);
-
-      return accumulator;
-    },
-    []
-  );
-
   console.log(
-    `In aggregate, refund ${commitEvents.length} commits and ${revealEvents.length} Reveals` +
-      ` for a total of ${transactionsToRefund.length} transactions`
+    `In aggregate, refund ${rebateComputation.commitEvents.length} commits and ` +
+      `${rebateComputation.revealEvents.length} Reveals for a total of ` +
+      `${rebateComputation.transactionsToRefund.length} transactions`
   );
 
-  // Max priority fee to refund (optional - if not set, no cap is applied)
-  const maxPriorityFee = MAX_PRIORITY_FEE_GWEI ? ethers.utils.parseUnits(MAX_PRIORITY_FEE_GWEI, "gwei") : null;
   if (maxPriorityFee) {
     console.log("Max priority fee to refund:", ethers.utils.formatUnits(maxPriorityFee, "gwei"), "gwei");
   } else {
     console.log("No priority fee cap applied");
   }
 
-  // Get unique block numbers from transactions to fetch block data
-  const uniqueBlockNumbers = [...new Set(transactionsToRefund.map((tx) => tx.blockNumber))];
-  console.log(`Fetching base fee data for ${uniqueBlockNumbers.length} unique blocks...`);
-
-  // Fetch block data in parallel to get base fees
-  const blockDataMap = new Map<number, BigNumber>();
-  await Bluebird.map(
-    uniqueBlockNumbers,
-    async (blockNumber) => {
-      const block = await retryAsyncOperation(async () => await voting.provider.getBlock(blockNumber));
-      if (block.baseFeePerGas) {
-        blockDataMap.set(blockNumber, block.baseFeePerGas);
-      }
-    },
-    { concurrency: transactionConcurrency }
-  );
-
-  const shareholderPayoutBN: { [address: string]: BigNumber } = {};
-  // Now, traverse all transactions and calculate the rebate for each.
-  for (const transaction of transactionsToRefund) {
-    const baseFee = blockDataMap.get(transaction.blockNumber);
-    let effectiveGasPriceForRebate: BigNumber;
-
-    if (baseFee) {
-      // Calculate the actual priority fee paid
-      const actualPriorityFee = transaction.effectiveGasPrice.sub(baseFee);
-      // Cap the priority fee at maxPriorityFee if set
-      const cappedPriorityFee =
-        maxPriorityFee && actualPriorityFee.gt(maxPriorityFee) ? maxPriorityFee : actualPriorityFee;
-      // Rebate = gasUsed * (baseFee + cappedPriorityFee)
-      effectiveGasPriceForRebate = baseFee.add(cappedPriorityFee);
-    } else {
-      // Fallback for pre-EIP-1559 transactions (shouldn't happen on mainnet post-London)
-      effectiveGasPriceForRebate = transaction.effectiveGasPrice;
-    }
-
-    const resultantRebate = transaction.gasUsed.mul(effectiveGasPriceForRebate);
-    // Save the output to the shareholderPayout object. Append to existing value if it exists.
-    if (!shareholderPayoutBN[transaction.from]) shareholderPayoutBN[transaction.from] = BigNumber.from(0);
-    shareholderPayoutBN[transaction.from] = shareholderPayoutBN[transaction.from].add(resultantRebate);
-  }
-
   // Create a formatted output that is not bignumbers.
   const shareholderPayout: { [key: string]: number } = {};
-  for (const [key, value] of Object.entries(shareholderPayoutBN))
+  for (const [key, value] of Object.entries(rebateComputation.shareholderPayoutWei))
     shareholderPayout[key] = parseFloat(ethers.utils.formatEther(value));
 
   // Now save the output. First, work out the next rebate number by looking at previous rebate files.
   const basePath = `${path.resolve(__dirname)}/rebates/`;
   const rebates = fs.readdirSync(basePath);
-  const previousRebates = rebates.map((f) => parseInt(f.substring(f.indexOf("_") + 1, f.indexOf("."))));
+  const previousRebates = rebates
+    .map((fileName) => fileName.match(/^Rebate_(\d+)\.json$/))
+    .filter((match): match is RegExpMatchArray => match !== null)
+    .map((match) => parseInt(match[1], 10));
   const rebateNumber = Math.max.apply(null, previousRebates) + 1;
   console.log("The next rebate number is", rebateNumber);
 
@@ -241,18 +126,32 @@ export async function run(): Promise<void> {
     fromBlock,
     toBlock,
     countVoters: Object.keys(shareholderPayout).length,
-    totalRebateAmount: parseFloat(
-      ethers.utils.formatEther(
-        Object.values(shareholderPayoutBN)
-          .reduce((a, b) => a.add(b), BigNumber.from(0))
-          .toString()
-      )
-    ),
+    totalRebateAmount: parseFloat(ethers.utils.formatEther(rebateComputation.totalRebateWei.toString())),
     shareholderPayout,
   };
   const savePath = `${path.resolve(__dirname)}/rebates/Rebate_${rebateNumber}.json`;
   fs.writeFileSync(savePath, JSON.stringify(finalOutputObject, null, 4));
   console.log("🗄  File successfully written to", savePath);
+
+  const auditReports = writeMonthlyAuditReports(rebateComputation, {
+    outputRebateFilePath: savePath,
+    rebateNumber,
+    config: {
+      minStakedTokens: ethers.utils.formatEther(minTokens),
+      minStakedTokensWei: minTokens.toString(),
+      maxPriorityFeeGwei: maxPriorityFee ? ethers.utils.formatUnits(maxPriorityFee, "gwei") : null,
+      maxPriorityFeeWei: maxPriorityFee ? maxPriorityFee.toString() : null,
+      maxBlockLookBack,
+      transactionConcurrency,
+      maxRetries: retryConfig.retries,
+      retryDelay: retryConfig.delay,
+      overrideFromBlockConfigured: Boolean(OVERRIDE_FROM_BLOCK),
+      overrideToBlockConfigured: Boolean(OVERRIDE_TO_BLOCK),
+      customNodeUrlConfigured: Boolean(process.env.CUSTOM_NODE_URL),
+    },
+  });
+  console.log("Monthly audit JSON written to", auditReports.jsonPath);
+  console.log("Monthly audit Markdown written to", auditReports.markdownPath);
 }
 
 if (require.main === module) {

@@ -1,1 +1,7 @@
 artifacts
+
+# Generated gas rebate audit JSON can be very large. Keep manifests, payout JSON,
+# and audit Markdown review summaries commit-ready, but leave detailed audit JSON
+# as a local/regenerable artifact.
+gas-rebate/rebates/*.audit.json
+gas-rebate/corrections/*.audit.json
