@@ -44,16 +44,16 @@ yarn hardhat run ./gas-rebate/VoterGasRebateV2.ts --network mainnet
 
 ### Environment Variables
 
-| Variable                  | Description                                                              | Default                                   |
-| ------------------------- | ------------------------------------------------------------------------ | ----------------------------------------- |
-| `OVERRIDE_FROM_BLOCK`     | Start block number (overrides automatic date-based calculation)          | Auto-calculated from previous month start |
-| `OVERRIDE_TO_BLOCK`       | End block number (overrides automatic date-based calculation)            | Auto-calculated from previous month end   |
-| `MIN_STAKED_TOKENS`       | Minimum UMA tokens staked to be eligible for rebate                      | `1000`                                    |
-| `MAX_PRIORITY_FEE_GWEI`   | Maximum priority fee to refund (in gwei)                                 | `0.001`                                   |
-| `MAX_BLOCK_LOOK_BACK`     | Maximum block range for VotingV2 event queries                           | `250`                                     |
-| `TRANSACTION_CONCURRENCY` | Number of concurrent RPC requests for fetching transactions/blocks       | `50`                                      |
-| `MAX_RETRIES`             | Maximum retry attempts for failed RPC calls                              | `10`                                      |
-| `RETRY_DELAY`             | Delay between retries in milliseconds                                    | `1000`                                    |
+| Variable                  | Description                                                        | Default                                   |
+| ------------------------- | ------------------------------------------------------------------ | ----------------------------------------- |
+| `OVERRIDE_FROM_BLOCK`     | Start block number (overrides automatic date-based calculation)    | Auto-calculated from previous month start |
+| `OVERRIDE_TO_BLOCK`       | End block number (overrides automatic date-based calculation)      | Auto-calculated from previous month end   |
+| `MIN_STAKED_TOKENS`       | Minimum UMA tokens staked to be eligible for rebate                | `1000`                                    |
+| `MAX_PRIORITY_FEE_GWEI`   | Maximum priority fee to refund (in gwei)                           | `0.001`                                   |
+| `MAX_BLOCK_LOOK_BACK`     | Maximum block range for VotingV2 event queries                     | `250`                                     |
+| `TRANSACTION_CONCURRENCY` | Number of concurrent RPC requests for fetching transactions/blocks | `50`                                      |
+| `MAX_RETRIES`             | Maximum retry attempts for failed RPC calls                        | `10`                                      |
+| `RETRY_DELAY`             | Delay between retries in milliseconds                              | `1000`                                    |
 
 ### Safe Chunk Size and Validation
 
@@ -206,7 +206,7 @@ AUDIT_MANIFEST=gas-rebate/corrections/Rebate_66_Correction_Manifest.json \
 yarn hardhat run ./gas-rebate/AuditVoterGasRebateV2.ts --network mainnet
 ```
 
-The script writes `Correction_Rebate_66.json`, `Correction_Rebate_66.audit.json`, and `Correction_Rebate_66.audit.md` under `gas-rebate/corrections/` unless `OUTPUT_DIR` changes the destination. The `.audit.json` file is intentionally git-ignored because it can contain large transaction-level evidence; commit the correction payout JSON and `.audit.md` reviewer summary.
+The script writes `Correction_Rebate_66.json`, `Correction_Rebate_66.audit.json`, and `Correction_Rebate_66.audit.md` under `gas-rebate/corrections/` unless `OUTPUT_DIR` changes the destination. Correction payout ETH amounts are emitted as decimal strings so they round-trip to exact wei. The `.audit.json` file is intentionally git-ignored because it can contain large transaction-level evidence; commit the correction payout JSON and `.audit.md` reviewer summary.
 
 ### Overpayments
 

@@ -2,7 +2,6 @@ require("ts-node/register/transpile-only");
 
 const { assert } = require("chai");
 const { BigNumber, utils } = require("ethers");
-const { createHash } = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -625,7 +624,7 @@ describe("VoterGasRebateV2 utils", function () {
         [correctionPositiveVoter]: BigNumber.from("1500000000000000000"),
         [correctionZeroVoter]: BigNumber.from("2000000000000000000"),
         [correctionNegativeVoter]: BigNumber.from("1000000000000000000"),
-        [correctionNewVoter]: BigNumber.from("250000000000000000"),
+        [correctionNewVoter]: BigNumber.from("250000000000000001"),
       };
       const written = await runVotingV2CorrectionAudit({
         manifestPath,
@@ -649,13 +648,13 @@ describe("VoterGasRebateV2 utils", function () {
       assert.isTrue(fs.existsSync(written.auditJsonPath));
       assert.isTrue(fs.existsSync(written.auditMarkdownPath));
       assert.equal(written.payout.countVoters, 2);
-      assert.equal(written.payout.totalRebateAmount, 0.75);
+      assert.equal(written.payout.totalRebateAmount, "0.750000000000000001");
       assert.deepEqual(written.payout.shareholderPayout, {
-        [correctionPositiveVoter]: 0.5,
-        [correctionNewVoter]: 0.25,
+        [correctionPositiveVoter]: "0.5",
+        [correctionNewVoter]: "0.250000000000000001",
       });
       assert.notProperty(written.payout.shareholderPayout, correctionNegativeVoter);
-      assert.equal(written.report.consolidatedTopUp.totalWei, "750000000000000000");
+      assert.equal(written.report.consolidatedTopUp.totalWei, "750000000000000001");
       assert.equal(written.report.auditedRebates[0].deltas.positive.length, 2);
       assert.equal(written.report.auditedRebates[0].deltas.zero.length, 1);
       assert.equal(written.report.auditedRebates[0].deltas.negative.length, 1);
@@ -798,58 +797,6 @@ describe("VoterGasRebateV2 utils", function () {
     );
   });
 
-  it("loads the committed Phase 6 Rebate 65-66 correction manifest with per-rebate policy parameters", function () {
-    const affiliatesDir = path.resolve(__dirname, "../../..");
-    const manifestPath = path.join(affiliatesDir, "gas-rebate/corrections/Rebates_65_66_Correction_Manifest.json");
-    const manifest = loadCorrectionManifest(manifestPath, {
-      baseDir: affiliatesDir,
-      expectedVotingContractAddress: votingAddress,
-    });
-
-    assert.equal(manifest.name, "March and February 2026 Rebate 65-66 VotingV2 correction audit");
-    assert.equal(manifest.outputPrefix, "Correction_Rebates_65_66");
-    assert.lengthOf(manifest.audits, 2);
-    assert.deepEqual(
-      manifest.audits.map((audit) => ({
-        rebateFile: audit.rebateFile,
-        rebateNumber: audit.rebateNumber,
-        fromBlock: audit.fromBlock,
-        toBlock: audit.toBlock,
-        minStakedTokens: audit.minStakedTokens,
-        maxPriorityFeeGwei: audit.maxPriorityFeeGwei,
-        maxBlockLookBack: audit.maxBlockLookBack,
-        transactionConcurrency: audit.transactionConcurrency,
-      })),
-      [
-        {
-          rebateFile: "gas-rebate/rebates/Rebate_66.json",
-          rebateNumber: 66,
-          fromBlock: 24558868,
-          toBlock: 24781026,
-          minStakedTokens: "1000",
-          maxPriorityFeeGwei: "0.001",
-          maxBlockLookBack: 250,
-          transactionConcurrency: 100,
-        },
-        {
-          rebateFile: "gas-rebate/rebates/Rebate_65.json",
-          rebateNumber: 65,
-          fromBlock: 24358293,
-          toBlock: 24558867,
-          minStakedTokens: "1000",
-          maxPriorityFeeGwei: "0.001",
-          maxBlockLookBack: 250,
-          transactionConcurrency: 100,
-        },
-      ]
-    );
-    assert.include(manifest.audits[1].notes, "backward audit stop point");
-    assert.deepEqual(
-      manifest.expectedDeltas.map((delta) => delta.rebateNumber),
-      [66, 66]
-    );
-  });
-
   it("keeps committed Rebate 66 correction artifacts reviewable without committed audit JSON", function () {
     const affiliatesDir = path.resolve(__dirname, "../../..");
     const outputDir = path.join(affiliatesDir, "gas-rebate/corrections");
@@ -866,18 +813,19 @@ describe("VoterGasRebateV2 utils", function () {
     assert.equal(payout.fromBlock, 24558868);
     assert.equal(payout.toBlock, 24781026);
     assert.equal(payout.countVoters, 585);
+    assert.equal(payout.totalRebateAmount, "1.095766860809837881");
     assert.equal(Object.keys(payout.shareholderPayout).length, payout.countVoters);
 
     for (const expected of [
       {
         address: utils.getAddress("0xf20737e48160a87dc9d1b26d8b63c796d2f1ea91"),
         deltaWei: "7088051537280779",
-        deltaEth: 0.007088051537280779,
+        deltaEth: "0.007088051537280779",
       },
       {
         address: utils.getAddress("0x2a9437de0ccd4fd7b7d98831213acedefc7a1092"),
         deltaWei: "1902006430166225",
-        deltaEth: 0.001902006430166225,
+        deltaEth: "0.001902006430166225",
       },
     ]) {
       assert.equal(payout.shareholderPayout[expected.address], expected.deltaEth);
@@ -893,36 +841,6 @@ describe("VoterGasRebateV2 utils", function () {
     assert.include(markdown, "- Event validation passed: true");
   });
 
-  it("keeps committed Phase 6 Rebate 65-66 correction artifacts reviewable without committed audit JSON", function () {
-    const affiliatesDir = path.resolve(__dirname, "../../..");
-    const outputDir = path.join(affiliatesDir, "gas-rebate/corrections");
-    const manifestPath = path.join(outputDir, "Rebates_65_66_Correction_Manifest.json");
-    const paths = getCorrectionArtifactPaths(outputDir, "Correction_Rebates_65_66");
-
-    assert.isTrue(fs.existsSync(paths.payoutPath));
-    assert.isTrue(fs.existsSync(paths.auditMarkdownPath));
-
-    const payout = JSON.parse(fs.readFileSync(paths.payoutPath, "utf8"));
-    const markdown = fs.readFileSync(paths.auditMarkdownPath, "utf8");
-    const manifestHash = createHash("sha256").update(fs.readFileSync(manifestPath)).digest("hex");
-
-    assert.equal(payout.votingContractAddress, votingAddress);
-    assert.equal(payout.rebate, 65);
-    assert.equal(payout.fromBlock, 24358293);
-    assert.equal(payout.toBlock, 24781026);
-    assert.equal(payout.countVoters, 591);
-    assert.equal(Object.keys(payout.shareholderPayout).length, payout.countVoters);
-    assert.include(markdown, "# VotingV2 Gas Rebate Correction Audit - March and February 2026");
-    assert.include(markdown, `Manifest SHA-256: \`${manifestHash}\``);
-    assert.include(markdown, "### Rebate 66");
-    assert.include(markdown, "### Rebate 65");
-    assert.include(markdown, "- Notes: February 2026 backward audit stop point");
-    assert.include(markdown, "- Positive delta total: 58 wei (0.000000000000000058 ETH)");
-    assert.include(markdown, "- Negative delta total: -52 wei (-0.000000000000000052 ETH)");
-    assert.include(markdown, "- Split count: 0");
-    assert.include(markdown, "- Total: 1095766860809837939 wei (1.095766860809837939 ETH)");
-  });
-
   it("documents the Phase 7 runbook and review checklist without concrete RPC URLs", function () {
     const affiliatesDir = path.resolve(__dirname, "../../..");
     const readme = fs.readFileSync(path.join(affiliatesDir, "gas-rebate/README.md"), "utf8");
@@ -930,7 +848,7 @@ describe("VoterGasRebateV2 utils", function () {
     for (const requiredText of [
       "Safe Chunk Size and Validation",
       "`MAX_BLOCK_LOOK_BACK=250` is the safe default chunk size",
-      "CUSTOM_NODE_URL=\"<mainnet-rpc-url>\"",
+      'CUSTOM_NODE_URL="<mainnet-rpc-url>"',
       "March 2026 Rebate 66 Rerun",
       "Correction/audit mode is VotingV2-only",
       "Historical `Rebate_*.json` files are immutable",

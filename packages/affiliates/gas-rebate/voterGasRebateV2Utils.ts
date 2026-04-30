@@ -265,8 +265,8 @@ export interface CorrectionPayoutJson {
   fromBlock: number;
   toBlock: number;
   countVoters: number;
-  totalRebateAmount: number;
-  shareholderPayout: { [address: string]: number };
+  totalRebateAmount: string;
+  shareholderPayout: { [address: string]: string };
 }
 
 export interface CorrectionAuditReport {
@@ -1499,8 +1499,8 @@ function buildCorrectionPayoutJson(
   const sortedAddresses = Object.keys(consolidatedPayoutWei).sort((a, b) =>
     a.toLowerCase().localeCompare(b.toLowerCase())
   );
-  const shareholderPayout = sortedAddresses.reduce((payout: { [address: string]: number }, address) => {
-    payout[address] = parseFloat(formatWeiToEthDecimalString(consolidatedPayoutWei[address]));
+  const shareholderPayout = sortedAddresses.reduce((payout: { [address: string]: string }, address) => {
+    payout[address] = formatWeiToEthDecimalString(consolidatedPayoutWei[address]);
     return payout;
   }, {});
   const totalRebateWei = totalWei(consolidatedPayoutWei);
@@ -1514,7 +1514,7 @@ function buildCorrectionPayoutJson(
     fromBlock,
     toBlock,
     countVoters: sortedAddresses.length,
-    totalRebateAmount: parseFloat(formatWeiToEthDecimalString(totalRebateWei)),
+    totalRebateAmount: formatWeiToEthDecimalString(totalRebateWei),
     shareholderPayout,
   };
 }
