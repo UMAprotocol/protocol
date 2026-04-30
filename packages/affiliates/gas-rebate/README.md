@@ -63,10 +63,16 @@ Do not raise `MAX_BLOCK_LOOK_BACK` for production payouts unless the audit repor
 
 ### March 2026 Rebate 66 Rerun
 
-The March 2026 recompute uses the original paid Rebate 66 block range and policy parameters. Replace only the placeholder RPC URL:
+The March 2026 recompute uses the original paid Rebate 66 block range and policy parameters. Because the paid
+`Rebate_66.json` artifact is committed, temporarily remove it for this reproduction run so the monthly script sees
+Rebate 65 as the latest paid rebate and writes `Rebate_66.json`. Replace only the placeholder RPC URL:
 
 ```bash
 cd packages/affiliates
+
+REBATE_66_BACKUP_DIR="$(mktemp -d)"
+cp gas-rebate/rebates/Rebate_66.json "$REBATE_66_BACKUP_DIR/Rebate_66.json"
+rm gas-rebate/rebates/Rebate_66.json
 
 CUSTOM_NODE_URL="<mainnet-rpc-url>" \
 NODE_OPTIONS="--max-old-space-size=24000" \
@@ -77,6 +83,8 @@ TRANSACTION_CONCURRENCY=100 \
 MAX_BLOCK_LOOK_BACK=250 \
 MAX_PRIORITY_FEE_GWEI=0.001 \
 yarn hardhat run ./gas-rebate/VoterGasRebateV2.ts --network mainnet
+
+diff -u "$REBATE_66_BACKUP_DIR/Rebate_66.json" gas-rebate/rebates/Rebate_66.json
 ```
 
 ### Output Format
@@ -202,11 +210,16 @@ cd packages/affiliates
 
 CUSTOM_NODE_URL="<mainnet-rpc-url>" \
 NODE_OPTIONS="--max-old-space-size=24000" \
+OUTPUT_DIR="$(mktemp -d)" \
 AUDIT_MANIFEST=gas-rebate/corrections/Rebate_66_Correction_Manifest.json \
 yarn hardhat run ./gas-rebate/AuditVoterGasRebateV2.ts --network mainnet
 ```
 
-The script writes `Correction_Rebate_66.json`, `Correction_Rebate_66.audit.json`, and `Correction_Rebate_66.audit.md` under `gas-rebate/corrections/` unless `OUTPUT_DIR` changes the destination. Correction payout ETH amounts are emitted as decimal strings so they round-trip to exact wei. The `.audit.json` file is intentionally git-ignored because it can contain large transaction-level evidence; commit the correction payout JSON and `.audit.md` reviewer summary.
+The command above writes `Correction_Rebate_66.json`, `Correction_Rebate_66.audit.json`, and
+`Correction_Rebate_66.audit.md` to a fresh temporary directory so it does not overwrite committed correction artifacts.
+Without `OUTPUT_DIR`, the script writes under `gas-rebate/corrections/`. Correction payout ETH amounts are emitted as
+decimal strings so they round-trip to exact wei. The `.audit.json` file is intentionally git-ignored because it can
+contain large transaction-level evidence; commit the correction payout JSON and `.audit.md` reviewer summary.
 
 ### Overpayments
 
