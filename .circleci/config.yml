@@ -18,14 +18,16 @@ jobs:
       - run:
           name: Install Foundry
           command: |
-            curl -L https://foundry.paradigm.xyz | bash || true
-            export PATH="$PATH:/home/circleci/.foundry/bin"
-            foundryup
+            export FOUNDRY_VERSION=nightly-70cd140131cd49875c6f31626bdfae08eba35386
+            curl -fsSL https://foundry.paradigm.xyz | SHELL=/bin/bash bash
+            export PATH="/home/circleci/.foundry/bin:$PATH"
+            foundryup --install "$FOUNDRY_VERSION"
       - save_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
             - ~/.ssh
+            - ~/.foundry
   build:
     docker:
       - image: cimg/node:22.11
@@ -48,6 +50,7 @@ jobs:
           paths:
             - ~/protocol
             - ~/.ssh
+            - ~/.foundry
   lint:
     docker:
       - image: cimg/node:22.11
@@ -66,7 +69,7 @@ jobs:
       - run:
           name: Generate Tests
           command: |
-            export PATH="$PATH:/home/circleci/.foundry/bin"
+            export PATH="/home/circleci/.foundry/bin:$PATH"
             cd /home/circleci/protocol
             ./ci/generate_lerna_config.sh
       - continuation/continue:
