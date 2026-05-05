@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "name": "March 2026 Rebate 66 VotingV2 correction",
+  "votingContractAddress": "0x004395edb43EFca9885CEdad51EC9fAf93Bd34ac",
+  "outputPrefix": "Correction_Rebate_66",
+  "audits": [
+    {
+      "rebateFile": "gas-rebate/rebates/Rebate_66.json",
+      "rebateNumber": 66,
+      "fromBlock": 24558868,
+      "toBlock": 24781026,
+      "minStakedTokens": "1000",
+      "maxPriorityFeeGwei": "0.001",
+      "maxBlockLookBack": 250,
+      "transactionConcurrency": 100
+    }
+  ],
+  "expectedDeltas": [
+    {
+      "rebateNumber": 66,
+      "address": "0xf20737e48160a87dc9d1b26d8b63c796d2f1ea91",
+      "deltaWei": "7088051537280779"
+    },
+    {
+      "rebateNumber": 66,
+      "address": "0x2a9437de0ccd4fd7b7d98831213acedefc7a1092",
+      "deltaWei": "1902006430166225"
+    }
+  ]
+}
