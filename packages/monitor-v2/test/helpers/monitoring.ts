@@ -42,6 +42,7 @@ export async function makeMonitoringParamsOO(
     oracleType,
     contractAddress,
     settleBatchSize: 1,
+    settleMinProposalAgeSeconds: 0,
   };
 }
 
