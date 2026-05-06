@@ -6,6 +6,14 @@ import { BaseMonitoringParams, startupLogLevel as baseStartup, initBaseMonitorin
 
 export type OracleType = "OptimisticOracle" | "SkinnyOptimisticOracle" | "OptimisticOracleV2";
 
+const DEFAULT_SETTLE_MIN_PROPOSAL_AGE_SECONDS = 2 * 60 * 60 + 15 * 60;
+
+function getNonNegativeNumber(value: string | undefined, defaultValue: number): number {
+  if (value === undefined) return defaultValue;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : defaultValue;
+}
+
 export interface BotModes {
   settleRequestsEnabled: boolean;
   settleOnlyDisputed: boolean; // Supported for OptimisticOracleV2 (incl. ManagedOOv2); ignored for OOv1 and SkinnyOO.
@@ -18,6 +26,7 @@ export interface MonitoringParams extends BaseMonitoringParams {
   settleableCheckBlock: number; // Block number to check for settleable requests, defaults to 5 minutes ago
   executionDeadline?: number; // Timestamp in sec for when to stop settling, defaults to 4 minutes from now in serverless
   settleBatchSize: number; // Number of settle calls to batch via multicall (requires MultiCaller on contract), defaults to 1
+  settleMinProposalAgeSeconds: number; // Minimum proposal age before settlement, defaults to 2h15m
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -51,6 +60,10 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
   const executionDeadline = base.pollingDelay === 0 ? currentTimestamp + settleTimeout : undefined;
 
   const settleBatchSize = Math.max(1, Number(env.SETTLE_BATCH_SIZE) || 1);
+  const settleMinProposalAgeSeconds = getNonNegativeNumber(
+    env.SETTLE_MIN_PROPOSAL_AGE_SECONDS,
+    DEFAULT_SETTLE_MIN_PROPOSAL_AGE_SECONDS
+  );
 
   return {
     ...base,
@@ -60,6 +73,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     settleableCheckBlock,
     executionDeadline,
     settleBatchSize,
+    settleMinProposalAgeSeconds,
   };
 };
 
