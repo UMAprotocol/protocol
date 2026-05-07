@@ -287,7 +287,7 @@ describe("FinancialContractClient.js", function () {
             ]
           );
 
-          // Calling create from a new address will create a new position and this should be added the the client.
+          // Calling create from a new address will create a new position and this should be added the client.
           await financialContract.methods
             .create({ rawValue: convertDecimals("100") }, { rawValue: convertDecimals("45") })
             .send({ from: sponsor2 });
