@@ -33,6 +33,7 @@ node ./packages/monitor-v2/dist/bot-oo/index.js
 - `MAX_BLOCK_LOOKBACK`: Max block span per query (see `blockDefaults`).
 - `GAS_LIMIT_MULTIPLIER`: Percent multiplier on estimated gas (default `150`).
 - `SETTLE_DELAY`: Lookback period in seconds to detect settleable requests (default `300`).
+- `SETTLE_MIN_PROPOSAL_AGE_SECONDS`: Minimum proposal age in seconds before settling OOv2 requests (default `8100`, set `0` to disable).
 - `SETTLE_TIMEOUT`: Timeout in seconds for submitting settlement transactions in serverless mode (default `240`).
 - `SETTLE_ONLY_DISPUTED`: When `true`, only settle requests that have been disputed (`false` by default). Supported for `OptimisticOracleV2` (including `ManagedOptimisticOracleV2`); ignored for `OptimisticOracle` and `SkinnyOptimisticOracle`.
 
@@ -51,5 +52,6 @@ For each Oracle type:
 
 1. Scans `RequestPrice` events within the lookback window.
 2. Filters out already settled requests (`Settle` events).
-3. Uses Oracle-specific logic to detect settleable requests at historical state (using `SETTLE_DELAY`).
-4. Submits settlement transactions when requests are ready, stopping when `SETTLE_TIMEOUT` passes in serverless mode.
+3. For OOv2, skips proposals younger than `SETTLE_MIN_PROPOSAL_AGE_SECONDS`.
+4. Uses Oracle-specific logic to detect settleable requests at historical state (using `SETTLE_DELAY`).
+5. Submits settlement transactions when requests are ready, stopping when `SETTLE_TIMEOUT` passes in serverless mode.

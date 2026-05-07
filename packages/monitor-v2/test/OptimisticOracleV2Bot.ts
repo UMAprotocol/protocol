@@ -25,6 +25,17 @@ const ethers = hre.ethers;
 const createParams = (oracleType: OracleType, contractAddress: string) =>
   makeMonitoringParamsOO(oracleType, contractAddress, { settleRequestsEnabled: false });
 
+const getReceiptBlockNumber = (receipt: { blockNumber?: number }) => {
+  if (receipt.blockNumber === undefined) throw new Error("Expected transaction receipt to include blockNumber");
+  return receipt.blockNumber;
+};
+
+const getLast = <T>(items: T[], message: string) => {
+  const item = items[items.length - 1];
+  if (item === undefined) throw new Error(message);
+  return item;
+};
+
 describe("OptimisticOracleV2Bot", function () {
   let bondToken: ExpandedERC20Ethers;
   let optimisticOracleV2: OptimisticOracleV2Ethers;
@@ -82,7 +93,7 @@ describe("OptimisticOracleV2Bot", function () {
     ).wait();
 
     // Move timer forward to after liveness to allow settlement
-    await advanceTimerPastLiveness(timer, proposeReceipt.blockNumber!, defaultLiveness);
+    await advanceTimerPastLiveness(timer, getReceiptBlockNumber(proposeReceipt), defaultLiveness);
 
     const { spy, logger } = makeSpyLogger();
     const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
@@ -111,6 +122,45 @@ describe("OptimisticOracleV2Bot", function () {
     // Check that no settlement warning logs were generated
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "No settlement logs should be generated on subsequent runs");
+  });
+
+  it("Skips proposals below the minimum proposal age and settles once old enough", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    const proposeReceipt = await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    const minProposalAge = defaultLiveness + 15 * 60;
+    const proposalBlock = await ethers.provider.getBlock(getReceiptBlockNumber(proposeReceipt));
+    await (await timer.setCurrentTime(proposalBlock.timestamp + minProposalAge - 1)).wait();
+
+    const { spy, logger } = makeSpyLogger();
+    const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+    params.settleMinProposalAgeSeconds = minProposalAge;
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    let settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 0, "Request should not settle before minimum proposal age");
+
+    spy.resetHistory();
+    await (await timer.setCurrentTime(proposalBlock.timestamp + minProposalAge)).wait();
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 1, "Request should settle once minimum proposal age is reached");
   });
 
   it("Does not settle before liveness", async function () {
@@ -165,7 +215,7 @@ describe("OptimisticOracleV2Bot", function () {
 
     // Resolve in DVM via MockOracle
     const pending = await mockOracle.getPendingQueries();
-    const last = pending[pending.length - 1]!;
+    const last = getLast(pending, "Expected a pending DVM query");
     await (
       await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
     ).wait();
@@ -195,6 +245,57 @@ describe("OptimisticOracleV2Bot", function () {
     }
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "No settlement logs should be generated on subsequent runs");
+  });
+
+  it("Applies the minimum proposal age gate to disputed requests", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    const proposeReceipt = await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    await (
+      await optimisticOracleV2
+        .connect(disputer)
+        .disputePrice(await requester.getAddress(), defaultOptimisticOracleV2Identifier, 0, ancillaryData)
+    ).wait();
+
+    const pending = await mockOracle.getPendingQueries();
+    const last = getLast(pending, "Expected a pending DVM query");
+    await (
+      await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
+    ).wait();
+
+    const minProposalAge = defaultLiveness + 15 * 60;
+    const proposalBlock = await ethers.provider.getBlock(getReceiptBlockNumber(proposeReceipt));
+    await (await timer.setCurrentTime(proposalBlock.timestamp + minProposalAge - 1)).wait();
+
+    const { spy, logger } = makeSpyLogger();
+    const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+    params.settleMinProposalAgeSeconds = minProposalAge;
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    let settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 0, "Disputed request should not settle before minimum proposal age");
+
+    spy.resetHistory();
+    await (await timer.setCurrentTime(proposalBlock.timestamp + minProposalAge)).wait();
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 1, "Disputed request should settle once minimum proposal age is reached");
   });
 
   it("Settles multiple requests in a single multicall batch", async function () {
@@ -245,7 +346,7 @@ describe("OptimisticOracleV2Bot", function () {
           ethers.utils.parseEther("1")
         )
       ).wait();
-      lastProposeBlock = proposeReceipt.blockNumber!;
+      lastProposeBlock = getReceiptBlockNumber(proposeReceipt);
     }
 
     // Move timer past liveness for all proposals.
@@ -315,7 +416,7 @@ describe("OptimisticOracleV2Bot", function () {
     ).wait();
 
     // Move timer past liveness — request is settleable but was never disputed.
-    await advanceTimerPastLiveness(timer, proposeReceipt.blockNumber!, defaultLiveness);
+    await advanceTimerPastLiveness(timer, getReceiptBlockNumber(proposeReceipt), defaultLiveness);
 
     const { spy, logger } = makeSpyLogger();
     const params = await makeMonitoringParamsOO("OptimisticOracleV2", optimisticOracleV2.address, {
@@ -354,7 +455,7 @@ describe("OptimisticOracleV2Bot", function () {
 
     // Resolve in DVM via MockOracle.
     const pending = await mockOracle.getPendingQueries();
-    const last = pending[pending.length - 1]!;
+    const last = getLast(pending, "Expected a pending DVM query");
     await (
       await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
     ).wait();

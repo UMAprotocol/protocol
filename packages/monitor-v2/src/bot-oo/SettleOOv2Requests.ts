@@ -118,9 +118,43 @@ export async function settleOOv2Requests(
 
   // State.Resolved = 5: disputed and DVM price is available (settleable after dispute).
   const STATE_RESOLVED = 5;
+  const shouldEnforceMinProposalAge = params.settleMinProposalAgeSeconds > 0 && requestsToSettle.length > 0;
+  const currentOOTime = shouldEnforceMinProposalAge ? (await oo.getCurrentTime()).toNumber() : undefined;
+  const proposalBlockTimestamps = new Map<number, Promise<number>>();
+
+  const getProposalBlockTimestamp = async (blockNumber: number): Promise<number> => {
+    const cachedTimestamp = proposalBlockTimestamps.get(blockNumber);
+    if (cachedTimestamp) return cachedTimestamp;
+
+    const timestamp = params.provider.getBlock(blockNumber).then((block) => {
+      if (!block) throw new Error(`Could not fetch proposal block ${blockNumber}`);
+      return block.timestamp;
+    });
+    proposalBlockTimestamps.set(blockNumber, timestamp);
+    return timestamp;
+  };
 
   const settleableRequestsPromises = requestsToSettle.map(async (req) => {
     try {
+      if (shouldEnforceMinProposalAge && currentOOTime !== undefined) {
+        const proposalBlockTimestamp = await getProposalBlockTimestamp(req.blockNumber);
+        const proposalAge = currentOOTime - proposalBlockTimestamp;
+
+        if (proposalAge < params.settleMinProposalAgeSeconds) {
+          logger.debug({
+            at: "OOv2Bot",
+            message: "Skipping request below minimum proposal age",
+            requestKey: requestKey(req.args),
+            proposalAge,
+            settleMinProposalAgeSeconds: params.settleMinProposalAgeSeconds,
+            proposalBlock: req.blockNumber,
+            proposalBlockTimestamp,
+            currentOOTime,
+          });
+          return null;
+        }
+      }
+
       // When settleOnlyDisputed is enabled, check on-chain state and skip undisputed requests.
       if (params.botModes.settleOnlyDisputed) {
         const state = await oo.getState(
