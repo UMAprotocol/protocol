@@ -3585,7 +3585,7 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, toWei("32000000").add(toWei("108800")));
     assert.equal((await voting.methods.voterStakes(account1).call()).unappliedSlash, toWei("108625.92"));
 
-    // Now, update to request 3 (the final request. we should see 2x the unapplied slasing now applied to the ballance.
+    // Now, update to request 3 (the final request. we should see 2x the unapplied slasing now applied to the balance.
     await voting.methods.updateTrackersRange(account1, 1).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 3);
     let expectedStake = toWei("32000000").add(toWei("108800")).add(toWei("108625.92")).add(toWei("108625.92"));
