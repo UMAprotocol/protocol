@@ -1,4 +1,4 @@
-const supportedNetworks = ["mainnet", "polygon", "arbitrum", "optimism", "base", "blast"] as const;
+export const supportedNetworks = ["mainnet", "polygon", "arbitrum", "optimism", "base", "blast"] as const;
 export type SupportedNetwork = typeof supportedNetworks[number];
 
 export const networksNumber: Record<SupportedNetwork, number> = {
@@ -9,6 +9,10 @@ export const networksNumber: Record<SupportedNetwork, number> = {
   base: 8453,
   blast: 81457,
 };
+
+export function isSupportedNetwork(key: string): key is SupportedNetwork {
+  return (supportedNetworks as readonly string[]).includes(key);
+}
 
 export const l2Networks = supportedNetworks.filter((network) => network !== "mainnet");
 export type L2Network = typeof l2Networks[number];
