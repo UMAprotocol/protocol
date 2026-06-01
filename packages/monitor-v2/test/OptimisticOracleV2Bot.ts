@@ -8,6 +8,7 @@ import {
 import { spyLogIncludes, spyLogLevel, GasEstimator } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import { OracleType } from "../src/bot-oo/common";
+import { proposalEventId } from "../src/bot-oo/requestKey";
 import { settleRequests } from "../src/bot-oo/SettleRequests";
 import { defaultLiveness, defaultOptimisticOracleV2Identifier } from "./constants";
 import { optimisticOracleV2Fixture } from "./fixtures/OptimisticOracleV2.Fixture";
@@ -34,6 +35,12 @@ const getLast = <T>(items: T[], message: string) => {
   const item = items[items.length - 1];
   if (item === undefined) throw new Error(message);
   return item;
+};
+
+const getProposalEventId = (receipt: { events?: { event?: string; transactionHash: string; logIndex: number }[] }) => {
+  const event = receipt.events?.find((e) => e.event === "ProposePrice");
+  if (event === undefined) throw new Error("Expected a ProposePrice event in the receipt");
+  return proposalEventId(event.transactionHash, event.logIndex);
 };
 
 describe("OptimisticOracleV2Bot", function () {
@@ -472,5 +479,78 @@ describe("OptimisticOracleV2Bot", function () {
       .getCalls()
       .findIndex((c) => c.lastArg?.message === "Price Request Settled ✅" && c.lastArg?.at === "OOv2Bot");
     assert.isAbove(settledIndex, -1, "Disputed request should be settled when settleOnlyDisputed is true");
+  });
+
+  it("Skips proposals in the exclude list", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    const proposeReceipt = await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    await advanceTimerPastLiveness(timer, getReceiptBlockNumber(proposeReceipt), defaultLiveness);
+
+    const { spy, logger } = makeSpyLogger();
+    const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+    params.settleExcludeList = new Set([getProposalEventId(proposeReceipt)]);
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 0, "Excluded proposal should not be settled");
+  });
+
+  it("Settles only proposals in the include list", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    const proposeReceipt = await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    await advanceTimerPastLiveness(timer, getReceiptBlockNumber(proposeReceipt), defaultLiveness);
+
+    // An include list that does not contain the proposal: nothing settles.
+    {
+      const { spy, logger } = makeSpyLogger();
+      const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+      params.settleIncludeList = new Set([proposalEventId(`0x${"0".repeat(64)}`, 0)]);
+      await gasEstimator.update();
+      await settleRequests(logger, params, gasEstimator);
+
+      const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+      assert.equal(settlementLogs.length, 0, "Proposal absent from the include list should not be settled");
+    }
+
+    // An include list containing the proposal: it settles.
+    {
+      const { spy, logger } = makeSpyLogger();
+      const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+      params.settleIncludeList = new Set([getProposalEventId(proposeReceipt)]);
+      await gasEstimator.update();
+      await settleRequests(logger, params, gasEstimator);
+
+      const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+      assert.equal(settlementLogs.length, 1, "Proposal present in the include list should be settled");
+    }
   });
 });

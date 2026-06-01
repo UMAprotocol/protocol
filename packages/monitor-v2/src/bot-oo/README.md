@@ -36,6 +36,8 @@ node ./packages/monitor-v2/dist/bot-oo/index.js
 - `SETTLE_MIN_PROPOSAL_AGE_SECONDS`: Minimum proposal age in seconds before settling OOv2 requests (default `8100`, set `0` to disable).
 - `SETTLE_TIMEOUT`: Timeout in seconds for submitting settlement transactions in serverless mode (default `240`).
 - `SETTLE_ONLY_DISPUTED`: When `true`, only settle requests that have been disputed (`false` by default). Supported for `OptimisticOracleV2` (including `ManagedOptimisticOracleV2`); ignored for `OptimisticOracle` and `SkinnyOptimisticOracle`.
+- `SETTLE_INCLUDE_LIST`: JSON array of `"<txHash>:<logIndex>"` proposal identifiers (the transaction hash and log index of the `ProposePrice` event). When set, the bot settles **only** these proposals. Takes precedence over `SETTLE_EXCLUDE_LIST`. `OptimisticOracleV2` only. Example: `["0xabc...def:5"]`.
+- `SETTLE_EXCLUDE_LIST`: JSON array of `"<txHash>:<logIndex>"` proposal identifiers to **skip**. Ignored when `SETTLE_INCLUDE_LIST` is set. `OptimisticOracleV2` only.
 
 ## Behavior
 

@@ -3,15 +3,43 @@ export { Logger } from "@uma/financial-templates-lib";
 export { computeEventSearch } from "../bot-utils/events";
 export { getContractInstanceWithProvider } from "../utils/contracts";
 import { BaseMonitoringParams, startupLogLevel as baseStartup, initBaseMonitoringParams } from "../bot-utils/base";
+import { proposalEventId } from "./requestKey";
 
 export type OracleType = "OptimisticOracle" | "SkinnyOptimisticOracle" | "OptimisticOracleV2";
 
 const DEFAULT_SETTLE_MIN_PROPOSAL_AGE_SECONDS = 2 * 60 * 60 + 15 * 60;
 
+const PROPOSAL_ID_REGEX = /^(0x[0-9a-fA-F]{64}):(\d+)$/;
+
 function getNonNegativeNumber(value: string | undefined, defaultValue: number): number {
   if (value === undefined) return defaultValue;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.max(0, parsed) : defaultValue;
+}
+
+// Parses a JSON array of "<txHash>:<logIndex>" strings into a normalized set of proposal event ids.
+// Returns undefined when the env var is unset/empty so the bot keeps its default (settle everything) behavior.
+function parseProposalIdList(value: string | undefined, envName: string): Set<string> | undefined {
+  if (value === undefined || value.trim() === "") return undefined;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error(`${envName} must be a JSON array of "<txHash>:<logIndex>" strings`);
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error(`${envName} must be a non-empty JSON array of "<txHash>:<logIndex>" strings`);
+  }
+
+  const ids = parsed.map((entry) => {
+    if (typeof entry !== "string") throw new Error(`${envName} entries must be "<txHash>:<logIndex>" strings`);
+    const match = entry.match(PROPOSAL_ID_REGEX);
+    if (!match) throw new Error(`Invalid ${envName} entry "${entry}"; expected "<txHash>:<logIndex>"`);
+    return proposalEventId(match[1], Number(match[2]));
+  });
+
+  return new Set(ids);
 }
 
 export interface BotModes {
@@ -27,6 +55,11 @@ export interface MonitoringParams extends BaseMonitoringParams {
   executionDeadline?: number; // Timestamp in sec for when to stop settling, defaults to 4 minutes from now in serverless
   settleBatchSize: number; // Number of settle calls to batch via multicall (requires MultiCaller on contract), defaults to 1
   settleMinProposalAgeSeconds: number; // Minimum proposal age before settlement, defaults to 2h15m
+  // Include/exclude lists of proposal event ids ("<txHash>:<logIndex>"). OptimisticOracleV2 only.
+  // When settleIncludeList is set, only those proposals are settled (it takes precedence over the exclude list).
+  // Otherwise, proposals in settleExcludeList are skipped. Both undefined means settle everything (default).
+  settleIncludeList?: Set<string>;
+  settleExcludeList?: Set<string>;
 }
 
 export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<MonitoringParams> => {
@@ -65,6 +98,9 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     DEFAULT_SETTLE_MIN_PROPOSAL_AGE_SECONDS
   );
 
+  const settleIncludeList = parseProposalIdList(env.SETTLE_INCLUDE_LIST, "SETTLE_INCLUDE_LIST");
+  const settleExcludeList = parseProposalIdList(env.SETTLE_EXCLUDE_LIST, "SETTLE_EXCLUDE_LIST");
+
   return {
     ...base,
     botModes,
@@ -74,6 +110,8 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     executionDeadline,
     settleBatchSize,
     settleMinProposalAgeSeconds,
+    settleIncludeList,
+    settleExcludeList,
   };
 };
 

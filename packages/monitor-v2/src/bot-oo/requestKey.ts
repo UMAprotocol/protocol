@@ -14,3 +14,8 @@ export const requestKey = (args: RequestKeyArgs): string =>
       [args.requester, args.identifier, args.timestamp, args.ancillaryData]
     )
   );
+
+// Identifies a proposal by the transaction hash and log index of its ProposePrice event. This is the
+// identifier used by the include/exclude settlement lists (matches how proposals are referenced in the explorer).
+export const proposalEventId = (transactionHash: string, logIndex: number): string =>
+  `${transactionHash.toLowerCase()}:${logIndex}`;

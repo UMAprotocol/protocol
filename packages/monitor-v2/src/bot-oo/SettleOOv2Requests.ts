@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 import { computeEventSearch } from "../bot-utils/events";
 import { logSettleRequest } from "./BotLogger";
 import { getContractInstanceWithProvider, Logger, MonitoringParams, OptimisticOracleV2Ethers } from "./common";
-import { requestKey } from "./requestKey";
+import { proposalEventId, requestKey } from "./requestKey";
 import type { GasEstimator } from "@uma/financial-templates-lib";
 import { getSettleTxErrorLogFields, getSettleTxErrorLogLevel } from "../bot-utils/errors";
 
@@ -19,6 +19,39 @@ function chunk<T>(arr: T[], size: number): T[][] {
     chunks.push(arr.slice(i, i + size));
   }
   return chunks;
+}
+
+// Applies the include/exclude proposal lists. The include list is exclusive and takes precedence: when set, only its
+// proposals are settled. Otherwise proposals in the exclude list are skipped. Proposals are matched by the
+// transaction hash and log index of their ProposePrice event.
+function filterByIncludeExclude(
+  logger: typeof Logger,
+  params: MonitoringParams,
+  requests: ProposePriceEvent[]
+): ProposePriceEvent[] {
+  const { settleIncludeList, settleExcludeList } = params;
+  if (!settleIncludeList && !settleExcludeList) return requests;
+
+  const kept: ProposePriceEvent[] = [];
+  const skipped: string[] = [];
+  for (const req of requests) {
+    const id = proposalEventId(req.transactionHash, req.logIndex);
+    const allowed = settleIncludeList ? settleIncludeList.has(id) : !settleExcludeList?.has(id);
+    if (allowed) kept.push(req);
+    else skipped.push(id);
+  }
+
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Applied include/exclude proposal filter",
+    mode: settleIncludeList ? "include" : "exclude",
+    listSize: (settleIncludeList ?? settleExcludeList)?.size,
+    kept: kept.length,
+    skipped: skipped.length,
+    skippedIds: skipped,
+  });
+
+  return kept;
 }
 
 export async function settleOOv2Requests(
@@ -99,7 +132,9 @@ export async function settleOOv2Requests(
 
   const settledKeys = new Set(settlements.map((e) => requestKey(e.args)));
 
-  const requestsToSettle = proposals.filter((e) => !settledKeys.has(requestKey(e.args)));
+  const unsettledRequests = proposals.filter((e) => !settledKeys.has(requestKey(e.args)));
+
+  const requestsToSettle = filterByIncludeExclude(logger, params, unsettledRequests);
 
   const requestsToSettleTxCount =
     params.settleBatchSize > 1 ? Math.ceil(requestsToSettle.length / params.settleBatchSize) : requestsToSettle.length;
