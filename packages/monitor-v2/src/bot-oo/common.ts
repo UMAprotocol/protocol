@@ -19,7 +19,9 @@ function getNonNegativeNumber(value: string | undefined, defaultValue: number): 
 
 // Parses a JSON array of "<txHash>:<logIndex>" strings into a normalized set of proposal event ids.
 // Returns undefined when the env var is unset/empty so the bot keeps its default (settle everything) behavior.
-function parseProposalIdList(value: string | undefined, envName: string): Set<string> | undefined {
+// An explicit empty array is accepted: an empty exclude list behaves like unset, while an empty include list
+// means settle nothing (the include list is exclusive).
+export function parseProposalIdList(value: string | undefined, envName: string): Set<string> | undefined {
   if (value === undefined || value.trim() === "") return undefined;
 
   let parsed: unknown;
@@ -28,8 +30,8 @@ function parseProposalIdList(value: string | undefined, envName: string): Set<st
   } catch {
     throw new Error(`${envName} must be a JSON array of "<txHash>:<logIndex>" strings`);
   }
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error(`${envName} must be a non-empty JSON array of "<txHash>:<logIndex>" strings`);
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${envName} must be a JSON array of "<txHash>:<logIndex>" strings`);
   }
 
   const ids = parsed.map((entry) => {

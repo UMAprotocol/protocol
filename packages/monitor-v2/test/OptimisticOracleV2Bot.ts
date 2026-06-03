@@ -7,7 +7,7 @@ import {
 } from "@uma/contracts-node";
 import { spyLogIncludes, spyLogLevel, GasEstimator } from "@uma/financial-templates-lib";
 import { assert } from "chai";
-import { OracleType } from "../src/bot-oo/common";
+import { OracleType, parseProposalIdList } from "../src/bot-oo/common";
 import { proposalEventId } from "../src/bot-oo/requestKey";
 import { settleRequests } from "../src/bot-oo/SettleRequests";
 import { defaultLiveness, defaultOptimisticOracleV2Identifier } from "./constants";
@@ -552,5 +552,16 @@ describe("OptimisticOracleV2Bot", function () {
       const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
       assert.equal(settlementLogs.length, 1, "Proposal present in the include list should be settled");
     }
+  });
+
+  it("Accepts explicit empty include/exclude lists", async function () {
+    // Templated deployments commonly render optional list env vars as "[]"; this must not throw.
+    const includeList = parseProposalIdList("[]", "SETTLE_INCLUDE_LIST");
+    assert.instanceOf(includeList, Set);
+    assert.equal(includeList?.size, 0);
+
+    const excludeList = parseProposalIdList("[]", "SETTLE_EXCLUDE_LIST");
+    assert.instanceOf(excludeList, Set);
+    assert.equal(excludeList?.size, 0);
   });
 });
