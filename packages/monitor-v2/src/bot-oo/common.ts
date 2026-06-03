@@ -44,6 +44,20 @@ export function parseProposalIdList(value: string | undefined, envName: string):
   return new Set(ids);
 }
 
+// Parses SETTLE_INCLUDE_LIST/SETTLE_EXCLUDE_LIST and throws when either is set for a non-OOv2 oracle type:
+// only the OOv2 settler applies them, so silently ignoring a list would settle proposals the operator
+// intended to skip.
+export function parseSettleProposalIdLists(
+  env: NodeJS.ProcessEnv,
+  oracleType: OracleType
+): { settleIncludeList?: Set<string>; settleExcludeList?: Set<string> } {
+  const settleIncludeList = parseProposalIdList(env.SETTLE_INCLUDE_LIST, "SETTLE_INCLUDE_LIST");
+  const settleExcludeList = parseProposalIdList(env.SETTLE_EXCLUDE_LIST, "SETTLE_EXCLUDE_LIST");
+  if ((settleIncludeList || settleExcludeList) && oracleType !== "OptimisticOracleV2")
+    throw new Error("SETTLE_INCLUDE_LIST/SETTLE_EXCLUDE_LIST are only supported for OptimisticOracleV2");
+  return { settleIncludeList, settleExcludeList };
+}
+
 export interface BotModes {
   settleRequestsEnabled: boolean;
   settleOnlyDisputed: boolean; // Supported for OptimisticOracleV2 (incl. ManagedOOv2); ignored for OOv1 and SkinnyOO.
@@ -100,8 +114,7 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
     DEFAULT_SETTLE_MIN_PROPOSAL_AGE_SECONDS
   );
 
-  const settleIncludeList = parseProposalIdList(env.SETTLE_INCLUDE_LIST, "SETTLE_INCLUDE_LIST");
-  const settleExcludeList = parseProposalIdList(env.SETTLE_EXCLUDE_LIST, "SETTLE_EXCLUDE_LIST");
+  const { settleIncludeList, settleExcludeList } = parseSettleProposalIdLists(env, oracleType);
 
   return {
     ...base,

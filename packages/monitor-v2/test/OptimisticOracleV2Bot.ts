@@ -7,7 +7,7 @@ import {
 } from "@uma/contracts-node";
 import { spyLogIncludes, spyLogLevel, GasEstimator } from "@uma/financial-templates-lib";
 import { assert } from "chai";
-import { OracleType, parseProposalIdList } from "../src/bot-oo/common";
+import { OracleType, parseProposalIdList, parseSettleProposalIdLists } from "../src/bot-oo/common";
 import { proposalEventId } from "../src/bot-oo/requestKey";
 import { settleRequests } from "../src/bot-oo/SettleRequests";
 import { defaultLiveness, defaultOptimisticOracleV2Identifier } from "./constants";
@@ -563,5 +563,17 @@ describe("OptimisticOracleV2Bot", function () {
     const excludeList = parseProposalIdList("[]", "SETTLE_EXCLUDE_LIST");
     assert.instanceOf(excludeList, Set);
     assert.equal(excludeList?.size, 0);
+  });
+
+  it("Rejects include/exclude lists for non-OOv2 oracle types", async function () {
+    // Only the OOv2 settler applies these lists; silently ignoring them would settle proposals the operator
+    // intended to skip, so startup must fail instead.
+    const env = { SETTLE_EXCLUDE_LIST: JSON.stringify([`0x${"0".repeat(64)}:0`]) } as NodeJS.ProcessEnv;
+    assert.throws(() => parseSettleProposalIdLists(env, "OptimisticOracle"), /only supported for OptimisticOracleV2/);
+    assert.throws(
+      () => parseSettleProposalIdLists(env, "SkinnyOptimisticOracle"),
+      /only supported for OptimisticOracleV2/
+    );
+    assert.doesNotThrow(() => parseSettleProposalIdLists(env, "OptimisticOracleV2"));
   });
 });
