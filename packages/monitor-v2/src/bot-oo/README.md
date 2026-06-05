@@ -37,7 +37,7 @@ node ./packages/monitor-v2/dist/bot-oo/index.js
 - `SETTLE_TIMEOUT`: Timeout in seconds for submitting settlement transactions in serverless mode (default `240`).
 - `SETTLE_ONLY_DISPUTED`: When `true`, only settle requests that have been disputed (`false` by default). Supported for `OptimisticOracleV2` (including `ManagedOptimisticOracleV2`); ignored for `OptimisticOracle` and `SkinnyOptimisticOracle`.
 - `SETTLE_INCLUDE_LIST`: JSON array of `"<txHash>:<logIndex>"` proposal identifiers (the transaction hash and log index of the `ProposePrice` event). When set, the bot settles **only** these proposals. Takes precedence over `SETTLE_EXCLUDE_LIST`, so an explicit empty array (`[]`) settles **nothing**; leave it unset for default behavior. `OptimisticOracleV2` only — setting it for another `ORACLE_TYPE` throws at startup. Example: `["0xabc...def:5"]`.
-- `SETTLE_EXCLUDE_LIST`: JSON array of `"<txHash>:<logIndex>"` proposal identifiers to **skip**. An empty array (`[]`) behaves the same as unset. Ignored when `SETTLE_INCLUDE_LIST` is set. `OptimisticOracleV2` only — setting it for another `ORACLE_TYPE` throws at startup.
+- `SETTLE_EXCLUDE_LIST`: JSON array of `"<txHash>:<logIndex>"` proposal identifiers to **skip**. An empty array (`[]`) behaves the same as unset, including for non-OOv2 oracle types. Ignored when `SETTLE_INCLUDE_LIST` is set. `OptimisticOracleV2` only — setting a non-empty list for another `ORACLE_TYPE` throws at startup.
 
 ## Behavior
 

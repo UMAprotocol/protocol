@@ -575,5 +575,16 @@ describe("OptimisticOracleV2Bot", function () {
       /only supported for OptimisticOracleV2/
     );
     assert.doesNotThrow(() => parseSettleProposalIdLists(env, "OptimisticOracleV2"));
+
+    // An empty exclude list skips nothing and behaves the same as unset, so it must not block startup.
+    const emptyExcludeEnv = { SETTLE_EXCLUDE_LIST: "[]" } as NodeJS.ProcessEnv;
+    assert.doesNotThrow(() => parseSettleProposalIdLists(emptyExcludeEnv, "OptimisticOracle"));
+
+    // An empty include list means "settle nothing", which non-OOv2 cannot honor, so it must still throw.
+    const emptyIncludeEnv = { SETTLE_INCLUDE_LIST: "[]" } as NodeJS.ProcessEnv;
+    assert.throws(
+      () => parseSettleProposalIdLists(emptyIncludeEnv, "OptimisticOracle"),
+      /only supported for OptimisticOracleV2/
+    );
   });
 });
