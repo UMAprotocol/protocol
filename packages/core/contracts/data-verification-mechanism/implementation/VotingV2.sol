@@ -494,7 +494,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // Calculate the voters effective stake for this round as the difference between their stake and pending stake.
         // This allows for the voter to have staked during this reveal phase and not consider their pending stake.
-        uint128 effectiveStake = voterStakes[voter].stake - voterStakes[voter].pendingStakes[currentRoundId];
+        uint128 effectiveStake =
+            _effectiveStake(voterStakes[voter].stake, voterStakes[voter].pendingStakes[currentRoundId]);
         voteInstance.results.addVote(price, effectiveStake); // Add vote to the results.
         emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, ancillaryData, price, effectiveStake);
     }
@@ -843,7 +844,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             // Use the effective stake as the difference between the current stake and pending stake. The staker will
             //have a pending stake if they staked during an active reveal for the voting round in question.
-            uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[trackers.lastVotingRound];
+            uint256 effectiveStake = _effectiveStake(voterStake.stake, voterStake.pendingStakes[trackers.lastVotingRound]);
             int256 slash; // The amount to slash the voter by for this request. Reset on each entry to emit useful logs.
 
             // Get the voter participation for this request. This informs if the voter voted correctly or not.
@@ -1108,6 +1109,21 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 rounds[lastVotingRound].minParticipationRequirement,
                 rounds[lastVotingRound].minAgreementRequirement
             );
+    }
+
+    // Computes a voter's effective stake for a round as their current stake minus the stake they added during that
+    // round's active reveal phase (tracked in pendingStakes). pendingStakes is only ever incremented alongside an equal
+    // increment to stake, and the contract's update-before-mutate ordering plus the monotonic nextIndexToProcess
+    // traversal are intended to guarantee that, when this value is read, stake >= the relevant pendingStakes entry.
+    //
+    // That guarantee is a non-local invariant spread across staking, slashing and request-resolution ordering. Relying
+    // on a downstream/global assumption to keep a critical subtraction from underflowing is exactly the anti-pattern
+    // behind CVE-2018-17144 (duplicate-input inflation/crash). We therefore enforce the safety property locally here: if
+    // pending ever exceeds stake the voter genuinely had no active stake for the round, so the effective stake is zero.
+    // Saturating to zero is the semantically correct result and, by construction, can only ever reduce a voter's counted
+    // weight or slash/reward base - never inflate it - while also removing a latent fund-locking revert.
+    function _effectiveStake(uint128 stake, uint128 pendingStake) internal pure returns (uint128) {
+        return stake > pendingStake ? stake - pendingStake : 0;
     }
 
     // Gas optimized uint256 increment.
