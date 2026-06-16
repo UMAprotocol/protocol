@@ -187,6 +187,11 @@ class SlackHook extends Transport {
       // different slack channels depending on the context of the log.
       const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
+      // An empty (or unset) webhook URL means this notification path has been intentionally disabled in the config.
+      // Drop the message silently rather than POSTing to an empty URL, which would otherwise surface as a transport
+      // error and escalate to PagerDuty.
+      if (!webhookUrl) return callback();
+
       const payload: { blocks?: Block[]; text?: string; mrkdwn?: boolean } = { mrkdwn: this.mrkdwn };
       const layout = this.formatter(info);
       payload.blocks = layout.blocks || undefined;
