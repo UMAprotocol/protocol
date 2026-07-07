@@ -25,6 +25,7 @@ import Transport from "winston-transport";
 import axios from "axios";
 import type { AxiosInstance, AxiosRequestConfig } from "axios";
 
+import { delay } from "../helpers/delay";
 import { TransportError } from "./TransportError";
 
 interface MarkdownText {
@@ -50,6 +51,11 @@ interface SlackFormatterResponse {
 }
 
 export const SLACK_MAX_CHAR_LIMIT = 3000;
+export const SLACK_MAX_POST_RETRIES = 2;
+export const SLACK_MAX_RETRY_DELAY_SECONDS = 60;
+
+const SLACK_DEFAULT_RETRY_DELAY_SECONDS = 1;
+const SLACK_RATE_LIMIT_STATUS_CODE = 429;
 
 // Note: info is any because it comes directly from winston.
 function slackFormatter(info: any): SlackFormatterResponse {
@@ -146,6 +152,7 @@ function slackFormatter(info: any): SlackFormatterResponse {
 }
 
 type TransportOptions = NonNullable<ConstructorParameters<typeof Transport>[0]>;
+type SlackPayload = { blocks?: Block[]; text?: string; mrkdwn?: boolean };
 interface Options extends TransportOptions {
   name?: string;
   transportConfig: {
@@ -187,17 +194,18 @@ class SlackHook extends Transport {
       // different slack channels depending on the context of the log.
       const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
-      const payload: { blocks?: Block[]; text?: string; mrkdwn?: boolean } = { mrkdwn: this.mrkdwn };
+      const payload: SlackPayload = { mrkdwn: this.mrkdwn };
       const layout = this.formatter(info);
-      payload.blocks = layout.blocks || undefined;
+      const blocks = layout.blocks || [];
+      payload.blocks = blocks;
       // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
       if (JSON.stringify(payload).length < SLACK_MAX_CHAR_LIMIT) {
-        await this.axiosInstance.post(webhookUrl, payload);
+        await postWithRetry(this.axiosInstance, webhookUrl, payload);
       } else {
         // Iterate over each message to send and generate a axios call for each message.
-        for (const processedBlock of processMessageBlocks(payload.blocks)) {
+        for (const processedBlock of processMessageBlocks(blocks)) {
           payload.blocks = processedBlock;
-          await this.axiosInstance.post(webhookUrl, payload);
+          await postWithRetry(this.axiosInstance, webhookUrl, payload);
         }
       }
     } catch (error) {
@@ -205,6 +213,68 @@ class SlackHook extends Transport {
     }
     callback();
   }
+}
+
+async function postWithRetry(axiosInstance: AxiosInstance, webhookUrl: string, payload: SlackPayload): Promise<void> {
+  for (let retryCount = 0; ; retryCount++) {
+    try {
+      await axiosInstance.post(webhookUrl, payload);
+      return;
+    } catch (error) {
+      if (!isRetryableSlackPostError(error) || retryCount >= SLACK_MAX_POST_RETRIES) throw error;
+
+      const retryDelaySeconds = getSlackPostRetryDelaySeconds(error, retryCount);
+      if (retryDelaySeconds > 0) await delay(retryDelaySeconds);
+    }
+  }
+}
+
+export function isRetryableSlackPostError(error: unknown): boolean {
+  // Slack rejects rate-limited webhook posts, so retrying a 429 cannot duplicate a delivered message. Do not retry
+  // 5xx responses or connection-level failures because Slack webhook posts are not idempotent and delivery is
+  // ambiguous in those cases.
+  return getErrorStatus(error) === SLACK_RATE_LIMIT_STATUS_CODE;
+}
+
+export function getSlackPostRetryDelaySeconds(error: unknown, retryCount: number): number {
+  const retryAfterHeader = getErrorHeader(error, "retry-after");
+  if (retryAfterHeader !== undefined) {
+    const retryAfterSeconds = Number(retryAfterHeader);
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0) {
+      return Math.min(retryAfterSeconds, SLACK_MAX_RETRY_DELAY_SECONDS);
+    }
+
+    const retryAfterDateMs = Date.parse(retryAfterHeader);
+    if (Number.isFinite(retryAfterDateMs)) {
+      return Math.min(Math.max((retryAfterDateMs - Date.now()) / 1000, 0), SLACK_MAX_RETRY_DELAY_SECONDS);
+    }
+  }
+
+  return Math.min(SLACK_DEFAULT_RETRY_DELAY_SECONDS * (retryCount + 1), SLACK_MAX_RETRY_DELAY_SECONDS);
+}
+
+function getErrorStatus(error: unknown): number | undefined {
+  return (error as { response?: { status?: number } }).response?.status;
+}
+
+function getErrorHeader(error: unknown, headerName: string): string | undefined {
+  const headers = (error as { response?: { headers?: unknown } }).response?.headers;
+  if (headers === undefined || headers === null) return undefined;
+
+  const axiosHeadersGet = (headers as { get?: (name: string) => unknown }).get;
+  if (typeof axiosHeadersGet === "function") return headerValueToString(axiosHeadersGet.call(headers, headerName));
+
+  const lowerCaseHeaderName = headerName.toLowerCase();
+  for (const [key, value] of Object.entries(headers as Record<string, unknown>)) {
+    if (key.toLowerCase() === lowerCaseHeaderName) return headerValueToString(value);
+  }
+  return undefined;
+}
+
+function headerValueToString(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (Array.isArray(value)) return headerValueToString(value[0]);
+  return String(value);
 }
 
 function processMessageBlocks(blocks: Block[]): Block[][] {
