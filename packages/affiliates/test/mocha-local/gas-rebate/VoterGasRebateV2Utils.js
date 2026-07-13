@@ -93,6 +93,7 @@ function makeMonthlyAuditConfig(overrides = {}) {
     maxPriorityFeeGwei: "0.001",
     maxPriorityFeeWei: "1000000",
     maxBlockLookBack: 250,
+    commitLookbackBlocks: 50000,
     transactionConcurrency: 100,
     maxRetries: 10,
     retryDelay: 1000,
@@ -150,6 +151,7 @@ function makeMonthlyAuditResult(overrides = {}) {
       receiptValidationCount: 345,
       commitEventCount: 2,
       revealEventCount: 3,
+      boundaryCommitEventsRecovered: 0,
       validationPassed: true,
     },
     anomalies: [
@@ -426,6 +428,126 @@ describe("VoterGasRebateV2 utils", function () {
     }
   });
 
+  it("recovers commit transactions for reveals whose commit landed before fromBlock", async function () {
+    const recipient = "0x00000000000000000000000000000000000000f1";
+    const commit = makeEvent(90, 1, "0xcommitMay");
+    const reveal = makeEvent(110, 1, "0xrevealJun");
+    const voting = makeVoting({
+      commitEvents: [commit],
+      revealEvents: [reveal],
+      receipts: {
+        "0xcommitMay": makeReceipt("0xcommitMay", recipient, 90, 100, 200, ["commit"]),
+        "0xrevealJun": makeReceipt("0xrevealJun", recipient, 110, 50, 200, ["reveal"]),
+      },
+      blocks: {
+        90: { baseFeePerGas: BigNumber.from(100) },
+        110: { baseFeePerGas: BigNumber.from(100) },
+      },
+    });
+
+    const result = await calculateVoterGasRebateV2({
+      voting,
+      fromBlock: 100,
+      toBlock: 200,
+      minTokens: BigNumber.from(500),
+      maxBlockLookBack: 100,
+      transactionConcurrency: 2,
+      maxPriorityFee: null,
+      commitLookbackBlocks: 50,
+    });
+
+    assert.equal(result.eventCollectionStats.boundaryCommitEventsRecovered, 1);
+    assert.deepEqual(
+      result.transactionsToRefund.map((transaction) => transaction.transactionHash),
+      ["0xcommitMay", "0xrevealJun"]
+    );
+    assert.isFalse(result.anomalies.some((anomaly) => anomaly.type === "reveal_missing_commit"));
+    // commit gas (100 * 200) + reveal gas (50 * 200)
+    assert.equal(result.shareholderPayoutWei[recipient].toString(), "30000");
+  });
+
+  it("does not re-pay a boundary commit transaction already reimbursed by the previous month", async function () {
+    const recipient = "0x00000000000000000000000000000000000000f2";
+    const round1 = makeVoteArgs({ roundId: BigNumber.from(1) });
+    const round2 = makeVoteArgs({ roundId: BigNumber.from(2) });
+    // A single commit transaction commits two votes; one is revealed in the previous month (in the
+    // lookback window) and one at the start of this month.
+    const commitRound1 = makeEvent(90, 1, "0xcommitMay", round1);
+    const commitRound2 = makeEvent(90, 2, "0xcommitMay", round2);
+    const revealPrevMonth = makeEvent(95, 1, "0xrevealMay", round1);
+    const revealThisMonth = makeEvent(110, 1, "0xrevealJun", round2);
+    const voting = makeVoting({
+      commitEvents: [commitRound1, commitRound2],
+      revealEvents: [revealPrevMonth, revealThisMonth],
+      receipts: {
+        "0xcommitMay": makeReceipt("0xcommitMay", recipient, 90, 100, 200, ["commit", "commit"]),
+        "0xrevealMay": makeReceipt("0xrevealMay", recipient, 95, 40, 200, ["reveal"]),
+        "0xrevealJun": makeReceipt("0xrevealJun", recipient, 110, 50, 200, ["reveal"]),
+      },
+      blocks: {
+        110: { baseFeePerGas: BigNumber.from(100) },
+      },
+    });
+
+    const result = await calculateVoterGasRebateV2({
+      voting,
+      fromBlock: 100,
+      toBlock: 200,
+      minTokens: BigNumber.from(500),
+      maxBlockLookBack: 100,
+      transactionConcurrency: 2,
+      maxPriorityFee: null,
+      commitLookbackBlocks: 50,
+    });
+
+    assert.equal(result.eventCollectionStats.boundaryCommitEventsRecovered, 0);
+    assert.deepEqual(
+      result.transactionsToRefund.map((transaction) => transaction.transactionHash),
+      ["0xrevealJun"]
+    );
+    assert.isFalse(result.anomalies.some((anomaly) => anomaly.type === "reveal_missing_commit"));
+    // only the reveal gas (50 * 200); the commit tx was already paid by the previous month
+    assert.equal(result.shareholderPayoutWei[recipient].toString(), "10000");
+  });
+
+  it("still reports reveal_missing_commit when the commit is older than the lookback window", async function () {
+    const recipient = "0x00000000000000000000000000000000000000f3";
+    const commit = makeEvent(50, 1, "0xcommitOld");
+    const reveal = makeEvent(110, 1, "0xrevealJun");
+    const voting = makeVoting({
+      commitEvents: [commit],
+      revealEvents: [reveal],
+      receipts: {
+        "0xrevealJun": makeReceipt("0xrevealJun", recipient, 110, 50, 200, ["reveal"]),
+      },
+      blocks: {
+        110: { baseFeePerGas: BigNumber.from(100) },
+      },
+    });
+
+    const result = await calculateVoterGasRebateV2({
+      voting,
+      fromBlock: 100,
+      toBlock: 200,
+      minTokens: BigNumber.from(500),
+      maxBlockLookBack: 100,
+      transactionConcurrency: 2,
+      maxPriorityFee: null,
+      commitLookbackBlocks: 10,
+    });
+
+    assert.equal(result.eventCollectionStats.boundaryCommitEventsRecovered, 0);
+    assert.deepEqual(
+      result.transactionsToRefund.map((transaction) => transaction.transactionHash),
+      ["0xrevealJun"]
+    );
+    assert.isTrue(
+      result.anomalies.some(
+        (anomaly) => anomaly.type === "reveal_missing_commit" && anomaly.transactionHash === "0xrevealJun"
+      )
+    );
+  });
+
   it("builds monthly audit reports with required counts, config, validation, and exact wei totals", function () {
     const rpcUrl = "https://rpc.example.invalid/secret-key";
     const report = buildMonthlyAuditReport(makeMonthlyAuditResult(), {
@@ -475,9 +597,11 @@ describe("VoterGasRebateV2 utils", function () {
     assert.include(markdown, "- Eligible reveal events: 2");
     assert.include(markdown, "- Matched commit events: 1");
     assert.include(markdown, "- Total payout: 1234567890000000000 wei (1.23456789 ETH)");
+    assert.include(markdown, "- Commit lookback blocks: 50000");
     assert.include(markdown, "- Validation passed: true");
     assert.include(markdown, "- Retry count: 1");
     assert.include(markdown, "- Split count: 2");
+    assert.include(markdown, "- Boundary commits recovered: 0");
     assert.include(markdown, "- Custom node URL configured: true");
     assert.notInclude(markdown, "secret-key");
   });

@@ -24,10 +24,12 @@ const {
   MIN_STAKED_TOKENS,
   MAX_PRIORITY_FEE_GWEI,
   MAX_BLOCK_LOOK_BACK,
+  COMMIT_LOOKBACK_BLOCKS,
 } = process.env;
 
 const DEFAULT_MIN_STAKED_TOKENS = "1000";
 const DEFAULT_MAX_PRIORITY_FEE_GWEI = "0.001";
+const DEFAULT_COMMIT_LOOKBACK_BLOCKS = 50000;
 
 export async function run(): Promise<void> {
   console.log("Running UMA2.0 Gas rebate script! This script assumes you are running it for the previous month🍌.");
@@ -61,6 +63,7 @@ export async function run(): Promise<void> {
     "gwei"
   );
   const maxBlockLookBack = MAX_BLOCK_LOOK_BACK ? Number(MAX_BLOCK_LOOK_BACK) : 250;
+  const commitLookbackBlocks = COMMIT_LOOKBACK_BLOCKS ? Number(COMMIT_LOOKBACK_BLOCKS) : DEFAULT_COMMIT_LOOKBACK_BLOCKS;
   const retryConfig = {
     retries: MAX_RETRIES ? Number(MAX_RETRIES) : 10,
     delay: RETRY_DELAY ? Number(RETRY_DELAY) : 1000,
@@ -76,6 +79,7 @@ export async function run(): Promise<void> {
     minStakedTokens: ethers.utils.formatEther(minTokens),
     maxPriorityFeeGwei: maxPriorityFee ? ethers.utils.formatUnits(maxPriorityFee, "gwei") : null,
     maxBlockLookBack,
+    commitLookbackBlocks,
     transactionConcurrency,
   });
 
@@ -90,6 +94,7 @@ export async function run(): Promise<void> {
     maxBlockLookBack,
     transactionConcurrency,
     maxPriorityFee,
+    commitLookbackBlocks,
     retryConfig,
   });
 
@@ -148,6 +153,7 @@ export async function run(): Promise<void> {
       maxPriorityFeeGwei: maxPriorityFee ? ethers.utils.formatUnits(maxPriorityFee, "gwei") : null,
       maxPriorityFeeWei: maxPriorityFee ? maxPriorityFee.toString() : null,
       maxBlockLookBack,
+      commitLookbackBlocks,
       transactionConcurrency,
       maxRetries: retryConfig.retries,
       retryDelay: retryConfig.delay,
