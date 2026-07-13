@@ -415,12 +415,16 @@ const _fetchConfig = async (bucket, file) => {
           Accept: "application/vnd.github.v3.raw",
           "Accept-Charset": "utf-8",
         },
-        retries: DEFAULT_RETRIES,
+        // GitHub intermittently returns 5xx (HTML) responses; retry them with backoff rather than failing the run.
+        retries: 3,
+        retryOn: [500, 502, 503, 504],
+        retryDelay: (attempt) => 1000 * 2 ** attempt,
       }
     );
+    // Non-2xx responses (e.g. 404 for a missing file, or a 5xx that survived the retries) are not valid configs.
+    if (!response.ok)
+      throw new Error(`Could not fetch config! HTTP ${response.status}: ${(await response.text()).slice(0, 256)}`);
     config = await response.json(); // extract JSON from the http response
-    // If there is a message in the config response then something went wrong in fetching from github api.
-    if (config.message) throw new Error(`Could not fetch config! :${JSON.stringify(config)}`);
   }
   if (hubConfig.configRetrieval == "gcp") {
     const requestPromise = new Promise((resolve, reject) => {
