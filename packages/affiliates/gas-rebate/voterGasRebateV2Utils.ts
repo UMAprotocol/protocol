@@ -27,6 +27,9 @@ export interface CalculateVoterGasRebateV2Config {
   // month boundary (committed in the previous month, revealed at the start of this one). Set to 0 to
   // disable the boundary lookback.
   commitLookbackBlocks?: number;
+  // Lowercased addresses that must not receive a rebate (e.g. delegate voters). Transactions sent
+  // from these addresses are dropped from the payout.
+  excludedAddresses?: Set<string>;
   retryConfig?: RetryConfig;
 }
 
@@ -90,6 +93,8 @@ export interface RebateComputationResult {
   transactionsToRefund: TransactionReceipt[];
   shareholderPayoutWei: { [address: string]: BigNumber };
   totalRebateWei: BigNumber;
+  excludedVoterCount: number;
+  excludedRebateWei: BigNumber;
   transactionEvidence: RebateTransactionEvidence[];
   eventCollectionStats: EventCollectionStats;
   anomalies: RebateAnomaly[];
@@ -108,6 +113,10 @@ export interface MonthlyAuditReportConfig {
   overrideFromBlockConfigured: boolean;
   overrideToBlockConfigured: boolean;
   customNodeUrlConfigured: boolean;
+  // SHA-256 of the sorted lowercased exclusion list (null when no list is applied). Recorded instead
+  // of the addresses so the audit stays reproducible without publishing the private list.
+  exclusionListHash: string | null;
+  exclusionListSize: number;
 }
 
 export interface MonthlyAuditReportOptions {
@@ -135,10 +144,13 @@ export interface MonthlyAuditReport {
     matchedCommitEvents: number;
     transactions: number;
     voters: number;
+    excludedVoters: number;
   };
   payout: {
     totalRebateWei: string;
     totalRebateEth: string;
+    excludedRebateWei: string;
+    excludedRebateEth: string;
   };
   eventCollection: EventCollectionStats;
   validation: {
@@ -400,10 +412,13 @@ export function buildMonthlyAuditReport(
       matchedCommitEvents: result.matchingCommitEvents.length,
       transactions: result.transactionsToRefund.length,
       voters: Object.keys(result.shareholderPayoutWei).length,
+      excludedVoters: result.excludedVoterCount,
     },
     payout: {
       totalRebateWei: result.totalRebateWei.toString(),
       totalRebateEth: utils.formatEther(result.totalRebateWei),
+      excludedRebateWei: result.excludedRebateWei.toString(),
+      excludedRebateEth: utils.formatEther(result.excludedRebateWei),
     },
     eventCollection: {
       ...result.eventCollectionStats,
@@ -452,6 +467,8 @@ export function formatMonthlyAuditMarkdown(report: MonthlyAuditReport): string {
     `- Override from block configured: ${config.overrideFromBlockConfigured}`,
     `- Override to block configured: ${config.overrideToBlockConfigured}`,
     `- Custom node URL configured: ${config.customNodeUrlConfigured}`,
+    `- Exclusion list size: ${config.exclusionListSize ?? 0}`,
+    `- Exclusion list SHA-256: ${config.exclusionListHash ?? "none"}`,
     "",
     "## Summary",
     "",
@@ -461,7 +478,9 @@ export function formatMonthlyAuditMarkdown(report: MonthlyAuditReport): string {
     `- Matched commit events: ${report.counts.matchedCommitEvents}`,
     `- Transactions: ${report.counts.transactions}`,
     `- Voters: ${report.counts.voters}`,
+    `- Excluded voters: ${report.counts.excludedVoters}`,
     `- Total payout: ${report.payout.totalRebateWei} wei (${report.payout.totalRebateEth} ETH)`,
+    `- Excluded rebate: ${report.payout.excludedRebateWei} wei (${report.payout.excludedRebateEth} ETH)`,
     "",
     "## Event Collection",
     "",
@@ -1038,6 +1057,7 @@ export async function calculateVoterGasRebateV2({
   transactionConcurrency,
   maxPriorityFee,
   commitLookbackBlocks = 50000,
+  excludedAddresses,
   retryConfig,
 }: CalculateVoterGasRebateV2Config): Promise<RebateComputationResult> {
   const eventCollection = await collectVotingV2Events({
@@ -1138,6 +1158,24 @@ export async function calculateVoterGasRebateV2({
     });
   }
 
+  // Apply the delegate exclusion list: excluded addresses (voter/caller of the transaction) receive
+  // no rebate. Filtering here keeps the payout, totals, and transaction evidence consistent.
+  let excludedVoterCount = 0;
+  let excludedRebateWei = BigNumber.from(0);
+  let filteredTransactionEvidence = transactionEvidence;
+  if (excludedAddresses && excludedAddresses.size > 0) {
+    for (const address of Object.keys(shareholderPayoutWei)) {
+      if (excludedAddresses.has(address.toLowerCase())) {
+        excludedRebateWei = excludedRebateWei.add(shareholderPayoutWei[address]);
+        excludedVoterCount++;
+        delete shareholderPayoutWei[address];
+      }
+    }
+    filteredTransactionEvidence = transactionEvidence.filter(
+      (evidence) => !excludedAddresses.has(evidence.from.toLowerCase())
+    );
+  }
+
   const totalRebateWei = Object.values(shareholderPayoutWei).reduce((a, b) => a.add(b), BigNumber.from(0));
 
   return {
@@ -1155,7 +1193,9 @@ export async function calculateVoterGasRebateV2({
     transactionsToRefund,
     shareholderPayoutWei,
     totalRebateWei,
-    transactionEvidence,
+    excludedVoterCount,
+    excludedRebateWei,
+    transactionEvidence: filteredTransactionEvidence,
     eventCollectionStats,
     anomalies,
   };

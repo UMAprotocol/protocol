@@ -100,6 +100,8 @@ function makeMonthlyAuditConfig(overrides = {}) {
     overrideFromBlockConfigured: true,
     overrideToBlockConfigured: true,
     customNodeUrlConfigured: true,
+    exclusionListHash: null,
+    exclusionListSize: 0,
     ...overrides,
   };
 }
@@ -125,6 +127,8 @@ function makeMonthlyAuditResult(overrides = {}) {
       [voter]: BigNumber.from("1234567890000000000"),
     },
     totalRebateWei: BigNumber.from("1234567890000000000"),
+    excludedVoterCount: 0,
+    excludedRebateWei: BigNumber.from(0),
     transactionEvidence: [
       {
         transactionHash: "0xcommit1",
@@ -548,6 +552,48 @@ describe("VoterGasRebateV2 utils", function () {
     );
   });
 
+  it("drops excluded addresses from the payout while keeping others", async function () {
+    const kept = "0x00000000000000000000000000000000000000a1";
+    const excluded = "0x00000000000000000000000000000000000000b2";
+    const keptArgs = makeVoteArgs({ voter: kept, roundId: BigNumber.from(1) });
+    const excludedArgs = makeVoteArgs({ voter: excluded, roundId: BigNumber.from(2) });
+    const voting = makeVoting({
+      commitEvents: [makeEvent(5, 1, "0xcommitKept", keptArgs), makeEvent(7, 1, "0xcommitExcluded", excludedArgs)],
+      revealEvents: [makeEvent(6, 2, "0xrevealKept", keptArgs), makeEvent(8, 2, "0xrevealExcluded", excludedArgs)],
+      receipts: {
+        "0xcommitKept": makeReceipt("0xcommitKept", kept, 5, 100, 200, ["commit"]),
+        "0xrevealKept": makeReceipt("0xrevealKept", kept, 6, 50, 200, ["reveal"]),
+        "0xcommitExcluded": makeReceipt("0xcommitExcluded", excluded, 7, 100, 200, ["commit"]),
+        "0xrevealExcluded": makeReceipt("0xrevealExcluded", excluded, 8, 40, 200, ["reveal"]),
+      },
+      blocks: {
+        5: { baseFeePerGas: BigNumber.from(100) },
+        6: { baseFeePerGas: BigNumber.from(100) },
+        7: { baseFeePerGas: BigNumber.from(100) },
+        8: { baseFeePerGas: BigNumber.from(100) },
+      },
+    });
+
+    const result = await calculateVoterGasRebateV2({
+      voting,
+      fromBlock: 1,
+      toBlock: 20,
+      minTokens: BigNumber.from(500),
+      maxBlockLookBack: 100,
+      transactionConcurrency: 2,
+      maxPriorityFee: null,
+      excludedAddresses: new Set([excluded.toLowerCase()]),
+    });
+
+    assert.equal(result.excludedVoterCount, 1);
+    assert.equal(result.excludedRebateWei.toString(), "28000"); // 100*200 + 40*200
+    assert.property(result.shareholderPayoutWei, kept);
+    assert.notProperty(result.shareholderPayoutWei, excluded);
+    assert.equal(result.shareholderPayoutWei[kept].toString(), "30000"); // 100*200 + 50*200
+    assert.equal(result.totalRebateWei.toString(), "30000");
+    assert.isFalse(result.transactionEvidence.some((evidence) => evidence.from === excluded));
+  });
+
   it("builds monthly audit reports with required counts, config, validation, and exact wei totals", function () {
     const rpcUrl = "https://rpc.example.invalid/secret-key";
     const report = buildMonthlyAuditReport(makeMonthlyAuditResult(), {
@@ -568,9 +614,13 @@ describe("VoterGasRebateV2 utils", function () {
       matchedCommitEvents: 1,
       transactions: 2,
       voters: 1,
+      excludedVoters: 0,
     });
     assert.equal(report.payout.totalRebateWei, "1234567890000000000");
     assert.equal(report.payout.totalRebateEth, "1.23456789");
+    assert.equal(report.payout.excludedRebateWei, "0");
+    assert.equal(report.effectiveConfig.exclusionListSize, 0);
+    assert.equal(report.effectiveConfig.exclusionListHash, null);
     assert.equal(report.eventCollection.maxBlockLookBack, 250);
     assert.equal(report.eventCollection.retryCount, 1);
     assert.equal(report.eventCollection.splitCount, 2);
@@ -598,6 +648,10 @@ describe("VoterGasRebateV2 utils", function () {
     assert.include(markdown, "- Matched commit events: 1");
     assert.include(markdown, "- Total payout: 1234567890000000000 wei (1.23456789 ETH)");
     assert.include(markdown, "- Commit lookback blocks: 50000");
+    assert.include(markdown, "- Exclusion list size: 0");
+    assert.include(markdown, "- Exclusion list SHA-256: none");
+    assert.include(markdown, "- Excluded voters: 0");
+    assert.include(markdown, "- Excluded rebate: 0 wei (0.0 ETH)");
     assert.include(markdown, "- Validation passed: true");
     assert.include(markdown, "- Retry count: 1");
     assert.include(markdown, "- Split count: 2");
