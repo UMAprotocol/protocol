@@ -23,6 +23,13 @@ export interface CalculateVoterGasRebateV2Config {
   maxBlockLookBack: number;
   transactionConcurrency: number;
   maxPriorityFee: BigNumber | null;
+  // How many blocks before fromBlock to scan for commit transactions of reveals that straddle the
+  // month boundary (committed in the previous month, revealed at the start of this one). Set to 0 to
+  // disable the boundary lookback.
+  commitLookbackBlocks?: number;
+  // Lowercased addresses that must not receive a rebate (e.g. delegate voters). Transactions sent
+  // from these addresses are dropped from the payout.
+  excludedAddresses?: Set<string>;
   retryConfig?: RetryConfig;
 }
 
@@ -67,6 +74,7 @@ export interface EventCollectionStats {
   receiptValidationCount: number;
   commitEventCount: number;
   revealEventCount: number;
+  boundaryCommitEventsRecovered: number;
   validationPassed: boolean;
 }
 
@@ -85,6 +93,8 @@ export interface RebateComputationResult {
   transactionsToRefund: TransactionReceipt[];
   shareholderPayoutWei: { [address: string]: BigNumber };
   totalRebateWei: BigNumber;
+  excludedVoterCount: number;
+  excludedRebateWei: BigNumber;
   transactionEvidence: RebateTransactionEvidence[];
   eventCollectionStats: EventCollectionStats;
   anomalies: RebateAnomaly[];
@@ -96,12 +106,17 @@ export interface MonthlyAuditReportConfig {
   maxPriorityFeeGwei: string | null;
   maxPriorityFeeWei: string | null;
   maxBlockLookBack: number;
+  commitLookbackBlocks: number;
   transactionConcurrency: number;
   maxRetries: number;
   retryDelay: number;
   overrideFromBlockConfigured: boolean;
   overrideToBlockConfigured: boolean;
   customNodeUrlConfigured: boolean;
+  // SHA-256 of the sorted lowercased exclusion list (null when no list is applied). Recorded instead
+  // of the addresses so the audit stays reproducible without publishing the private list.
+  exclusionListHash: string | null;
+  exclusionListSize: number;
 }
 
 export interface MonthlyAuditReportOptions {
@@ -129,10 +144,13 @@ export interface MonthlyAuditReport {
     matchedCommitEvents: number;
     transactions: number;
     voters: number;
+    excludedVoters: number;
   };
   payout: {
     totalRebateWei: string;
     totalRebateEth: string;
+    excludedRebateWei: string;
+    excludedRebateEth: string;
   };
   eventCollection: EventCollectionStats;
   validation: {
@@ -394,10 +412,13 @@ export function buildMonthlyAuditReport(
       matchedCommitEvents: result.matchingCommitEvents.length,
       transactions: result.transactionsToRefund.length,
       voters: Object.keys(result.shareholderPayoutWei).length,
+      excludedVoters: result.excludedVoterCount,
     },
     payout: {
       totalRebateWei: result.totalRebateWei.toString(),
       totalRebateEth: utils.formatEther(result.totalRebateWei),
+      excludedRebateWei: result.excludedRebateWei.toString(),
+      excludedRebateEth: utils.formatEther(result.excludedRebateWei),
     },
     eventCollection: {
       ...result.eventCollectionStats,
@@ -439,12 +460,15 @@ export function formatMonthlyAuditMarkdown(report: MonthlyAuditReport): string {
     `- Minimum staked tokens: ${config.minStakedTokens} UMA (${config.minStakedTokensWei} wei)`,
     `- Max priority fee: ${config.maxPriorityFeeGwei === null ? "none" : `${config.maxPriorityFeeGwei} gwei`}`,
     `- Max block lookback: ${config.maxBlockLookBack}`,
+    `- Commit lookback blocks: ${config.commitLookbackBlocks ?? 0}`,
     `- Transaction concurrency: ${config.transactionConcurrency}`,
     `- Max retries: ${config.maxRetries}`,
     `- Retry delay: ${config.retryDelay} ms`,
     `- Override from block configured: ${config.overrideFromBlockConfigured}`,
     `- Override to block configured: ${config.overrideToBlockConfigured}`,
     `- Custom node URL configured: ${config.customNodeUrlConfigured}`,
+    `- Exclusion list size: ${config.exclusionListSize ?? 0}`,
+    `- Exclusion list SHA-256: ${config.exclusionListHash ?? "none"}`,
     "",
     "## Summary",
     "",
@@ -454,7 +478,9 @@ export function formatMonthlyAuditMarkdown(report: MonthlyAuditReport): string {
     `- Matched commit events: ${report.counts.matchedCommitEvents}`,
     `- Transactions: ${report.counts.transactions}`,
     `- Voters: ${report.counts.voters}`,
+    `- Excluded voters: ${report.counts.excludedVoters}`,
     `- Total payout: ${report.payout.totalRebateWei} wei (${report.payout.totalRebateEth} ETH)`,
+    `- Excluded rebate: ${report.payout.excludedRebateWei} wei (${report.payout.excludedRebateEth} ETH)`,
     "",
     "## Event Collection",
     "",
@@ -467,6 +493,7 @@ export function formatMonthlyAuditMarkdown(report: MonthlyAuditReport): string {
     `- Validation failures: ${collection.validationFailures}`,
     `- Provider errors: ${collection.providerErrors}`,
     `- Receipt validations: ${collection.receiptValidationCount}`,
+    `- Boundary commits recovered: ${collection.boundaryCommitEventsRecovered ?? 0}`,
     "",
     "## Anomalies",
     "",
@@ -572,6 +599,7 @@ function createEventCollectionStats(maxBlockLookBack: number): EventCollectionSt
     receiptValidationCount: 0,
     commitEventCount: 0,
     revealEventCount: 0,
+    boundaryCommitEventsRecovered: 0,
     validationPassed: false,
   };
 }
@@ -922,6 +950,104 @@ async function getTransactionsFromEvents(
   );
 }
 
+function mergeCollectionStats(target: EventCollectionStats, source: EventCollectionStats) {
+  target.rangesQueried += source.rangesQueried;
+  target.queryAttempts += source.queryAttempts;
+  target.retryCount += source.retryCount;
+  target.splitCount += source.splitCount;
+  target.validationFailures += source.validationFailures;
+  target.providerErrors += source.providerErrors;
+  target.receiptValidationCount += source.receiptValidationCount;
+  target.validationPassed = target.validationPassed && source.validationPassed;
+}
+
+// Recovers the commit transactions for eligible reveals whose commit landed before fromBlock (votes
+// committed in the previous month but revealed at the start of this one). Without this the commit gas
+// is reimbursed by neither monthly payout: this month's range does not contain the commit, and the
+// previous month never matched it because the reveal fell outside its range. A commit transaction is
+// skipped when any of the votes it commits was eligibly revealed before fromBlock, since the previous
+// month already reimbursed that transaction. Reveals whose commit is not found within the lookback
+// window remain reported as reveal_missing_commit anomalies.
+async function recoverBoundaryCommitEvents(
+  voting: VotingV2,
+  fromBlock: number,
+  commitLookbackBlocks: number,
+  minTokens: BigNumber,
+  maxBlockLookBack: number,
+  transactionConcurrency: number,
+  missingCommitRevealEvents: VoteRevealedEvent[],
+  receiptByTransactionHash: Map<string, TransactionReceipt>,
+  eventCollectionStats: EventCollectionStats,
+  anomalies: RebateAnomaly[],
+  retryConfig?: RetryConfig
+): Promise<VoteCommittedEvent[]> {
+  const flagUnresolved = (revealEvents: VoteRevealedEvent[], toBlock: number) =>
+    anomalies.push(
+      ...revealEvents.map((event) => ({
+        type: "reveal_missing_commit" as const,
+        message: `Eligible reveal ${event.transactionHash} has no matching commit event in the collected block range`,
+        fromBlock,
+        toBlock,
+        transactionHash: event.transactionHash,
+        voter: event.args.voter,
+      }))
+    );
+
+  if (missingCommitRevealEvents.length === 0) return [];
+
+  const lookbackToBlock = fromBlock - 1;
+  const lookbackFromBlock = Math.max(0, fromBlock - commitLookbackBlocks);
+  if (commitLookbackBlocks <= 0 || fromBlock <= 0 || lookbackFromBlock > lookbackToBlock) {
+    flagUnresolved(missingCommitRevealEvents, lookbackToBlock);
+    return [];
+  }
+
+  const lookback = await collectVotingV2Events({
+    voting,
+    fromBlock: lookbackFromBlock,
+    toBlock: lookbackToBlock,
+    maxBlockLookBack,
+    transactionConcurrency,
+    retryConfig,
+  });
+  mergeCollectionStats(eventCollectionStats, lookback.eventCollectionStats);
+  anomalies.push(...lookback.anomalies);
+  for (const [transactionHash, receipt] of lookback.receiptByTransactionHash) {
+    receiptByTransactionHash.set(transactionHash, receipt);
+  }
+
+  const lookbackUniqueCommitEvents = getUniqueCommitEvents(lookback.commitEvents);
+
+  const priorMonthEligibleVoteKeys = new Set(
+    lookback.revealEvents.filter((event) => event.args.numTokens.gte(minTokens)).map(getVoteKey)
+  );
+  const commitVoteKeysByTransaction = new Map<string, string[]>();
+  for (const event of lookback.commitEvents) {
+    const voteKeys = commitVoteKeysByTransaction.get(event.transactionHash) || [];
+    voteKeys.push(getVoteKey(event));
+    commitVoteKeysByTransaction.set(event.transactionHash, voteKeys);
+  }
+  const priorMonthOwnedTransactions = new Set<string>();
+  for (const [transactionHash, voteKeys] of commitVoteKeysByTransaction) {
+    if (voteKeys.some((voteKey) => priorMonthEligibleVoteKeys.has(voteKey)))
+      priorMonthOwnedTransactions.add(transactionHash);
+  }
+
+  const recoveredCommitEvents: VoteCommittedEvent[] = [];
+  const unresolvedRevealEvents: VoteRevealedEvent[] = [];
+  for (const revealEvent of missingCommitRevealEvents) {
+    const commitEvent = lookbackUniqueCommitEvents.get(getVoteKey(revealEvent));
+    if (!commitEvent) {
+      unresolvedRevealEvents.push(revealEvent);
+      continue;
+    }
+    if (!priorMonthOwnedTransactions.has(commitEvent.transactionHash)) recoveredCommitEvents.push(commitEvent);
+  }
+
+  flagUnresolved(unresolvedRevealEvents, lookbackToBlock);
+  return recoveredCommitEvents;
+}
+
 export async function calculateVoterGasRebateV2({
   voting,
   fromBlock,
@@ -930,6 +1056,8 @@ export async function calculateVoterGasRebateV2({
   maxBlockLookBack,
   transactionConcurrency,
   maxPriorityFee,
+  commitLookbackBlocks = 50000,
+  excludedAddresses,
   retryConfig,
 }: CalculateVoterGasRebateV2Config): Promise<RebateComputationResult> {
   const eventCollection = await collectVotingV2Events({
@@ -948,20 +1076,24 @@ export async function calculateVoterGasRebateV2({
   const matchingCommitEvents = getMatchingCommitEvents(uniqueCommitEvents, eligibleRevealEvents);
   const missingCommitRevealEvents = eligibleRevealEvents.filter((event) => !uniqueCommitEvents.has(getVoteKey(event)));
 
-  anomalies.push(
-    ...missingCommitRevealEvents.map((event) => ({
-      type: "reveal_missing_commit" as const,
-      message: `Eligible reveal ${event.transactionHash} has no matching commit event in the collected block range`,
-      fromBlock,
-      toBlock,
-      transactionHash: event.transactionHash,
-      voter: event.args.voter,
-    }))
+  const recoveredCommitEvents = await recoverBoundaryCommitEvents(
+    voting,
+    fromBlock,
+    commitLookbackBlocks,
+    minTokens,
+    maxBlockLookBack,
+    transactionConcurrency,
+    missingCommitRevealEvents,
+    receiptByTransactionHash,
+    eventCollectionStats,
+    anomalies,
+    retryConfig
   );
+  eventCollectionStats.boundaryCommitEventsRecovered = recoveredCommitEvents.length;
 
   const commitTransactions = await getTransactionsFromEvents(
     voting,
-    matchingCommitEvents,
+    [...matchingCommitEvents, ...recoveredCommitEvents],
     transactionConcurrency,
     retryConfig,
     receiptByTransactionHash
@@ -1026,6 +1158,24 @@ export async function calculateVoterGasRebateV2({
     });
   }
 
+  // Apply the delegate exclusion list: excluded addresses (voter/caller of the transaction) receive
+  // no rebate. Filtering here keeps the payout, totals, and transaction evidence consistent.
+  let excludedVoterCount = 0;
+  let excludedRebateWei = BigNumber.from(0);
+  let filteredTransactionEvidence = transactionEvidence;
+  if (excludedAddresses && excludedAddresses.size > 0) {
+    for (const address of Object.keys(shareholderPayoutWei)) {
+      if (excludedAddresses.has(address.toLowerCase())) {
+        excludedRebateWei = excludedRebateWei.add(shareholderPayoutWei[address]);
+        excludedVoterCount++;
+        delete shareholderPayoutWei[address];
+      }
+    }
+    filteredTransactionEvidence = transactionEvidence.filter(
+      (evidence) => !excludedAddresses.has(evidence.from.toLowerCase())
+    );
+  }
+
   const totalRebateWei = Object.values(shareholderPayoutWei).reduce((a, b) => a.add(b), BigNumber.from(0));
 
   return {
@@ -1043,7 +1193,9 @@ export async function calculateVoterGasRebateV2({
     transactionsToRefund,
     shareholderPayoutWei,
     totalRebateWei,
-    transactionEvidence,
+    excludedVoterCount,
+    excludedRebateWei,
+    transactionEvidence: filteredTransactionEvidence,
     eventCollectionStats,
     anomalies,
   };

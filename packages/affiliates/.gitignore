@@ -5,3 +5,7 @@ artifacts
 # as a local/regenerable artifact.
 gas-rebate/rebates/*.audit.json
 gas-rebate/corrections/*.audit.json
+
+# Delegate rebate exclusion list is kept private. The monthly audit records only its SHA-256 and
+# size, so payouts stay reproducible without committing the addresses.
+gas-rebate/exclusions/

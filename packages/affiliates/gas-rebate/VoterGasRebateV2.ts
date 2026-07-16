@@ -8,6 +8,7 @@ import "@nomiclabs/hardhat-ethers";
 import { findBlockNumberAtTimestamp, getWeb3 } from "@uma/common";
 import { getAddress } from "@uma/contracts-node";
 import type { VotingV2 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
+import { createHash } from "crypto";
 import fs from "fs";
 import hre from "hardhat";
 import moment from "moment";
@@ -24,10 +25,41 @@ const {
   MIN_STAKED_TOKENS,
   MAX_PRIORITY_FEE_GWEI,
   MAX_BLOCK_LOOK_BACK,
+  COMMIT_LOOKBACK_BLOCKS,
+  EXCLUSION_LIST_PATH,
+  IGNORE_EXCLUSION_LIST,
 } = process.env;
 
 const DEFAULT_MIN_STAKED_TOKENS = "1000";
 const DEFAULT_MAX_PRIORITY_FEE_GWEI = "0.001";
+const DEFAULT_COMMIT_LOOKBACK_BLOCKS = 50000;
+
+// Addresses in this list receive no rebate, e.g. delegate voters. The audit
+// records only the list's SHA-256 and size so the payout stays reproducible without publishing it.
+// Set IGNORE_EXCLUSION_LIST=true to skip it entirely (used for the pre-policy portion of a month).
+function loadExclusionList(): { addresses: Set<string>; hash: string | null; size: number } {
+  if (IGNORE_EXCLUSION_LIST && /^(true|1|yes)$/i.test(IGNORE_EXCLUSION_LIST))
+    return { addresses: new Set(), hash: null, size: 0 };
+
+  const listPath = EXCLUSION_LIST_PATH || path.join(__dirname, "exclusions", "rebate-exclusions.json");
+  if (!fs.existsSync(listPath)) return { addresses: new Set(), hash: null, size: 0 };
+
+  const parsed = JSON.parse(fs.readFileSync(listPath, "utf8"));
+  const rawAddresses: unknown = Array.isArray(parsed) ? parsed : parsed?.addresses;
+  if (!Array.isArray(rawAddresses))
+    throw new Error(`Exclusion list ${listPath} must be a JSON array of addresses or { "addresses": [...] }`);
+
+  const addresses = new Set<string>();
+  for (const entry of rawAddresses) {
+    if (typeof entry !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(entry.trim()))
+      throw new Error(`Exclusion list ${listPath} contains an invalid address: ${String(entry)}`);
+    addresses.add(entry.trim().toLowerCase());
+  }
+  const hash = createHash("sha256")
+    .update(JSON.stringify([...addresses].sort()))
+    .digest("hex");
+  return { addresses, hash, size: addresses.size };
+}
 
 export async function run(): Promise<void> {
   console.log("Running UMA2.0 Gas rebate script! This script assumes you are running it for the previous month🍌.");
@@ -61,6 +93,8 @@ export async function run(): Promise<void> {
     "gwei"
   );
   const maxBlockLookBack = MAX_BLOCK_LOOK_BACK ? Number(MAX_BLOCK_LOOK_BACK) : 250;
+  const commitLookbackBlocks = COMMIT_LOOKBACK_BLOCKS ? Number(COMMIT_LOOKBACK_BLOCKS) : DEFAULT_COMMIT_LOOKBACK_BLOCKS;
+  const exclusionList = loadExclusionList();
   const retryConfig = {
     retries: MAX_RETRIES ? Number(MAX_RETRIES) : 10,
     delay: RETRY_DELAY ? Number(RETRY_DELAY) : 1000,
@@ -76,7 +110,10 @@ export async function run(): Promise<void> {
     minStakedTokens: ethers.utils.formatEther(minTokens),
     maxPriorityFeeGwei: maxPriorityFee ? ethers.utils.formatUnits(maxPriorityFee, "gwei") : null,
     maxBlockLookBack,
+    commitLookbackBlocks,
     transactionConcurrency,
+    exclusionListSize: exclusionList.size,
+    exclusionListHash: exclusionList.hash,
   });
 
   // Fetch all commit and reveal events.
@@ -90,6 +127,8 @@ export async function run(): Promise<void> {
     maxBlockLookBack,
     transactionConcurrency,
     maxPriorityFee,
+    commitLookbackBlocks,
+    excludedAddresses: exclusionList.addresses,
     retryConfig,
   });
 
@@ -109,6 +148,12 @@ export async function run(): Promise<void> {
   } else {
     console.log("No priority fee cap applied");
   }
+
+  console.log(
+    `Exclusion list: ${exclusionList.size} addresses (sha256 ${exclusionList.hash ?? "none"}); excluded ` +
+      `${rebateComputation.excludedVoterCount} voters removing ` +
+      `${ethers.utils.formatEther(rebateComputation.excludedRebateWei)} ETH`
+  );
 
   // Create a formatted output that is not bignumbers.
   const shareholderPayout: { [key: string]: number } = {};
@@ -148,12 +193,15 @@ export async function run(): Promise<void> {
       maxPriorityFeeGwei: maxPriorityFee ? ethers.utils.formatUnits(maxPriorityFee, "gwei") : null,
       maxPriorityFeeWei: maxPriorityFee ? maxPriorityFee.toString() : null,
       maxBlockLookBack,
+      commitLookbackBlocks,
       transactionConcurrency,
       maxRetries: retryConfig.retries,
       retryDelay: retryConfig.delay,
       overrideFromBlockConfigured: Boolean(OVERRIDE_FROM_BLOCK),
       overrideToBlockConfigured: Boolean(OVERRIDE_TO_BLOCK),
       customNodeUrlConfigured: Boolean(process.env.CUSTOM_NODE_URL),
+      exclusionListHash: exclusionList.hash,
+      exclusionListSize: exclusionList.size,
     },
   });
   console.log("Monthly audit JSON written to", auditReports.jsonPath);
