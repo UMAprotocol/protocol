@@ -6,6 +6,7 @@ import {
   TimerEthers,
 } from "@uma/contracts-node";
 import { spyLogIncludes, spyLogLevel, GasEstimator } from "@uma/financial-templates-lib";
+import { BlockFinder } from "@uma/sdk";
 import { assert } from "chai";
 import { OracleType, parseProposalIdList, parseSettleProposalIdLists } from "../src/bot-oo/common";
 import { proposalEventId } from "../src/bot-oo/requestKey";
@@ -536,11 +537,11 @@ describe("OptimisticOracleV2Bot", function () {
 
     await advanceTimerPastLiveness(timer, getReceiptBlockNumber(proposeReceipt), defaultLiveness);
 
-    // An include list that does not contain the proposal: nothing settles.
+    // An empty include list settles nothing.
     {
       const { spy, logger } = makeSpyLogger();
       const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
-      params.settleIncludeList = new Set([proposalEventId(`0x${"0".repeat(64)}`, 0)]);
+      params.settleIncludeList = new Set();
       await gasEstimator.update();
       await settleRequests(logger, params, gasEstimator);
 
@@ -551,7 +552,7 @@ describe("OptimisticOracleV2Bot", function () {
         spy.getCalls().filter((call) => call.lastArg?.message === "Applied include/exclude proposal filter"),
         "Expected include/exclude filter log"
       ).lastArg;
-      assert.equal(filterLog.skipped, 1);
+      assert.equal(filterLog.skipped, 0);
       assert.notProperty(filterLog, "skippedIds");
     }
 
@@ -560,6 +561,9 @@ describe("OptimisticOracleV2Bot", function () {
       const { spy, logger } = makeSpyLogger();
       const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
       params.settleIncludeList = new Set([getProposalEventId(proposeReceipt)]);
+      // Exclude the proposal from the historical event range to exercise the direct include-list lookup.
+      params.timeLookback = 0;
+      params.blockFinder = new BlockFinder(params.provider.getBlock.bind(params.provider), undefined, params.chainId);
       await gasEstimator.update();
       await settleRequests(logger, params, gasEstimator);
 

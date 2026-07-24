@@ -58,6 +58,31 @@ function filterByIncludeExclude(
   return kept;
 }
 
+async function getManagedIncludedProposals(
+  oo: OptimisticOracleV2Ethers,
+  includedProposalIds: Set<string>
+): Promise<ProposePriceEvent[]> {
+  const transactionHashes = [...new Set([...includedProposalIds].map((id) => id.split(":")[0]))];
+  const receipts = await Promise.all(
+    transactionHashes.map((transactionHash) => oo.provider.getTransactionReceipt(transactionHash))
+  );
+  const blockNumbers = [...new Set(receipts.flatMap((receipt) => (receipt ? [receipt.blockNumber] : [])))];
+  const proposals = (
+    await Promise.all(
+      blockNumbers.map((blockNumber) => oo.queryFilter(oo.filters.ProposePrice(), blockNumber, blockNumber))
+    )
+  ).flat();
+  const proposalsById = new Map(
+    proposals.map((proposal) => [proposalEventId(proposal.transactionHash, proposal.logIndex), proposal] as const)
+  );
+
+  return [...includedProposalIds].map((id) => {
+    const proposal = proposalsById.get(id);
+    if (!proposal) throw new Error(`Could not find included ProposePrice event ${id} on ${oo.address}`);
+    return proposal;
+  });
+}
+
 export async function settleOOv2Requests(
   logger: typeof Logger,
   params: MonitoringParams,
@@ -73,69 +98,80 @@ export async function settleOOv2Requests(
     params.contractAddress
   );
 
-  const searchConfig = await computeEventSearch(
-    params.provider,
-    params.blockFinder,
-    params.timeLookback,
-    params.maxBlockLookBack
-  );
-
-  logger.debug({
-    at: "OOv2Bot",
-    message: "Querying ProposePrice events",
-    fromBlock: searchConfig.fromBlock,
-    toBlock: searchConfig.toBlock,
-    maxBlockLookBack: searchConfig.maxBlockLookBack,
-  });
-  const proposalsStartedAt = Date.now();
   let proposals: ProposePriceEvent[];
-  try {
-    proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
-    logger.debug({
-      at: "OOv2Bot",
-      message: "Queried ProposePrice events",
-      count: proposals.length,
-      elapsedMs: Date.now() - proposalsStartedAt,
-    });
-  } catch (error) {
-    logger.error({
-      at: "OOv2Bot",
-      message: "Failed querying ProposePrice events",
-      fromBlock: searchConfig.fromBlock,
-      toBlock: searchConfig.toBlock,
-      maxBlockLookBack: searchConfig.maxBlockLookBack,
-      ...getSettleTxErrorLogFields(error),
-    });
-    throw error;
-  }
-
-  logger.debug({
-    at: "OOv2Bot",
-    message: "Querying Settle events",
-    fromBlock: searchConfig.fromBlock,
-    toBlock: searchConfig.toBlock,
-    maxBlockLookBack: searchConfig.maxBlockLookBack,
-  });
-  const settlementsStartedAt = Date.now();
   let settlements: SettleEvent[];
-  try {
-    settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
+  if (params.oracleType === "ManagedOptimisticOracleV2" && params.settleIncludeList) {
+    proposals = await getManagedIncludedProposals(oo, params.settleIncludeList);
+    settlements = [];
     logger.debug({
       at: "OOv2Bot",
-      message: "Queried Settle events",
-      count: settlements.length,
-      elapsedMs: Date.now() - settlementsStartedAt,
+      message: "Queried included ProposePrice events",
+      requested: params.settleIncludeList.size,
+      count: proposals.length,
     });
-  } catch (error) {
-    logger.error({
+  } else {
+    const searchConfig = await computeEventSearch(
+      params.provider,
+      params.blockFinder,
+      params.timeLookback,
+      params.maxBlockLookBack
+    );
+
+    logger.debug({
       at: "OOv2Bot",
-      message: "Failed querying Settle events",
+      message: "Querying ProposePrice events",
       fromBlock: searchConfig.fromBlock,
       toBlock: searchConfig.toBlock,
       maxBlockLookBack: searchConfig.maxBlockLookBack,
-      ...getSettleTxErrorLogFields(error),
     });
-    throw error;
+    const proposalsStartedAt = Date.now();
+    try {
+      proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
+      logger.debug({
+        at: "OOv2Bot",
+        message: "Queried ProposePrice events",
+        count: proposals.length,
+        elapsedMs: Date.now() - proposalsStartedAt,
+      });
+    } catch (error) {
+      logger.error({
+        at: "OOv2Bot",
+        message: "Failed querying ProposePrice events",
+        fromBlock: searchConfig.fromBlock,
+        toBlock: searchConfig.toBlock,
+        maxBlockLookBack: searchConfig.maxBlockLookBack,
+        ...getSettleTxErrorLogFields(error),
+      });
+      throw error;
+    }
+
+    logger.debug({
+      at: "OOv2Bot",
+      message: "Querying Settle events",
+      fromBlock: searchConfig.fromBlock,
+      toBlock: searchConfig.toBlock,
+      maxBlockLookBack: searchConfig.maxBlockLookBack,
+    });
+    const settlementsStartedAt = Date.now();
+    try {
+      settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
+      logger.debug({
+        at: "OOv2Bot",
+        message: "Queried Settle events",
+        count: settlements.length,
+        elapsedMs: Date.now() - settlementsStartedAt,
+      });
+    } catch (error) {
+      logger.error({
+        at: "OOv2Bot",
+        message: "Failed querying Settle events",
+        fromBlock: searchConfig.fromBlock,
+        toBlock: searchConfig.toBlock,
+        maxBlockLookBack: searchConfig.maxBlockLookBack,
+        ...getSettleTxErrorLogFields(error),
+      });
+      throw error;
+    }
   }
 
   const settledKeys = new Set(settlements.map((e) => requestKey(e.args)));
