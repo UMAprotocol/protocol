@@ -59,6 +59,10 @@ export async function settleOOv2Requests(
   params: MonitoringParams,
   gasEstimator: GasEstimator
 ): Promise<void> {
+  if (params.oracleType === "ManagedOptimisticOracleV2" && !params.settleIncludeList && !params.settleExcludeList) {
+    throw new Error("Managed OOv2 settlement requires an include or exclude list");
+  }
+
   const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
     "OptimisticOracleV2",
     params.provider,

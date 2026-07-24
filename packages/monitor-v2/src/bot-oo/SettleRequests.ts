@@ -22,6 +22,7 @@ export async function settleRequests(
     case "SkinnyOptimisticOracle":
       return settleSkinnyOORequests(logger, params, gasEstimator);
     case "OptimisticOracleV2":
+    case "ManagedOptimisticOracleV2":
       return settleOOv2Requests(logger, params, gasEstimator);
     default:
       throw new Error(`Unsupported oracle type: ${params.oracleType}`);

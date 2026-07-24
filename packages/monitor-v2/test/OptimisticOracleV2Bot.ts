@@ -501,7 +501,7 @@ describe("OptimisticOracleV2Bot", function () {
     await advanceTimerPastLiveness(timer, getReceiptBlockNumber(proposeReceipt), defaultLiveness);
 
     const { spy, logger } = makeSpyLogger();
-    const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+    const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
     params.settleExcludeList = new Set([getProposalEventId(proposeReceipt)]);
     await gasEstimator.update();
     await settleRequests(logger, params, gasEstimator);
@@ -532,7 +532,7 @@ describe("OptimisticOracleV2Bot", function () {
     // An include list that does not contain the proposal: nothing settles.
     {
       const { spy, logger } = makeSpyLogger();
-      const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+      const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
       params.settleIncludeList = new Set([proposalEventId(`0x${"0".repeat(64)}`, 0)]);
       await gasEstimator.update();
       await settleRequests(logger, params, gasEstimator);
@@ -544,7 +544,7 @@ describe("OptimisticOracleV2Bot", function () {
     // An include list containing the proposal: it settles.
     {
       const { spy, logger } = makeSpyLogger();
-      const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+      const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
       params.settleIncludeList = new Set([getProposalEventId(proposeReceipt)]);
       await gasEstimator.update();
       await settleRequests(logger, params, gasEstimator);
@@ -565,16 +565,59 @@ describe("OptimisticOracleV2Bot", function () {
     assert.equal(excludeList?.size, 0);
   });
 
+  it("Defaults Managed OOv2 settlements to an empty include list", async function () {
+    const { settleIncludeList, settleExcludeList } = parseSettleProposalIdLists(
+      {} as NodeJS.ProcessEnv,
+      "ManagedOptimisticOracleV2"
+    );
+    assert.instanceOf(settleIncludeList, Set);
+    assert.equal(settleIncludeList?.size, 0);
+    assert.isUndefined(settleExcludeList);
+
+    const explicitSettleAll = parseSettleProposalIdLists(
+      { SETTLE_EXCLUDE_LIST: "[]" } as NodeJS.ProcessEnv,
+      "ManagedOptimisticOracleV2"
+    );
+    assert.isUndefined(explicitSettleAll.settleIncludeList);
+    assert.instanceOf(explicitSettleAll.settleExcludeList, Set);
+    assert.equal(explicitSettleAll.settleExcludeList?.size, 0);
+
+    const standardOOv2 = parseSettleProposalIdLists({} as NodeJS.ProcessEnv, "OptimisticOracleV2");
+    assert.isUndefined(standardOOv2.settleIncludeList);
+    assert.isUndefined(standardOOv2.settleExcludeList);
+  });
+
+  it("Rejects Managed OOv2 settlement params without an include or exclude list", async function () {
+    const { logger } = makeSpyLogger();
+    const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
+    params.settleIncludeList = undefined;
+    params.settleExcludeList = undefined;
+
+    let error: unknown;
+    try {
+      await settleRequests(logger, params, gasEstimator);
+    } catch (err) {
+      error = err;
+    }
+
+    assert.instanceOf(error, Error);
+    assert.match((error as Error).message, /Managed OOv2 settlement requires an include or exclude list/);
+  });
+
   it("Rejects include/exclude lists for non-OOv2 oracle types", async function () {
     // Only the OOv2 settler applies these lists; silently ignoring them would settle proposals the operator
     // intended to skip, so startup must fail instead.
     const env = { SETTLE_EXCLUDE_LIST: JSON.stringify([`0x${"0".repeat(64)}:0`]) } as NodeJS.ProcessEnv;
-    assert.throws(() => parseSettleProposalIdLists(env, "OptimisticOracle"), /only supported for OptimisticOracleV2/);
+    assert.throws(
+      () => parseSettleProposalIdLists(env, "OptimisticOracle"),
+      /only supported for OptimisticOracleV2 and ManagedOptimisticOracleV2/
+    );
     assert.throws(
       () => parseSettleProposalIdLists(env, "SkinnyOptimisticOracle"),
-      /only supported for OptimisticOracleV2/
+      /only supported for OptimisticOracleV2 and ManagedOptimisticOracleV2/
     );
     assert.doesNotThrow(() => parseSettleProposalIdLists(env, "OptimisticOracleV2"));
+    assert.doesNotThrow(() => parseSettleProposalIdLists(env, "ManagedOptimisticOracleV2"));
 
     // An empty exclude list skips nothing and behaves the same as unset, so it must not block startup.
     const emptyExcludeEnv = { SETTLE_EXCLUDE_LIST: "[]" } as NodeJS.ProcessEnv;
@@ -584,7 +627,7 @@ describe("OptimisticOracleV2Bot", function () {
     const emptyIncludeEnv = { SETTLE_INCLUDE_LIST: "[]" } as NodeJS.ProcessEnv;
     assert.throws(
       () => parseSettleProposalIdLists(emptyIncludeEnv, "OptimisticOracle"),
-      /only supported for OptimisticOracleV2/
+      /only supported for OptimisticOracleV2 and ManagedOptimisticOracleV2/
     );
   });
 });

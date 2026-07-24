@@ -5,7 +5,11 @@ export { getContractInstanceWithProvider } from "../utils/contracts";
 import { BaseMonitoringParams, startupLogLevel as baseStartup, initBaseMonitoringParams } from "../bot-utils/base";
 import { proposalEventId } from "./requestKey";
 
-export type OracleType = "OptimisticOracle" | "SkinnyOptimisticOracle" | "OptimisticOracleV2";
+export type OracleType =
+  | "OptimisticOracle"
+  | "SkinnyOptimisticOracle"
+  | "OptimisticOracleV2"
+  | "ManagedOptimisticOracleV2";
 
 const DEFAULT_SETTLE_MIN_PROPOSAL_AGE_SECONDS = 2 * 60 * 60 + 15 * 60;
 
@@ -18,9 +22,9 @@ function getNonNegativeNumber(value: string | undefined, defaultValue: number): 
 }
 
 // Parses a JSON array of "<txHash>:<logIndex>" strings into a normalized set of proposal event ids.
-// Returns undefined when the env var is unset/empty so the bot keeps its default (settle everything) behavior.
-// An explicit empty array is accepted: an empty exclude list behaves like unset, while an empty include list
-// means settle nothing (the include list is exclusive).
+// Returns undefined when the env var is unset/blank.
+// An explicit empty array is accepted: an empty exclude list opts Managed OOv2 into settling everything, while an
+// empty include list means settle nothing (the include list is exclusive).
 export function parseProposalIdList(value: string | undefined, envName: string): Set<string> | undefined {
   if (value === undefined || value.trim() === "") return undefined;
 
@@ -44,18 +48,31 @@ export function parseProposalIdList(value: string | undefined, envName: string):
   return new Set(ids);
 }
 
-// Parses SETTLE_INCLUDE_LIST/SETTLE_EXCLUDE_LIST and throws when either is set for a non-OOv2 oracle type:
-// only the OOv2 settler applies them, so silently ignoring a list would settle proposals the operator
-// intended to skip. An empty exclude list skips nothing and behaves the same as unset, so it is accepted
-// for any oracle type; an empty include list means "settle nothing", which non-OOv2 cannot honor.
+// Parses SETTLE_INCLUDE_LIST/SETTLE_EXCLUDE_LIST for OOv2 contracts. An empty exclude list is accepted for any oracle
+// type and explicitly opts Managed OOv2 into settling everything; an empty include list means "settle nothing",
+// which non-OOv2 oracle types cannot honor.
 export function parseSettleProposalIdLists(
   env: NodeJS.ProcessEnv,
   oracleType: OracleType
 ): { settleIncludeList?: Set<string>; settleExcludeList?: Set<string> } {
-  const settleIncludeList = parseProposalIdList(env.SETTLE_INCLUDE_LIST, "SETTLE_INCLUDE_LIST");
+  const configuredIncludeList = parseProposalIdList(env.SETTLE_INCLUDE_LIST, "SETTLE_INCLUDE_LIST");
   const settleExcludeList = parseProposalIdList(env.SETTLE_EXCLUDE_LIST, "SETTLE_EXCLUDE_LIST");
-  if ((settleIncludeList || settleExcludeList?.size) && oracleType !== "OptimisticOracleV2")
-    throw new Error("SETTLE_INCLUDE_LIST/SETTLE_EXCLUDE_LIST are only supported for OptimisticOracleV2");
+  if (
+    (configuredIncludeList || settleExcludeList?.size) &&
+    oracleType !== "OptimisticOracleV2" &&
+    oracleType !== "ManagedOptimisticOracleV2"
+  )
+    throw new Error(
+      "SETTLE_INCLUDE_LIST/SETTLE_EXCLUDE_LIST are only supported for OptimisticOracleV2 and ManagedOptimisticOracleV2"
+    );
+
+  // Default Managed OOv2 settlement to an empty include list so missing configuration cannot settle every proposal.
+  // An explicit empty exclude list remains the opt-in for settling everything.
+  const settleIncludeList =
+    oracleType === "ManagedOptimisticOracleV2" && configuredIncludeList === undefined && settleExcludeList === undefined
+      ? new Set<string>()
+      : configuredIncludeList;
+
   return { settleIncludeList, settleExcludeList };
 }
 
@@ -72,9 +89,9 @@ export interface MonitoringParams extends BaseMonitoringParams {
   executionDeadline?: number; // Timestamp in sec for when to stop settling, defaults to 4 minutes from now in serverless
   settleBatchSize: number; // Number of settle calls to batch via multicall (requires MultiCaller on contract), defaults to 1
   settleMinProposalAgeSeconds: number; // Minimum proposal age before settlement, defaults to 2h15m
-  // Include/exclude lists of proposal event ids ("<txHash>:<logIndex>"). OptimisticOracleV2 only.
+  // Include/exclude lists of proposal event ids ("<txHash>:<logIndex>"). OOv2 contract types only.
   // When settleIncludeList is set, only those proposals are settled (it takes precedence over the exclude list).
-  // Otherwise, proposals in settleExcludeList are skipped. Both undefined means settle everything (default).
+  // Otherwise, proposals in settleExcludeList are skipped. Both undefined is invalid for ManagedOptimisticOracleV2.
   settleIncludeList?: Set<string>;
   settleExcludeList?: Set<string>;
 }
@@ -92,13 +109,17 @@ export const initMonitoringParams = async (env: NodeJS.ProcessEnv): Promise<Moni
 
   if (!env.ORACLE_TYPE)
     throw new Error(
-      "ORACLE_TYPE must be defined in env (OptimisticOracle, SkinnyOptimisticOracle, or OptimisticOracleV2)"
+      "ORACLE_TYPE must be defined in env (OptimisticOracle, SkinnyOptimisticOracle, OptimisticOracleV2, or ManagedOptimisticOracleV2)"
     );
   const oracleType = env.ORACLE_TYPE as OracleType;
 
-  if (!["OptimisticOracle", "SkinnyOptimisticOracle", "OptimisticOracleV2"].includes(oracleType)) {
+  if (
+    !["OptimisticOracle", "SkinnyOptimisticOracle", "OptimisticOracleV2", "ManagedOptimisticOracleV2"].includes(
+      oracleType
+    )
+  ) {
     throw new Error(
-      `Invalid ORACLE_TYPE: ${oracleType}. Must be OptimisticOracle, SkinnyOptimisticOracle, or OptimisticOracleV2`
+      `Invalid ORACLE_TYPE: ${oracleType}. Must be OptimisticOracle, SkinnyOptimisticOracle, OptimisticOracleV2, or ManagedOptimisticOracleV2`
     );
   }
 
