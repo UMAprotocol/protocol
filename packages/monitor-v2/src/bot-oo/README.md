@@ -5,6 +5,7 @@ The unified Optimistic Oracle bot performs off-chain actions related to multiple
 - **OptimisticOracle V1** (deprecated but still deployed)
 - **SkinnyOptimisticOracle** (gas-optimized version)
 - **OptimisticOracle V2** (current standard)
+- **ManagedOptimisticOracle V2** (uses the OptimisticOracle V2 settlement interface)
 
 > Warning: This bot does not support SkinnyOptimisticOracleV2. That contract has a distinct interface from SkinnyOptimisticOracle and is intentionally out of scope here.
 
@@ -16,7 +17,7 @@ node ./packages/monitor-v2/dist/bot-oo/index.js
 
 ## Required Environment Variables
 
-- `ORACLE_TYPE`: Oracle contract type (`OptimisticOracle`, `SkinnyOptimisticOracle`, or `OptimisticOracleV2`)
+- `ORACLE_TYPE`: Oracle contract type (`OptimisticOracle`, `SkinnyOptimisticOracle`, `OptimisticOracleV2`, or `ManagedOptimisticOracleV2`)
 - `ORACLE_ADDRESS`: Address of the Oracle contract to monitor
 
 ## Standard Environment Variables
@@ -36,6 +37,8 @@ node ./packages/monitor-v2/dist/bot-oo/index.js
 - `SETTLE_MIN_PROPOSAL_AGE_SECONDS`: Minimum proposal age in seconds before settling OOv2 requests (default `8100`, set `0` to disable).
 - `SETTLE_TIMEOUT`: Timeout in seconds for submitting settlement transactions in serverless mode (default `240`).
 - `SETTLE_ONLY_DISPUTED`: When `true`, only settle requests that have been disputed (`false` by default). Supported for `OptimisticOracleV2` (including `ManagedOptimisticOracleV2`); ignored for `OptimisticOracle` and `SkinnyOptimisticOracle`.
+- `SETTLE_INCLUDE_LIST`: JSON array of `"<txHash>:<logIndex>"` proposal identifiers, where `logIndex` is the block-level index of the `ProposePrice` log (for example, ethers' `event.logIndex`), not its position within the transaction. The bot settles **only** these proposals. Takes precedence over `SETTLE_EXCLUDE_LIST`, so an explicit empty array (`[]`) settles **nothing**. When neither list is configured, `OptimisticOracleV2` preserves the existing settle-all behavior while `ManagedOptimisticOracleV2` defaults to an empty include list and settles nothing. OOv2 contract types only — setting it for another `ORACLE_TYPE` throws at startup. Example: `["0xabc...def:5"]`.
+- `SETTLE_EXCLUDE_LIST`: JSON array of `"<txHash>:<logIndex>"` proposal identifiers to **skip**. Ignored when `SETTLE_INCLUDE_LIST` is set. An explicit empty array (`[]`) opts in to settling every eligible proposal. OOv2 contract types only — setting a non-empty list for another `ORACLE_TYPE` throws at startup.
 
 ## Behavior
 
@@ -45,7 +48,8 @@ The bot operates with a unified dispatcher pattern:
 settleRequests()
 ├── OptimisticOracle → settleOOv1Requests()
 ├── SkinnyOptimisticOracle → settleSkinnyOORequests()
-└── OptimisticOracleV2 → settleOOv2Requests()
+├── OptimisticOracleV2 → settleOOv2Requests()
+└── ManagedOptimisticOracleV2 → settleOOv2Requests()
 ```
 
 For each Oracle type:
