@@ -508,6 +508,13 @@ describe("OptimisticOracleV2Bot", function () {
 
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "Excluded proposal should not be settled");
+
+    const filterLog = getLast(
+      spy.getCalls().filter((call) => call.lastArg?.message === "Applied include/exclude proposal filter"),
+      "Expected include/exclude filter log"
+    ).lastArg;
+    assert.equal(filterLog.skipped, 1);
+    assert.deepEqual(filterLog.skippedIds, [getProposalEventId(proposeReceipt)]);
   });
 
   it("Settles only proposals in the include list", async function () {
@@ -539,6 +546,13 @@ describe("OptimisticOracleV2Bot", function () {
 
       const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
       assert.equal(settlementLogs.length, 0, "Proposal absent from the include list should not be settled");
+
+      const filterLog = getLast(
+        spy.getCalls().filter((call) => call.lastArg?.message === "Applied include/exclude proposal filter"),
+        "Expected include/exclude filter log"
+      ).lastArg;
+      assert.equal(filterLog.skipped, 1);
+      assert.notProperty(filterLog, "skippedIds");
     }
 
     // An include list containing the proposal: it settles.

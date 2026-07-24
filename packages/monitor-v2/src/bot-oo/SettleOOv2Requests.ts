@@ -33,12 +33,16 @@ function filterByIncludeExclude(
   if (!settleIncludeList && !settleExcludeList) return requests;
 
   const kept: ProposePriceEvent[] = [];
-  const skipped: string[] = [];
+  const skippedIds: string[] = [];
+  let skipped = 0;
   for (const req of requests) {
     const id = proposalEventId(req.transactionHash, req.logIndex);
     const allowed = settleIncludeList ? settleIncludeList.has(id) : !settleExcludeList?.has(id);
     if (allowed) kept.push(req);
-    else skipped.push(id);
+    else {
+      skipped++;
+      if (!settleIncludeList) skippedIds.push(id);
+    }
   }
 
   logger.debug({
@@ -47,8 +51,8 @@ function filterByIncludeExclude(
     mode: settleIncludeList ? "include" : "exclude",
     listSize: (settleIncludeList ?? settleExcludeList)?.size,
     kept: kept.length,
-    skipped: skipped.length,
-    skippedIds: skipped,
+    skipped,
+    ...(settleIncludeList ? {} : { skippedIds }),
   });
 
   return kept;
