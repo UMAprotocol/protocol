@@ -11,6 +11,7 @@ const { getContract, deployments, web3 } = require("hardhat");
 
 const { utf8ToHex } = web3.utils;
 const Finder = getContract("Finder");
+const Multicall = getContract("Multicall3");
 const OracleChildTunnel = getContract("OracleChildTunnel");
 const Registry = getContract("Registry");
 const OracleRootTunnel = getContract("OracleRootTunnelMock");
@@ -20,7 +21,7 @@ const FxChild = getContract("FxChildMock");
 const FxRoot = getContract("FxRootMock");
 
 // This function should return a bytes string.
-type customPayloadFn = () => Promise<string>;
+type customPayloadFn = (burnTxHash?: string, logEventSig?: string, isFast?: boolean, index?: number) => Promise<string>;
 interface MaticPosClient {
   exitUtil: {
     buildPayloadForExit: customPayloadFn;
@@ -139,6 +140,58 @@ describe("Relayer unit tests", function () {
     await relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 1);
+    assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
+  });
+  it("relays all messages when a transaction contains multiple MessageSent events", async function () {
+    // Bundle two price requests into a single transaction via a registered multicall contract so that one
+    // transaction emits two MessageSent events.
+    const multicall = await Multicall.new().send({ from: owner });
+    await registry.methods.registerContract([], multicall.options.address).send({ from: owner });
+    await multicall.methods
+      .aggregate([
+        [
+          oracleChild.options.address,
+          oracleChild.methods.requestPrice(testIdentifier, testTimestamp, utf8ToHex("request:1")).encodeABI(),
+        ],
+        [
+          oracleChild.options.address,
+          oracleChild.methods.requestPrice(testIdentifier, testTimestamp, utf8ToHex("request:2")).encodeABI(),
+        ],
+      ])
+      .send({ from: owner });
+    const eventsEmitted = await oracleChild.getPastEvents("MessageSent", { fromBlock: 0 });
+    assert.equal(eventsEmitted.length, 2);
+    assert.equal(eventsEmitted[0].transactionHash, eventsEmitted[1].transactionHash);
+
+    // Record the message index passed to the proof builder for each relayed message: each message must be proven
+    // at its own position among the transaction's MessageSent logs, not just the first one.
+    const provenIndices: (number | undefined)[] = [];
+    const _maticPosClient: MaticPosClient = {
+      exitUtil: {
+        buildPayloadForExit: async (_burnTxHash?: string, _logEventSig?: string, _isFast?: boolean, index?: number) => {
+          provenIndices.push(index);
+          return utf8ToHex("Test proof");
+        },
+        isCheckPointed: async () => new Promise((resolve) => resolve(true)),
+        getChainBlockInfo: async () => new Promise((resolve) => resolve({ lastChildBlock: 0, txBlockNumber: 0 })),
+      },
+    };
+    const _relayer: any = new Relayer(
+      spyLogger,
+      owner,
+      gasEstimator,
+      _maticPosClient,
+      oracleChild,
+      oracleRoot,
+      web3,
+      0,
+      100
+    );
+    await _relayer.fetchAndRelayMessages();
+
+    assert.deepEqual(provenIndices, [0, 1]);
+    const infoEvents = spy.getCalls().filter((log: any) => log.lastArg.level === "info");
+    assert.equal(infoEvents.length, 2);
     assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
   });
   it("ignores events older than earliest polygon block to query", async function () {
