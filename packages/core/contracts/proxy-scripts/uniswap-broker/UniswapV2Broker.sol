@@ -30,7 +30,7 @@ contract UniswapV2Broker {
      * @param swappedTokens array of addresses which are to be swapped. The order does not matter as the function will figure
      * out which tokens need to be exchanged to move the market to the desired "true" price.
      * @param truePriceTokens array of unit used to represent the true price. 0th value is the numerator of the true price
-     * and the 1st value is the the denominator of the true price.
+     * and the 1st value is the denominator of the true price.
      * @param maxSpendTokens array of unit to represent the max to spend in the two tokens.
      * @param to recipient of the trade proceeds.
      * @param deadline to limit when the trade can execute. If the tx is mined after this timestamp then revert.

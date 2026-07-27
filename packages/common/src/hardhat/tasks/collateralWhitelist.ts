@@ -187,7 +187,7 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
     });
 
     console.log(
-      `Adding ${filteredCombinedSet.length} tokens the the L2 token whitelist on ${l2TokenWhitelist.options.address}...`
+      `Adding ${filteredCombinedSet.length} tokens the L2 token whitelist on ${l2TokenWhitelist.options.address}...`
     );
     console.table(filteredCombinedSet);
     const l2StoreContract = await deployments.get("Store");
