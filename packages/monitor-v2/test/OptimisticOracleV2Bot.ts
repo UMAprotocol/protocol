@@ -491,67 +491,63 @@ describe("OptimisticOracleV2Bot", function () {
     assert.isAbove(settledIndex, -1, "Disputed request should be settled when settleOnlyDisputed is true");
   });
 
-  it("Managed OOv2 only settles disputed requests in the include list", async function () {
-    await (
-      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
-    ).wait();
-
-    const proposeReceipt = await (
-      await optimisticOracleV2
-        .connect(proposer)
-        .proposePrice(
-          await requester.getAddress(),
+  for (const listMode of ["empty include", "invalid include"] as const) {
+    it(`Managed OOv2 settles disputed requests when using the ${listMode} list`, async function () {
+      await (
+        await optimisticOracleV2.requestPrice(
           defaultOptimisticOracleV2Identifier,
           0,
           ancillaryData,
-          ethers.utils.parseEther("1")
+          bondToken.address,
+          0
         )
-    ).wait();
+      ).wait();
 
-    await (
-      await optimisticOracleV2
-        .connect(disputer)
-        .disputePrice(await requester.getAddress(), defaultOptimisticOracleV2Identifier, 0, ancillaryData)
-    ).wait();
+      await (
+        await optimisticOracleV2
+          .connect(proposer)
+          .proposePrice(
+            await requester.getAddress(),
+            defaultOptimisticOracleV2Identifier,
+            0,
+            ancillaryData,
+            ethers.utils.parseEther("1")
+          )
+      ).wait();
 
-    const pending = await mockOracle.getPendingQueries();
-    const last = getLast(pending, "Expected a pending DVM query");
-    await (
-      await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
-    ).wait();
+      await (
+        await optimisticOracleV2
+          .connect(disputer)
+          .disputePrice(await requester.getAddress(), defaultOptimisticOracleV2Identifier, 0, ancillaryData)
+      ).wait();
 
-    const { spy, logger } = makeSpyLogger();
-    const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
-    params.settleIncludeList = new Set();
-    await gasEstimator.update();
-    await settleRequests(logger, params, gasEstimator);
+      const pending = await mockOracle.getPendingQueries();
+      const last = getLast(pending, "Expected a pending DVM query");
+      await (
+        await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
+      ).wait();
 
-    let settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
-    assert.equal(settlementLogs.length, 0, "A disputed request outside the include list must not be settled");
-
-    spy.resetHistory();
-    params.settleIncludeList = new Set([getProposalEventId(proposeReceipt)]);
-    await settleRequests(logger, params, gasEstimator);
-
-    settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
-    assert.equal(settlementLogs.length, 1, "An included disputed request should be settled");
-  });
-
-  it("Fails closed when a Managed OOv2 include cannot be loaded", async function () {
-    const { logger } = makeSpyLogger();
-    const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
-    params.settleIncludeList = new Set([proposalEventId(`0x${"0".repeat(64)}`, 0)]);
-
-    let error: unknown;
-    try {
+      const { spy, logger } = makeSpyLogger();
+      const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
+      if (listMode === "empty include") {
+        params.settleIncludeList = new Set();
+      } else {
+        params.settleIncludeList = new Set([proposalEventId(`0x${"0".repeat(64)}`, 0)]);
+      }
+      await gasEstimator.update();
       await settleRequests(logger, params, gasEstimator);
-    } catch (err) {
-      error = err;
-    }
 
-    assert.instanceOf(error, Error);
-    assert.match((error as Error).message, /Could not find included ProposePrice event/);
-  });
+      const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+      assert.equal(settlementLogs.length, 1, "Include lists must not block normal disputed settlement");
+
+      if (listMode === "invalid include") {
+        assert.isTrue(
+          spy.getCalls().some((call) => call.lastArg?.message === "Failed querying included ProposePrice events"),
+          "Invalid direct includes should be logged without blocking disputed settlement"
+        );
+      }
+    });
+  }
 
   it("Uses the include list for non-disputed Managed OOv2 proposals", async function () {
     await (
@@ -582,6 +578,17 @@ describe("OptimisticOracleV2Bot", function () {
 
       const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
       assert.equal(settlementLogs.length, 0, "Proposal absent from the include list should not be settled");
+
+      const skipLog = getLast(
+        spy
+          .getCalls()
+          .filter(
+            (call) =>
+              call.lastArg?.message === "Skipping non-resolved Managed OOv2 request outside settlement include list"
+          ),
+        "Expected include list skip log"
+      ).lastArg;
+      assert.equal(skipLog.proposalEventId, getProposalEventId(proposeReceipt));
     }
 
     // An include list containing the proposal: it settles.
@@ -589,7 +596,8 @@ describe("OptimisticOracleV2Bot", function () {
       const { spy, logger } = makeSpyLogger();
       const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
       params.settleIncludeList = new Set([getProposalEventId(proposeReceipt)]);
-      // The direct include-list lookup does not depend on the historical event range.
+      params.botModes.settleOnlyDisputed = true;
+      // Exclude the proposal from the historical event range to exercise the direct include-list lookup.
       params.timeLookback = 0;
       params.blockFinder = new BlockFinder(params.provider.getBlock.bind(params.provider), undefined, params.chainId);
       await gasEstimator.update();
