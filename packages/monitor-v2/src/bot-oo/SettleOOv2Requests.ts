@@ -21,37 +21,32 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
-// Applies the standard OOv2 include/exclude proposal lists. Managed OOv2 applies them after checking request state so
-// resolved disputes preserve their normal settlement behavior.
-function filterByIncludeExclude(
+// Applies the standard OOv2 include list. Managed OOv2 applies it after checking request state so resolved disputes
+// preserve their normal settlement behavior.
+function filterByIncludeList(
   logger: typeof Logger,
   params: MonitoringParams,
   requests: ProposePriceEvent[]
 ): ProposePriceEvent[] {
-  const { settleIncludeList, settleExcludeList } = params;
-  if (!settleIncludeList && !settleExcludeList) return requests;
+  const { settleIncludeList } = params;
+  if (!settleIncludeList) return requests;
 
   const kept: ProposePriceEvent[] = [];
-  const skippedIds: string[] = [];
   let skipped = 0;
   for (const req of requests) {
     const id = proposalEventId(req.transactionHash, req.logIndex);
-    const allowed = settleIncludeList ? settleIncludeList.has(id) : !settleExcludeList?.has(id);
-    if (allowed) kept.push(req);
+    if (settleIncludeList.has(id)) kept.push(req);
     else {
       skipped++;
-      if (!settleIncludeList) skippedIds.push(id);
     }
   }
 
   logger.debug({
     at: "OOv2Bot",
-    message: "Applied include/exclude proposal filter",
-    mode: settleIncludeList ? "include" : "exclude",
-    listSize: (settleIncludeList ?? settleExcludeList)?.size,
+    message: "Applied proposal include filter",
+    listSize: settleIncludeList.size,
     kept: kept.length,
     skipped,
-    ...(settleIncludeList ? {} : { skippedIds }),
   });
 
   return kept;
@@ -87,11 +82,8 @@ export async function settleOOv2Requests(
   params: MonitoringParams,
   gasEstimator: GasEstimator
 ): Promise<void> {
-  if (params.oracleType === "ManagedOptimisticOracleV2") {
-    if (params.settleExcludeList !== undefined)
-      throw new Error("SETTLE_EXCLUDE_LIST is not supported for ManagedOptimisticOracleV2; use SETTLE_INCLUDE_LIST");
-    if (!params.settleIncludeList) throw new Error("Managed OOv2 settlement requires an include list");
-  }
+  if (params.oracleType === "ManagedOptimisticOracleV2" && !params.settleIncludeList)
+    throw new Error("Managed OOv2 settlement requires an include list");
 
   const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
     "OptimisticOracleV2",
@@ -198,7 +190,7 @@ export async function settleOOv2Requests(
   const requestsToSettle =
     params.oracleType === "ManagedOptimisticOracleV2"
       ? unsettledRequests
-      : filterByIncludeExclude(logger, params, unsettledRequests);
+      : filterByIncludeList(logger, params, unsettledRequests);
 
   const requestsToSettleTxCount =
     params.settleBatchSize > 1 ? Math.ceil(requestsToSettle.length / params.settleBatchSize) : requestsToSettle.length;
