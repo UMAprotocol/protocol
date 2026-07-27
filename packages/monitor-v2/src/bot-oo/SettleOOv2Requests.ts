@@ -21,41 +21,60 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
-// Applies the include/exclude proposal lists. The include list is exclusive and takes precedence: when set, only its
-// proposals are settled. Otherwise proposals in the exclude list are skipped. Proposals are matched by the
-// transaction hash and log index of their ProposePrice event.
-function filterByIncludeExclude(
+// Applies the standard OOv2 include list. Managed OOv2 applies it after checking request state so resolved disputes
+// preserve their normal settlement behavior.
+function filterByIncludeList(
   logger: typeof Logger,
   params: MonitoringParams,
   requests: ProposePriceEvent[]
 ): ProposePriceEvent[] {
-  const { settleIncludeList, settleExcludeList } = params;
-  if (!settleIncludeList && !settleExcludeList) return requests;
+  const { settleIncludeList } = params;
+  if (!settleIncludeList) return requests;
 
   const kept: ProposePriceEvent[] = [];
-  const skippedIds: string[] = [];
   let skipped = 0;
   for (const req of requests) {
     const id = proposalEventId(req.transactionHash, req.logIndex);
-    const allowed = settleIncludeList ? settleIncludeList.has(id) : !settleExcludeList?.has(id);
-    if (allowed) kept.push(req);
+    if (settleIncludeList.has(id)) kept.push(req);
     else {
       skipped++;
-      if (!settleIncludeList) skippedIds.push(id);
     }
   }
 
   logger.debug({
     at: "OOv2Bot",
-    message: "Applied include/exclude proposal filter",
-    mode: settleIncludeList ? "include" : "exclude",
-    listSize: (settleIncludeList ?? settleExcludeList)?.size,
+    message: "Applied proposal include filter",
+    listSize: settleIncludeList.size,
     kept: kept.length,
     skipped,
-    ...(settleIncludeList ? {} : { skippedIds }),
   });
 
   return kept;
+}
+
+async function getManagedIncludedProposals(
+  oo: OptimisticOracleV2Ethers,
+  includedProposalIds: Set<string>
+): Promise<ProposePriceEvent[]> {
+  const transactionHashes = [...new Set([...includedProposalIds].map((id) => id.split(":")[0]))];
+  const receipts = await Promise.all(
+    transactionHashes.map((transactionHash) => oo.provider.getTransactionReceipt(transactionHash))
+  );
+  const blockNumbers = [...new Set(receipts.flatMap((receipt) => (receipt ? [receipt.blockNumber] : [])))];
+  const proposals = (
+    await Promise.all(
+      blockNumbers.map((blockNumber) => oo.queryFilter(oo.filters.ProposePrice(), blockNumber, blockNumber))
+    )
+  ).flat();
+  const proposalsById = new Map(
+    proposals.map((proposal) => [proposalEventId(proposal.transactionHash, proposal.logIndex), proposal] as const)
+  );
+
+  return [...includedProposalIds].map((id) => {
+    const proposal = proposalsById.get(id);
+    if (!proposal) throw new Error(`Could not find included ProposePrice event ${id} on ${oo.address}`);
+    return proposal;
+  });
 }
 
 export async function settleOOv2Requests(
@@ -63,9 +82,8 @@ export async function settleOOv2Requests(
   params: MonitoringParams,
   gasEstimator: GasEstimator
 ): Promise<void> {
-  if (params.oracleType === "ManagedOptimisticOracleV2" && !params.settleIncludeList && !params.settleExcludeList) {
-    throw new Error("Managed OOv2 settlement requires an include or exclude list");
-  }
+  if (params.oracleType === "ManagedOptimisticOracleV2" && !params.settleIncludeList)
+    throw new Error("Managed OOv2 settlement requires an include list");
 
   const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
     "OptimisticOracleV2",
@@ -138,11 +156,41 @@ export async function settleOOv2Requests(
     throw error;
   }
 
+  if (params.oracleType === "ManagedOptimisticOracleV2" && params.settleIncludeList) {
+    try {
+      const includedProposals = await getManagedIncludedProposals(oo, params.settleIncludeList);
+      const proposalsById = new Map(
+        proposals.map((proposal) => [proposalEventId(proposal.transactionHash, proposal.logIndex), proposal] as const)
+      );
+      for (const proposal of includedProposals) {
+        proposalsById.set(proposalEventId(proposal.transactionHash, proposal.logIndex), proposal);
+      }
+      proposals = [...proposalsById.values()];
+      logger.debug({
+        at: "OOv2Bot",
+        message: "Queried included ProposePrice events",
+        requested: params.settleIncludeList.size,
+        count: includedProposals.length,
+      });
+    } catch (error) {
+      // Manual candidates fail closed, but their lookup must not block historical disputed settlements.
+      logger.error({
+        at: "OOv2Bot",
+        message: "Failed querying included ProposePrice events",
+        requested: params.settleIncludeList.size,
+        ...getSettleTxErrorLogFields(error),
+      });
+    }
+  }
+
   const settledKeys = new Set(settlements.map((e) => requestKey(e.args)));
 
   const unsettledRequests = proposals.filter((e) => !settledKeys.has(requestKey(e.args)));
 
-  const requestsToSettle = filterByIncludeExclude(logger, params, unsettledRequests);
+  const requestsToSettle =
+    params.oracleType === "ManagedOptimisticOracleV2"
+      ? unsettledRequests
+      : filterByIncludeList(logger, params, unsettledRequests);
 
   const requestsToSettleTxCount =
     params.settleBatchSize > 1 ? Math.ceil(requestsToSettle.length / params.settleBatchSize) : requestsToSettle.length;
@@ -198,15 +246,27 @@ export async function settleOOv2Requests(
         }
       }
 
-      // When settleOnlyDisputed is enabled, check on-chain state and skip undisputed requests.
-      if (params.botModes.settleOnlyDisputed) {
+      // Managed OOv2 always preserves normal disputed settlement; its include list governs non-resolved requests.
+      if (params.oracleType === "ManagedOptimisticOracleV2" || params.botModes.settleOnlyDisputed) {
         const state = await oo.getState(
           req.args.requester,
           req.args.identifier,
           req.args.timestamp,
           req.args.ancillaryData
         );
-        if (state !== STATE_RESOLVED) {
+        if (params.oracleType === "ManagedOptimisticOracleV2" && state !== STATE_RESOLVED) {
+          const id = proposalEventId(req.transactionHash, req.logIndex);
+          if (!params.settleIncludeList?.has(id)) {
+            logger.debug({
+              at: "OOv2Bot",
+              message: "Skipping non-resolved Managed OOv2 request outside settlement include list",
+              requestKey: requestKey(req.args),
+              proposalEventId: id,
+              state,
+            });
+            return null;
+          }
+        } else if (params.oracleType !== "ManagedOptimisticOracleV2" && state !== STATE_RESOLVED) {
           logger.debug({
             at: "OOv2Bot",
             message: "Skipping non-disputed request (settleOnlyDisputed)",

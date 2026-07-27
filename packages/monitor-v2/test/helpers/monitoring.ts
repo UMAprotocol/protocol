@@ -43,7 +43,7 @@ export async function makeMonitoringParamsOO(
     contractAddress,
     settleBatchSize: 1,
     settleMinProposalAgeSeconds: 0,
-    ...(oracleType === "ManagedOptimisticOracleV2" ? { settleExcludeList: new Set<string>() } : {}),
+    ...(oracleType === "ManagedOptimisticOracleV2" ? { settleIncludeList: new Set<string>() } : {}),
   };
 }
 
