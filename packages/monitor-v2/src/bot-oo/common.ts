@@ -23,8 +23,7 @@ function getNonNegativeNumber(value: string | undefined, defaultValue: number): 
 
 // Parses a JSON array of "<txHash>:<logIndex>" strings into a normalized set of proposal event ids.
 // Returns undefined when the env var is unset/blank.
-// An explicit empty array is accepted. For Managed OOv2, an empty exclude list allows every eligible non-resolved
-// proposal while an empty include list allows none; resolved disputes are unaffected.
+// An explicit empty array is accepted; oracle-specific support is validated separately.
 export function parseProposalIdList(value: string | undefined, envName: string): Set<string> | undefined {
   if (value === undefined || value.trim() === "") return undefined;
 
@@ -48,13 +47,16 @@ export function parseProposalIdList(value: string | undefined, envName: string):
   return new Set(ids);
 }
 
-// Parses SETTLE_INCLUDE_LIST/SETTLE_EXCLUDE_LIST for OOv2 contracts. For Managed OOv2 the lists govern non-resolved
-// requests only; normal resolved-dispute settlement is always preserved.
+// Parses SETTLE_INCLUDE_LIST/SETTLE_EXCLUDE_LIST for OOv2 contracts. Managed OOv2 only supports an include list for
+// non-resolved requests; normal resolved-dispute settlement is always preserved.
 export function parseSettleProposalIdLists(
   env: NodeJS.ProcessEnv,
   oracleType: OracleType
 ): { settleIncludeList?: Set<string>; settleExcludeList?: Set<string> } {
   const configuredIncludeList = parseProposalIdList(env.SETTLE_INCLUDE_LIST, "SETTLE_INCLUDE_LIST");
+  if (oracleType === "ManagedOptimisticOracleV2" && env.SETTLE_EXCLUDE_LIST !== undefined)
+    throw new Error("SETTLE_EXCLUDE_LIST is not supported for ManagedOptimisticOracleV2; use SETTLE_INCLUDE_LIST");
+
   const settleExcludeList = parseProposalIdList(env.SETTLE_EXCLUDE_LIST, "SETTLE_EXCLUDE_LIST");
   if (
     (configuredIncludeList || settleExcludeList?.size) &&
@@ -66,9 +68,9 @@ export function parseSettleProposalIdLists(
     );
 
   // Default Managed OOv2 settlement to an empty include list so missing configuration cannot settle non-resolved
-  // proposals. An explicit empty exclude list remains the opt-in for settling all eligible non-resolved proposals.
+  // proposals.
   const settleIncludeList =
-    oracleType === "ManagedOptimisticOracleV2" && configuredIncludeList === undefined && settleExcludeList === undefined
+    oracleType === "ManagedOptimisticOracleV2" && configuredIncludeList === undefined
       ? new Set<string>()
       : configuredIncludeList;
 
@@ -88,9 +90,8 @@ export interface MonitoringParams extends BaseMonitoringParams {
   executionDeadline?: number; // Timestamp in sec for when to stop settling, defaults to 4 minutes from now in serverless
   settleBatchSize: number; // Number of settle calls to batch via multicall (requires MultiCaller on contract), defaults to 1
   settleMinProposalAgeSeconds: number; // Minimum proposal age before settlement, defaults to 2h15m
-  // Include/exclude lists of proposal event ids ("<txHash>:<logIndex>"). For standard OOv2 they filter all proposals.
-  // For Managed OOv2 they filter only non-resolved proposals; resolved disputes always follow normal settlement.
-  // The include list takes precedence over the exclude list. Both undefined is invalid for ManagedOptimisticOracleV2.
+  // Proposal event ids ("<txHash>:<logIndex>"). Standard OOv2 supports include/exclude filters on all proposals.
+  // Managed OOv2 only supports an include list for non-resolved proposals; resolved disputes follow normal settlement.
   settleIncludeList?: Set<string>;
   settleExcludeList?: Set<string>;
 }

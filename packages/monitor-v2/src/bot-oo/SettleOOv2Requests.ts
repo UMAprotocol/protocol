@@ -87,8 +87,10 @@ export async function settleOOv2Requests(
   params: MonitoringParams,
   gasEstimator: GasEstimator
 ): Promise<void> {
-  if (params.oracleType === "ManagedOptimisticOracleV2" && !params.settleIncludeList && !params.settleExcludeList) {
-    throw new Error("Managed OOv2 settlement requires an include or exclude list");
+  if (params.oracleType === "ManagedOptimisticOracleV2") {
+    if (params.settleExcludeList !== undefined)
+      throw new Error("SETTLE_EXCLUDE_LIST is not supported for ManagedOptimisticOracleV2; use SETTLE_INCLUDE_LIST");
+    if (!params.settleIncludeList) throw new Error("Managed OOv2 settlement requires an include list");
   }
 
   const oo = await getContractInstanceWithProvider<OptimisticOracleV2Ethers>(
@@ -252,7 +254,7 @@ export async function settleOOv2Requests(
         }
       }
 
-      // Managed OOv2 always preserves normal disputed settlement; its lists only govern non-resolved requests.
+      // Managed OOv2 always preserves normal disputed settlement; its include list governs non-resolved requests.
       if (params.oracleType === "ManagedOptimisticOracleV2" || params.botModes.settleOnlyDisputed) {
         const state = await oo.getState(
           req.args.requester,
@@ -262,17 +264,13 @@ export async function settleOOv2Requests(
         );
         if (params.oracleType === "ManagedOptimisticOracleV2" && state !== STATE_RESOLVED) {
           const id = proposalEventId(req.transactionHash, req.logIndex);
-          const allowedBySettlementLists = params.settleIncludeList
-            ? params.settleIncludeList.has(id)
-            : !params.settleExcludeList?.has(id);
-          if (!allowedBySettlementLists) {
+          if (!params.settleIncludeList?.has(id)) {
             logger.debug({
               at: "OOv2Bot",
-              message: "Skipping non-resolved Managed OOv2 request outside settlement lists",
+              message: "Skipping non-resolved Managed OOv2 request outside settlement include list",
               requestKey: requestKey(req.args),
               proposalEventId: id,
               state,
-              mode: params.settleIncludeList ? "include" : "exclude",
             });
             return null;
           }

@@ -491,7 +491,43 @@ describe("OptimisticOracleV2Bot", function () {
     assert.isAbove(settledIndex, -1, "Disputed request should be settled when settleOnlyDisputed is true");
   });
 
-  for (const listMode of ["empty include", "invalid include", "matching exclude"] as const) {
+  it("Keeps exclude list behavior for standard OOv2", async function () {
+    await (
+      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
+    ).wait();
+
+    const proposeReceipt = await (
+      await optimisticOracleV2
+        .connect(proposer)
+        .proposePrice(
+          await requester.getAddress(),
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          ethers.utils.parseEther("1")
+        )
+    ).wait();
+
+    await advanceTimerPastLiveness(timer, getReceiptBlockNumber(proposeReceipt), defaultLiveness);
+
+    const { spy, logger } = makeSpyLogger();
+    const params = await createParams("OptimisticOracleV2", optimisticOracleV2.address);
+    params.settleExcludeList = new Set([getProposalEventId(proposeReceipt)]);
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 0, "Excluded standard OOv2 proposal should not be settled");
+
+    const filterLog = getLast(
+      spy.getCalls().filter((call) => call.lastArg?.message === "Applied include/exclude proposal filter"),
+      "Expected standard OOv2 exclude filter log"
+    ).lastArg;
+    assert.equal(filterLog.mode, "exclude");
+    assert.deepEqual(filterLog.skippedIds, [getProposalEventId(proposeReceipt)]);
+  });
+
+  for (const listMode of ["empty include", "invalid include"] as const) {
     it(`Managed OOv2 settles disputed requests when using the ${listMode} list`, async function () {
       await (
         await optimisticOracleV2.requestPrice(
@@ -503,7 +539,7 @@ describe("OptimisticOracleV2Bot", function () {
         )
       ).wait();
 
-      const proposeReceipt = await (
+      await (
         await optimisticOracleV2
           .connect(proposer)
           .proposePrice(
@@ -529,22 +565,16 @@ describe("OptimisticOracleV2Bot", function () {
 
       const { spy, logger } = makeSpyLogger();
       const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
-      const id = getProposalEventId(proposeReceipt);
       if (listMode === "empty include") {
         params.settleIncludeList = new Set();
-        params.settleExcludeList = undefined;
-      } else if (listMode === "invalid include") {
-        params.settleIncludeList = new Set([proposalEventId(`0x${"0".repeat(64)}`, 0)]);
-        params.settleExcludeList = undefined;
       } else {
-        params.settleIncludeList = undefined;
-        params.settleExcludeList = new Set([id]);
+        params.settleIncludeList = new Set([proposalEventId(`0x${"0".repeat(64)}`, 0)]);
       }
       await gasEstimator.update();
       await settleRequests(logger, params, gasEstimator);
 
       const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
-      assert.equal(settlementLogs.length, 1, "Settlement lists must not block normal disputed settlement");
+      assert.equal(settlementLogs.length, 1, "Include lists must not block normal disputed settlement");
 
       if (listMode === "invalid include") {
         assert.isTrue(
@@ -554,46 +584,6 @@ describe("OptimisticOracleV2Bot", function () {
       }
     });
   }
-
-  it("Skips non-disputed proposals in the exclude list", async function () {
-    await (
-      await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
-    ).wait();
-
-    const proposeReceipt = await (
-      await optimisticOracleV2
-        .connect(proposer)
-        .proposePrice(
-          await requester.getAddress(),
-          defaultOptimisticOracleV2Identifier,
-          0,
-          ancillaryData,
-          ethers.utils.parseEther("1")
-        )
-    ).wait();
-
-    await advanceTimerPastLiveness(timer, getReceiptBlockNumber(proposeReceipt), defaultLiveness);
-
-    const { spy, logger } = makeSpyLogger();
-    const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
-    params.settleExcludeList = new Set([getProposalEventId(proposeReceipt)]);
-    await gasEstimator.update();
-    await settleRequests(logger, params, gasEstimator);
-
-    const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
-    assert.equal(settlementLogs.length, 0, "Excluded proposal should not be settled");
-
-    const skipLog = getLast(
-      spy
-        .getCalls()
-        .filter(
-          (call) => call.lastArg?.message === "Skipping non-resolved Managed OOv2 request outside settlement lists"
-        ),
-      "Expected settlement list skip log"
-    ).lastArg;
-    assert.equal(skipLog.proposalEventId, getProposalEventId(proposeReceipt));
-    assert.equal(skipLog.mode, "exclude");
-  });
 
   it("Uses the include list for non-disputed Managed OOv2 proposals", async function () {
     await (
@@ -629,12 +619,12 @@ describe("OptimisticOracleV2Bot", function () {
         spy
           .getCalls()
           .filter(
-            (call) => call.lastArg?.message === "Skipping non-resolved Managed OOv2 request outside settlement lists"
+            (call) =>
+              call.lastArg?.message === "Skipping non-resolved Managed OOv2 request outside settlement include list"
           ),
-        "Expected settlement list skip log"
+        "Expected include list skip log"
       ).lastArg;
       assert.equal(skipLog.proposalEventId, getProposalEventId(proposeReceipt));
-      assert.equal(skipLog.mode, "include");
     }
 
     // An include list containing the proposal: it settles.
@@ -654,8 +644,7 @@ describe("OptimisticOracleV2Bot", function () {
     }
   });
 
-  it("Accepts explicit empty include/exclude lists", async function () {
-    // Templated deployments commonly render optional list env vars as "[]"; this must not throw.
+  it("Parses explicit empty proposal lists", async function () {
     const includeList = parseProposalIdList("[]", "SETTLE_INCLUDE_LIST");
     assert.instanceOf(includeList, Set);
     assert.equal(includeList?.size, 0);
@@ -674,24 +663,23 @@ describe("OptimisticOracleV2Bot", function () {
     assert.equal(settleIncludeList?.size, 0);
     assert.isUndefined(settleExcludeList);
 
-    const explicitSettleAll = parseSettleProposalIdLists(
-      { SETTLE_EXCLUDE_LIST: "[]" } as NodeJS.ProcessEnv,
-      "ManagedOptimisticOracleV2"
-    );
-    assert.isUndefined(explicitSettleAll.settleIncludeList);
-    assert.instanceOf(explicitSettleAll.settleExcludeList, Set);
-    assert.equal(explicitSettleAll.settleExcludeList?.size, 0);
-
     const standardOOv2 = parseSettleProposalIdLists({} as NodeJS.ProcessEnv, "OptimisticOracleV2");
     assert.isUndefined(standardOOv2.settleIncludeList);
     assert.isUndefined(standardOOv2.settleExcludeList);
   });
 
-  it("Rejects Managed OOv2 settlement params without an include or exclude list", async function () {
+  it("Rejects exclude lists for Managed OOv2", async function () {
+    for (const value of ["", "[]", JSON.stringify([`0x${"0".repeat(64)}:0`])]) {
+      assert.throws(
+        () =>
+          parseSettleProposalIdLists({ SETTLE_EXCLUDE_LIST: value } as NodeJS.ProcessEnv, "ManagedOptimisticOracleV2"),
+        /SETTLE_EXCLUDE_LIST is not supported for ManagedOptimisticOracleV2/
+      );
+    }
+
     const { logger } = makeSpyLogger();
     const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
-    params.settleIncludeList = undefined;
-    params.settleExcludeList = undefined;
+    params.settleExcludeList = new Set();
 
     let error: unknown;
     try {
@@ -701,7 +689,23 @@ describe("OptimisticOracleV2Bot", function () {
     }
 
     assert.instanceOf(error, Error);
-    assert.match((error as Error).message, /Managed OOv2 settlement requires an include or exclude list/);
+    assert.match((error as Error).message, /SETTLE_EXCLUDE_LIST is not supported for ManagedOptimisticOracleV2/);
+  });
+
+  it("Rejects Managed OOv2 settlement params without an include list", async function () {
+    const { logger } = makeSpyLogger();
+    const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
+    params.settleIncludeList = undefined;
+
+    let error: unknown;
+    try {
+      await settleRequests(logger, params, gasEstimator);
+    } catch (err) {
+      error = err;
+    }
+
+    assert.instanceOf(error, Error);
+    assert.match((error as Error).message, /Managed OOv2 settlement requires an include list/);
   });
 
   it("Rejects include/exclude lists for non-OOv2 oracle types", async function () {
@@ -717,7 +721,6 @@ describe("OptimisticOracleV2Bot", function () {
       /only supported for OptimisticOracleV2 and ManagedOptimisticOracleV2/
     );
     assert.doesNotThrow(() => parseSettleProposalIdLists(env, "OptimisticOracleV2"));
-    assert.doesNotThrow(() => parseSettleProposalIdLists(env, "ManagedOptimisticOracleV2"));
 
     // An empty exclude list skips nothing and behaves the same as unset, so it must not block startup.
     const emptyExcludeEnv = { SETTLE_EXCLUDE_LIST: "[]" } as NodeJS.ProcessEnv;
