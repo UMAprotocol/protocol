@@ -473,6 +473,15 @@ describe("OptimisticOracleV2Bot", function () {
       settleRequestsEnabled: false,
       settleOnlyDisputed: true,
     });
+    params.settleIncludeList = new Set();
+    await gasEstimator.update();
+    await settleRequests(logger, params, gasEstimator);
+
+    const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+    assert.equal(settlementLogs.length, 0, "Standard OOv2 include lists must still filter resolved disputes");
+
+    spy.resetHistory();
+    params.settleIncludeList = undefined;
     await gasEstimator.update();
     await settleRequests(logger, params, gasEstimator);
 
@@ -482,7 +491,71 @@ describe("OptimisticOracleV2Bot", function () {
     assert.isAbove(settledIndex, -1, "Disputed request should be settled when settleOnlyDisputed is true");
   });
 
-  it("Skips proposals in the exclude list", async function () {
+  for (const listMode of ["empty include", "invalid include", "matching exclude"] as const) {
+    it(`Managed OOv2 settles disputed requests when using the ${listMode} list`, async function () {
+      await (
+        await optimisticOracleV2.requestPrice(
+          defaultOptimisticOracleV2Identifier,
+          0,
+          ancillaryData,
+          bondToken.address,
+          0
+        )
+      ).wait();
+
+      const proposeReceipt = await (
+        await optimisticOracleV2
+          .connect(proposer)
+          .proposePrice(
+            await requester.getAddress(),
+            defaultOptimisticOracleV2Identifier,
+            0,
+            ancillaryData,
+            ethers.utils.parseEther("1")
+          )
+      ).wait();
+
+      await (
+        await optimisticOracleV2
+          .connect(disputer)
+          .disputePrice(await requester.getAddress(), defaultOptimisticOracleV2Identifier, 0, ancillaryData)
+      ).wait();
+
+      const pending = await mockOracle.getPendingQueries();
+      const last = getLast(pending, "Expected a pending DVM query");
+      await (
+        await mockOracle.pushPrice(last.identifier, last.time, last.ancillaryData, ethers.utils.parseEther("1"))
+      ).wait();
+
+      const { spy, logger } = makeSpyLogger();
+      const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
+      const id = getProposalEventId(proposeReceipt);
+      if (listMode === "empty include") {
+        params.settleIncludeList = new Set();
+        params.settleExcludeList = undefined;
+      } else if (listMode === "invalid include") {
+        params.settleIncludeList = new Set([proposalEventId(`0x${"0".repeat(64)}`, 0)]);
+        params.settleExcludeList = undefined;
+      } else {
+        params.settleIncludeList = undefined;
+        params.settleExcludeList = new Set([id]);
+      }
+      await gasEstimator.update();
+      await settleRequests(logger, params, gasEstimator);
+
+      const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
+      assert.equal(settlementLogs.length, 1, "Settlement lists must not block normal disputed settlement");
+
+      if (listMode === "invalid include") {
+        assert.isTrue(
+          spy.getCalls().some((call) => call.lastArg?.message === "Failed querying included ProposePrice events"),
+          "Invalid direct includes should be logged without blocking disputed settlement"
+        );
+      }
+    });
+  }
+
+  it("Skips non-disputed proposals in the exclude list", async function () {
     await (
       await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
     ).wait();
@@ -510,15 +583,19 @@ describe("OptimisticOracleV2Bot", function () {
     const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
     assert.equal(settlementLogs.length, 0, "Excluded proposal should not be settled");
 
-    const filterLog = getLast(
-      spy.getCalls().filter((call) => call.lastArg?.message === "Applied include/exclude proposal filter"),
-      "Expected include/exclude filter log"
+    const skipLog = getLast(
+      spy
+        .getCalls()
+        .filter(
+          (call) => call.lastArg?.message === "Skipping non-resolved Managed OOv2 request outside settlement lists"
+        ),
+      "Expected settlement list skip log"
     ).lastArg;
-    assert.equal(filterLog.skipped, 1);
-    assert.deepEqual(filterLog.skippedIds, [getProposalEventId(proposeReceipt)]);
+    assert.equal(skipLog.proposalEventId, getProposalEventId(proposeReceipt));
+    assert.equal(skipLog.mode, "exclude");
   });
 
-  it("Settles only proposals in the include list", async function () {
+  it("Uses the include list for non-disputed Managed OOv2 proposals", async function () {
     await (
       await optimisticOracleV2.requestPrice(defaultOptimisticOracleV2Identifier, 0, ancillaryData, bondToken.address, 0)
     ).wait();
@@ -548,12 +625,16 @@ describe("OptimisticOracleV2Bot", function () {
       const settlementLogs = spy.getCalls().filter((call) => call.lastArg?.message === "Price Request Settled ✅");
       assert.equal(settlementLogs.length, 0, "Proposal absent from the include list should not be settled");
 
-      const filterLog = getLast(
-        spy.getCalls().filter((call) => call.lastArg?.message === "Applied include/exclude proposal filter"),
-        "Expected include/exclude filter log"
+      const skipLog = getLast(
+        spy
+          .getCalls()
+          .filter(
+            (call) => call.lastArg?.message === "Skipping non-resolved Managed OOv2 request outside settlement lists"
+          ),
+        "Expected settlement list skip log"
       ).lastArg;
-      assert.equal(filterLog.skipped, 0);
-      assert.notProperty(filterLog, "skippedIds");
+      assert.equal(skipLog.proposalEventId, getProposalEventId(proposeReceipt));
+      assert.equal(skipLog.mode, "include");
     }
 
     // An include list containing the proposal: it settles.
@@ -561,6 +642,7 @@ describe("OptimisticOracleV2Bot", function () {
       const { spy, logger } = makeSpyLogger();
       const params = await createParams("ManagedOptimisticOracleV2", optimisticOracleV2.address);
       params.settleIncludeList = new Set([getProposalEventId(proposeReceipt)]);
+      params.botModes.settleOnlyDisputed = true;
       // Exclude the proposal from the historical event range to exercise the direct include-list lookup.
       params.timeLookback = 0;
       params.blockFinder = new BlockFinder(params.provider.getBlock.bind(params.provider), undefined, params.chainId);

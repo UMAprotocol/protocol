@@ -21,9 +21,8 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
-// Applies the include/exclude proposal lists. The include list is exclusive and takes precedence: when set, only its
-// proposals are settled. Otherwise proposals in the exclude list are skipped. Proposals are matched by the
-// transaction hash and log index of their ProposePrice event.
+// Applies the standard OOv2 include/exclude proposal lists. Managed OOv2 applies them after checking request state so
+// resolved disputes preserve their normal settlement behavior.
 function filterByIncludeExclude(
   logger: typeof Logger,
   params: MonitoringParams,
@@ -98,79 +97,95 @@ export async function settleOOv2Requests(
     params.contractAddress
   );
 
+  const searchConfig = await computeEventSearch(
+    params.provider,
+    params.blockFinder,
+    params.timeLookback,
+    params.maxBlockLookBack
+  );
+
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Querying ProposePrice events",
+    fromBlock: searchConfig.fromBlock,
+    toBlock: searchConfig.toBlock,
+    maxBlockLookBack: searchConfig.maxBlockLookBack,
+  });
+  const proposalsStartedAt = Date.now();
   let proposals: ProposePriceEvent[];
-  let settlements: SettleEvent[];
-  if (params.oracleType === "ManagedOptimisticOracleV2" && params.settleIncludeList) {
-    proposals = await getManagedIncludedProposals(oo, params.settleIncludeList);
-    settlements = [];
+  try {
+    proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
     logger.debug({
       at: "OOv2Bot",
-      message: "Queried included ProposePrice events",
-      requested: params.settleIncludeList.size,
+      message: "Queried ProposePrice events",
       count: proposals.length,
+      elapsedMs: Date.now() - proposalsStartedAt,
     });
-  } else {
-    const searchConfig = await computeEventSearch(
-      params.provider,
-      params.blockFinder,
-      params.timeLookback,
-      params.maxBlockLookBack
-    );
-
-    logger.debug({
+  } catch (error) {
+    logger.error({
       at: "OOv2Bot",
-      message: "Querying ProposePrice events",
+      message: "Failed querying ProposePrice events",
       fromBlock: searchConfig.fromBlock,
       toBlock: searchConfig.toBlock,
       maxBlockLookBack: searchConfig.maxBlockLookBack,
+      ...getSettleTxErrorLogFields(error),
     });
-    const proposalsStartedAt = Date.now();
-    try {
-      proposals = await paginatedEventQuery<ProposePriceEvent>(oo, oo.filters.ProposePrice(), searchConfig);
-      logger.debug({
-        at: "OOv2Bot",
-        message: "Queried ProposePrice events",
-        count: proposals.length,
-        elapsedMs: Date.now() - proposalsStartedAt,
-      });
-    } catch (error) {
-      logger.error({
-        at: "OOv2Bot",
-        message: "Failed querying ProposePrice events",
-        fromBlock: searchConfig.fromBlock,
-        toBlock: searchConfig.toBlock,
-        maxBlockLookBack: searchConfig.maxBlockLookBack,
-        ...getSettleTxErrorLogFields(error),
-      });
-      throw error;
-    }
+    throw error;
+  }
 
+  logger.debug({
+    at: "OOv2Bot",
+    message: "Querying Settle events",
+    fromBlock: searchConfig.fromBlock,
+    toBlock: searchConfig.toBlock,
+    maxBlockLookBack: searchConfig.maxBlockLookBack,
+  });
+  const settlementsStartedAt = Date.now();
+  let settlements: SettleEvent[];
+  try {
+    settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
     logger.debug({
       at: "OOv2Bot",
-      message: "Querying Settle events",
+      message: "Queried Settle events",
+      count: settlements.length,
+      elapsedMs: Date.now() - settlementsStartedAt,
+    });
+  } catch (error) {
+    logger.error({
+      at: "OOv2Bot",
+      message: "Failed querying Settle events",
       fromBlock: searchConfig.fromBlock,
       toBlock: searchConfig.toBlock,
       maxBlockLookBack: searchConfig.maxBlockLookBack,
+      ...getSettleTxErrorLogFields(error),
     });
-    const settlementsStartedAt = Date.now();
+    throw error;
+  }
+
+  if (params.oracleType === "ManagedOptimisticOracleV2" && params.settleIncludeList) {
     try {
-      settlements = await paginatedEventQuery<SettleEvent>(oo, oo.filters.Settle(), searchConfig);
+      const includedProposals = await getManagedIncludedProposals(oo, params.settleIncludeList);
+      const proposalsById = new Map(
+        proposals.map((proposal) => [proposalEventId(proposal.transactionHash, proposal.logIndex), proposal] as const)
+      );
+      for (const proposal of includedProposals) {
+        proposalsById.set(proposalEventId(proposal.transactionHash, proposal.logIndex), proposal);
+      }
+      proposals = [...proposalsById.values()];
       logger.debug({
         at: "OOv2Bot",
-        message: "Queried Settle events",
-        count: settlements.length,
-        elapsedMs: Date.now() - settlementsStartedAt,
+        message: "Queried included ProposePrice events",
+        requested: params.settleIncludeList.size,
+        count: includedProposals.length,
       });
     } catch (error) {
+      // Manual candidates fail closed, but their lookup must not block historical disputed settlements.
       logger.error({
         at: "OOv2Bot",
-        message: "Failed querying Settle events",
-        fromBlock: searchConfig.fromBlock,
-        toBlock: searchConfig.toBlock,
-        maxBlockLookBack: searchConfig.maxBlockLookBack,
+        message: "Failed querying included ProposePrice events",
+        requested: params.settleIncludeList.size,
         ...getSettleTxErrorLogFields(error),
       });
-      throw error;
     }
   }
 
@@ -178,7 +193,10 @@ export async function settleOOv2Requests(
 
   const unsettledRequests = proposals.filter((e) => !settledKeys.has(requestKey(e.args)));
 
-  const requestsToSettle = filterByIncludeExclude(logger, params, unsettledRequests);
+  const requestsToSettle =
+    params.oracleType === "ManagedOptimisticOracleV2"
+      ? unsettledRequests
+      : filterByIncludeExclude(logger, params, unsettledRequests);
 
   const requestsToSettleTxCount =
     params.settleBatchSize > 1 ? Math.ceil(requestsToSettle.length / params.settleBatchSize) : requestsToSettle.length;
@@ -234,15 +252,31 @@ export async function settleOOv2Requests(
         }
       }
 
-      // When settleOnlyDisputed is enabled, check on-chain state and skip undisputed requests.
-      if (params.botModes.settleOnlyDisputed) {
+      // Managed OOv2 always preserves normal disputed settlement; its lists only govern non-resolved requests.
+      if (params.oracleType === "ManagedOptimisticOracleV2" || params.botModes.settleOnlyDisputed) {
         const state = await oo.getState(
           req.args.requester,
           req.args.identifier,
           req.args.timestamp,
           req.args.ancillaryData
         );
-        if (state !== STATE_RESOLVED) {
+        if (params.oracleType === "ManagedOptimisticOracleV2" && state !== STATE_RESOLVED) {
+          const id = proposalEventId(req.transactionHash, req.logIndex);
+          const allowedBySettlementLists = params.settleIncludeList
+            ? params.settleIncludeList.has(id)
+            : !params.settleExcludeList?.has(id);
+          if (!allowedBySettlementLists) {
+            logger.debug({
+              at: "OOv2Bot",
+              message: "Skipping non-resolved Managed OOv2 request outside settlement lists",
+              requestKey: requestKey(req.args),
+              proposalEventId: id,
+              state,
+              mode: params.settleIncludeList ? "include" : "exclude",
+            });
+            return null;
+          }
+        } else if (params.oracleType !== "ManagedOptimisticOracleV2" && state !== STATE_RESOLVED) {
           logger.debug({
             at: "OOv2Bot",
             message: "Skipping non-disputed request (settleOnlyDisputed)",
