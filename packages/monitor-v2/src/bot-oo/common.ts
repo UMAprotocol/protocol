@@ -47,8 +47,7 @@ export function parseProposalIdList(value: string | undefined, envName: string):
   return new Set(ids);
 }
 
-// Parses SETTLE_INCLUDE_LIST for OOv2 contracts. For Managed OOv2 it governs non-resolved requests only; normal
-// resolved-dispute settlement is always preserved.
+// Parses SETTLE_INCLUDE_LIST for OOv2 contracts. Managed OOv2 uses it as the complete settlement candidate set.
 export function parseSettleIncludeList(env: NodeJS.ProcessEnv, oracleType: OracleType): Set<string> | undefined {
   // Fail fast on the removed setting so stale deployments cannot silently fall back to settling every proposal.
   if (env.SETTLE_EXCLUDE_LIST !== undefined)
@@ -58,8 +57,7 @@ export function parseSettleIncludeList(env: NodeJS.ProcessEnv, oracleType: Oracl
   if (configuredIncludeList && oracleType !== "OptimisticOracleV2" && oracleType !== "ManagedOptimisticOracleV2")
     throw new Error("SETTLE_INCLUDE_LIST is only supported for OptimisticOracleV2 and ManagedOptimisticOracleV2");
 
-  // Default Managed OOv2 settlement to an empty include list so missing configuration cannot settle non-resolved
-  // proposals.
+  // Default Managed OOv2 settlement to an empty include list so missing configuration cannot settle any proposals.
   return oracleType === "ManagedOptimisticOracleV2" && configuredIncludeList === undefined
     ? new Set<string>()
     : configuredIncludeList;
@@ -78,8 +76,8 @@ export interface MonitoringParams extends BaseMonitoringParams {
   executionDeadline?: number; // Timestamp in sec for when to stop settling, defaults to 4 minutes from now in serverless
   settleBatchSize: number; // Number of settle calls to batch via multicall (requires MultiCaller on contract), defaults to 1
   settleMinProposalAgeSeconds: number; // Minimum proposal age before settlement, defaults to 2h15m
-  // Proposal event ids ("<txHash>:<logIndex>"). Standard OOv2 applies the include filter to all proposals. Managed
-  // OOv2 applies it only to non-resolved proposals; resolved disputes follow normal settlement.
+  // Proposal event ids ("<txHash>:<logIndex>"). Standard OOv2 filters its discovered proposals with this list.
+  // Managed OOv2 fetches and processes only proposals in this list.
   settleIncludeList?: Set<string>;
 }
 
