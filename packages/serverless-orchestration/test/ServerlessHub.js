@@ -175,10 +175,7 @@ describe("ServerlessHub.js", function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
-    const defaultConfig = {
-      serverlessCommand: "true",
-      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
-    };
+    const defaultConfig = { serverlessCommand: "true", environmentVariables: { CUSTOM_NODE_URL: network.config.url } };
     const hubConfig = {
       // no named spoke
       testDefaultInstance: defaultConfig,
@@ -204,10 +201,7 @@ describe("ServerlessHub.js", function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
-    const defaultConfig = {
-      serverlessCommand: "true",
-      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
-    };
+    const defaultConfig = { serverlessCommand: "true", environmentVariables: { CUSTOM_NODE_URL: network.config.url } };
     const hubConfig = { testInvalidInstance: { ...defaultConfig, spokeUrlName: "invalid" } };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
@@ -301,6 +295,63 @@ describe("ServerlessHub.js", function () {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
 
     timeoutSpokeInstance.close();
+  });
+  it("ServerlessHub does not page when every failing bot sets pageOnError: false", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = Number(await provider.getBlockNumber());
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: "true",
+        pageOnError: false,
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
+      },
+    };
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const testHubPort = 8085; // create a separate port to run this specific test on.
+    // Point the hub at a port nothing is listening on to force the spoke call to reject.
+    await hub.Poll(hubSpyLogger, testHubPort, "http://localhost:11111", network.config.url);
+
+    const rejectedResponse = await sendHubRequest({ bucket: testBucket, configFile: testConfigFile }, testHubPort);
+
+    // The failure is still reported in full, just below the level the PagerDuty transport accepts.
+    assert.equal(lastSpyLogLevel(hubSpy), "warn");
+    assert.equal(rejectedResponse.res.statusCode, 500);
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "testServerlessMonitor"));
+  });
+  it("ServerlessHub still pages when a bot without pageOnError: false fails alongside one with it", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = Number(await provider.getBlockNumber());
+
+    const hubConfig = {
+      testServerlessMonitorNoPage: {
+        serverlessCommand: "true",
+        pageOnError: false,
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
+      },
+      testServerlessMonitorPages: {
+        serverlessCommand: "true",
+        environmentVariables: { CUSTOM_NODE_URL: network.config.url },
+      },
+    };
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const testHubPort = 8086; // create a separate port to run this specific test on.
+    // Point the hub at a port nothing is listening on to force both spoke calls to reject.
+    await hub.Poll(hubSpyLogger, testHubPort, "http://localhost:11111", network.config.url);
+
+    const rejectedResponse = await sendHubRequest({ bucket: testBucket, configFile: testConfigFile }, testHubPort);
+
+    assert.equal(lastSpyLogLevel(hubSpy), "error");
+    assert.equal(rejectedResponse.res.statusCode, 500);
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "testServerlessMonitorPages"));
   });
   it("ServerlessHub can correctly execute multiple bots in parallel", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
@@ -593,10 +644,7 @@ describe("ServerlessHub.js", function () {
 
     // Logs should include correct starting and latest block numbers for the alternate network.
     const alternateBlockNumbers = {
-      [alternateChainId]: {
-        lastQueriedBlockNumber,
-        latestBlockNumber: latestAlternateBlockNumber,
-      },
+      [alternateChainId]: { lastQueriedBlockNumber, latestBlockNumber: latestAlternateBlockNumber },
     };
 
     // Strip enclosing curly braces as there are also other items in the logged object.
