@@ -296,7 +296,7 @@ describe("ServerlessHub.js", function () {
 
     timeoutSpokeInstance.close();
   });
-  it("ServerlessHub does not page when every failing bot sets pageOnError: false", async function () {
+  it("ServerlessHub does not page when every failing bot sets hubPageOnFailure: false", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber());
@@ -304,7 +304,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "true",
-        pageOnError: false,
+        hubPageOnFailure: false,
         environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
     };
@@ -323,7 +323,7 @@ describe("ServerlessHub.js", function () {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "testServerlessMonitor"));
   });
-  it("ServerlessHub still pages when a bot without pageOnError: false fails alongside one with it", async function () {
+  it("ServerlessHub still pages when a bot without hubPageOnFailure: false fails alongside one with it", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber());
@@ -331,7 +331,7 @@ describe("ServerlessHub.js", function () {
     const hubConfig = {
       testServerlessMonitorNoPage: {
         serverlessCommand: "true",
-        pageOnError: false,
+        hubPageOnFailure: false,
         environmentVariables: { CUSTOM_NODE_URL: network.config.url },
       },
       testServerlessMonitorPages: {

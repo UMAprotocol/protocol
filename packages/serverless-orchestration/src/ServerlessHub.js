@@ -102,7 +102,7 @@ hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
   // Note: no reason to put this into the try-catch since a logger is required to throw the error.
   const logger = customLogger || createNewLogger();
-  let configObject; // Hoisted so the catch block can read per-bot pageOnError.
+  let configObject; // Hoisted so the catch block can read per-bot hubPageOnFailure.
   try {
     logger.debug({ at: "ServerlessHub", message: "Running Serverless hub query", reqBody: req.body, hubConfig });
 
@@ -352,7 +352,7 @@ hub.post("/", async (req, res) => {
       // The PagerDuty transport only accepts `error`; `warn` still reaches Slack and GCP logging. Failures we
       // can't attribute to a bot page anyway.
       const failedBots = Object.keys(errorOutput?.errorOutputs ?? {});
-      const pages = !failedBots.length || failedBots.some((bot) => configObject?.[bot]?.pageOnError !== false);
+      const pages = !failedBots.length || failedBots.some((bot) => configObject?.[bot]?.hubPageOnFailure !== false);
       logger[pages ? "error" : "warn"]({
         at: "ServerlessHub",
         message: "Some spoke calls returned errors 🚨",
