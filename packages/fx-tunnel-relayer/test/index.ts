@@ -95,6 +95,13 @@ describe("index.ts", function () {
   });
 
   it("Runs with no errors", async function () {
+    // Pin "now" to the middle of a phase so the real wall clock can never land within
+    // SKIP_THRESHOLD_SECONDS of a round end, which would short-circuit run() before the
+    // logs asserted below are emitted.
+    clock = sinon.useFakeTimers({
+      now: (2 * PHASE_LENGTH_SECONDS + PHASE_LENGTH_SECONDS / 2) * 1000,
+      toFake: ["Date"],
+    });
     process.env.POLLING_DELAY = "0";
     process.env.CHAIN_ID = ""; // Leave empty so Relayer uses hardhat network web3
 
