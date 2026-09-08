@@ -18,6 +18,8 @@ The simplest way to run the monitors is:
 EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=https://your.node.url.io MNEMONIC="your mnemonic (12-word seed phrase) here" MONITOR_CONFIG="{optional monitor config object}" monitors --network mainnet_mnemonic
 ```
 
+For Optimistic Oracle monitors, set `OO_PROPOSALS_TO_ERROR=true` to emit every price proposal alert at `error` level, allowing it to reach configured error-level paging transports such as PagerDuty. By default (unset or any value other than `true`), proposal alerts remain at `info` level. This setting applies to all proposals watched by that monitor instance; other event alerts are unaffected.
+
 ## Monitors
 
 The four monitors available are:

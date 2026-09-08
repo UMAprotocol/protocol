@@ -247,8 +247,8 @@ class OptimisticOracleContractMonitor {
             this.contractProps.networkId
           )}. ${await this._generateUILink(event.transactionHash, event.logIndex, this.contractProps.networkId)}.`;
 
-        // The default log level should be reduced to "info" for funding rate identifiers:
-        this.logger.info({
+        // Opt in to error-level proposal alerts for paging; keep info as the default.
+        this.logger[process.env.OO_PROPOSALS_TO_ERROR === "true" ? "error" : "info"]({
           at: "OptimisticOracleContractMonitor",
           message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
           mrkdwn,
