@@ -22,4 +22,5 @@ antora.yml
 app.yaml
 .gae_deploy
 *-env.txt
-.env
+**/*.env
+packages/serverless-orchestration/local-docker/bot-configs

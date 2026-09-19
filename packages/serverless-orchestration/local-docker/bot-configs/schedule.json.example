@@ -1,0 +1,20 @@
+# Use this example to create schedule.json for scheduling configured bots. This should be structured as an array of
+# objects, each object containing the following properties:
+#   schedule: A cron expression for when the bot should run. See https://crontab.guru/ for help creating cron expressions.
+#   bucket: The name of the directory under bot-configs where the bot configuration file is stored.
+#   configFile: The name of the file containing bot configurations to use for the scheduled run.
+# Make sure the corresponding bot configuration file exists before updating the config.
+# As an example, the following schedule.json will run the bots in serverless-bots/bot-config.json file every 5 minutes
+# and the serverless-bots/bot-config-slow.json file every 30 minutes:
+[
+  {
+    "schedule": "*/5 * * * *",
+    "bucket": "serverless-bots",
+    "configFile": "bot-config.json"
+  },
+  {
+    "schedule": "*/30 * * * *",
+    "bucket": "serverless-bots",
+    "configFile": "bot-config-slow.json"
+  }
+]
