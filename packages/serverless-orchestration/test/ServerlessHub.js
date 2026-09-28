@@ -412,6 +412,7 @@ describe("ServerlessHub.js", function () {
           SOME_TEST_ENV: "some value", // a unique env that should be appended to all.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://example.com/" }, // a repeated key and a repeated child key. should ignore
           TOKEN_PRICE_FEED_CONFIG: { someKey: "shouldAppend" }, // a clashing parent with a unique child. should append.
+          SOME_LIST: ["a", "b", "c"], // a repeated array. should be replaced by the bot's array, not merged by index.
         },
       },
       testServerlessMonitor: {
@@ -421,6 +422,7 @@ describe("ServerlessHub.js", function () {
           CUSTOM_NODE_URL: network.config.url,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
+          SOME_LIST: ["x"],
         },
       },
       testServerlessMonitor2: {
@@ -449,6 +451,14 @@ describe("ServerlessHub.js", function () {
       spyHubExecution.configObject.testServerlessMonitor.environmentVariables.MONITOR_CONFIG.optimisticOracleUIBaseUrl,
       "https://oracle.uma.xyz"
     );
+
+    // The bot's array replaces the common one entirely, while bots without their own array inherit the common one.
+    assert.deepEqual(spyHubExecution.configObject.testServerlessMonitor.environmentVariables.SOME_LIST, ["x"]);
+    assert.deepEqual(spyHubExecution.configObject.testServerlessMonitor2.environmentVariables.SOME_LIST, [
+      "a",
+      "b",
+      "c",
+    ]);
 
     // All objects should correctly append the "SOME_TEST_ENV".
     for (const botKey in spyHubExecution.configObject) {
@@ -510,6 +520,43 @@ describe("ServerlessHub.js", function () {
     // Check for two hub logs caching each unique chain ID seen:
     assert.isTrue(spyLogIncludes(hubSpy, 3, defaultChainId));
     assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
+  });
+
+  it("ServerlessHub ignores fallback providers on a different chain", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
+
+    // Fallback provider on another chain. The hub should drop it and keep using the primary provider's block numbers.
+    const alternateChainId = 666;
+    const altProvider = startGanacheServer(alternateChainId, 7777);
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: 'test -n "${ENDING_BLOCK_NUMBER}"',
+        environmentVariables: {
+          CUSTOM_NODE_URL: network.config.url,
+          NODE_RETRY_CONFIG: [
+            { url: network.config.url, retries: 1 },
+            { url: altProvider.transport.url, retries: 1 },
+          ],
+        },
+      },
+    };
+
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const validResponse = await sendHubRequest({ bucket: testBucket, configFile: testConfigFile });
+    assert.equal(validResponse.res.statusCode, 200); // no error code
+
+    // The wrong-chain provider is reported as an error and the block numbers come from the primary chain.
+    const hubLogs = hubSpy.getCalls().map((call) => call.lastArg);
+    assert.isTrue(hubLogs.some((log) => log.level == "error" && log.message.includes("different chain")));
+    const spokeExecution = hubLogs.find((log) => log.message == "Executing Serverless spokes");
+    assert.equal(
+      spokeExecution.botConfigs.testServerlessMonitor.environmentVariables.ENDING_BLOCK_NUMBER,
+      startingBlockNumber
+    );
   });
 
   it("ServerlessHub sets multiple network block numbers", async function () {
