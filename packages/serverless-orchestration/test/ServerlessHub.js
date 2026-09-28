@@ -527,17 +527,20 @@ describe("ServerlessHub.js", function () {
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
-    // Fallback provider on another chain. The hub should drop it and keep using the primary provider's block numbers.
+    // Fallback providers on another chain and on no reachable node. The hub should drop both and keep using the primary
+    // provider's block numbers.
     const alternateChainId = 666;
     const altProvider = startGanacheServer(alternateChainId, 7777);
+    const primaryRetryConfig = { url: network.config.url, retries: 1, delay: 0 };
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: 'test -n "${ENDING_BLOCK_NUMBER}"',
         environmentVariables: {
           CUSTOM_NODE_URL: network.config.url,
           NODE_RETRY_CONFIG: [
-            { url: network.config.url, retries: 1 },
+            primaryRetryConfig,
             { url: altProvider.transport.url, retries: 1 },
+            { url: "http://127.0.0.1:7778", retries: 1 },
           ],
         },
       },
@@ -557,6 +560,39 @@ describe("ServerlessHub.js", function () {
       spokeExecution.botConfigs.testServerlessMonitor.environmentVariables.ENDING_BLOCK_NUMBER,
       startingBlockNumber
     );
+
+    // The spoke only receives the primary provider, with its config entry left untouched.
+    assert.deepEqual(spokeExecution.botConfigs.testServerlessMonitor.environmentVariables.NODE_RETRY_CONFIG, [
+      primaryRetryConfig,
+    ]);
+  });
+
+  it("ServerlessHub fails when the primary provider's chain cannot be checked", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
+
+    // The primary provider is unreachable, so the hub cannot tell whether the fallback is on the expected chain.
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: "true",
+        environmentVariables: {
+          NODE_RETRY_CONFIG: [
+            { url: "http://127.0.0.1:7778", retries: 1 },
+            { url: network.config.url, retries: 1 },
+          ],
+        },
+      },
+    };
+
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const response = await sendHubRequest({ bucket: testBucket, configFile: testConfigFile });
+    assert.equal(response.res.statusCode, 500); // error code
+    assert.isTrue(response.res.text.includes("primary provider 127.0.0.1:7778 did not return a chain id"));
+    const hubLogs = hubSpy.getCalls().map((call) => call.lastArg);
+    assert.isFalse(hubLogs.some((log) => log.message == "Executing Serverless spokes")); // no spoke was executed
   });
 
   it("ServerlessHub sets multiple network block numbers", async function () {

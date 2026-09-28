@@ -149,7 +149,11 @@ hub.post("/", async (req, res) => {
     };
     for (const botName in configObject) {
       // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
-      const [provider, spokeCustomNodeUrl] = await _getProviderAndUrl(configObject[botName], logger);
+      const [provider, spokeCustomNodeUrl, retryConfig] = await _getProviderAndUrl(configObject[botName], logger);
+
+      // Hand the spoke only the providers kept above, so the bot cannot fall back to a rejected one either.
+      if (configObject[botName].environmentVariables?.NODE_RETRY_CONFIG)
+        configObject[botName].environmentVariables.NODE_RETRY_CONFIG = retryConfig;
 
       const singleChainId = await _getChainId(provider);
 
@@ -553,26 +557,38 @@ function _getRetryConfig(botConfig) {
   return config;
 }
 
+// Returns the bot's provider, its primary url and the retry config entries the provider was built from.
 async function _getProviderAndUrl(botConfig, logger) {
   const config = _getRetryConfig(botConfig);
 
-  // Only keep providers on the same chain as the primary one. Otherwise, once the providers before it fail, a url
-  // pointing at another network would silently answer with that network's chain id and block number.
-  const primaryChainId = await _getChainIdForUrl(config[0].url);
-  const sameChainConfig = [];
-  for (const { url, retries } of config) {
-    const chainId = await _getChainIdForUrl(url);
-    if (primaryChainId !== undefined && chainId !== undefined && chainId !== primaryChainId) {
-      logger.error({
-        at: "ServerlessHub",
-        message: "Ignoring RPC provider on a different chain than the primary provider 🚨",
-        host: new URL(url).host,
-        chainId,
-        primaryChainId,
-      });
-      continue;
-    }
-    sameChainConfig.push({ url, retries });
+  // Only keep fallback providers confirmed to be on the same chain as the primary one. Otherwise, once the providers
+  // before it fail, a url pointing at another network would silently answer with that network's chain id and block
+  // number. All urls are probed in parallel so that unreachable fallbacks cost a single timeout.
+  let sameChainConfig = config;
+  if (config.length > 1) {
+    const [primaryChainId, ...fallbackChainIds] = await Promise.all(config.map(({ url }) => _getChainIdForUrl(url)));
+    // Without the primary's chain id there is nothing to check the fallbacks against, so fail rather than use them.
+    if (primaryChainId === undefined)
+      throw new Error(
+        `Cannot check fallback RPC providers: primary provider ${new URL(config[0].url).host} did not return a chain id`
+      );
+
+    sameChainConfig = [config[0]];
+    config.slice(1).forEach((entry, index) => {
+      const chainId = fallbackChainIds[index];
+      const host = new URL(entry.url).host;
+      if (chainId === primaryChainId) sameChainConfig.push(entry);
+      else if (chainId === undefined)
+        logger.debug({ at: "ServerlessHub", message: "Ignoring unreachable fallback RPC provider", host });
+      else
+        logger.error({
+          at: "ServerlessHub",
+          message: "Ignoring RPC provider on a different chain than the primary provider 🚨",
+          host,
+          chainId,
+          primaryChainId,
+        });
+    });
   }
 
   const provider = viem.createPublicClient({
@@ -581,7 +597,7 @@ async function _getProviderAndUrl(botConfig, logger) {
     ),
   });
 
-  return [provider, config[0].url];
+  return [provider, config[0].url, sameChainConfig];
 }
 
 async function _getChainIdForUrl(url) {
