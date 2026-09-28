@@ -45,6 +45,10 @@ const DEFAULT_RETRIES = 1;
 // Assign key name to variable since it's referenced multiple times.
 const RUN_IDENTIFIER_KEY = "RUN_IDENTIFIER";
 
+// Chain id reported by each RPC url, or undefined if the url could not be reached. Successful lookups are kept for the
+// lifetime of the hub instance since a url does not change chain; failed ones are dropped at the start of each execution.
+const chainIdByUrl = new Map();
+
 // Allows the environment to customize the config that's used to interact with google cloud storage.
 // Relevant options can be found here: https://googleapis.dev/nodejs/storage/latest/global.html#StorageOptions.
 // Specific fields of interest:
@@ -102,6 +106,7 @@ hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
   // Note: no reason to put this into the try-catch since a logger is required to throw the error.
   const logger = customLogger || createNewLogger();
+  for (const [url, chainId] of chainIdByUrl) if (chainId === undefined) chainIdByUrl.delete(url);
   try {
     logger.debug({ at: "ServerlessHub", message: "Running Serverless hub query", reqBody: req.body, hubConfig });
 
@@ -144,7 +149,7 @@ hub.post("/", async (req, res) => {
     };
     for (const botName in configObject) {
       // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
-      const [provider, spokeCustomNodeUrl] = _getProviderAndUrl(configObject[botName]);
+      const [provider, spokeCustomNodeUrl] = await _getProviderAndUrl(configObject[botName], logger);
 
       const singleChainId = await _getChainId(provider);
 
@@ -226,7 +231,7 @@ hub.post("/", async (req, res) => {
     let promiseArray = [];
     let botConfigs = {};
     for (const botName in configObject) {
-      const [, spokeCustomNodeUrl] = _getProviderAndUrl(configObject[botName]);
+      const spokeCustomNodeUrl = _getRetryConfig(configObject[botName])[0].url;
       const singleChainId = nodeUrlToChainIdCache[spokeCustomNodeUrl];
 
       // Execute the spoke's command:
@@ -447,15 +452,22 @@ const _fetchConfig = async (bucket, file) => {
   }
 
   // If the config contains a "commonConfig" field, append it it to all configs downstream and then remove common config
-  // from the final config object. The config for a given bot will take precedence for each key. Use deep merge.
+  // from the final config object. The config for a given bot will take precedence for each key. Use deep merge, except
+  // for arrays where the bot's array replaces the common one: lodash.merge would merge them element by element and let
+  // any extra common elements (e.g. RPC urls of another chain) leak into the bot's config.
   if (Object.keys(config).includes("commonConfig")) {
     for (let configKey in config) {
-      if (configKey != "commonConfig") config[configKey] = lodash.merge({}, config.commonConfig, config[configKey]);
+      if (configKey != "commonConfig")
+        config[configKey] = lodash.mergeWith({}, config.commonConfig, config[configKey], _replaceArrays);
     }
     delete config.commonConfig;
   }
   return config;
 };
+
+function _replaceArrays(objValue, srcValue) {
+  if (Array.isArray(objValue) && Array.isArray(srcValue)) return srcValue;
+}
 
 // Save a the last blocknumber seen by the hub to GCP datastore. BlockNumberLog is the entity kind and configIdentifier
 // is the entity ID. Each entity has a column "<chainID>" which stores the latest block seen for a network.
@@ -521,7 +533,7 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
   );
 }
 
-function _getProviderAndUrl(botConfig) {
+function _getRetryConfig(botConfig) {
   const env = botConfig?.environmentVariables;
 
   /**
@@ -538,14 +550,50 @@ function _getProviderAndUrl(botConfig) {
     config.length > 0 && config.every(({ url, retries }) => url !== undefined && retries > 0),
     "Missing or malformed mainnet RPC provider definitions (NODE_RETRY_CONFIG, CUSTOM_NODE_URL)"
   );
+  return config;
+}
+
+async function _getProviderAndUrl(botConfig, logger) {
+  const config = _getRetryConfig(botConfig);
+
+  // Only keep providers on the same chain as the primary one. Otherwise, once the providers before it fail, a url
+  // pointing at another network would silently answer with that network's chain id and block number.
+  const primaryChainId = await _getChainIdForUrl(config[0].url);
+  const sameChainConfig = [];
+  for (const { url, retries } of config) {
+    const chainId = await _getChainIdForUrl(url);
+    if (primaryChainId !== undefined && chainId !== undefined && chainId !== primaryChainId) {
+      logger.error({
+        at: "ServerlessHub",
+        message: "Ignoring RPC provider on a different chain than the primary provider 🚨",
+        host: new URL(url).host,
+        chainId,
+        primaryChainId,
+      });
+      continue;
+    }
+    sameChainConfig.push({ url, retries });
+  }
 
   const provider = viem.createPublicClient({
     transport: viem.fallback(
-      config.map(({ url, retries }) => viem.http(url, { retryCount: retries ?? DEFAULT_RETRIES }))
+      sameChainConfig.map(({ url, retries }) => viem.http(url, { retryCount: retries ?? DEFAULT_RETRIES }))
     ),
   });
 
   return [provider, config[0].url];
+}
+
+async function _getChainIdForUrl(url) {
+  if (!chainIdByUrl.has(url)) {
+    try {
+      const client = viem.createPublicClient({ transport: viem.http(url, { retryCount: DEFAULT_RETRIES }) });
+      chainIdByUrl.set(url, await client.getChainId());
+    } catch (error) {
+      chainIdByUrl.set(url, undefined);
+    }
+  }
+  return chainIdByUrl.get(url);
 }
 
 function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
