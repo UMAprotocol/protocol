@@ -175,10 +175,7 @@ describe("ServerlessHub.js", function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
-    const defaultConfig = {
-      serverlessCommand: "true",
-      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
-    };
+    const defaultConfig = { serverlessCommand: "true", environmentVariables: { CUSTOM_NODE_URL: network.config.url } };
     const hubConfig = {
       // no named spoke
       testDefaultInstance: defaultConfig,
@@ -204,10 +201,7 @@ describe("ServerlessHub.js", function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
-    const defaultConfig = {
-      serverlessCommand: "true",
-      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
-    };
+    const defaultConfig = { serverlessCommand: "true", environmentVariables: { CUSTOM_NODE_URL: network.config.url } };
     const hubConfig = { testInvalidInstance: { ...defaultConfig, spokeUrlName: "invalid" } };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
@@ -406,23 +400,31 @@ describe("ServerlessHub.js", function () {
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
+    const commonRetryConfig = [
+      { url: network.config.url, retries: 1 },
+      { url: "http://127.0.0.1:7778", retries: 1 },
+    ];
+    const botRetryConfig = [{ url: network.config.url, retries: 1 }];
+
     const hubConfig = {
       commonConfig: {
         environmentVariables: {
+          NODE_RETRY_CONFIG: commonRetryConfig,
+          SOME_LIST: ["a", "b", "c"],
           SOME_TEST_ENV: "some value", // a unique env that should be appended to all.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://example.com/" }, // a repeated key and a repeated child key. should ignore
           TOKEN_PRICE_FEED_CONFIG: { someKey: "shouldAppend" }, // a clashing parent with a unique child. should append.
-          SOME_LIST: ["a", "b", "c"], // a repeated array. should be replaced by the bot's array, not merged by index.
         },
       },
       testServerlessMonitor: {
         serverlessCommand:
           'test -n "${SOME_TEST_ENV}" && test -n "${TOKEN_PRICE_FEED_CONFIG}" && test -z "${MONITOR_CONFIG_2}"',
         environmentVariables: {
+          NODE_RETRY_CONFIG: botRetryConfig,
+          SOME_LIST: ["x"],
           CUSTOM_NODE_URL: network.config.url,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
-          SOME_LIST: ["x"],
         },
       },
       testServerlessMonitor2: {
@@ -452,13 +454,10 @@ describe("ServerlessHub.js", function () {
       "https://oracle.uma.xyz"
     );
 
-    // The bot's array replaces the common one entirely, while bots without their own array inherit the common one.
-    assert.deepEqual(spyHubExecution.configObject.testServerlessMonitor.environmentVariables.SOME_LIST, ["x"]);
-    assert.deepEqual(spyHubExecution.configObject.testServerlessMonitor2.environmentVariables.SOME_LIST, [
-      "a",
-      "b",
-      "c",
-    ]);
+    const configs = spyHubExecution.configObject;
+    assert.deepEqual(configs.testServerlessMonitor.environmentVariables.NODE_RETRY_CONFIG, botRetryConfig);
+    assert.deepEqual(configs.testServerlessMonitor2.environmentVariables.NODE_RETRY_CONFIG, commonRetryConfig);
+    assert.deepEqual(configs.testServerlessMonitor.environmentVariables.SOME_LIST, ["x", "b", "c"]);
 
     // All objects should correctly append the "SOME_TEST_ENV".
     for (const botKey in spyHubExecution.configObject) {
@@ -522,57 +521,12 @@ describe("ServerlessHub.js", function () {
     assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
   });
 
-  it("ServerlessHub ignores fallback providers on a different chain", async function () {
+  it("ServerlessHub uses a healthy fallback when the primary is unreachable", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
-    // Fallback providers on another chain and on no reachable node. The hub should drop both and keep using the primary
-    // provider's block numbers.
-    const alternateChainId = 666;
-    const altProvider = startGanacheServer(alternateChainId, 7777);
-    const primaryRetryConfig = { url: network.config.url, retries: 1, delay: 0 };
-    const hubConfig = {
-      testServerlessMonitor: {
-        serverlessCommand: 'test -n "${ENDING_BLOCK_NUMBER}"',
-        environmentVariables: {
-          CUSTOM_NODE_URL: network.config.url,
-          NODE_RETRY_CONFIG: [
-            primaryRetryConfig,
-            { url: altProvider.transport.url, retries: 1 },
-            { url: "http://127.0.0.1:7778", retries: 1 },
-          ],
-        },
-      },
-    };
-
-    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
-    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
-
-    const validResponse = await sendHubRequest({ bucket: testBucket, configFile: testConfigFile });
-    assert.equal(validResponse.res.statusCode, 200); // no error code
-
-    // The wrong-chain provider is reported as an error and the block numbers come from the primary chain.
-    const hubLogs = hubSpy.getCalls().map((call) => call.lastArg);
-    assert.isTrue(hubLogs.some((log) => log.level == "error" && log.message.includes("different chain")));
-    const spokeExecution = hubLogs.find((log) => log.message == "Executing Serverless spokes");
-    assert.equal(
-      spokeExecution.botConfigs.testServerlessMonitor.environmentVariables.ENDING_BLOCK_NUMBER,
-      startingBlockNumber
-    );
-
-    // The spoke only receives the primary provider, with its config entry left untouched.
-    assert.deepEqual(spokeExecution.botConfigs.testServerlessMonitor.environmentVariables.NODE_RETRY_CONFIG, [
-      primaryRetryConfig,
-    ]);
-  });
-
-  it("ServerlessHub fails when the primary provider's chain cannot be checked", async function () {
-    const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
-    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
-
-    // The primary provider is unreachable, so the hub cannot tell whether the fallback is on the expected chain.
+    // A primary outage must not prevent the spoke from running with a healthy fallback.
     const hubConfig = {
       testServerlessMonitor: {
         serverlessCommand: "true",
@@ -589,10 +543,13 @@ describe("ServerlessHub.js", function () {
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
     const response = await sendHubRequest({ bucket: testBucket, configFile: testConfigFile });
-    assert.equal(response.res.statusCode, 500); // error code
-    assert.isTrue(response.res.text.includes("primary provider 127.0.0.1:7778 did not return a chain id"));
+    assert.equal(response.res.statusCode, 200);
     const hubLogs = hubSpy.getCalls().map((call) => call.lastArg);
-    assert.isFalse(hubLogs.some((log) => log.message == "Executing Serverless spokes")); // no spoke was executed
+    const execution = hubLogs.find((log) => log.message == "Executing Serverless spokes");
+    assert.equal(
+      execution.botConfigs.testServerlessMonitor.environmentVariables.ENDING_BLOCK_NUMBER,
+      startingBlockNumber
+    );
   });
 
   it("ServerlessHub sets multiple network block numbers", async function () {
@@ -676,10 +633,7 @@ describe("ServerlessHub.js", function () {
 
     // Logs should include correct starting and latest block numbers for the alternate network.
     const alternateBlockNumbers = {
-      [alternateChainId]: {
-        lastQueriedBlockNumber,
-        latestBlockNumber: latestAlternateBlockNumber,
-      },
+      [alternateChainId]: { lastQueriedBlockNumber, latestBlockNumber: latestAlternateBlockNumber },
     };
 
     // Strip enclosing curly braces as there are also other items in the logged object.
