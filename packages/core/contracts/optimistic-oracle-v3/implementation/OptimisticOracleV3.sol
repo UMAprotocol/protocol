@@ -466,19 +466,17 @@ contract OptimisticOracleV3 is OptimisticOracleV3Interface, Lockable, Ownable, M
         return EscalationManagerInterface(em).isDisputeAllowed(assertionId, msg.sender);
     }
 
-    // Validates the identifier against the live whitelist and caches the current result.
+    // Validates the identifier against the live whitelist. Cache writes persist only for successful assertions.
     function _validateAndCacheIdentifier(bytes32 identifier) internal returns (bool) {
         cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
         return cachedIdentifiers[identifier];
     }
 
-    // Validates the currency against the live whitelist. The final fee is fetched only when adding a currency to cache.
+    // Validates the currency against the live whitelist. Existing cached fees require syncUmaParams to refresh,
+    // including after whitelist removal and re-addition: a rejected assertion cannot persist cache invalidation.
     function _validateAndCacheCurrency(address currency) internal returns (bool) {
         bool isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
-        if (!isWhitelisted) {
-            cachedCurrencies[currency].isWhitelisted = false;
-            return false;
-        }
+        if (!isWhitelisted) return false;
         if (!cachedCurrencies[currency].isWhitelisted) {
             cachedCurrencies[currency].isWhitelisted = true;
             cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;

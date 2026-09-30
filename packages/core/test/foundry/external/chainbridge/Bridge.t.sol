@@ -25,4 +25,14 @@ contract BridgeTest is Test {
         vm.expectRevert("duplicate initial relayer");
         new Bridge(1, relayers, 2, 0, 100);
     }
+
+    function test_RevertIf_NonAdjacentDuplicateInitialRelayer() public {
+        address[] memory relayers = new address[](3);
+        relayers[0] = address(0x1);
+        relayers[1] = address(0x2);
+        relayers[2] = address(0x1);
+
+        vm.expectRevert("duplicate initial relayer");
+        new Bridge(1, relayers, 2, 0, 100);
+    }
 }
