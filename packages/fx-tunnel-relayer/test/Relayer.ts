@@ -1,6 +1,7 @@
 import winston from "winston";
 import { assert } from "chai";
 import { Contract } from "web3-eth-contract";
+import type Web3 from "web3";
 import sinon from "sinon";
 import { Relayer } from "../src/Relayer";
 import { getAbi } from "@uma/contracts-node";
@@ -11,6 +12,7 @@ const { getContract, deployments, web3 } = require("hardhat");
 
 const { utf8ToHex } = web3.utils;
 const Finder = getContract("Finder");
+const Multicall = getContract("Multicall3");
 const OracleChildTunnel = getContract("OracleChildTunnel");
 const Registry = getContract("Registry");
 const OracleRootTunnel = getContract("OracleRootTunnelMock");
@@ -20,7 +22,7 @@ const FxChild = getContract("FxChildMock");
 const FxRoot = getContract("FxRootMock");
 
 // This function should return a bytes string.
-type customPayloadFn = () => Promise<string>;
+type customPayloadFn = (burnTxHash?: string, logEventSig?: string, isFast?: boolean, index?: number) => Promise<string>;
 interface MaticPosClient {
   exitUtil: {
     buildPayloadForExit: customPayloadFn;
@@ -28,6 +30,9 @@ interface MaticPosClient {
     getChainBlockInfo: () => Promise<{ lastChildBlock: number; txBlockNumber: number }>;
   };
 }
+// Builds a child-chain web3 stub that only serves transaction receipts, which is all the Relayer reads from Polygon.
+const createPolygonWeb3 = (getTransactionReceipt: (transactionHash: string) => Promise<any>): Web3 =>
+  (({ eth: { getTransactionReceipt } } as unknown) as Web3);
 describe("Relayer unit tests", function () {
   let spyLogger: any;
   let spy: any;
@@ -36,6 +41,11 @@ describe("Relayer unit tests", function () {
   let checkpointManager: string;
   let owner: any;
   let maticPosClient: MaticPosClient;
+  // Child-chain provider passed to the Relayer. It is distinct from the hardhat `web3` used for the parent chain so that
+  // a regression reading Polygon data through the parent-chain instance fails these tests. Receipts are served from the
+  // local network, where the child-chain contracts are deployed, and each lookup is recorded.
+  let polygonWeb3: Web3;
+  let polygonReceiptLookups: string[];
   const testIdentifier = utf8ToHex("TEST");
   const testTimestamp = 100;
   const testAncillaryData = utf8ToHex("key:value");
@@ -107,12 +117,29 @@ describe("Relayer unit tests", function () {
       },
     };
 
+    polygonReceiptLookups = [];
+    polygonWeb3 = createPolygonWeb3(async (transactionHash) => {
+      polygonReceiptLookups.push(transactionHash);
+      return web3.eth.getTransactionReceipt(transactionHash);
+    });
+
     // Save to hre.deployments so that client can fetch contract addresses via getAddress.
     deployments.save("OracleChildTunnel", { address: oracleChild.options.address, abi: getAbi("OracleChildTunnel") });
     deployments.save("OracleRootTunnel", { address: oracleChild.options.address, abi: getAbi("OracleRootTunnel") });
 
     // Construct Relayer that should relay messages without fail.
-    relayer = new Relayer(spyLogger, owner, gasEstimator, maticPosClient, oracleChild, oracleRoot, web3, 0, 100);
+    relayer = new Relayer(
+      spyLogger,
+      owner,
+      gasEstimator,
+      maticPosClient,
+      oracleChild,
+      oracleRoot,
+      web3,
+      polygonWeb3,
+      0,
+      100
+    );
   });
 
   it("exits without error if no MessageSent events emitted", async function () {
@@ -141,6 +168,102 @@ describe("Relayer unit tests", function () {
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
   });
+  it("relays all messages when a transaction contains multiple MessageSent events", async function () {
+    // Bundle two price requests into a single transaction via a registered multicall contract so that one
+    // transaction emits two MessageSent events.
+    const multicall = await Multicall.new().send({ from: owner });
+    await registry.methods.registerContract([], multicall.options.address).send({ from: owner });
+    await multicall.methods
+      .aggregate([
+        [
+          oracleChild.options.address,
+          oracleChild.methods.requestPrice(testIdentifier, testTimestamp, utf8ToHex("request:1")).encodeABI(),
+        ],
+        [
+          oracleChild.options.address,
+          oracleChild.methods.requestPrice(testIdentifier, testTimestamp, utf8ToHex("request:2")).encodeABI(),
+        ],
+      ])
+      .send({ from: owner });
+    const eventsEmitted = await oracleChild.getPastEvents("MessageSent", { fromBlock: 0 });
+    assert.equal(eventsEmitted.length, 2);
+    assert.equal(eventsEmitted[0].transactionHash, eventsEmitted[1].transactionHash);
+
+    // Record the message index passed to the proof builder for each relayed message: each message must be proven
+    // at its own position among the transaction's MessageSent logs, not just the first one.
+    const provenIndices: (number | undefined)[] = [];
+    const _maticPosClient: MaticPosClient = {
+      exitUtil: {
+        buildPayloadForExit: async (_burnTxHash?: string, _logEventSig?: string, _isFast?: boolean, index?: number) => {
+          provenIndices.push(index);
+          return utf8ToHex("Test proof");
+        },
+        isCheckPointed: async () => new Promise((resolve) => resolve(true)),
+        getChainBlockInfo: async () => new Promise((resolve) => resolve({ lastChildBlock: 0, txBlockNumber: 0 })),
+      },
+    };
+    const _relayer: any = new Relayer(
+      spyLogger,
+      owner,
+      gasEstimator,
+      _maticPosClient,
+      oracleChild,
+      oracleRoot,
+      web3,
+      polygonWeb3,
+      0,
+      100
+    );
+    await _relayer.fetchAndRelayMessages();
+
+    assert.deepEqual(provenIndices, [0, 1]);
+    // The receipt must be read from the child-chain provider, once per transaction.
+    assert.deepEqual(polygonReceiptLookups, [eventsEmitted[0].transactionHash]);
+    const infoEvents = spy.getCalls().filter((log: any) => log.lastArg.level === "info");
+    assert.equal(infoEvents.length, 2);
+    assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
+  });
+  it("logs error and continues when a MessageSent transaction receipt cannot be fetched", async function () {
+    // Emit three MessageSent events, each in its own transaction.
+    const txnHashes: string[] = [];
+    for (const ancillaryData of ["request:1", "request:2", "request:3"]) {
+      const txn = await oracleChild.methods
+        .requestPrice(testIdentifier, testTimestamp, utf8ToHex(ancillaryData))
+        .send({ from: owner });
+      txnHashes.push(txn.transactionHash);
+    }
+
+    // The child-chain provider returns no receipt for the first transaction (e.g. after a reorg or while the node is
+    // lagging) and fails the lookup for the second, but serves the third.
+    const _polygonWeb3 = createPolygonWeb3(async (transactionHash) => {
+      if (transactionHash === txnHashes[0]) return null;
+      if (transactionHash === txnHashes[1]) throw new Error("Receipt lookup failed");
+      return web3.eth.getTransactionReceipt(transactionHash);
+    });
+    const _relayer: any = new Relayer(
+      spyLogger,
+      owner,
+      gasEstimator,
+      maticPosClient,
+      oracleChild,
+      oracleRoot,
+      web3,
+      _polygonWeb3,
+      0,
+      100
+    );
+    await _relayer.fetchAndRelayMessages();
+
+    // Both failed lookups are logged, and the remaining message is still relayed.
+    const errorEvents = spy.getCalls().filter((log: any) => log.lastArg.level === "error");
+    assert.equal(errorEvents.length, 2);
+    errorEvents.forEach((log: any) =>
+      assert.include(log.lastArg.message, "Failed to fetch receipt for MessageSent transaction hash")
+    );
+    const infoEvents = spy.getCalls().filter((log: any) => log.lastArg.level === "info");
+    assert.equal(infoEvents.length, 1);
+    assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
+  });
   it("ignores events older than earliest polygon block to query", async function () {
     const txn = await oracleChild.methods
       .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
@@ -165,6 +288,7 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
+      polygonWeb3,
       100,
       101
     );
@@ -194,6 +318,7 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
+      polygonWeb3,
       0,
       100
     );
@@ -225,6 +350,7 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
+      polygonWeb3,
       0,
       100
     );

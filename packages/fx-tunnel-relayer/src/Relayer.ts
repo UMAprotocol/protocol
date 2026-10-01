@@ -16,6 +16,7 @@ export class Relayer {
     readonly oracleChildTunnel: Contract,
     readonly oracleRootTunnel: Contract,
     readonly web3: Web3,
+    readonly polygonWeb3: Web3,
     readonly polygonEarliestBlockToQuery: number,
     readonly polygonLatestBlockToQuery: number
   ) {}
@@ -54,8 +55,28 @@ export class Relayer {
     // For any found events, grab its block number and check whether it has been checkpointed yet to the
     // CheckpointManager on Ethereum.
     if (messageSentEvents.length > 0) {
+      // A single Polygon transaction can contain multiple MessageSent events, e.g. two price requests bridged
+      // atomically. matic.js builds the exit proof for the i-th log matching the MessageSent signature within the
+      // transaction (defaulting to the first one), so each event must be proven at its own index or every event in
+      // the transaction would produce a proof for the first message and the rest would never be relayed.
+      const messageSentLogIndicesByTxHash: { [transactionHash: string]: number[] } = {};
       for (const e of messageSentEvents) {
-        await this._relayMessage(e);
+        if (messageSentLogIndicesByTxHash[e.transactionHash] === undefined) {
+          const logIndices = await this._getMessageSentLogIndices(e.transactionHash);
+          if (logIndices === undefined) continue;
+          messageSentLogIndicesByTxHash[e.transactionHash] = logIndices;
+        }
+        const messageIndex = messageSentLogIndicesByTxHash[e.transactionHash].indexOf(e.logIndex);
+        if (messageIndex === -1) {
+          this.logger.error({
+            at: "Relayer#relayMessage",
+            message: "Could not find MessageSent event's log index in its transaction receipt 📛",
+            transactionHash: e.transactionHash,
+            logIndex: e.logIndex,
+          });
+          continue;
+        }
+        await this._relayMessage(e, messageIndex);
       }
     } else {
       this.logger.debug({
@@ -66,10 +87,33 @@ export class Relayer {
     }
   }
 
+  // Returns the log indices of all MessageSent events in a Polygon transaction, in order. The receipt is read from the
+  // Polygon provider since the transaction lives on the child chain. Returns undefined, after logging, if the receipt
+  // cannot be fetched (e.g. after a reorg or when the node is lagging) so the caller can move on to the next event.
+  async _getMessageSentLogIndices(transactionHash: string): Promise<number[] | undefined> {
+    let receipt;
+    try {
+      receipt = await this.polygonWeb3.eth.getTransactionReceipt(transactionHash);
+      if (!receipt) throw new Error("Transaction receipt not found");
+    } catch (error) {
+      this.logger.error({
+        at: "Relayer#relayMessage",
+        message: "Failed to fetch receipt for MessageSent transaction hash 📛",
+        transactionHash,
+        error,
+      });
+      return undefined;
+    }
+    return receipt.logs
+      .filter((log) => log.topics.length > 0 && log.topics[0].toLowerCase() === POLYGON_MESSAGE_SENT_EVENT_SIG)
+      .map((log) => log.logIndex);
+  }
+
   // First check if the transaction hash corresponding to the MessageSent event has been checkpointed to Ethereum
   // Mainnet yet. If it has, then derive a Polygon-specific proof for it and execute OracleRootTunnel.receiveMessage
-  // by passing in the proof as input.
-  async _relayMessage(messageEvent: EventData): Promise<void> {
+  // by passing in the proof as input. `messageIndex` is the position of this event among all logs matching the
+  // MessageSent signature in the transaction, used to prove the correct log when a transaction contains several.
+  async _relayMessage(messageEvent: EventData, messageIndex: number): Promise<void> {
     const transactionHash = messageEvent.transactionHash;
     const blockNumber = messageEvent.blockNumber;
 
@@ -91,6 +135,7 @@ export class Relayer {
       message: "Deriving proof for transaction that emitted MessageSent",
       transactionHash: transactionHash,
       blockNumber,
+      messageIndex,
     });
 
     let chainBlockInfo; // Only used for debugging purposes upon error.
@@ -102,7 +147,8 @@ export class Relayer {
       proof = await this.maticPosClient.exitUtil.buildPayloadForExit(
         transactionHash,
         POLYGON_MESSAGE_SENT_EVENT_SIG, // SEND_MESSAGE_EVENT_SIG, do not change
-        false
+        false,
+        messageIndex
       );
       if (!proof) throw new Error("Proof construction succeeded but returned undefined");
     } catch (error) {
@@ -135,10 +181,19 @@ export class Relayer {
         message: "Submitted relay proof!🕴🏼",
         tx: transactionHash,
         messageEvent,
+        messageIndex,
       });
     } catch (error) {
       // If the proof was already submitted, then don't emit an error level log.
-      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) return;
+      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) {
+        this.logger.debug({
+          at: "Relayer#relayMessage",
+          message: "Exit proof already processed by root tunnel, skipping",
+          transactionHash,
+          messageIndex,
+        });
+        return;
+      }
       this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to submit proof to root tunnel🚨",

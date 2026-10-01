@@ -94,6 +94,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       oracleChildTunnel,
       oracleRootTunnel,
       web3,
+      polygonWeb3,
       polygonEarliestBlockToQuery,
       polygonCurrentBlock.number
     );
