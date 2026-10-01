@@ -16,6 +16,7 @@ export class Relayer {
     readonly oracleChildTunnel: Contract,
     readonly oracleRootTunnel: Contract,
     readonly web3: Web3,
+    readonly polygonWeb3: Web3,
     readonly polygonEarliestBlockToQuery: number,
     readonly polygonLatestBlockToQuery: number
   ) {}
@@ -61,10 +62,9 @@ export class Relayer {
       const messageSentLogIndicesByTxHash: { [transactionHash: string]: number[] } = {};
       for (const e of messageSentEvents) {
         if (messageSentLogIndicesByTxHash[e.transactionHash] === undefined) {
-          const receipt = await this.web3.eth.getTransactionReceipt(e.transactionHash);
-          messageSentLogIndicesByTxHash[e.transactionHash] = receipt.logs
-            .filter((log) => log.topics.length > 0 && log.topics[0].toLowerCase() === POLYGON_MESSAGE_SENT_EVENT_SIG)
-            .map((log) => log.logIndex);
+          const logIndices = await this._getMessageSentLogIndices(e.transactionHash);
+          if (logIndices === undefined) continue;
+          messageSentLogIndicesByTxHash[e.transactionHash] = logIndices;
         }
         const messageIndex = messageSentLogIndicesByTxHash[e.transactionHash].indexOf(e.logIndex);
         if (messageIndex === -1) {
@@ -85,6 +85,28 @@ export class Relayer {
       });
       return;
     }
+  }
+
+  // Returns the log indices of all MessageSent events in a Polygon transaction, in order. The receipt is read from the
+  // Polygon provider since the transaction lives on the child chain. Returns undefined, after logging, if the receipt
+  // cannot be fetched (e.g. after a reorg or when the node is lagging) so the caller can move on to the next event.
+  async _getMessageSentLogIndices(transactionHash: string): Promise<number[] | undefined> {
+    let receipt;
+    try {
+      receipt = await this.polygonWeb3.eth.getTransactionReceipt(transactionHash);
+      if (!receipt) throw new Error("Transaction receipt not found");
+    } catch (error) {
+      this.logger.error({
+        at: "Relayer#relayMessage",
+        message: "Failed to fetch receipt for MessageSent transaction hash 📛",
+        transactionHash,
+        error,
+      });
+      return undefined;
+    }
+    return receipt.logs
+      .filter((log) => log.topics.length > 0 && log.topics[0].toLowerCase() === POLYGON_MESSAGE_SENT_EVENT_SIG)
+      .map((log) => log.logIndex);
   }
 
   // First check if the transaction hash corresponding to the MessageSent event has been checkpointed to Ethereum
