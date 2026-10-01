@@ -447,10 +447,14 @@ const _fetchConfig = async (bucket, file) => {
   }
 
   // If the config contains a "commonConfig" field, append it it to all configs downstream and then remove common config
-  // from the final config object. The config for a given bot will take precedence for each key. Use deep merge.
+  // from the final config object. Replace RPC retry lists so shorter overrides cannot inherit another chain's URLs.
+  // Preserve the existing deep-merge behavior for other configuration fields.
   if (Object.keys(config).includes("commonConfig")) {
     for (let configKey in config) {
-      if (configKey != "commonConfig") config[configKey] = lodash.merge({}, config.commonConfig, config[configKey]);
+      if (configKey != "commonConfig")
+        config[configKey] = lodash.mergeWith({}, config.commonConfig, config[configKey], (objValue, srcValue, key) => {
+          if (key === "NODE_RETRY_CONFIG" && Array.isArray(srcValue)) return srcValue;
+        });
     }
     delete config.commonConfig;
   }
