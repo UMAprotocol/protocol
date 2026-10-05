@@ -6,6 +6,7 @@ import {
 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
 import { RequestResolvedEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
 import { BigNumber, utils } from "ethers";
+import { tryHexToUtf8String } from "../utils/contracts";
 import { logPricePublished } from "./BotLogger";
 import {
   ARBITRUM_CHAIN_ID,
@@ -144,7 +145,11 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
   );
 
   for (const event of resolvedEvents) {
-    const decodedAncillary = utils.toUtf8String(event.args.ancillaryData);
+    // Safe decode: ancillaryData is caller-supplied bytes (OOv2/OOv3 requests are permissionless and are
+    // never validated as text), so utils.toUtf8String() throws on non-UTF-8 input and would abort the whole
+    // poll loop. tryHexToUtf8String returns the hex string unchanged on failure, which then simply does not
+    // match any of the childChainId suffixes below.
+    const decodedAncillary = tryHexToUtf8String(event.args.ancillaryData);
     const isPolygon = decodedAncillary.endsWith(`,childChainId:${POLYGON_CHAIN_ID}`);
     const isArbitrum = decodedAncillary.endsWith(`,childChainId:${ARBITRUM_CHAIN_ID}`);
     const isOptimism = decodedAncillary.endsWith(`,childChainId:${OPTIMISM_CHAIN_ID}`);
