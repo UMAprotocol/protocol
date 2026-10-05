@@ -327,7 +327,7 @@ hub.post("/", async (req, res) => {
       logger.debug({ at: "ServerlessHub", message: `Bot ${botName} succeeded`, output });
     }
 
-    await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
+    await delay(waitForLoggerDelay); // Wait a few seconds to be sure the winston logs are processed upstream.
     res
       .status(200)
       .send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs, retriedOutputs } });
@@ -371,7 +371,7 @@ hub.post("/", async (req, res) => {
       });
     }
 
-    await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
+    await delay(waitForLoggerDelay); // Wait a few seconds to be sure the winston logs are processed upstream.
     res.status(500).send({
       message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
       output: errorOutput instanceof Error ? errorOutput.message : errorOutput,

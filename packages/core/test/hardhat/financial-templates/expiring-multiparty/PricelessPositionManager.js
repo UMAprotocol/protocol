@@ -2967,7 +2967,7 @@ describe("PricelessPositionManager", function () {
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
   });
   it("Optimistic oracle dispute lifecycle", async function () {
-    // Ensure that a disputed optimistic oracle price request moves the the lifecycle using the expected flow.
+    // Ensure that a disputed optimistic oracle price request moves the lifecycle using the expected flow.
 
     await collateral.methods.approve(pricelessPositionManager.options.address, toWei("100000")).send({ from: sponsor });
     const numTokens = toWei("100");
