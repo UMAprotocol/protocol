@@ -30,6 +30,7 @@
 import winston from "winston";
 import { PagerDutyTransport } from "./PagerDutyTransport";
 import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
+import { validatePagerDutyEvent } from "../shared/PagerDutyV2Transport";
 import { TransportError } from "./TransportError";
 import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
@@ -51,23 +52,59 @@ function isFlushableTransport(transport: Transport): transport is FlushableTrans
   return "isFlushed" in transport && typeof transport.isFlushed === "boolean";
 }
 
-// Function to check that all flushable transports attached to logger are in a flushed state.
-function isLoggerFlushed(logger: AugmentedLogger): boolean {
-  return logger.transports.filter(isFlushableTransport).every((transport) => transport.isFlushed);
+interface MandatoryFlushTransport extends FlushableTransport {
+  flush(): Promise<void>;
 }
 
-// This async function can be called by a bot if the log message is generated right before the process terminates.
-// This method will check if all transports attached to AugmentedLogger having isFlushed getter return it as true. If
-// not, it will block until such time that all these transports have been flushed. This still can exit before all
-// transports are flushed if the logger flush timeout is reached for non-persistent log queue transports.
-export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
-  const waitForFlushed = async (): Promise<void> => {
-    while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
-  };
-  // Wait for the logger to be flushed or for the logger flush timeout to be reached.
-  await Promise.race([waitForFlushed(), delay(logger.flushTimeout)]);
+function hasMandatoryFlush(transport: Transport): transport is MandatoryFlushTransport {
+  return isFlushableTransport(transport) && "flush" in transport && typeof transport.flush === "function";
+}
 
-  // Signal to pause log queue processing on persistent queue transports. This waits for current element to be logged.
+// A transport can appear empty while Winston is still buffering records upstream of it.
+function hasBufferedLoggerWrites(logger: _Logger): boolean {
+  return logger.writableLength > 0 || logger.readableLength > 0;
+}
+
+function isLoggerFlushed(logger: AugmentedLogger): boolean {
+  return (
+    !hasBufferedLoggerWrites(logger) &&
+    logger.transports.filter(isFlushableTransport).every((transport) => transport.isFlushed)
+  );
+}
+
+// Recovery is delivered only to PagerDuty V2, never broadcast as an error or Slack message.
+// Await this call and retain recovery state on rejection so a later iteration can retry.
+export async function resolvePagerDutyIncident(
+  logger: _Logger,
+  dedupKey: string,
+  notificationPath?: string
+): Promise<void> {
+  validatePagerDutyEvent({ pagerDutyEventAction: "resolve", pagerDutyDedupKey: dedupKey });
+  const transports = logger.transports.filter(
+    (transport): transport is PagerDutyV2Transport => transport instanceof PagerDutyV2Transport && !transport.silent
+  );
+  if (transports.length === 0 || logger.silent) return;
+  // Prior triggers may still be waiting for space in a transport's Writable buffer.
+  while (hasBufferedLoggerWrites(logger)) await delay(0.01);
+  await Promise.all(transports.map((transport) => transport.resolveIncident(dedupKey, notificationPath)));
+}
+
+// Persistent transports may stop after the ordinary timeout. In-memory delivery queues with
+// flush() must drain completely before a bot exits, including records still buffered by Winston.
+export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
+  const deadline = Date.now() + logger.flushTimeout * 1000;
+  while (!isLoggerFlushed(logger) && Date.now() < deadline) {
+    await delay(Math.min(0.5, Math.max(0, deadline - Date.now()) / 1000));
+  }
+
+  const mandatoryTransports = logger.transports.filter(hasMandatoryFlush);
+  if (mandatoryTransports.length > 0) {
+    do {
+      await Promise.all(mandatoryTransports.map((transport) => transport.flush()));
+      if (hasBufferedLoggerWrites(logger)) await delay(0.01);
+    } while (hasBufferedLoggerWrites(logger) || mandatoryTransports.some((transport) => !transport.isFlushed));
+  }
+
   await pausePersistentLogQueueProcessing(logger.transports);
 }
 

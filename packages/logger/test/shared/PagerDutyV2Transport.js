@@ -1,5 +1,11 @@
 const { assert } = require("chai");
-const { createConfig, convertLevelToSeverity } = require("../../dist/shared/PagerDutyV2Transport.js");
+const sinon = require("sinon");
+const pdEvents = require("@pagerduty/pdjs/build/src/events");
+const {
+  createConfig,
+  convertLevelToSeverity,
+  sendPagerDutyEvent,
+} = require("../../dist/shared/PagerDutyV2Transport.js");
 
 describe("PagerDuty V2 Shared Utilities", function () {
   describe("createConfig", function () {
@@ -106,8 +112,125 @@ describe("PagerDuty V2 Shared Utilities", function () {
     });
   });
 
-  // Note: sendPagerDutyEvent integration with actual PagerDuty API is tested indirectly
-  // through Winston and Pino transport tests where the function is properly stubbed.
-  // Testing the actual API call would require real API credentials and is better suited
-  // for integration tests run separately from unit tests.
+  describe("sendPagerDutyEvent lifecycle", function () {
+    let eventStub;
+    beforeEach(function () {
+      eventStub = sinon.stub(pdEvents, "event").resolves({ ok: true, status: 202 });
+    });
+    afterEach(function () {
+      eventStub.restore();
+    });
+
+    it("preserves ordinary triggers without a deduplication key", async function () {
+      await sendPagerDutyEvent("route", { level: "error", at: "Bot", message: "Failure" });
+      const { data } = eventStub.firstCall.args[0];
+      assert.equal(data.event_action, "trigger");
+      assert.notProperty(data, "dedup_key");
+      assert.equal(data.payload.summary, "error: Bot ⭢ Failure");
+    });
+
+    it("adds the stable key to opt-in triggers", async function () {
+      await sendPagerDutyEvent("route", {
+        level: "error",
+        at: "Bot",
+        message: "Failure",
+        pagerDutyDedupKey: "bot:failure",
+      });
+      assert.equal(eventStub.firstCall.args[0].data.dedup_key, "bot:failure");
+      assert.equal(eventStub.firstCall.args[0].data.event_action, "trigger");
+    });
+
+    it("sends only routing, action, and deduplication key for recovery", async function () {
+      await sendPagerDutyEvent("route", { pagerDutyEventAction: "resolve", pagerDutyDedupKey: "bot:failure" });
+      assert.deepEqual(eventStub.firstCall.args[0].data, {
+        routing_key: "route",
+        event_action: "resolve",
+        dedup_key: "bot:failure",
+      });
+    });
+
+    it("rejects missing or invalid recovery keys and unsupported actions before sending", async function () {
+      for (const fields of [
+        { pagerDutyEventAction: "resolve" },
+        { pagerDutyDedupKey: "" },
+        { pagerDutyDedupKey: "   " },
+        { pagerDutyDedupKey: 123 },
+        { pagerDutyDedupKey: "x".repeat(256) },
+        { pagerDutyDedupKey: "é".repeat(128) },
+        { pagerDutyEventAction: "acknowledge" },
+        { pagerDutyEventAction: null },
+      ]) {
+        let error;
+        try {
+          await sendPagerDutyEvent("route", fields);
+        } catch (caught) {
+          error = caught;
+        }
+        assert.instanceOf(error, Error);
+      }
+      assert.isTrue(eventStub.notCalled);
+    });
+
+    it("accepts a 255-byte key", async function () {
+      await sendPagerDutyEvent("route", { pagerDutyEventAction: "resolve", pagerDutyDedupKey: "x".repeat(255) });
+      assert.isTrue(eventStub.calledOnce);
+    });
+
+    it("aborts a hanging request after 30 seconds and disables the ineffective pdjs timer", async function () {
+      const clock = sinon.useFakeTimers();
+      try {
+        eventStub.callsFake(
+          ({ signal }) =>
+            new Promise((resolve, reject) => {
+              signal.addEventListener("abort", () => reject(new Error("request aborted")), { once: true });
+            })
+        );
+        const delivery = sendPagerDutyEvent("route", {
+          pagerDutyEventAction: "resolve",
+          pagerDutyDedupKey: "bot:failure",
+        });
+        const result = delivery.then(
+          () => undefined,
+          (error) => error
+        );
+        const request = eventStub.firstCall.args[0];
+        assert.equal(request.requestTimeout, 0);
+        await clock.tickAsync(29999);
+        assert.isFalse(request.signal.aborted);
+        await clock.tickAsync(1);
+        assert.isTrue(request.signal.aborted);
+        const error = await result;
+        assert.instanceOf(error, Error);
+        assert.equal(error.message, "request aborted");
+        assert.equal(clock.countTimers(), 0);
+      } finally {
+        clock.restore();
+      }
+    });
+
+    it("clears the abort timer after a successful request", async function () {
+      const clock = sinon.useFakeTimers();
+      try {
+        await sendPagerDutyEvent("route", { level: "error", at: "Bot", message: "Failure" });
+        const { signal } = eventStub.firstCall.args[0];
+        assert.equal(clock.countTimers(), 0);
+        await clock.tickAsync(30000);
+        assert.isFalse(signal.aborted);
+      } finally {
+        clock.restore();
+      }
+    });
+
+    it("reports HTTP failures instead of claiming recovery was accepted", async function () {
+      eventStub.resolves({ ok: false, status: 429 });
+      let error;
+      try {
+        await sendPagerDutyEvent("route", { pagerDutyEventAction: "resolve", pagerDutyDedupKey: "bot:failure" });
+      } catch (caught) {
+        error = caught;
+      }
+      assert.instanceOf(error, Error);
+      assert.include(error.message, "429");
+    });
+  });
 });

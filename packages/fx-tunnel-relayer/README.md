@@ -59,3 +59,24 @@ const proof = await posClient.exitUtil.buildPayloadForExit(
 - Detect `MessageSent` events emitted by the `OracleChildTunnel` on Polygon whenever a cross-chain price request is submitted to it, usually by the `OptimisticOracle` but can be sent by any registered contract.
 - Attempt to construct a proof for the transaction hashes containing the `MessageSent` events. This step will fail and exit silently if the hash has not been checkpointed to Ethereum yet.
 - Include the proof in a `receiveMessage` function call to the `OracleRootTunnel`. This step will fail and exit silently if the proof has already been included in a call.
+
+# Nonce conflicts and recovery
+
+The relayer keeps the existing wallet configuration. Explicit submission rejections (`NONCE_EXPIRED`,
+`REPLACEMENT_UNDERPRICED`, `nonce too low`, or `replacement transaction underpriced`) receive at most
+three attempts, waiting 15 seconds and then 30 seconds plus up to 250ms jitter. Each attempt simulates
+`receiveMessage` again and reads the pending Ethereum nonce directly, bypassing the local nonce cache.
+Retry warnings do not page; exhausting the attempts still emits an error and pages through the configured
+PagerDuty transport. Timeouts, already-known transactions, receipt failures, and unrelated reverts are
+not retried by this nonce recovery mechanism.
+
+Proof and submission failures use a PagerDuty deduplication key containing the root tunnel address,
+Polygon transaction hash, and event log index, so messages within a single transaction remain distinct.
+A successful receipt or an `EXIT_ALREADY_PROCESSED` simulation resolves only that message's incident.
+PagerDuty resolution failures are warnings and do not change the confirmed chain outcome. Skipped runs,
+uncheckpointed messages, and unknown RPC errors do not resolve incidents. Receipt lookup failures retain
+error paging. The process waits for logger transports before exiting on success or failure.
+
+Recovery on later runs depends on rediscovering the event within the configured lookback window. This
+bounded event lookup is not a durable cross-run backlog; messages outside that window require an explicit
+lookback adjustment or operator recovery.

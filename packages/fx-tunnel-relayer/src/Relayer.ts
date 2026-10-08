@@ -1,5 +1,6 @@
 import { Contract, EventData } from "web3-eth-contract";
-import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
+import { runTransaction, getEventsWithPaginatedBlockSearch, retryOnNonceConflict } from "@uma/common";
+import { resolvePagerDutyIncident } from "@uma/financial-templates-lib";
 import type Web3 from "web3";
 
 // Used by Matic/Polygon PoS client to construct proof for arbitrary message from Polygon that can be submitted to
@@ -116,6 +117,9 @@ export class Relayer {
   async _relayMessage(messageEvent: EventData, messageIndex: number): Promise<void> {
     const transactionHash = messageEvent.transactionHash;
     const blockNumber = messageEvent.blockNumber;
+    const pagerDutyDedupKey = `fx-tunnel-relayer:${this.oracleRootTunnel.options.address.toLowerCase()}:${transactionHash.toLowerCase()}:${
+      messageEvent.logIndex
+    }`;
 
     const isCheckpointed = await this.maticPosClient.exitUtil.isCheckPointed(transactionHash);
     if (!isCheckpointed) {
@@ -155,6 +159,7 @@ export class Relayer {
       this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to derive proof for MessageSent transaction hash 📛",
+        pagerDutyDedupKey,
         messageEvent,
         chainBlockInfo,
         error,
@@ -170,22 +175,44 @@ export class Relayer {
       account: this.account,
     });
     try {
-      const { transactionHash } = await runTransaction({
-        web3: this.web3,
-        transaction: this.oracleRootTunnel.methods.receiveMessage(proof),
-        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
-        availableAccounts: 1,
-      });
+      const { transactionHash: relayTransactionHash, receipt } = await retryOnNonceConflict(
+        () =>
+          runTransaction({
+            web3: this.web3,
+            // Re-simulate on every attempt, including detecting another relayer's completed exit.
+            transaction: this.oracleRootTunnel.methods.receiveMessage(proof),
+            transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
+            availableAccounts: 1,
+            useCachedNonce: false,
+            waitForMine: false,
+          }),
+        (_error, attempt) =>
+          this.logger.warn({
+            at: "Relayer#relayMessage",
+            message: "Relay nonce rejected; rechecking proof and pending nonce before retry",
+            transactionHash,
+            messageIndex,
+            attempt,
+          })
+      );
+      // Once accepted, a receipt failure must never trigger another submission.
+      const minedReceipt = await receipt;
+      if (!minedReceipt.status) throw new Error("Relay transaction receipt reported failure");
+      await this._resolveRelayIncident(pagerDutyDedupKey);
       this.logger.info({
         at: "Relayer#relayMessage",
         message: "Submitted relay proof!🕴🏼",
-        tx: transactionHash,
+        tx: relayTransactionHash,
         messageEvent,
         messageIndex,
       });
     } catch (error) {
       // If the proof was already submitted, then don't emit an error level log.
-      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) {
+      if (
+        (error as Error & { type?: string })?.type === "call" &&
+        (error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")
+      ) {
+        await this._resolveRelayIncident(pagerDutyDedupKey);
         this.logger.debug({
           at: "Relayer#relayMessage",
           message: "Exit proof already processed by root tunnel, skipping",
@@ -197,9 +224,26 @@ export class Relayer {
       this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to submit proof to root tunnel🚨",
+        pagerDutyDedupKey,
+        transactionHash,
+        messageIndex,
         error,
       });
       return;
+    }
+  }
+
+  async _resolveRelayIncident(pagerDutyDedupKey: string): Promise<void> {
+    try {
+      await resolvePagerDutyIncident(this.logger, pagerDutyDedupKey);
+    } catch (error) {
+      // A PagerDuty outage must not turn a confirmed exit into a failed relay.
+      this.logger.warn({
+        at: "Relayer#relayMessage",
+        message: "Relay completed but PagerDuty incident resolution failed",
+        pagerDutyDedupKey,
+        error,
+      });
     }
   }
 }

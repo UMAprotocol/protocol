@@ -28,3 +28,28 @@ All the configuration should be provided with following environment variables:
   See default values in blockDefaults in index.ts
 - `MAX_BLOCK_LOOKBACK`(Optional) is the maximum number of blocks to look back per query.
   See default values in blockDefaults in index.ts
+
+### Transaction recovery and paging
+
+When both modes are enabled, the resolution phase completes before publication starts. Individual
+publication failures do not prevent later requests from being attempted. After processing the batch,
+any unsuccessful requests cause a nonzero exit; their per-request incidents replace the duplicate
+batch error page. Setup, RPC scan and resolution-phase failures still page at the execution level.
+
+Resolution and publication retry only explicit nonce-too-low / replacement-underpriced submission
+rejections, with at most three total attempts and 15s/30s backoff plus up to 250ms jitter. Each publication
+attempt rechecks `PushedPrice` and fetches a fresh pending nonce. Receipt waiting occurs after the
+retry block: timeouts, reverts, already-known transactions and uncertain broadcasts never cause an
+automatic resubmission. A publication observed on-chain after an error is treated as recovered.
+
+Persistent publication failures use stable PagerDuty keys containing source chain, destination oracle
+and request hash. A confirmed publication or an existing matching `PushedPrice` event resolves that
+request's incident, including on later scheduled scans. A failed recovery notification logs a warning
+and can be retried on the next scan. A request that ages out of `BLOCK_LOOKBACK` is not presumed
+recovered; its incident requires reconciliation. Resolving previously published requests adds
+PagerDuty API traffic proportional to the scan's published requests. Wallet configuration is unchanged;
+other processes can still race for the same nonce. The bounded retries mitigate that contention but
+do not provide cross-process nonce allocation.
+
+This does not introduce a 30-minute suppression window or reduce pages for unknown errors: a failure
+that survives the bounded retry attempts still escalates.

@@ -55,7 +55,28 @@ export const SLACK_MAX_POST_RETRIES = 2;
 export const SLACK_MAX_RETRY_DELAY_SECONDS = 60;
 
 const SLACK_DEFAULT_RETRY_DELAY_SECONDS = 1;
+const SLACK_POST_INTERVAL_MS = 1000;
+const SLACK_RETRY_JITTER_MS = 250;
+const SLACK_HTTP_TIMEOUT_MS = 10000;
 const SLACK_RATE_LIMIT_STATUS_CODE = 429;
+
+interface WebhookQueue {
+  tail: Promise<void>;
+  nextPostAt: number;
+}
+
+// All transports in this process share pacing and cooldowns for a given webhook. Keep the last deadline even when
+// idle, so a new transport or a newly queued message cannot bypass a previous request's rate limit.
+const webhookQueues = new Map<string, WebhookQueue>();
+
+function getWebhookQueue(webhookUrl: string): WebhookQueue {
+  let queue = webhookQueues.get(webhookUrl);
+  if (!queue) {
+    queue = { tail: Promise.resolve(), nextPostAt: 0 };
+    webhookQueues.set(webhookUrl, queue);
+  }
+  return queue;
+}
 
 // Note: info is any because it comes directly from winston.
 function slackFormatter(info: any): SlackFormatterResponse {
@@ -171,6 +192,7 @@ class SlackHook extends Transport {
   private readonly formatter: (info: any) => SlackFormatterResponse;
   private readonly mrkdwn: boolean;
   private readonly axiosInstance: AxiosInstance;
+  private pendingLogs = 0;
 
   constructor(opts: Options) {
     super(opts);
@@ -182,49 +204,84 @@ class SlackHook extends Transport {
     this.mrkdwn = opts.mrkdwn || false;
     this.axiosInstance = axios.create({
       proxy: opts.proxy,
+      timeout: SLACK_HTTP_TIMEOUT_MS,
       validateStatus: (status) => {
         return status == 200;
       },
     });
   }
 
-  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
-    try {
-      // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
-      // different slack channels depending on the context of the log.
-      const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
+  get isFlushed(): boolean {
+    // Winston may still have buffered writes that have not reached log().
+    return this.pendingLogs === 0 && this.writableLength === 0;
+  }
 
-      const payload: SlackPayload = { mrkdwn: this.mrkdwn };
-      const layout = this.formatter(info);
-      const blocks = layout.blocks || [];
-      payload.blocks = blocks;
-      // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
-      if (JSON.stringify(payload).length < SLACK_MAX_CHAR_LIMIT) {
-        await postWithRetry(this.axiosInstance, webhookUrl, payload);
-      } else {
-        // Iterate over each message to send and generate a axios call for each message.
-        for (const processedBlock of processMessageBlocks(blocks)) {
-          payload.blocks = processedBlock;
-          await postWithRetry(this.axiosInstance, webhookUrl, payload);
-        }
-      }
-    } catch (error) {
-      return callback(new TransportError("Slack", error, info));
-    }
+  async flush(): Promise<void> {
+    // Unlike the general logger timeout, this waits until every queued/in-flight Slack attempt has settled.
+    while (!this.isFlushed) await delay(0.05);
+  }
+
+  async log(info: any, callback: (error?: unknown) => void): Promise<void> {
+    this.pendingLogs++;
+    const delivery = this.deliver(info);
+    // Acknowledge enqueueing to Winston. Passing delivery failures to its write callback strands buffered writes;
+    // report those asynchronously via the transport's error event, with flush() responsible for awaiting delivery.
     callback();
+    try {
+      await delivery;
+    } catch (error) {
+      // Axios messages, stacks, configs and even non-Error throws may contain the secret webhook URL. Report only
+      // the status rather than forwarding that object to another transport or console.
+      const status = getErrorStatus(error);
+      const safeError = new Error(`Slack webhook delivery failed${status === undefined ? "" : ` (HTTP ${status})`}`);
+      this.emit("error", new TransportError("Slack", safeError, info));
+    } finally {
+      this.pendingLogs--;
+    }
+  }
+
+  private async deliver(info: any): Promise<void> {
+    const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
+    const blocks = this.formatter(info).blocks || [];
+    const payload: SlackPayload = { mrkdwn: this.mrkdwn, blocks };
+    const payloads =
+      JSON.stringify(payload).length < SLACK_MAX_CHAR_LIMIT
+        ? [payload]
+        : processMessageBlocks(blocks).map((blocks) => ({ mrkdwn: this.mrkdwn, blocks }));
+    const queue = getWebhookQueue(webhookUrl);
+    // Queue the complete message atomically, so chunks cannot interleave with another log. Retry only the rejected
+    // chunk, never the whole message: preceding chunks may already have been delivered successfully.
+    const delivery = queue.tail.then(async () => {
+      for (const payload of payloads) await postWithRetry(this.axiosInstance, webhookUrl, payload, queue);
+    });
+    // A failed message must not poison subsequent deliveries sharing this webhook.
+    queue.tail = delivery.catch(() => undefined);
+    await delivery;
   }
 }
 
-async function postWithRetry(axiosInstance: AxiosInstance, webhookUrl: string, payload: SlackPayload): Promise<void> {
+async function postWithRetry(
+  axiosInstance: AxiosInstance,
+  webhookUrl: string,
+  payload: SlackPayload,
+  queue: WebhookQueue
+): Promise<void> {
   for (let retryCount = 0; ; retryCount++) {
+    // Sleep in bounded intervals to handle long Retry-After values without overflowing Node's timer range.
+    while (queue.nextPostAt > Date.now()) await delay(Math.min((queue.nextPostAt - Date.now()) / 1000, 60));
+    queue.nextPostAt = Date.now() + SLACK_POST_INTERVAL_MS;
     try {
       await axiosInstance.post(webhookUrl, payload);
       return;
     } catch (error) {
-      if (!isRetryableSlackPostError(error) || retryCount >= SLACK_MAX_POST_RETRIES) throw error;
-
-      const retryDelaySeconds = getSlackPostRetryDelaySeconds(error, retryCount);
-      if (retryDelaySeconds > 0) await delay(retryDelaySeconds);
+      if (!isRetryableSlackPostError(error)) throw error;
+      // Even the final failed attempt imposes a cooldown on the next message. Jitter only extends Retry-After;
+      // it must never cause another request to start earlier than Slack permits.
+      queue.nextPostAt = Math.max(
+        queue.nextPostAt,
+        Date.now() + getSlackPostRetryDelaySeconds(error, retryCount) * 1000 + Math.random() * SLACK_RETRY_JITTER_MS
+      );
+      if (retryCount >= SLACK_MAX_POST_RETRIES) throw error;
     }
   }
 }
@@ -241,12 +298,12 @@ export function getSlackPostRetryDelaySeconds(error: unknown, retryCount: number
   if (retryAfterHeader !== undefined) {
     const retryAfterSeconds = Number(retryAfterHeader);
     if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0) {
-      return Math.min(retryAfterSeconds, SLACK_MAX_RETRY_DELAY_SECONDS);
+      return retryAfterSeconds;
     }
 
     const retryAfterDateMs = Date.parse(retryAfterHeader);
     if (Number.isFinite(retryAfterDateMs)) {
-      return Math.min(Math.max((retryAfterDateMs - Date.now()) / 1000, 0), SLACK_MAX_RETRY_DELAY_SECONDS);
+      return Math.max((retryAfterDateMs - Date.now()) / 1000, 0);
     }
   }
 
@@ -254,11 +311,12 @@ export function getSlackPostRetryDelaySeconds(error: unknown, retryCount: number
 }
 
 function getErrorStatus(error: unknown): number | undefined {
-  return (error as { response?: { status?: number } }).response?.status;
+  const status = (error as { response?: { status?: unknown } } | null)?.response?.status;
+  return typeof status === "number" && Number.isInteger(status) ? status : undefined;
 }
 
 function getErrorHeader(error: unknown, headerName: string): string | undefined {
-  const headers = (error as { response?: { headers?: unknown } }).response?.headers;
+  const headers = (error as { response?: { headers?: unknown } } | null)?.response?.headers;
   if (headers === undefined || headers === null) return undefined;
 
   const axiosHeadersGet = (headers as { get?: (name: string) => unknown }).get;
