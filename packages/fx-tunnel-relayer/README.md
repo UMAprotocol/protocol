@@ -80,3 +80,8 @@ error paging. The process waits for logger transports before exiting on success 
 Recovery on later runs depends on rediscovering the event within the configured lookback window. This
 bounded event lookup is not a durable cross-run backlog; messages outside that window require an explicit
 lookback adjustment or operator recovery.
+
+Recovery notifications are collected and deduplicated during each batch, then sent after blockchain
+work finishes. Delivery stops after the first PagerDuty failure in that batch, with one warning. Later
+scheduled scans retry recovery for completed items still in the lookback window. This prevents an
+alerting outage from imposing a network timeout before each new transaction.

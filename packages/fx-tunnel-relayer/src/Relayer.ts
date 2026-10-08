@@ -1,6 +1,6 @@
 import { Contract, EventData } from "web3-eth-contract";
 import { runTransaction, getEventsWithPaginatedBlockSearch, retryOnNonceConflict } from "@uma/common";
-import { resolvePagerDutyIncident } from "@uma/financial-templates-lib";
+import { PagerDutyRecoveryBatch } from "@uma/financial-templates-lib";
 import type Web3 from "web3";
 
 // Used by Matic/Polygon PoS client to construct proof for arbitrary message from Polygon that can be submitted to
@@ -9,6 +9,7 @@ import type Web3 from "web3";
 const POLYGON_MESSAGE_SENT_EVENT_SIG = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
 
 export class Relayer {
+  private recovery: PagerDutyRecoveryBatch;
   constructor(
     readonly logger: any,
     readonly account: string,
@@ -20,11 +21,14 @@ export class Relayer {
     readonly polygonWeb3: Web3,
     readonly polygonEarliestBlockToQuery: number,
     readonly polygonLatestBlockToQuery: number
-  ) {}
+  ) {
+    this.recovery = new PagerDutyRecoveryBatch(logger, "Relayer#relayMessage");
+  }
 
   // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
   // with a proof derived from the Polygon transaction hash that was checkpointed to Mainnet.
   async fetchAndRelayMessages(): Promise<void> {
+    this.recovery = new PagerDutyRecoveryBatch(this.logger, "Relayer#relayMessage");
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Checking for Polygon oracle messages that can be relayed to Ethereum",
@@ -79,6 +83,7 @@ export class Relayer {
         }
         await this._relayMessage(e, messageIndex);
       }
+      await this.flushIncidentRecovery();
     } else {
       this.logger.debug({
         at: "Relayer#relayMessage",
@@ -198,7 +203,7 @@ export class Relayer {
       // Once accepted, a receipt failure must never trigger another submission.
       const minedReceipt = await receipt;
       if (!minedReceipt.status) throw new Error("Relay transaction receipt reported failure");
-      await this._resolveRelayIncident(pagerDutyDedupKey);
+      this.recovery.add(pagerDutyDedupKey);
       this.logger.info({
         at: "Relayer#relayMessage",
         message: "Submitted relay proof!🕴🏼",
@@ -212,7 +217,7 @@ export class Relayer {
         (error as Error & { type?: string })?.type === "call" &&
         (error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")
       ) {
-        await this._resolveRelayIncident(pagerDutyDedupKey);
+        this.recovery.add(pagerDutyDedupKey);
         this.logger.debug({
           at: "Relayer#relayMessage",
           message: "Exit proof already processed by root tunnel, skipping",
@@ -233,18 +238,9 @@ export class Relayer {
     }
   }
 
-  async _resolveRelayIncident(pagerDutyDedupKey: string): Promise<void> {
-    try {
-      await resolvePagerDutyIncident(this.logger, pagerDutyDedupKey);
-    } catch (error) {
-      // A PagerDuty outage must not turn a confirmed exit into a failed relay.
-      this.logger.warn({
-        at: "Relayer#relayMessage",
-        message: "Relay completed but PagerDuty incident resolution failed",
-        pagerDutyDedupKey,
-        error,
-      });
-    }
+  // Notify recovery only after all chain work, so a PagerDuty outage cannot block later messages.
+  async flushIncidentRecovery(): Promise<void> {
+    await this.recovery.flush();
   }
 }
 module.exports = { Relayer };

@@ -95,6 +95,7 @@ describe("Relayer nonce recovery", function () {
     const result = relayer._relayMessage(messageEvent, 0);
     await clock.tickAsync(45500);
     await result;
+    await relayer.flushIncidentRecovery();
     assert.equal(transaction.call.callCount, 2);
     assert.equal(transaction.send.callCount, 2);
     assert.deepEqual(
@@ -105,7 +106,7 @@ describe("Relayer nonce recovery", function () {
     assert.equal(logger.warn.callCount, 1);
     assert.equal(logger.error.callCount, 0);
     sinon.assert.calledOnceWithExactly(resolveIncident, expectedKey, undefined);
-    sinon.assert.callOrder(resolveIncident, logger.info);
+    sinon.assert.callOrder(logger.info, resolveIncident);
   });
 
   it("pages once after exactly three failed submissions with a stable per-message key", async function () {
@@ -113,6 +114,7 @@ describe("Relayer nonce recovery", function () {
     const result = relayer._relayMessage(messageEvent, 0);
     await clock.tickAsync(45500);
     await result;
+    await relayer.flushIncidentRecovery();
     assert.equal(transaction.send.callCount, 3);
     assert.equal(logger.warn.callCount, 2);
     assert.equal(logger.error.callCount, 1);
@@ -126,6 +128,7 @@ describe("Relayer nonce recovery", function () {
     const result = relayer._relayMessage(messageEvent, 0);
     await clock.tickAsync(45500);
     await result;
+    await relayer.flushIncidentRecovery();
     assert.equal(transaction.send.callCount, 1);
     assert.equal(logger.error.callCount, 0);
     sinon.assert.calledOnceWithExactly(resolveIncident, expectedKey, undefined);
@@ -139,7 +142,9 @@ describe("Relayer nonce recovery", function () {
     const failureKey = logger.error.firstCall.args[0].pagerDutyDedupKey;
     transaction.call.rejects(new Error("EXIT_ALREADY_PROCESSED"));
     await relayer._relayMessage(messageEvent, 0);
+    await relayer.flushIncidentRecovery();
     await relayer._relayMessage({ ...messageEvent, logIndex: 7 }, 1);
+    await relayer.flushIncidentRecovery();
     assert.equal(resolveIncident.firstCall.args[0], failureKey);
     assert.equal(resolveIncident.secondCall.args[0], "fx-tunnel-relayer:0xroot:0xabc:7");
   });
@@ -148,6 +153,7 @@ describe("Relayer nonce recovery", function () {
     it(`does not retry or resolve an ambiguous/unrelated error: ${message}`, async function () {
       transaction.send.callsFake(() => broadcast(new Error(message)));
       await relayer._relayMessage(messageEvent, 0);
+      await relayer.flushIncidentRecovery();
       assert.equal(transaction.send.callCount, 1);
       assert.equal(logger.error.callCount, 1);
       assert.equal(resolveIncident.callCount, 0);
@@ -158,6 +164,7 @@ describe("Relayer nonce recovery", function () {
     const error = Object.assign(new Error("nonce too low"), { code: "NONCE_EXPIRED" });
     transaction.send.callsFake(() => broadcast(undefined, error));
     await relayer._relayMessage(messageEvent, 0);
+    await relayer.flushIncidentRecovery();
     assert.equal(transaction.send.callCount, 1);
     assert.equal(logger.error.callCount, 1);
     assert.equal(resolveIncident.callCount, 0);
@@ -166,6 +173,7 @@ describe("Relayer nonce recovery", function () {
   it("does not resolve an unsuccessful receipt", async function () {
     transaction.send.callsFake(() => broadcast(undefined, undefined, false));
     await relayer._relayMessage(messageEvent, 0);
+    await relayer.flushIncidentRecovery();
     assert.equal(logger.error.callCount, 1);
     assert.equal(resolveIncident.callCount, 0);
   });
@@ -173,6 +181,7 @@ describe("Relayer nonce recovery", function () {
   it("does not resolve skipped/uncheckpointed messages or unknown RPC errors", async function () {
     exitUtil.isCheckPointed.resolves(false);
     await relayer._relayMessage(messageEvent, 0);
+    await relayer.flushIncidentRecovery();
     assert.equal(transaction.send.callCount, 0);
     assert.equal(resolveIncident.callCount, 0);
     exitUtil.isCheckPointed.rejects(new Error("RPC unavailable"));
@@ -184,12 +193,13 @@ describe("Relayer nonce recovery", function () {
   it("retains proof-failure paging without marking the message recovered", async function () {
     exitUtil.buildPayloadForExit.rejects(new Error("proof unavailable"));
     await relayer._relayMessage(messageEvent, 0);
+    await relayer.flushIncidentRecovery();
     assert.equal(logger.error.firstCall.args[0].pagerDutyDedupKey, expectedKey);
     assert.equal(transaction.send.callCount, 0);
     assert.equal(resolveIncident.callCount, 0);
   });
 
-  it("awaits recovery delivery before reporting success", async function () {
+  it("defers recovery delivery until chain work is complete, then awaits the notification", async function () {
     let finishRecovery: any;
     resolveIncident.callsFake(
       () =>
@@ -197,21 +207,23 @@ describe("Relayer nonce recovery", function () {
           finishRecovery = resolve;
         })
     );
-    const result = relayer._relayMessage(messageEvent, 0);
+    await relayer._relayMessage(messageEvent, 0);
+    assert.equal(resolveIncident.callCount, 0);
+    assert.equal(logger.info.callCount, 1);
+    const recovery = relayer.flushIncidentRecovery();
     await clock.tickAsync(0);
     assert.equal(resolveIncident.callCount, 1);
-    assert.equal(logger.info.callCount, 0);
     finishRecovery();
-    await result;
-    assert.equal(logger.info.callCount, 1);
+    await recovery;
   });
 
   it("keeps a confirmed exit successful if PagerDuty resolution fails", async function () {
     resolveIncident.rejects(new Error("PagerDuty unavailable"));
     await relayer._relayMessage(messageEvent, 0);
+    await relayer.flushIncidentRecovery();
     assert.equal(logger.warn.callCount, 1);
     assert.equal(logger.error.callCount, 0);
     assert.equal(logger.info.callCount, 1);
-    sinon.assert.callOrder(logger.warn, logger.info);
+    sinon.assert.callOrder(logger.info, logger.warn);
   });
 });

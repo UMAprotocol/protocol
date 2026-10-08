@@ -141,3 +141,41 @@ describe("Logger lifecycle helpers", function () {
     logger.close();
   });
 });
+
+describe("PagerDutyRecoveryBatch", function () {
+  const { PagerDutyRecoveryBatch } = require("../../dist/logger/PagerDutyRecoveryBatch");
+  it("deduplicates recoveries and does no network work until the batch flush", async function () {
+    const pd = new PagerDutyV2Transport({ level: "error" }, { integrationKey: "route" });
+    const logger = winston.createLogger({ transports: [pd] });
+    const resolve = sinon.stub(pd, "resolveIncident").resolves();
+    const recovery = new PagerDutyRecoveryBatch(logger, "Bot");
+    recovery.add("first");
+    recovery.add("first");
+    recovery.add("second");
+    assert.isFalse(resolve.called);
+    await recovery.flush();
+    assert.deepEqual(
+      resolve.getCalls().map((call) => call.args[0]),
+      ["first", "second"]
+    );
+    await recovery.flush();
+    assert.equal(resolve.callCount, 2);
+    logger.close();
+  });
+
+  it("stops after one failed notification and retains unconfirmed deliveries for retry", async function () {
+    const pd = new PagerDutyV2Transport({ level: "error" }, { integrationKey: "route" });
+    const logger = winston.createLogger({ transports: [pd] });
+    const resolve = sinon.stub(pd, "resolveIncident").rejects(new Error("PagerDuty unavailable"));
+    const warn = sinon.stub(logger, "warn");
+    const recovery = new PagerDutyRecoveryBatch(logger, "Bot");
+    for (let i = 0; i < 100; i++) recovery.add(`key-${i}`);
+    await recovery.flush();
+    assert.equal(resolve.callCount, 1);
+    assert.equal(warn.callCount, 1);
+    resolve.resolves();
+    await recovery.flush();
+    assert.equal(resolve.callCount, 101);
+    logger.close();
+  });
+});

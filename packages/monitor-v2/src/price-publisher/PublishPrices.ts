@@ -1,3 +1,4 @@
+import { PagerDutyRecoveryBatch } from "@uma/financial-templates-lib";
 import { paginatedEventQuery } from "@uma/common";
 import { OracleHubEthers, OracleRootTunnelEthers, VotingV2Ethers, getAddress } from "@uma/contracts-node";
 import {
@@ -79,6 +80,7 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     searchConfig
   );
 
+  const recovery = new PagerDutyRecoveryBatch(logger, "PricePublisher");
   let failedRequests = 0;
   for (const event of resolvedEvents) {
     // Safe decode: ancillaryData is caller-supplied bytes (OOv2/OOv3 requests are permissionless and are
@@ -93,7 +95,8 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     const isBlast = decodedAncillary.endsWith(`,childChainId:${BLAST_CHAIN_ID}`);
 
     if (isPolygon) {
-      if (!(await publishPriceRequest(logger, params, oracleRootTunnel, event, POLYGON_CHAIN_ID))) failedRequests++;
+      if (!(await publishPriceRequest(logger, params, oracleRootTunnel, event, POLYGON_CHAIN_ID, undefined, recovery)))
+        failedRequests++;
     } else if (isOptimism || isArbitrum || isBase || isBlast) {
       let chainId, callValue;
 
@@ -113,9 +116,11 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
         throw new Error("Invalid chainId");
       }
 
-      if (!(await publishPriceRequest(logger, params, oracleHub, event, chainId, callValue))) failedRequests++;
+      if (!(await publishPriceRequest(logger, params, oracleHub, event, chainId, callValue, recovery)))
+        failedRequests++;
     }
   }
+  await recovery.flush();
   if (failedRequests > 0) throw new PricePublicationError(failedRequests);
   console.log("Done publishing prices.");
 }

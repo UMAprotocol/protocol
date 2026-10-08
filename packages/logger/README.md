@@ -62,3 +62,8 @@ error or Slack notification. Use the same route as the original trigger. The hel
 queued triggers, reports rejected recovery delivery, and is a no-op when no PagerDuty V2 transport
 is configured. Legacy PagerDuty transports are unchanged. Bots must catch recovery-delivery errors
 without treating a completed blockchain operation as unsuccessful.
+
+Recovery notifications are collected and deduplicated during each batch, then sent after blockchain
+work finishes. Delivery stops after the first PagerDuty failure in that batch, with one warning. Later
+scheduled scans retry recovery for completed items still in the lookback window. This prevents an
+alerting outage from imposing a network timeout before each new transaction.

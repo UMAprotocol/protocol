@@ -1,7 +1,7 @@
 import { retryOnNonceConflict } from "@uma/common";
 import { OracleHubEthers, OracleRootTunnelEthers } from "@uma/contracts-node";
 import { RequestResolvedEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
-import { resolvePagerDutyIncident } from "@uma/financial-templates-lib";
+import { PagerDutyRecoveryBatch } from "@uma/financial-templates-lib";
 import { BigNumber, utils } from "ethers";
 import { logPricePublished } from "./BotLogger";
 import { Logger, MonitoringParams, POLYGON_CHAIN_ID } from "./common";
@@ -14,7 +14,8 @@ export async function publishPriceRequest(
   oracle: PublicationOracle,
   event: RequestResolvedEvent,
   destinationChain: number,
-  callValue?: BigNumber
+  callValue: BigNumber | undefined,
+  recovery: PagerDutyRecoveryBatch
 ): Promise<boolean> {
   const { identifier, time, ancillaryData, price } = event.args;
   const requestHash = utils.keccak256(
@@ -23,13 +24,6 @@ export async function publishPriceRequest(
   const pagerDutyDedupKey = `price-publisher:${params.chainId}:${oracle.address.toLowerCase()}:${requestHash}`;
   const isPublished = async () =>
     (await oracle.queryFilter(oracle.filters.PushedPrice(null, null, null, null, requestHash))).length > 0;
-  const resolveIncident = async () => {
-    try {
-      await resolvePagerDutyIncident(logger, pagerDutyDedupKey);
-    } catch (error) {
-      logger.warn({ at: "PricePublisher", message: "Could not resolve publication incident", requestHash, error });
-    }
-  };
 
   try {
     const transaction = await retryOnNonceConflict(
@@ -72,14 +66,14 @@ export async function publishPriceRequest(
         params
       );
     }
-    await resolveIncident();
+    recovery.add(pagerDutyDedupKey);
     return true;
   } catch (error) {
     // Covers a competing successful publication and a replaced transaction. Only positive on-chain
     // evidence resolves an incident; failure to read chain state must never be interpreted as recovery.
     try {
       if (await isPublished()) {
-        await resolveIncident();
+        recovery.add(pagerDutyDedupKey);
         return true;
       }
     } catch {

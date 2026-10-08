@@ -1,3 +1,4 @@
+import { PagerDutyRecoveryBatch } from "@uma/financial-templates-lib";
 import { assert } from "chai";
 import sinon from "sinon";
 import { BigNumber, utils } from "ethers";
@@ -40,7 +41,17 @@ describe("Price publication recovery", function () {
         price: BigNumber.from(1),
       },
     } as unknown) as RequestResolvedEvent;
-    return { queryFilter, wait, publishPrice, nonce, oracle, logger, params, event };
+    return {
+      queryFilter,
+      wait,
+      publishPrice,
+      nonce,
+      oracle,
+      logger,
+      params,
+      event,
+      recovery: new PagerDutyRecoveryBatch(logger, "PricePublisher"),
+    };
   }
 
   it("refreshes nonce and checks completion before retrying a rejected submission", async function () {
@@ -50,7 +61,7 @@ describe("Price publication recovery", function () {
       transactionHash: "0x" + "cd".repeat(32),
     });
     f.publishPrice.onFirstCall().rejects(rejected);
-    const result = publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137);
+    const result = publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery);
     await clock.runAllAsync();
     assert.isTrue(await result);
     assert.equal(f.publishPrice.firstCall.args[3].nonce, 20);
@@ -65,7 +76,7 @@ describe("Price publication recovery", function () {
       Object.assign(new Error("replacement transaction underpriced"), { code: "REPLACEMENT_UNDERPRICED" })
     );
     f.queryFilter.onSecondCall().resolves([{}]);
-    const result = publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137);
+    const result = publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery);
     await clock.runAllAsync();
     assert.isTrue(await result);
     assert.equal(f.publishPrice.callCount, 1);
@@ -77,7 +88,7 @@ describe("Price publication recovery", function () {
     f.publishPrice.rejects(
       Object.assign(new Error("nonce too low"), { code: "NONCE_EXPIRED", transactionHash: "0x" + "cd".repeat(32) })
     );
-    const result = publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137);
+    const result = publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery);
     await clock.runAllAsync();
     assert.isFalse(await result);
     assert.equal(f.publishPrice.callCount, 3);
@@ -85,13 +96,13 @@ describe("Price publication recovery", function () {
     assert.equal(errors.callCount, 1);
     assert.match(errors.firstCall.args[0].pagerDutyDedupKey, /^price-publisher:1:/);
     f.publishPrice.resolves({ wait: f.wait });
-    assert.isTrue(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137));
+    assert.isTrue(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery));
   });
 
   it("does not resubmit after an ambiguous receipt timeout", async function () {
     const f = fixture();
     f.wait.rejects(Object.assign(new Error("timeout"), { code: "TIMEOUT" }));
-    assert.isFalse(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137));
+    assert.isFalse(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery));
     assert.equal(f.publishPrice.callCount, 1);
     assert.equal((f.logger.error as sinon.SinonSpy).callCount, 1);
   });
@@ -100,7 +111,7 @@ describe("Price publication recovery", function () {
     const f = fixture();
     f.wait.rejects(Object.assign(new Error("transaction replaced"), { code: "TRANSACTION_REPLACED" }));
     f.queryFilter.onSecondCall().resolves([{}]);
-    assert.isTrue(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137));
+    assert.isTrue(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery));
     assert.equal(f.publishPrice.callCount, 1);
     assert.equal((f.logger.error as sinon.SinonSpy).callCount, 0);
   });
@@ -108,7 +119,7 @@ describe("Price publication recovery", function () {
   it("does not infer recovery from an RPC failure", async function () {
     const f = fixture();
     f.queryFilter.rejects(new Error("RPC unavailable"));
-    assert.isFalse(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137));
+    assert.isFalse(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery));
     assert.equal(f.publishPrice.callCount, 0);
     assert.equal((f.logger.error as sinon.SinonSpy).callCount, 1);
   });

@@ -53,3 +53,8 @@ do not provide cross-process nonce allocation.
 
 This does not introduce a 30-minute suppression window or reduce pages for unknown errors: a failure
 that survives the bounded retry attempts still escalates.
+
+Recovery notifications are collected and deduplicated during each batch, then sent after blockchain
+work finishes. Delivery stops after the first PagerDuty failure in that batch, with one warning. Later
+scheduled scans retry recovery for completed items still in the lookback window. This prevents an
+alerting outage from imposing a network timeout before each new transaction.
