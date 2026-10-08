@@ -60,6 +60,12 @@ const SLACK_RETRY_JITTER_MS = 250;
 const SLACK_HTTP_TIMEOUT_MS = 10000;
 const SLACK_RATE_LIMIT_STATUS_CODE = 429;
 
+class SlackRetryDelayExceeded extends Error {
+  constructor() {
+    super(`Slack message dropped: webhook cooldown exceeds ${SLACK_MAX_RETRY_DELAY_SECONDS} seconds`);
+  }
+}
+
 interface WebhookQueue {
   tail: Promise<void>;
   nextPostAt: number;
@@ -233,7 +239,10 @@ class SlackHook extends Transport {
       // Axios messages, stacks, configs and even non-Error throws may contain the secret webhook URL. Report only
       // the status rather than forwarding that object to another transport or console.
       const status = getErrorStatus(error);
-      const safeError = new Error(`Slack webhook delivery failed${status === undefined ? "" : ` (HTTP ${status})`}`);
+      const safeError =
+        error instanceof SlackRetryDelayExceeded
+          ? error
+          : new Error(`Slack webhook delivery failed${status === undefined ? "" : ` (HTTP ${status})`}`);
       this.emit("error", new TransportError("Slack", safeError, info));
     } finally {
       this.pendingLogs--;
@@ -267,8 +276,15 @@ async function postWithRetry(
   queue: WebhookQueue
 ): Promise<void> {
   for (let retryCount = 0; ; retryCount++) {
-    // Sleep in bounded intervals to handle long Retry-After values without overflowing Node's timer range.
-    while (queue.nextPostAt > Date.now()) await delay(Math.min((queue.nextPostAt - Date.now()) / 1000, 60));
+    // Do not shorten Slack's cooldown or hold a short-lived bot for arbitrarily long Retry-After values.
+    // Drop this message instead; the shared deadline also prevents queued/new logs from posting early.
+    while (queue.nextPostAt > Date.now()) {
+      const waitMs = queue.nextPostAt - Date.now();
+      if (waitMs > SLACK_MAX_RETRY_DELAY_SECONDS * 1000 + SLACK_RETRY_JITTER_MS) {
+        throw new SlackRetryDelayExceeded();
+      }
+      await delay(waitMs / 1000);
+    }
     queue.nextPostAt = Date.now() + SLACK_POST_INTERVAL_MS;
     try {
       await axiosInstance.post(webhookUrl, payload);
@@ -277,10 +293,12 @@ async function postWithRetry(
       if (!isRetryableSlackPostError(error)) throw error;
       // Even the final failed attempt imposes a cooldown on the next message. Jitter only extends Retry-After;
       // it must never cause another request to start earlier than Slack permits.
+      const retryDelaySeconds = getSlackPostRetryDelaySeconds(error, retryCount);
       queue.nextPostAt = Math.max(
         queue.nextPostAt,
-        Date.now() + getSlackPostRetryDelaySeconds(error, retryCount) * 1000 + Math.random() * SLACK_RETRY_JITTER_MS
+        Date.now() + retryDelaySeconds * 1000 + Math.random() * SLACK_RETRY_JITTER_MS
       );
+      if (retryDelaySeconds > SLACK_MAX_RETRY_DELAY_SECONDS) throw new SlackRetryDelayExceeded();
       if (retryCount >= SLACK_MAX_POST_RETRIES) throw error;
     }
   }

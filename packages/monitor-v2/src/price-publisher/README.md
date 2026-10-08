@@ -43,18 +43,19 @@ retry block: timeouts, reverts, already-known transactions and uncertain broadca
 automatic resubmission. A publication observed on-chain after an error is treated as recovered.
 
 Persistent publication failures use stable PagerDuty keys containing source chain, destination oracle
-and request hash. A confirmed publication or an existing matching `PushedPrice` event resolves that
-request's incident, including on later scheduled scans. A failed recovery notification logs a warning
-and can be retried on the next scan. A request that ages out of `BLOCK_LOOKBACK` is not presumed
-recovered; its incident requires reconciliation. Resolving previously published requests adds
-PagerDuty API traffic proportional to the scan's published requests. Wallet configuration is unchanged;
-other processes can still race for the same nonce. The bounded retries mitigate that contention but
-do not provide cross-process nonce allocation.
+and request hash. Recovery is queued only when this invocation attempted publication and then
+confirmed completion through a receipt or matching `PushedPrice` event. Requests already published
+before any submission attempt are skipped without sending PagerDuty resolves on every scan.
+A failed recovery notification logs a warning. If a previous process failed and another sender
+completed the request before this process attempted it, or recovery delivery failed, its incident
+may require manual reconciliation; historical scans do not replay resolves. A request that ages out
+of `BLOCK_LOOKBACK` is likewise not presumed recovered. Wallet configuration is unchanged; other
+processes can still race for the same nonce. The bounded retries mitigate that contention but do
+not provide cross-process nonce allocation.
 
 This does not introduce a 30-minute suppression window or reduce pages for unknown errors: a failure
 that survives the bounded retry attempts still escalates.
 
 Recovery notifications are collected and deduplicated during each batch, then sent after blockchain
-work finishes. Delivery stops after the first PagerDuty failure in that batch, with one warning. Later
-scheduled scans retry recovery for completed items still in the lookback window. This prevents an
-alerting outage from imposing a network timeout before each new transaction.
+work finishes. Delivery stops after the first PagerDuty failure in that batch, with one warning. This
+prevents an alerting outage from imposing a network timeout before each new transaction.

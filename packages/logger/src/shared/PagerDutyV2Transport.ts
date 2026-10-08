@@ -90,15 +90,23 @@ export async function sendPagerDutyEvent(routing_key: string, logObj: any): Prom
   }
 
   // pdjs types require a trigger payload even for resolve, although Events API v2 does not.
-  // pdjs 2.x requestTimeout installs a timer but does not abort fetch. Bound actual network work,
-  // including its 429 retries, so mandatory logger draining cannot hang on a dead connection.
+  // Its retry sleeps ignore AbortSignal, so bound the entire operation as well as aborting fetch.
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error("PagerDuty event timed out after 30 seconds"));
+      controller.abort();
+    }, 30000);
+  });
   try {
-    const response = await event({ data: data as EventData, signal: controller.signal, requestTimeout: 0 });
+    const response = await Promise.race([
+      event({ data: data as EventData, signal: controller.signal, requestTimeout: 0 }),
+      deadline,
+    ]);
     // pdjs resolves HTTP errors, including exhausted rate-limit retries, instead of rejecting.
     if (!response.ok) throw new Error(`PagerDuty event rejected with HTTP ${response.status}`);
   } finally {
-    clearTimeout(timeout);
+    if (timeout !== undefined) clearTimeout(timeout);
   }
 }

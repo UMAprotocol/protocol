@@ -90,7 +90,7 @@ describe("SlackTransport: shared delivery queue", function () {
 
   it("honors a shared cooldown even after the final 429 exhausts retries", async function () {
     const rateLimit = new Error("rate limited");
-    rateLimit.response = { status: 429, headers: { "retry-after": "90" } };
+    rateLimit.response = { status: 429, headers: { "retry-after": "20" } };
     post.onCall(0).rejects(rateLimit);
     post.onCall(1).rejects(rateLimit);
     post.onCall(2).rejects(rateLimit);
@@ -100,19 +100,66 @@ describe("SlackTransport: shared delivery queue", function () {
     first.log(info("limited"), failed);
     second.log(info("next"), sinon.spy());
     await clock.tickAsync(0);
-    await clock.tickAsync(89999);
+    await clock.tickAsync(19999);
     assert.equal(post.callCount, 1);
     await clock.tickAsync(1);
     assert.equal(post.callCount, 2);
-    await clock.tickAsync(90000);
+    await clock.tickAsync(20000);
     assert.equal(post.callCount, 3);
     sinon.assert.calledOnce(failed);
     assert.lengthOf(first.errors, 1);
     assert.isFalse(second.isFlushed);
-    await clock.tickAsync(89999);
+    await clock.tickAsync(19999);
     assert.equal(post.callCount, 3);
     await clock.tickAsync(1);
     assert.equal(post.callCount, 4);
+  });
+
+  for (const retryAfter of ["3600", new Date(3600000).toUTCString()]) {
+    it(`drops and reports long cooldown messages without posting early (${retryAfter})`, async function () {
+      const rateLimit = new Error(`rate limited ${webhook}`);
+      rateLimit.response = { status: 429, headers: { "retry-after": retryAfter } };
+      post.onFirstCall().rejects(rateLimit);
+      const first = transport();
+      const second = transport();
+      first.log(info("limited"), sinon.spy());
+      second.log(info("queued"), sinon.spy());
+      await clock.tickAsync(0);
+      await first.flush();
+      await second.flush();
+      assert.equal(post.callCount, 1);
+      for (const slack of [first, second]) {
+        assert.lengthOf(slack.errors, 1);
+        assert.include(slack.errors[0].originalError.message, "cooldown exceeds 60 seconds");
+        assert.notInclude(JSON.stringify(slack.errors[0]), webhook);
+        assert.isTrue(slack.isFlushed);
+      }
+      const later = transport();
+      later.log(info("still limited"), sinon.spy());
+      await clock.tickAsync(0);
+      assert.lengthOf(later.errors, 1);
+      assert.equal(post.callCount, 1);
+      assert.equal(clock.countTimers(), 0);
+      await clock.tickAsync(3600000);
+      later.log(info("after cooldown"), sinon.spy());
+      await clock.tickAsync(0);
+      assert.equal(post.callCount, 2);
+      assert.isTrue(later.isFlushed);
+    });
+  }
+
+  it("allows a 60-second Retry-After plus bounded jitter", async function () {
+    Math.random.returns(0.999);
+    const rateLimit = new Error("rate limited");
+    rateLimit.response = { status: 429, headers: { "retry-after": "60" } };
+    post.onFirstCall().rejects(rateLimit);
+    const slack = transport();
+    slack.log(info("limited"), sinon.spy());
+    await clock.tickAsync(60000);
+    assert.equal(post.callCount, 1);
+    await clock.tickAsync(250);
+    assert.equal(post.callCount, 2);
+    assert.lengthOf(slack.errors, 0);
   });
 
   it("drains pending HTTP work and Winston buffered writes", async function () {

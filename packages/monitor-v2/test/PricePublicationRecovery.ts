@@ -54,12 +54,35 @@ describe("Price publication recovery", function () {
     };
   }
 
+  it("skips historical publications without queueing PagerDuty resolves on repeated scans", async function () {
+    const f = fixture();
+    f.queryFilter.resolves([{}]);
+    const recovered = sinon.spy(f.recovery, "add");
+    for (let scan = 0; scan < 3; scan++) {
+      assert.isTrue(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery));
+    }
+    sinon.assert.notCalled(recovered);
+    sinon.assert.notCalled(f.publishPrice);
+    sinon.assert.notCalled(f.nonce);
+  });
+
+  it("does not resolve historical work after a transient initial scan failure", async function () {
+    const f = fixture();
+    f.queryFilter.onFirstCall().rejects(new Error("RPC unavailable"));
+    f.queryFilter.onSecondCall().resolves([{}]);
+    const recovered = sinon.spy(f.recovery, "add");
+    assert.isTrue(await publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery));
+    sinon.assert.notCalled(recovered);
+    sinon.assert.notCalled(f.publishPrice);
+  });
+
   it("refreshes nonce and checks completion before retrying a rejected submission", async function () {
     const f = fixture();
     const rejected = Object.assign(new Error("nonce has already been used"), {
       code: "NONCE_EXPIRED",
       transactionHash: "0x" + "cd".repeat(32),
     });
+    const recovered = sinon.spy(f.recovery, "add");
     f.publishPrice.onFirstCall().rejects(rejected);
     const result = publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery);
     await clock.runAllAsync();
@@ -67,6 +90,7 @@ describe("Price publication recovery", function () {
     assert.equal(f.publishPrice.firstCall.args[3].nonce, 20);
     assert.equal(f.publishPrice.secondCall.args[3].nonce, 23);
     assert.equal(f.queryFilter.callCount, 2);
+    sinon.assert.calledOnce(recovered);
     assert.equal((f.logger.error as sinon.SinonSpy).callCount, 0);
   });
 
@@ -76,10 +100,12 @@ describe("Price publication recovery", function () {
       Object.assign(new Error("replacement transaction underpriced"), { code: "REPLACEMENT_UNDERPRICED" })
     );
     f.queryFilter.onSecondCall().resolves([{}]);
+    const recovered = sinon.spy(f.recovery, "add");
     const result = publishPriceRequest(f.logger, f.params, f.oracle, f.event, 137, undefined, f.recovery);
     await clock.runAllAsync();
     assert.isTrue(await result);
     assert.equal(f.publishPrice.callCount, 1);
+    sinon.assert.calledOnce(recovered);
   });
 
   it("pages once after bounded nonce retries and permits the next request", async function () {

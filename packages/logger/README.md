@@ -35,7 +35,11 @@ There are two helper files that are available in logger:
 Slack webhook posts are queued in FIFO order per webhook within a process, including across logger
 instances. Each HTTP post (including message chunks) starts at least one second after the previous
 post. A 429 response pauses that webhook for the full `Retry-After` interval plus up to 250 ms of jitter;
-only rejected chunks are retried, at most twice. Other HTTP/network failures are not retried because
+only rejected chunks are retried, at most twice. If a requested cooldown exceeds 60 seconds, the
+current message and queued messages encountering more than 60 seconds of remaining cooldown are
+dropped and reported through sanitized transport errors instead of delaying shutdown. The shared
+webhook deadline is retained, so later messages cannot post before Slack permits. The 60-second
+wait ceiling allows up to 250 ms of additional jitter. Other HTTP/network failures are not retried because
 webhook delivery may already have succeeded. Requests have a 10-second timeout. Coordination across
 separate bot processes still relies on Slack's rate-limit responses.
 
@@ -48,7 +52,9 @@ Call and await `waitForLogger(logger)` before exiting. Its ordinary timeout stil
 transports, but in-memory Slack and PagerDuty V2 queues must finish their delivery attempts before it
 returns. Large Slack bursts can therefore extend execution beyond `LOGGER_FLUSH_TIMEOUT`. Platform
 hard deadlines or crashes can still lose in-memory messages; this is not a durable queue. PagerDuty
-requests use a 30-second abort signal to bound network work, including SDK retries.
+requests have a 30-second deadline for the entire operation, including SDK retry sleeps; reaching
+the deadline rejects delivery and aborts network work. An outstanding SDK sleep may finish later,
+but its aborted signal prevents another network request.
 
 ## PagerDuty incident recovery
 
@@ -65,5 +71,6 @@ without treating a completed blockchain operation as unsuccessful.
 
 Recovery notifications are collected and deduplicated during each batch, then sent after blockchain
 work finishes. Delivery stops after the first PagerDuty failure in that batch, with one warning. Later
-scheduled scans retry recovery for completed items still in the lookback window. This prevents an
-alerting outage from imposing a network timeout before each new transaction.
+scans can retry recovery when the caller queues those keys again; callers should avoid queueing
+every historical success unconditionally. This prevents an alerting outage from imposing a network
+timeout before each new transaction.

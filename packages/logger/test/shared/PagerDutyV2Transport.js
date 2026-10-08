@@ -201,8 +201,33 @@ describe("PagerDuty V2 Shared Utilities", function () {
         assert.isTrue(request.signal.aborted);
         const error = await result;
         assert.instanceOf(error, Error);
-        assert.equal(error.message, "request aborted");
+        assert.equal(error.message, "PagerDuty event timed out after 30 seconds");
         assert.equal(clock.countTimers(), 0);
+      } finally {
+        clock.restore();
+      }
+    });
+
+    it("settles at the deadline even when the SDK ignores abort during a retry sleep", async function () {
+      const clock = sinon.useFakeTimers();
+      try {
+        let rejectSdk;
+        eventStub.returns(new Promise((_, reject) => (rejectSdk = reject)));
+        let settled = false;
+        const result = sendPagerDutyEvent("route", { level: "error", at: "Bot", message: "Failure" }).catch((error) => {
+          settled = true;
+          return error;
+        });
+        await clock.tickAsync(29999);
+        assert.isFalse(settled);
+        await clock.tickAsync(1);
+        assert.isTrue(settled);
+        assert.equal((await result).message, "PagerDuty event timed out after 30 seconds");
+        assert.isTrue(eventStub.firstCall.args[0].signal.aborted);
+        assert.equal(clock.countTimers(), 0);
+        // A late SDK rejection is still observed by Promise.race, never an unhandled rejection.
+        rejectSdk(new Error("SDK retry woke after abort"));
+        await clock.tickAsync(0);
       } finally {
         clock.restore();
       }

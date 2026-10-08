@@ -18,7 +18,7 @@ export class PagerDutyRecoveryBatch {
         this.keys.delete(key);
       } catch (error) {
         // Do not spend a network timeout on every historical success during a PagerDuty outage.
-        // Scheduled chain scans rediscover these successes; never resolve unconfirmed or unseen work.
+        // Callers can queue confirmed keys again on later scans; never resolve unconfirmed or unseen work.
         this.logger.warn({ at: this.at, message: "Deferring remaining incident recovery notifications", error });
         return;
       }

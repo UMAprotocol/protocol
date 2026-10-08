@@ -25,12 +25,15 @@ export async function publishPriceRequest(
   const isPublished = async () =>
     (await oracle.queryFilter(oracle.filters.PushedPrice(null, null, null, null, requestHash))).length > 0;
 
+  // Historical scans must not send a resolve for every already-published request.
+  let attemptedPublication = false;
   try {
     const transaction = await retryOnNonceConflict(
       async () => {
         // Another run can publish this request while we back off. Check before allocating a fresh nonce.
         if (await isPublished()) return undefined;
         const nonce = await params.signer.getTransactionCount("pending");
+        attemptedPublication = true;
         if (destinationChain === POLYGON_CHAIN_ID) {
           return (oracle as OracleRootTunnelEthers)
             .connect(params.signer)
@@ -66,14 +69,14 @@ export async function publishPriceRequest(
         params
       );
     }
-    recovery.add(pagerDutyDedupKey);
+    if (attemptedPublication) recovery.add(pagerDutyDedupKey);
     return true;
   } catch (error) {
     // Covers a competing successful publication and a replaced transaction. Only positive on-chain
     // evidence resolves an incident; failure to read chain state must never be interpreted as recovery.
     try {
       if (await isPublished()) {
-        recovery.add(pagerDutyDedupKey);
+        if (attemptedPublication) recovery.add(pagerDutyDedupKey);
         return true;
       }
     } catch {
