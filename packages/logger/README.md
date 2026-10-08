@@ -49,9 +49,11 @@ be processed. Exhausted failures retain existing PagerDuty escalation; an automa
 429 does not page.
 
 Call and await `waitForLogger(logger)` before exiting. Its ordinary timeout still applies to persistent
-transports, but in-memory Slack and PagerDuty V2 queues must finish their delivery attempts before it
-returns. Large Slack bursts can therefore extend execution beyond `LOGGER_FLUSH_TIMEOUT`. Platform
-hard deadlines or crashes can still lose in-memory messages; this is not a durable queue. PagerDuty
+transports. In-memory Slack and PagerDuty V2 queues then get up to `LOGGER_MANDATORY_FLUSH_TIMEOUT`
+additional seconds (default 120) to finish their delivery attempts; anything still pending after that
+is reported to the console and abandoned so exit stays bounded. Large Slack bursts can therefore extend
+execution beyond `LOGGER_FLUSH_TIMEOUT` by at most that amount. Platform hard deadlines or crashes can
+still lose in-memory messages; this is not a durable queue. PagerDuty
 requests have a 30-second deadline for the entire operation, including SDK retry sleeps; reaching
 the deadline rejects delivery and aborts network work. An outstanding SDK sleep may finish later,
 but its aborted signal prevents another network request.

@@ -140,6 +140,31 @@ describe("Logger lifecycle helpers", function () {
     assert.isTrue(pd.isFlushed);
     logger.close();
   });
+
+  it("abandons and reports mandatory delivery still pending after the mandatory flush timeout", async function () {
+    const pd = new PagerDutyV2Transport({ level: "error" }, { integrationKey: "route" });
+    let release;
+    sendStub.onFirstCall().returns(
+      new Promise((resolve) => {
+        release = resolve;
+      })
+    );
+    const consoleError = sinon.stub(console, "error");
+    const logger = winston.createLogger({ transports: [pd] });
+    logger.flushTimeout = 0;
+    logger.mandatoryFlushTimeout = 0.05;
+    logger.error({ message: "failure", pagerDutyDedupKey: "bot:failure" });
+    try {
+      await waitForLogger(logger);
+      assert.isFalse(pd.isFlushed);
+      assert.isTrue(consoleError.calledOnce);
+      assert.include(consoleError.firstCall.args[0], "mandatory flush timeout");
+    } finally {
+      consoleError.restore();
+      release();
+      logger.close();
+    }
+  });
 });
 
 describe("PagerDutyRecoveryBatch", function () {

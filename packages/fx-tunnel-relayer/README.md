@@ -72,8 +72,11 @@ not retried by this nonce recovery mechanism.
 
 Proof and submission failures use a PagerDuty deduplication key containing the root tunnel address,
 Polygon transaction hash, and event log index, so messages within a single transaction remain distinct.
-A successful receipt or an `EXIT_ALREADY_PROCESSED` simulation resolves only that message's incident.
-PagerDuty resolution failures are warnings and do not change the confirmed chain outcome. Skipped runs,
+A successful receipt resolves only that message's incident. An `EXIT_ALREADY_PROCESSED` simulation resolves
+it only when this run's submission was rejected for a nonce conflict first (another sender completed it during
+backoff); exits already processed before any submission attempt are skipped without sending resolves on every
+scan. If another sender completed a failed message before this run attempted it, its incident may require
+manual resolution. PagerDuty resolution failures are warnings and do not change the confirmed chain outcome. Skipped runs,
 uncheckpointed messages, and unknown RPC errors do not resolve incidents. Receipt lookup failures retain
 error paging. The process waits for logger transports before exiting on success or failure.
 
@@ -82,6 +85,6 @@ bounded event lookup is not a durable cross-run backlog; messages outside that w
 lookback adjustment or operator recovery.
 
 Recovery notifications are collected and deduplicated during each batch, then sent after blockchain
-work finishes. Delivery stops after the first PagerDuty failure in that batch, with one warning. Later
-scheduled scans retry recovery for completed items still in the lookback window. This prevents an
+work finishes. Delivery stops after the first PagerDuty failure in that batch, with one warning; such
+incidents may require manual resolution because historical scans do not replay resolves. This prevents an
 alerting outage from imposing a network timeout before each new transaction.

@@ -89,8 +89,11 @@ export async function resolvePagerDutyIncident(
   await Promise.all(transports.map((transport) => transport.resolveIncident(dedupKey, notificationPath)));
 }
 
-// Persistent transports may stop after the ordinary timeout. In-memory delivery queues with
-// flush() must drain completely before a bot exits, including records still buffered by Winston.
+const DEFAULT_MANDATORY_FLUSH_TIMEOUT = 120;
+
+// Persistent transports may stop after the ordinary timeout. In-memory delivery queues with flush()
+// then get up to mandatoryFlushTimeout more seconds to drain, including records still buffered by
+// Winston. Anything still pending after that is reported to the console and abandoned so exit is bounded.
 export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
   const deadline = Date.now() + logger.flushTimeout * 1000;
   while (!isLoggerFlushed(logger) && Date.now() < deadline) {
@@ -98,11 +101,20 @@ export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
   }
 
   const mandatoryTransports = logger.transports.filter(hasMandatoryFlush);
+  const isMandatoryPending = () =>
+    hasBufferedLoggerWrites(logger) || mandatoryTransports.some((transport) => !transport.isFlushed);
   if (mandatoryTransports.length > 0) {
-    do {
-      await Promise.all(mandatoryTransports.map((transport) => transport.flush()));
-      if (hasBufferedLoggerWrites(logger)) await delay(0.01);
-    } while (hasBufferedLoggerWrites(logger) || mandatoryTransports.some((transport) => !transport.isFlushed));
+    const mandatoryDeadline = Date.now() + (logger.mandatoryFlushTimeout ?? DEFAULT_MANDATORY_FLUSH_TIMEOUT) * 1000;
+    while (isMandatoryPending() && Date.now() < mandatoryDeadline) {
+      await delay(Math.min(0.05, Math.max(0, mandatoryDeadline - Date.now()) / 1000));
+    }
+    if (isMandatoryPending()) {
+      console.error(
+        `waitForLogger: abandoning undelivered Slack/PagerDuty notifications after mandatory flush timeout (${
+          mandatoryTransports.filter((transport) => !transport.isFlushed).length
+        } transport(s) pending)`
+      );
+    }
   }
 
   await pausePersistentLogQueueProcessing(logger.transports);
@@ -110,6 +122,7 @@ export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
 
 export interface AugmentedLogger extends _Logger {
   flushTimeout: number; // Timeout in seconds to wait for logger to flush before closing.
+  mandatoryFlushTimeout?: number; // Additional seconds to drain Slack/PagerDuty V2 queues before abandoning them.
   transportErrorLogger: _Logger; // Dedicated logger for logging transport execution errors.
 }
 
@@ -178,6 +191,9 @@ export function createNewLogger(
   const logger = createBaseLogger("debug", transports, botIdentifier, runIdentifier) as AugmentedLogger;
 
   logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 30;
+  logger.mandatoryFlushTimeout = process.env.LOGGER_MANDATORY_FLUSH_TIMEOUT
+    ? parseInt(process.env.LOGGER_MANDATORY_FLUSH_TIMEOUT)
+    : DEFAULT_MANDATORY_FLUSH_TIMEOUT;
 
   // Attach dedicated logger for handling and logging transport execution errors.
   logger.transportErrorLogger = createBaseLogger(

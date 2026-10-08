@@ -35,6 +35,8 @@ When both modes are enabled, the resolution phase completes before publication s
 publication failures do not prevent later requests from being attempted. After processing the batch,
 any unsuccessful requests cause a nonzero exit; their per-request incidents replace the duplicate
 batch error page. Setup, RPC scan and resolution-phase failures still page at the execution level.
+Because these failures exit the process, the execution incident is resolved once per process after
+its first successful cycle (once per serverless run), not on every polling cycle.
 
 Resolution and publication retry only explicit nonce-too-low / replacement-underpriced submission
 rejections, with at most three total attempts and 15s/30s backoff plus up to 250ms jitter. Each publication

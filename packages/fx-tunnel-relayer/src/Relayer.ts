@@ -148,7 +148,7 @@ export class Relayer {
     });
 
     let chainBlockInfo; // Only used for debugging purposes upon error.
-    let proof;
+    let proof: string;
     try {
       chainBlockInfo = await this.maticPosClient.exitUtil.getChainBlockInfo(transactionHash);
       // Proof construction logic copied from:
@@ -179,6 +179,8 @@ export class Relayer {
       proof: proof,
       account: this.account,
     });
+    // A nonce retry implies a rejected submission. Historical exits found already processed are not resolved each scan.
+    let attemptedSubmission = false;
     try {
       const { transactionHash: relayTransactionHash, receipt } = await retryOnNonceConflict(
         () =>
@@ -191,14 +193,16 @@ export class Relayer {
             useCachedNonce: false,
             waitForMine: false,
           }),
-        (_error, attempt) =>
+        (_error, attempt) => {
+          attemptedSubmission = true;
           this.logger.warn({
             at: "Relayer#relayMessage",
             message: "Relay nonce rejected; rechecking proof and pending nonce before retry",
             transactionHash,
             messageIndex,
             attempt,
-          })
+          });
+        }
       );
       // Once accepted, a receipt failure must never trigger another submission.
       const minedReceipt = await receipt;
@@ -217,7 +221,7 @@ export class Relayer {
         (error as Error & { type?: string })?.type === "call" &&
         (error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")
       ) {
-        this.recovery.add(pagerDutyDedupKey);
+        if (attemptedSubmission) this.recovery.add(pagerDutyDedupKey);
         this.logger.debug({
           at: "Relayer#relayMessage",
           message: "Exit proof already processed by root tunnel, skipping",

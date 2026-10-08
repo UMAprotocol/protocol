@@ -140,13 +140,24 @@ describe("Relayer nonce recovery", function () {
     await clock.tickAsync(45500);
     await failed;
     const failureKey = logger.error.firstCall.args[0].pagerDutyDedupKey;
-    transaction.call.rejects(new Error("EXIT_ALREADY_PROCESSED"));
+    transaction.send.callsFake(() => broadcast());
     await relayer._relayMessage(messageEvent, 0);
     await relayer.flushIncidentRecovery();
     await relayer._relayMessage({ ...messageEvent, logIndex: 7 }, 1);
     await relayer.flushIncidentRecovery();
     assert.equal(resolveIncident.firstCall.args[0], failureKey);
     assert.equal(resolveIncident.secondCall.args[0], "fx-tunnel-relayer:0xroot:0xabc:7");
+  });
+
+  it("does not resolve historical exits already processed before this run attempted submission", async function () {
+    transaction.call.rejects(new Error("execution reverted: EXIT_ALREADY_PROCESSED"));
+    for (let scan = 0; scan < 2; scan++) {
+      await relayer._relayMessage(messageEvent, 0);
+      await relayer.flushIncidentRecovery();
+    }
+    assert.equal(transaction.send.callCount, 0);
+    assert.equal(logger.error.callCount, 0);
+    assert.equal(resolveIncident.callCount, 0);
   });
 
   for (const message of ["request timeout", "already known", "execution reverted: invalid proof"]) {

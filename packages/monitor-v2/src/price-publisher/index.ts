@@ -15,12 +15,17 @@ async function main() {
     botModes: params.botModes,
   });
 
+  // Execution errors exit the process, so any open execution incident predates it. Resolve once, not every cycle.
+  let executionIncidentResolved = false;
   for (;;) {
     await runPricePublisherCycle(logger, params);
-    try {
-      await resolvePagerDutyIncident(logger, executionIncidentKey);
-    } catch (error) {
-      logger.warn({ at: "PricePublisher", message: "Could not resolve execution incident", error });
+    if (!executionIncidentResolved) {
+      try {
+        await resolvePagerDutyIncident(logger, executionIncidentKey);
+        executionIncidentResolved = true;
+      } catch (error) {
+        logger.warn({ at: "PricePublisher", message: "Could not resolve execution incident", error });
+      }
     }
 
     if (params.pollingDelay !== 0) {

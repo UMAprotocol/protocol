@@ -99,11 +99,15 @@ export async function sendPagerDutyEvent(routing_key: string, logObj: any): Prom
       controller.abort();
     }, 30000);
   });
+  // pdjs extends DOM RequestInit/Response, which are not in the node14 lib, so fetch fields are untyped.
+  const parameters = { data: data as EventData, signal: controller.signal, requestTimeout: 0 } as Parameters<
+    typeof event
+  >[0];
   try {
-    const response = await Promise.race([
-      event({ data: data as EventData, signal: controller.signal, requestTimeout: 0 }),
-      deadline,
-    ]);
+    const response = ((await Promise.race([event(parameters), deadline])) as unknown) as {
+      ok: boolean;
+      status: number;
+    };
     // pdjs resolves HTTP errors, including exhausted rate-limit retries, instead of rejecting.
     if (!response.ok) throw new Error(`PagerDuty event rejected with HTTP ${response.status}`);
   } finally {
