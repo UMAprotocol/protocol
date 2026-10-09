@@ -25,7 +25,8 @@ transport error handler. Events sharing a routing key and deduplication key are 
 rejections are checked, and each SDK call is bounded by a 30-second deadline that also aborts fetch.
 The deadline covers the SDK's retry sleeps.
 
-Await `waitForLogger(logger)` before exiting. After `LOGGER_FLUSH_TIMEOUT`, in-memory transports
+Await `waitForLogger(logger)` before exiting. At `LOGGER_FLUSH_TIMEOUT`, persistent queue processing
+is paused and any already-dequeued record is allowed to finish. After that, in-memory transports
 with a `flush()` method get up to `LOGGER_MANDATORY_FLUSH_TIMEOUT` additional seconds (default 120)
 to drain. PagerDuty V2 uses this window for pending events. Notifications are reported to the console
 if the window expires and can be lost at process exit.
