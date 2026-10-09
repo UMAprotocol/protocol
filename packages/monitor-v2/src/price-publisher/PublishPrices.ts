@@ -1,3 +1,4 @@
+import { PagerDutyRecoveryBatch } from "@uma/financial-templates-lib";
 import { paginatedEventQuery } from "@uma/common";
 import { OracleHubEthers, OracleRootTunnelEthers, VotingV2Ethers, getAddress } from "@uma/contracts-node";
 import {
@@ -5,9 +6,8 @@ import {
   OptimismParentMessenger,
 } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
 import { RequestResolvedEvent } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers/VotingV2";
-import { BigNumber, utils } from "ethers";
 import { tryHexToUtf8String } from "../utils/contracts";
-import { logPricePublished } from "./BotLogger";
+import { publishPriceRequest } from "./PublishPriceRequest";
 import {
   ARBITRUM_CHAIN_ID,
   BASE_CHAIN_ID,
@@ -20,77 +20,13 @@ import {
   getContractInstanceWithProvider,
 } from "./common";
 
-const shouldPublish = async (oracle: OracleHubEthers | OracleRootTunnelEthers, event: RequestResolvedEvent) => {
-  const { identifier, time, ancillaryData } = event.args;
-
-  const requestHash = utils.keccak256(
-    utils.defaultAbiCoder.encode(["bytes32", "uint256", "bytes"], [identifier, time, ancillaryData])
-  );
-
-  const messagesSent = await oracle.queryFilter(oracle.filters.PushedPrice(null, null, null, null, requestHash));
-
-  return !messagesSent.length;
-};
-
-const processOracleRoot = async (
-  logger: typeof Logger,
-  params: MonitoringParams,
-  oracleRootTunnel: OracleRootTunnelEthers,
-  event: RequestResolvedEvent
-) => {
-  const { identifier, time, ancillaryData, price } = event.args;
-
-  if (await shouldPublish(oracleRootTunnel, event)) {
-    const tx = await (
-      await oracleRootTunnel.connect(params.signer).publishPrice(identifier, time, ancillaryData)
-    ).wait();
-
-    await logPricePublished(
-      logger,
-      {
-        tx: tx.transactionHash,
-        identifier,
-        ancillaryData,
-        time,
-        price,
-        destinationChain: POLYGON_CHAIN_ID,
-      },
-      params
-    );
+// Each failed request is already logged with its own stable PagerDuty key.
+export class PricePublicationError extends Error {
+  constructor(readonly failedRequests: number) {
+    super(`${failedRequests} price publication request(s) remain unsuccessful`);
+    this.name = "PricePublicationError";
   }
-};
-
-const processOracleHub = async (
-  logger: typeof Logger,
-  params: MonitoringParams,
-  oracleHub: OracleHubEthers,
-  event: RequestResolvedEvent,
-  chainId: number,
-  callValue: BigNumber
-) => {
-  const { identifier, time, ancillaryData, price } = event.args;
-
-  if (await shouldPublish(oracleHub, event)) {
-    const tx = await (
-      await oracleHub
-        .connect(params.signer)
-        .publishPrice(chainId, identifier, time, ancillaryData, { value: callValue })
-    ).wait();
-
-    await logPricePublished(
-      logger,
-      {
-        tx: tx.transactionHash,
-        identifier,
-        ancillaryData,
-        time,
-        price,
-        destinationChain: chainId,
-      },
-      params
-    );
-  }
-};
+}
 
 export async function publishPrices(logger: typeof Logger, params: MonitoringParams): Promise<void> {
   const votingV2 = await getContractInstanceWithProvider<VotingV2Ethers>("VotingV2", params.provider);
@@ -144,6 +80,8 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     searchConfig
   );
 
+  const recovery = new PagerDutyRecoveryBatch(logger, "PricePublisher");
+  let failedRequests = 0;
   for (const event of resolvedEvents) {
     // Safe decode: ancillaryData is caller-supplied bytes (OOv2/OOv3 requests are permissionless and are
     // never validated as text), so utils.toUtf8String() throws on non-UTF-8 input and would abort the whole
@@ -157,7 +95,8 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
     const isBlast = decodedAncillary.endsWith(`,childChainId:${BLAST_CHAIN_ID}`);
 
     if (isPolygon) {
-      await processOracleRoot(logger, params, oracleRootTunnel, event);
+      if (!(await publishPriceRequest(logger, params, oracleRootTunnel, event, POLYGON_CHAIN_ID, undefined, recovery)))
+        failedRequests++;
     } else if (isOptimism || isArbitrum || isBase || isBlast) {
       let chainId, callValue;
 
@@ -177,8 +116,11 @@ export async function publishPrices(logger: typeof Logger, params: MonitoringPar
         throw new Error("Invalid chainId");
       }
 
-      await processOracleHub(logger, params, oracleHub, event, chainId, callValue);
+      if (!(await publishPriceRequest(logger, params, oracleHub, event, chainId, callValue, recovery)))
+        failedRequests++;
     }
   }
+  await recovery.flush();
+  if (failedRequests > 0) throw new PricePublicationError(failedRequests);
   console.log("Done publishing prices.");
 }
