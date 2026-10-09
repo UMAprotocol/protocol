@@ -48,10 +48,17 @@ The transport callback acknowledges queue admission. Terminal failures emit a sa
 error through the existing error handler, while later messages continue processing. Recovered 429s
 do not page; exhausted delivery failures retain the existing PagerDuty escalation.
 
-Await `waitForLogger(logger)` before exiting. After the ordinary `LOGGER_FLUSH_TIMEOUT`, in-memory
+Await `waitForLogger(logger)` before exiting. At the ordinary `LOGGER_FLUSH_TIMEOUT`, persistent
+queue processing is paused and any already-dequeued record is allowed to finish. Remaining records
+stay persisted while Slack drains. After that, in-memory
 transports with a `flush()` method get up to `LOGGER_MANDATORY_FLUSH_TIMEOUT` additional seconds
 (default 120) to drain, including Winston's buffered writes. Slack uses this window for queued webhook posts. If
 the window expires, remaining notifications are reported to the console and may be lost when the
 process exits.
 Ensure the bot's execution deadline allows for this additional wait. Crashes and platform hard
 deadlines can still lose queued messages.
+
+The contract notifier, Polymarket notifier, legacy optimistic-oracle bot, monitor error path, and
+Fx tunnel relayer CLI await this drain before process exit. Existing five-second grace periods are
+retained for transports that do not expose a flush signal. This changes shutdown delivery only;
+transaction submission and polling behavior are unchanged.

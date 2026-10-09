@@ -3,6 +3,7 @@ const sinon = require("sinon");
 const axios = require("axios");
 const winston = require("winston");
 const { waitForLogger } = require("../../dist/logger/Logger");
+const { PersistentTransport } = require("../../dist/logger/PersistentTransport");
 
 describe("Logger: bounded Slack shutdown", function () {
   let clock;
@@ -59,6 +60,42 @@ describe("Logger: bounded Slack shutdown", function () {
     assert.isTrue(consoleError.calledOnce);
     release({ status: 200 });
     await clock.tickAsync(0);
+  });
+
+  it("stops dequeuing persistent records at the ordinary deadline while Slack is pending", async function () {
+    let finishPersistent;
+    let finishSlack;
+    const delivered = [];
+    class QueuedTransport extends PersistentTransport {
+      async logQueueElement(info) {
+        delivered.push(info.message);
+        if (info.message === "first") await new Promise((resolve) => (finishPersistent = resolve));
+      }
+    }
+    // Silence new writes: only the already-persisted backlog is relevant to shutdown.
+    const persistent = new QueuedTransport({ silent: true }, "test");
+    const pop = sinon.stub(persistent, "rateLimitedPopWithStatus");
+    pop.onCall(0).resolves({ status: "ready", item: JSON.stringify({ message: "first" }) });
+    pop.onCall(1).resolves({ status: "ready", item: JSON.stringify({ message: "second" }) });
+    pop.resolves({ status: "empty" });
+    logger.add(persistent);
+    const processing = persistent.processLogQueue();
+    post.onFirstCall().returns(new Promise((resolve) => (finishSlack = resolve)));
+    logger.info({ at: "Test", message: "Slack still pending" });
+    logger.flushTimeout = 1;
+    let finished = false;
+    const waiting = waitForLogger(logger).then(() => (finished = true));
+    await clock.tickAsync(1000);
+    assert.deepEqual(delivered, ["first"]);
+    assert.isFalse(finished);
+    finishPersistent();
+    await clock.tickAsync(0);
+    await processing;
+    assert.deepEqual(delivered, ["first"], "leave the next record persisted during the Slack drain");
+    assert.isFalse(finished, "Slack must still be drained after persistent processing stops");
+    finishSlack({ status: 200 });
+    await clock.tickAsync(50);
+    await waiting;
   });
 
   it("includes records still buffered upstream of the Slack transport", async function () {

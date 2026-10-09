@@ -82,6 +82,10 @@ export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
     await delay(Math.min(0.5, Math.max(0, deadline - Date.now()) / 1000));
   }
 
+  // Stop dequeuing persisted records at the ordinary deadline, before extending the wait for Slack.
+  // Finish any record already in flight so it is not lost after being removed from persistent storage.
+  await pausePersistentLogQueueProcessing(logger.transports);
+
   const mandatoryTransports = logger.transports.filter(hasMandatoryFlush);
   const isMandatoryPending = () =>
     hasBufferedLoggerWrites(logger) || mandatoryTransports.some((transport) => !transport.isFlushed);
@@ -98,8 +102,6 @@ export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
       );
     }
   }
-
-  await pausePersistentLogQueueProcessing(logger.transports);
 }
 
 export interface AugmentedLogger extends _Logger {
