@@ -51,28 +51,62 @@ function isFlushableTransport(transport: Transport): transport is FlushableTrans
   return "isFlushed" in transport && typeof transport.isFlushed === "boolean";
 }
 
-// Function to check that all flushable transports attached to logger are in a flushed state.
-function isLoggerFlushed(logger: AugmentedLogger): boolean {
-  return logger.transports.filter(isFlushableTransport).every((transport) => transport.isFlushed);
+interface MandatoryFlushTransport extends FlushableTransport {
+  flush(): Promise<void>;
 }
 
-// This async function can be called by a bot if the log message is generated right before the process terminates.
-// This method will check if all transports attached to AugmentedLogger having isFlushed getter return it as true. If
-// not, it will block until such time that all these transports have been flushed. This still can exit before all
-// transports are flushed if the logger flush timeout is reached for non-persistent log queue transports.
-export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
-  const waitForFlushed = async (): Promise<void> => {
-    while (!isLoggerFlushed(logger)) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
-  };
-  // Wait for the logger to be flushed or for the logger flush timeout to be reached.
-  await Promise.race([waitForFlushed(), delay(logger.flushTimeout)]);
+function hasMandatoryFlush(transport: Transport): transport is MandatoryFlushTransport {
+  return isFlushableTransport(transport) && "flush" in transport && typeof transport.flush === "function";
+}
 
-  // Signal to pause log queue processing on persistent queue transports. This waits for current element to be logged.
+// A transport can appear empty while Winston is still buffering records upstream of it.
+function hasBufferedLoggerWrites(logger: _Logger): boolean {
+  return logger.writableLength > 0 || logger.readableLength > 0;
+}
+
+function isLoggerFlushed(logger: AugmentedLogger): boolean {
+  return (
+    !hasBufferedLoggerWrites(logger) &&
+    logger.transports.filter(isFlushableTransport).every((transport) => transport.isFlushed)
+  );
+}
+
+const DEFAULT_MANDATORY_FLUSH_TIMEOUT = 120;
+
+// Persistent transports may stop after the ordinary timeout. In-memory delivery queues with flush()
+// then get up to mandatoryFlushTimeout more seconds to drain, including records still buffered by
+// Winston. Anything still pending after that is reported to the console and abandoned so exit is bounded.
+export async function waitForLogger(logger: AugmentedLogger): Promise<void> {
+  const deadline = Date.now() + logger.flushTimeout * 1000;
+  while (!isLoggerFlushed(logger) && Date.now() < deadline) {
+    await delay(Math.min(0.5, Math.max(0, deadline - Date.now()) / 1000));
+  }
+
+  // Stop dequeuing persisted records at the ordinary deadline, before extending the wait for Slack.
+  // Finish any record already in flight so it is not lost after being removed from persistent storage.
   await pausePersistentLogQueueProcessing(logger.transports);
+
+  const mandatoryTransports = logger.transports.filter(hasMandatoryFlush);
+  const isMandatoryPending = () =>
+    hasBufferedLoggerWrites(logger) || mandatoryTransports.some((transport) => !transport.isFlushed);
+  if (mandatoryTransports.length > 0) {
+    const mandatoryDeadline = Date.now() + (logger.mandatoryFlushTimeout ?? DEFAULT_MANDATORY_FLUSH_TIMEOUT) * 1000;
+    while (isMandatoryPending() && Date.now() < mandatoryDeadline) {
+      await delay(Math.min(0.05, Math.max(0, mandatoryDeadline - Date.now()) / 1000));
+    }
+    if (isMandatoryPending()) {
+      console.error(
+        `waitForLogger: abandoning undelivered notifications after mandatory flush timeout (${
+          mandatoryTransports.filter((transport) => !transport.isFlushed).length
+        } transport(s) pending)`
+      );
+    }
+  }
 }
 
 export interface AugmentedLogger extends _Logger {
   flushTimeout: number; // Timeout in seconds to wait for logger to flush before closing.
+  mandatoryFlushTimeout?: number; // Additional seconds to drain in-memory notification queues before abandoning them.
   transportErrorLogger: _Logger; // Dedicated logger for logging transport execution errors.
 }
 
@@ -141,6 +175,9 @@ export function createNewLogger(
   const logger = createBaseLogger("debug", transports, botIdentifier, runIdentifier) as AugmentedLogger;
 
   logger.flushTimeout = process.env.LOGGER_FLUSH_TIMEOUT ? parseInt(process.env.LOGGER_FLUSH_TIMEOUT) : 30;
+  logger.mandatoryFlushTimeout = process.env.LOGGER_MANDATORY_FLUSH_TIMEOUT
+    ? parseInt(process.env.LOGGER_MANDATORY_FLUSH_TIMEOUT)
+    : DEFAULT_MANDATORY_FLUSH_TIMEOUT;
 
   // Attach dedicated logger for handling and logging transport execution errors.
   logger.transportErrorLogger = createBaseLogger(

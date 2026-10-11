@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers:
-const { Logger, delay } = require("@uma/financial-templates-lib");
+const { Logger, delay, waitForLogger } = require("@uma/financial-templates-lib");
 
 const { PolymarketNotifier } = require("./src/polymarketNotifier");
 
@@ -77,7 +77,8 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
           at: "PolymarketNotifier#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await delay(5); // Set a delay to let the transports flush fully.
+        await delay(5); // Preserve the grace period for transports without a flush signal.
+        await waitForLogger(logger);
         break;
       }
       logger.debug({
@@ -130,7 +131,8 @@ async function Poll(callback) {
       error: typeof error === "string" ? new Error(error) : error,
       notificationPath: "infrastructure-error",
     });
-    await delay(5); // Set a delay to let the transports flush fully.
+    await delay(5); // Preserve the grace period for transports without a flush signal.
+    await waitForLogger(Logger);
     callback(error);
   }
   callback();

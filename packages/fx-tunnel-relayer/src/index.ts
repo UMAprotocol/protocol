@@ -2,7 +2,7 @@ import MaticJs from "@maticnetwork/maticjs";
 import { Web3ClientPlugin } from "@maticnetwork/maticjs-web3";
 import { averageBlockTimeSeconds, getWeb3, getWeb3ByChainId } from "@uma/common";
 import { getAbi, getAddress } from "@uma/contracts-node";
-import { GasEstimator, Logger, delay } from "@uma/financial-templates-lib";
+import { GasEstimator, Logger, delay, waitForLogger } from "@uma/financial-templates-lib";
 import retry from "async-retry";
 import { config } from "dotenv";
 import Web3 from "web3";
@@ -144,15 +144,17 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
 
 if (require.main === module) {
   run(Logger, getWeb3())
-    .then(() => {
+    .then(async () => {
+      await waitForLogger(Logger);
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(async (error) => {
       Logger.error({
         at: "FxTunnelRelayer#index",
         message: "FxTunnelRelayer execution error🚨",
         error: typeof error === "string" ? new Error(error) : error,
       });
+      await waitForLogger(Logger);
       process.exit(1);
     });
 }

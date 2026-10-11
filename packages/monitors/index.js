@@ -516,7 +516,8 @@ async function Poll(callback) {
       error: typeof error === "string" ? new Error(error) : error,
       notificationPath: "infrastructure-error",
     });
-    await delay(5); // Set a delay to let the transports flush fully.
+    await delay(5); // Preserve the grace period for transports without a flush signal.
+    await waitForLogger(Logger);
     callback(error);
   }
   callback();
