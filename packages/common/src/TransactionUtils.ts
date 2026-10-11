@@ -46,6 +46,7 @@ const argv = minimist(process.argv.slice(), {});
  * has a pending tx then the runner will automatically send the transaction from the next EOA.
  * @param waitForMine {Boolean} informs if the transaction runner should wait until the tx is mined or return early once
  * it has a transaction hash. Useful when sending many transactions in quick succession.
+ * @param useCachedNonce Reuse the local nonce cache by default. Set false to fetch the pending network nonce on every call.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt, return value and
  * transaction config. Note that the transaction receipt will be a promise if waitForMine is false.
  */
@@ -55,12 +56,14 @@ export const runTransaction = async ({
   transactionConfig,
   availableAccounts = 1,
   waitForMine = true,
+  useCachedNonce = true,
 }: {
   web3: Web3;
   transaction: ContractSendMethod;
   transactionConfig: AugmentedSendOptions;
   availableAccounts?: number;
   waitForMine?: boolean;
+  useCachedNonce?: boolean;
 }): Promise<ExecutedTransaction> => {
   // Use a cast version of web3 to enable callers to not have to define the `nonces` mapping in the web3 object.
   const web3 = _web3 as AugmentedWeb3;
@@ -99,24 +102,30 @@ export const runTransaction = async ({
     throw castedError;
   }
 
-  // .call() succeeded, compute selected account nonce. If the account has a pending transaction then use the subsequent
-  // index after the pending transactions to ensure this new transaction does not collide with any existing transactions
-  // in the mempool.
-  if (await accountHasPendingTransactions(web3, transactionConfig.from))
+  if (!useCachedNonce) {
+    // Independent senders can consume the same wallet nonce between submissions. Read the pending
+    // network nonce afresh and never read or advance the optimistic local cache in this mode.
     transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
-  // Else, there is no pending transaction and we use the current account transaction count as the nonce.
-  // This method does not play nicely in tests. Leave the nonce null to auto fill.
-  else if (argv.network != "test" && !argv._.some((e) => /test/g.test(e)))
-    transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
-  // Store the transaction nonce in the web3 object so that it can be used in the future. This enables us to fire a
-  // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
-  if (argv.network != "test" && !argv._.some((e) => /test/g.test(e))) {
-    if (web3.nonces?.[transactionConfig.from]) transactionConfig.nonce = ++web3.nonces[transactionConfig.from];
-    else if (transactionConfig.nonce)
-      web3.nonces = {
-        ...web3.nonces,
-        [transactionConfig.from]: transactionConfig.nonce,
-      };
+  } else {
+    // .call() succeeded, compute selected account nonce. If the account has a pending transaction then use the subsequent
+    // index after the pending transactions to ensure this new transaction does not collide with any existing transactions
+    // in the mempool.
+    if (await accountHasPendingTransactions(web3, transactionConfig.from))
+      transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
+    // Else, there is no pending transaction and we use the current account transaction count as the nonce.
+    // This method does not play nicely in tests. Leave the nonce null to auto fill.
+    else if (argv.network != "test" && !argv._.some((e) => /test/g.test(e)))
+      transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
+    // Store the transaction nonce in the web3 object so that it can be used in the future. This enables us to fire a
+    // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
+    if (argv.network != "test" && !argv._.some((e) => /test/g.test(e))) {
+      if (web3.nonces?.[transactionConfig.from]) transactionConfig.nonce = ++web3.nonces[transactionConfig.from];
+      else if (transactionConfig.nonce)
+        web3.nonces = {
+          ...web3.nonces,
+          [transactionConfig.from]: transactionConfig.nonce,
+        };
+    }
   }
 
   // Now broadcast the transaction.
@@ -151,6 +160,9 @@ export const runTransaction = async ({
         } as SendOptions) as unknown) as PromiEvent<TransactionReceipt>;
         transactionHash = await new Promise((resolve, reject) => {
           const _receipt = receipt as PromiEvent<TransactionReceipt>;
+          // Web3 also rejects the receipt promise when its error event fires before a hash. Observe
+          // that rejection while propagating the error below; later receipt awaits still reject.
+          _receipt.catch(() => undefined);
           _receipt.on("transactionHash", (transactionHash) => resolve(transactionHash));
           _receipt.on("error", (error) => reject(error));
         });

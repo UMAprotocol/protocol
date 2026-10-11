@@ -1,5 +1,6 @@
 import { Contract, EventData } from "web3-eth-contract";
-import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
+import { runTransaction, getEventsWithPaginatedBlockSearch, retryOnNonceConflict } from "@uma/common";
+import { PagerDutyRecoveryBatch } from "@uma/financial-templates-lib";
 import type Web3 from "web3";
 
 // Used by Matic/Polygon PoS client to construct proof for arbitrary message from Polygon that can be submitted to
@@ -8,6 +9,7 @@ import type Web3 from "web3";
 const POLYGON_MESSAGE_SENT_EVENT_SIG = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
 
 export class Relayer {
+  private recovery: PagerDutyRecoveryBatch;
   constructor(
     readonly logger: any,
     readonly account: string,
@@ -19,11 +21,14 @@ export class Relayer {
     readonly polygonWeb3: Web3,
     readonly polygonEarliestBlockToQuery: number,
     readonly polygonLatestBlockToQuery: number
-  ) {}
+  ) {
+    this.recovery = new PagerDutyRecoveryBatch(logger, "Relayer#relayMessage");
+  }
 
   // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
   // with a proof derived from the Polygon transaction hash that was checkpointed to Mainnet.
   async fetchAndRelayMessages(): Promise<void> {
+    this.recovery = new PagerDutyRecoveryBatch(this.logger, "Relayer#relayMessage");
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Checking for Polygon oracle messages that can be relayed to Ethereum",
@@ -78,6 +83,7 @@ export class Relayer {
         }
         await this._relayMessage(e, messageIndex);
       }
+      await this.flushIncidentRecovery();
     } else {
       this.logger.debug({
         at: "Relayer#relayMessage",
@@ -116,6 +122,9 @@ export class Relayer {
   async _relayMessage(messageEvent: EventData, messageIndex: number): Promise<void> {
     const transactionHash = messageEvent.transactionHash;
     const blockNumber = messageEvent.blockNumber;
+    const pagerDutyDedupKey = `fx-tunnel-relayer:${this.oracleRootTunnel.options.address.toLowerCase()}:${transactionHash.toLowerCase()}:${
+      messageEvent.logIndex
+    }`;
 
     const isCheckpointed = await this.maticPosClient.exitUtil.isCheckPointed(transactionHash);
     if (!isCheckpointed) {
@@ -139,7 +148,7 @@ export class Relayer {
     });
 
     let chainBlockInfo; // Only used for debugging purposes upon error.
-    let proof;
+    let proof: string;
     try {
       chainBlockInfo = await this.maticPosClient.exitUtil.getChainBlockInfo(transactionHash);
       // Proof construction logic copied from:
@@ -155,6 +164,7 @@ export class Relayer {
       this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to derive proof for MessageSent transaction hash 📛",
+        pagerDutyDedupKey,
         messageEvent,
         chainBlockInfo,
         error,
@@ -169,23 +179,49 @@ export class Relayer {
       proof: proof,
       account: this.account,
     });
+    // A nonce retry implies a rejected submission. Historical exits found already processed are not resolved each scan.
+    let attemptedSubmission = false;
     try {
-      const { transactionHash } = await runTransaction({
-        web3: this.web3,
-        transaction: this.oracleRootTunnel.methods.receiveMessage(proof),
-        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
-        availableAccounts: 1,
-      });
+      const { transactionHash: relayTransactionHash, receipt } = await retryOnNonceConflict(
+        () =>
+          runTransaction({
+            web3: this.web3,
+            // Re-simulate on every attempt, including detecting another relayer's completed exit.
+            transaction: this.oracleRootTunnel.methods.receiveMessage(proof),
+            transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
+            availableAccounts: 1,
+            useCachedNonce: false,
+            waitForMine: false,
+          }),
+        (_error, attempt) => {
+          attemptedSubmission = true;
+          this.logger.warn({
+            at: "Relayer#relayMessage",
+            message: "Relay nonce rejected; rechecking proof and pending nonce before retry",
+            transactionHash,
+            messageIndex,
+            attempt,
+          });
+        }
+      );
+      // Once accepted, a receipt failure must never trigger another submission.
+      const minedReceipt = await receipt;
+      if (!minedReceipt.status) throw new Error("Relay transaction receipt reported failure");
+      this.recovery.add(pagerDutyDedupKey);
       this.logger.info({
         at: "Relayer#relayMessage",
         message: "Submitted relay proof!🕴🏼",
-        tx: transactionHash,
+        tx: relayTransactionHash,
         messageEvent,
         messageIndex,
       });
     } catch (error) {
       // If the proof was already submitted, then don't emit an error level log.
-      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) {
+      if (
+        (error as Error & { type?: string })?.type === "call" &&
+        (error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")
+      ) {
+        if (attemptedSubmission) this.recovery.add(pagerDutyDedupKey);
         this.logger.debug({
           at: "Relayer#relayMessage",
           message: "Exit proof already processed by root tunnel, skipping",
@@ -197,10 +233,18 @@ export class Relayer {
       this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to submit proof to root tunnel🚨",
+        pagerDutyDedupKey,
+        transactionHash,
+        messageIndex,
         error,
       });
       return;
     }
+  }
+
+  // Notify recovery only after all chain work, so a PagerDuty outage cannot block later messages.
+  async flushIncidentRecovery(): Promise<void> {
+    await this.recovery.flush();
   }
 }
 module.exports = { Relayer };

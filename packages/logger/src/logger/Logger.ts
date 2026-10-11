@@ -28,6 +28,7 @@
 // });
 
 import winston from "winston";
+import { validatePagerDutyEvent } from "../shared/PagerDutyV2Transport";
 import { PagerDutyTransport } from "./PagerDutyTransport";
 import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
 import { TransportError } from "./TransportError";
@@ -212,3 +213,25 @@ export function createNewLogger(
 }
 
 export const Logger: AugmentedLogger = createNewLogger();
+
+// Recovery is delivered only to PagerDuty V2, never broadcast as an error or Slack message.
+// Await this call and retain recovery state on rejection so a later iteration can retry.
+export async function resolvePagerDutyIncident(
+  logger: _Logger,
+  dedupKey: string,
+  notificationPath?: string
+): Promise<void> {
+  validatePagerDutyEvent({ pagerDutyEventAction: "resolve", pagerDutyDedupKey: dedupKey });
+  const transports = logger.transports.filter(
+    (transport): transport is PagerDutyV2Transport => transport instanceof PagerDutyV2Transport && !transport.silent
+  );
+  if (transports.length === 0 || logger.silent) return;
+  // Prior triggers may still be waiting for space in a transport's Writable buffer.
+  // An unrelated transport can stall that buffer. Defer recovery instead of blocking the bot indefinitely.
+  const deadline = Date.now() + 30000;
+  while (hasBufferedLoggerWrites(logger)) {
+    if (Date.now() >= deadline) throw new Error("PagerDuty recovery timed out waiting for buffered logger writes");
+    await delay(0.01);
+  }
+  await Promise.all(transports.map((transport) => transport.resolveIncident(dedupKey, notificationPath)));
+}

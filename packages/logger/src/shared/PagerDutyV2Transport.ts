@@ -40,29 +40,77 @@ export function convertLevelToSeverity(level?: string | number): Severity {
   return "info";
 }
 
-// Send event to PagerDuty V2 API
-// Accepts the whole log object and routing key, extracts necessary fields
-export async function sendPagerDutyEvent(routing_key: string, logObj: any): Promise<void> {
-  // PagerDuty does not support anchor text in links, so we remove it from markdown if it exists.
-  if (typeof logObj.mrkdwn === "string") {
-    logObj.mrkdwn = removeAnchorTextFromLinks(logObj.mrkdwn);
+export interface PagerDutyEventFields {
+  pagerDutyDedupKey?: string;
+  pagerDutyEventAction?: "trigger" | "resolve";
+}
+
+// Validate opt-in lifecycle fields before either queueing or making a network request.
+export function validatePagerDutyEvent(logObj: PagerDutyEventFields): void {
+  const action = logObj.pagerDutyEventAction;
+  if (action !== undefined && action !== "trigger" && action !== "resolve") {
+    throw new Error("pagerDutyEventAction must be trigger or resolve");
   }
+  const key = logObj.pagerDutyDedupKey;
+  if (
+    (key !== undefined &&
+      (typeof key !== "string" || key.trim().length === 0 || Buffer.byteLength(key, "utf8") > 255)) ||
+    (action === "resolve" && key === undefined)
+  ) {
+    throw new Error(
+      "pagerDutyDedupKey must be a nonempty string of at most 255 UTF-8 bytes and is required for resolve"
+    );
+  }
+}
 
-  // Convert numeric Pino levels to strings for summary (Winston already uses strings)
-  const levelStr = typeof logObj.level === "number" ? levels.labels[logObj.level] : logObj.level;
-
-  const payload: any = {
-    summary: `${levelStr}: ${logObj.at} ⭢ ${logObj.message}`,
-    severity: convertLevelToSeverity(logObj.level),
-    source: logObj["bot-identifier"] ? logObj["bot-identifier"] : undefined,
-    custom_details: logObj,
+// Send event to PagerDuty V2 API. Unkeyed logs retain their ordinary trigger behavior.
+export async function sendPagerDutyEvent(routing_key: string, logObj: any): Promise<void> {
+  validatePagerDutyEvent(logObj);
+  const event_action = logObj.pagerDutyEventAction ?? "trigger";
+  const dedupKey = logObj.pagerDutyDedupKey;
+  type EventData = Parameters<typeof event>[0]["data"];
+  const data: Omit<EventData, "payload"> & { payload?: EventData["payload"] } = {
+    routing_key,
+    event_action,
+    ...(dedupKey !== undefined ? { dedup_key: dedupKey } : {}),
   };
 
-  await event({
-    data: {
-      routing_key,
-      event_action: "trigger" as Action,
-      payload,
-    },
+  // Resolves require no alert payload; in particular they must not create another incident.
+  if (event_action === "trigger") {
+    if (typeof logObj.mrkdwn === "string") {
+      logObj.mrkdwn = removeAnchorTextFromLinks(logObj.mrkdwn);
+    }
+    const levelStr = typeof logObj.level === "number" ? levels.labels[logObj.level] : logObj.level;
+    data.payload = {
+      summary: `${levelStr}: ${logObj.at} ⭢ ${logObj.message}`,
+      severity: convertLevelToSeverity(logObj.level),
+      source: logObj["bot-identifier"] ? logObj["bot-identifier"] : undefined,
+      custom_details: logObj,
+    };
+  }
+
+  // pdjs types require a trigger payload even for resolve, although Events API v2 does not.
+  // Its retry sleeps ignore AbortSignal, so bound the entire operation as well as aborting fetch.
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error("PagerDuty event timed out after 30 seconds"));
+      controller.abort();
+    }, 30000);
   });
+  // pdjs extends DOM RequestInit/Response, which are not in the node14 lib, so fetch fields are untyped.
+  const parameters = { data: data as EventData, signal: controller.signal, requestTimeout: 0 } as Parameters<
+    typeof event
+  >[0];
+  try {
+    const response = ((await Promise.race([event(parameters), deadline])) as unknown) as {
+      ok: boolean;
+      status: number;
+    };
+    // pdjs resolves HTTP errors, including exhausted rate-limit retries, instead of rejecting.
+    if (!response.ok) throw new Error(`PagerDuty event rejected with HTTP ${response.status}`);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
 }
