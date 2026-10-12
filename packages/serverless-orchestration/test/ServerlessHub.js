@@ -175,10 +175,7 @@ describe("ServerlessHub.js", function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
-    const defaultConfig = {
-      serverlessCommand: "true",
-      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
-    };
+    const defaultConfig = { serverlessCommand: "true", environmentVariables: { CUSTOM_NODE_URL: network.config.url } };
     const hubConfig = {
       // no named spoke
       testDefaultInstance: defaultConfig,
@@ -204,10 +201,7 @@ describe("ServerlessHub.js", function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
-    const defaultConfig = {
-      serverlessCommand: "true",
-      environmentVariables: { CUSTOM_NODE_URL: network.config.url },
-    };
+    const defaultConfig = { serverlessCommand: "true", environmentVariables: { CUSTOM_NODE_URL: network.config.url } };
     const hubConfig = { testInvalidInstance: { ...defaultConfig, spokeUrlName: "invalid" } };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
@@ -406,9 +400,17 @@ describe("ServerlessHub.js", function () {
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
 
+    const commonRetryConfig = [
+      { url: network.config.url, retries: 1 },
+      { url: "http://127.0.0.1:7778", retries: 1 },
+    ];
+    const botRetryConfig = [{ url: network.config.url, retries: 1 }];
+
     const hubConfig = {
       commonConfig: {
         environmentVariables: {
+          NODE_RETRY_CONFIG: commonRetryConfig,
+          SOME_LIST: ["a", "b", "c"],
           SOME_TEST_ENV: "some value", // a unique env that should be appended to all.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://example.com/" }, // a repeated key and a repeated child key. should ignore
           TOKEN_PRICE_FEED_CONFIG: { someKey: "shouldAppend" }, // a clashing parent with a unique child. should append.
@@ -418,6 +420,8 @@ describe("ServerlessHub.js", function () {
         serverlessCommand:
           'test -n "${SOME_TEST_ENV}" && test -n "${TOKEN_PRICE_FEED_CONFIG}" && test -z "${MONITOR_CONFIG_2}"',
         environmentVariables: {
+          NODE_RETRY_CONFIG: botRetryConfig,
+          SOME_LIST: ["x"],
           CUSTOM_NODE_URL: network.config.url,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // not used by oo monitor, just for environment testing.
           MONITOR_CONFIG: { optimisticOracleUIBaseUrl: "https://oracle.uma.xyz" },
@@ -449,6 +453,11 @@ describe("ServerlessHub.js", function () {
       spyHubExecution.configObject.testServerlessMonitor.environmentVariables.MONITOR_CONFIG.optimisticOracleUIBaseUrl,
       "https://oracle.uma.xyz"
     );
+
+    const configs = spyHubExecution.configObject;
+    assert.deepEqual(configs.testServerlessMonitor.environmentVariables.NODE_RETRY_CONFIG, botRetryConfig);
+    assert.deepEqual(configs.testServerlessMonitor2.environmentVariables.NODE_RETRY_CONFIG, commonRetryConfig);
+    assert.deepEqual(configs.testServerlessMonitor.environmentVariables.SOME_LIST, ["x", "b", "c"]);
 
     // All objects should correctly append the "SOME_TEST_ENV".
     for (const botKey in spyHubExecution.configObject) {
@@ -510,6 +519,37 @@ describe("ServerlessHub.js", function () {
     // Check for two hub logs caching each unique chain ID seen:
     assert.isTrue(spyLogIncludes(hubSpy, 3, defaultChainId));
     assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
+  });
+
+  it("ServerlessHub uses a healthy fallback when the primary is unreachable", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = Number(await provider.getBlockNumber()); // block number to search from for monitor
+
+    // A primary outage must not prevent the spoke from running with a healthy fallback.
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: "true",
+        environmentVariables: {
+          NODE_RETRY_CONFIG: [
+            { url: "http://127.0.0.1:7778", retries: 1 },
+            { url: network.config.url, retries: 1 },
+          ],
+        },
+      },
+    };
+
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const response = await sendHubRequest({ bucket: testBucket, configFile: testConfigFile });
+    assert.equal(response.res.statusCode, 200);
+    const hubLogs = hubSpy.getCalls().map((call) => call.lastArg);
+    const execution = hubLogs.find((log) => log.message == "Executing Serverless spokes");
+    assert.equal(
+      execution.botConfigs.testServerlessMonitor.environmentVariables.ENDING_BLOCK_NUMBER,
+      startingBlockNumber
+    );
   });
 
   it("ServerlessHub sets multiple network block numbers", async function () {
@@ -593,10 +633,7 @@ describe("ServerlessHub.js", function () {
 
     // Logs should include correct starting and latest block numbers for the alternate network.
     const alternateBlockNumbers = {
-      [alternateChainId]: {
-        lastQueriedBlockNumber,
-        latestBlockNumber: latestAlternateBlockNumber,
-      },
+      [alternateChainId]: { lastQueriedBlockNumber, latestBlockNumber: latestAlternateBlockNumber },
     };
 
     // Strip enclosing curly braces as there are also other items in the logged object.
