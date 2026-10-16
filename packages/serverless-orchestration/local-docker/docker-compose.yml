@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  hub:
+    image: umaprotocol/protocol:local
+    build: ../../..
+    env_file:
+      - hub.env
+      - bot-config.env
+  spoke:
+    image: umaprotocol/protocol:local
+    build: ../../..
+    env_file: spoke.env
+  scheduler:
+    image: scheduler:local
+    build: scheduler
+    env_file: scheduler.env
+    environment:
+      - HUB_URL=http://hub:8080
