@@ -5,12 +5,12 @@ import type Web3 from "web3";
 import sinon from "sinon";
 import { Relayer } from "../src/Relayer";
 import { getAbi } from "@uma/contracts-node";
-import { SpyTransport, GasEstimator, lastSpyLogIncludes } from "@uma/financial-templates-lib";
+import { SpyTransport, lastSpyLogIncludes } from "@uma/financial-templates-lib";
 import { ZERO_ADDRESS, interfaceName, RegistryRolesEnum } from "@uma/common";
 
 const { getContract, deployments, web3 } = require("hardhat");
 
-const { utf8ToHex } = web3.utils;
+const { toBN, toWei, utf8ToHex } = web3.utils;
 const Finder = getContract("Finder");
 const Multicall = getContract("Multicall3");
 const OracleChildTunnel = getContract("OracleChildTunnel");
@@ -36,7 +36,6 @@ const createPolygonWeb3 = (getTransactionReceipt: (transactionHash: string) => P
 describe("Relayer unit tests", function () {
   let spyLogger: any;
   let spy: any;
-  let gasEstimator: any;
   let systemSuperUser: string;
   let checkpointManager: string;
   let owner: any;
@@ -103,8 +102,6 @@ describe("Relayer unit tests", function () {
       level: "debug",
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
-    gasEstimator = new GasEstimator(spyLogger);
-    await gasEstimator.update();
     // Construct Matic PoS client that always successfully constructs a proof
     maticPosClient = {
       exitUtil: {
@@ -128,18 +125,7 @@ describe("Relayer unit tests", function () {
     deployments.save("OracleRootTunnel", { address: oracleChild.options.address, abi: getAbi("OracleRootTunnel") });
 
     // Construct Relayer that should relay messages without fail.
-    relayer = new Relayer(
-      spyLogger,
-      owner,
-      gasEstimator,
-      maticPosClient,
-      oracleChild,
-      oracleRoot,
-      web3,
-      polygonWeb3,
-      0,
-      100
-    );
+    relayer = new Relayer(spyLogger, owner, maticPosClient, oracleChild, oracleRoot, web3, polygonWeb3, 0, 100);
   });
 
   it("exits without error if no MessageSent events emitted", async function () {
@@ -167,6 +153,23 @@ describe("Relayer unit tests", function () {
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
+  });
+  it("prices the relay transaction from the latest block's base fee", async function () {
+    await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
+
+    await relayer.fetchAndRelayMessages();
+    assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
+
+    // Fees are derived from the block that was latest when the relay was sent, i.e. the parent of the block it was mined
+    // in: a 0.001 gwei priority fee and a max fee of 3x the base fee plus the priority fee, not doubled again on send.
+    const relayTx: any = await web3.eth.getTransaction(spy.getCall(-1).lastArg.tx);
+    const { baseFeePerGas } = await web3.eth.getBlock(relayTx.blockNumber - 1);
+    const expectedMaxPriorityFeePerGas = toBN(toWei("0.001", "gwei"));
+    assert.equal(relayTx.maxPriorityFeePerGas.toString(), expectedMaxPriorityFeePerGas.toString());
+    assert.equal(
+      relayTx.maxFeePerGas.toString(),
+      toBN(baseFeePerGas).muln(3).add(expectedMaxPriorityFeePerGas).toString()
+    );
   });
   it("relays all messages when a transaction contains multiple MessageSent events", async function () {
     // Bundle two price requests into a single transaction via a registered multicall contract so that one
@@ -205,7 +208,6 @@ describe("Relayer unit tests", function () {
     const _relayer: any = new Relayer(
       spyLogger,
       owner,
-      gasEstimator,
       _maticPosClient,
       oracleChild,
       oracleRoot,
@@ -243,7 +245,6 @@ describe("Relayer unit tests", function () {
     const _relayer: any = new Relayer(
       spyLogger,
       owner,
-      gasEstimator,
       maticPosClient,
       oracleChild,
       oracleRoot,
@@ -283,7 +284,6 @@ describe("Relayer unit tests", function () {
     const _relayer: any = new Relayer(
       spyLogger,
       owner,
-      gasEstimator,
       maticPosClient,
       oracleChild,
       oracleRoot,
@@ -313,7 +313,6 @@ describe("Relayer unit tests", function () {
     const _relayer: any = new Relayer(
       spyLogger,
       owner,
-      gasEstimator,
       _maticPosClient,
       oracleChild,
       oracleRoot,
@@ -345,7 +344,6 @@ describe("Relayer unit tests", function () {
     const _relayer: any = new Relayer(
       spyLogger,
       owner,
-      gasEstimator,
       _maticPosClient,
       oracleChild,
       oracleRoot,
