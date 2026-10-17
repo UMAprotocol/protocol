@@ -2,6 +2,8 @@ import { Contract, EventData } from "web3-eth-contract";
 import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
 import type Web3 from "web3";
 
+import { BASE_FEE_MULTIPLIER, MAX_PRIORITY_FEE_PER_GAS_WEI } from "./constants";
+
 // Used by Matic/Polygon PoS client to construct proof for arbitrary message from Polygon that can be submitted to
 // Ethereum to relay a cross chain message.
 // - Source: https://github.com/maticnetwork/matic.js/blob/564c5502d856c2b1870f4b3ff465df70ade47d2e/src/root/POSRootChainManager.ts#L15
@@ -11,7 +13,6 @@ export class Relayer {
   constructor(
     readonly logger: any,
     readonly account: string,
-    readonly gasEstimator: any,
     readonly maticPosClient: any,
     readonly oracleChildTunnel: Contract,
     readonly oracleRootTunnel: Contract,
@@ -170,11 +171,14 @@ export class Relayer {
       account: this.account,
     });
     try {
+      const gasFees = await this._getGasFees();
       const { transactionHash } = await runTransaction({
         web3: this.web3,
         transaction: this.oracleRootTunnel.methods.receiveMessage(proof),
-        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
+        transactionConfig: { ...gasFees, from: this.account },
         availableAccounts: 1,
+        // gasFees already leaves headroom over the base fee, so send maxFeePerGas as is rather than doubling it.
+        maxFeePerGasMultiplier: 1,
       });
       this.logger.info({
         at: "Relayer#relayMessage",
@@ -201,6 +205,19 @@ export class Relayer {
       });
       return;
     }
+  }
+
+  // Prices the receiveMessage transaction from the latest Ethereum block rather than a gas price API. Large proofs need
+  // millions of gas, and the node rejects a transaction unless the account can cover gas limit * maxFeePerGas upfront,
+  // so maxFeePerGas must track the prevailing base fee instead of a fixed fallback.
+  async _getGasFees(): Promise<{ maxFeePerGas: string; maxPriorityFeePerGas: string }> {
+    const { toBN } = this.web3.utils;
+    const { baseFeePerGas } = await this.web3.eth.getBlock("latest");
+    if (baseFeePerGas === undefined) throw new Error("Latest Ethereum block has no baseFeePerGas");
+    const maxPriorityFeePerGas = toBN(MAX_PRIORITY_FEE_PER_GAS_WEI);
+    // Adding the priority fee keeps maxFeePerGas >= maxPriorityFeePerGas even when the base fee is near zero.
+    const maxFeePerGas = toBN(baseFeePerGas).muln(BASE_FEE_MULTIPLIER).add(maxPriorityFeePerGas);
+    return { maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: maxPriorityFeePerGas.toString() };
   }
 }
 module.exports = { Relayer };

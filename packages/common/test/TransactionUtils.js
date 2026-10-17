@@ -27,6 +27,27 @@ describe("TransactionUtils.js", function () {
         assert.equal(error.type, "call");
       }
     });
+    it("scales maxFeePerGas by maxFeePerGasMultiplier, doubling by default", async function () {
+      const erc20Contract = await ERC20.new("2").send({ from: accounts[0] });
+      const gasFees = { maxFeePerGas: toWei("10", "gwei"), maxPriorityFeePerGas: toWei("1", "gwei") };
+
+      const { transactionHash: doubledTxHash } = await TransactionUtils.runTransaction({
+        web3,
+        transaction: erc20Contract.methods.transfer(accounts[1], "1"),
+        transactionConfig: { ...gasFees, from: accounts[0] },
+      });
+      const doubledTx = await web3.eth.getTransaction(doubledTxHash);
+      assert.equal(doubledTx.maxFeePerGas.toString(), toWei("20", "gwei"));
+
+      const { transactionHash: unscaledTxHash } = await TransactionUtils.runTransaction({
+        web3,
+        transaction: erc20Contract.methods.transfer(accounts[1], "1"),
+        transactionConfig: { ...gasFees, from: accounts[0] },
+        maxFeePerGasMultiplier: 1,
+      });
+      const unscaledTx = await web3.eth.getTransaction(unscaledTxHash);
+      assert.equal(unscaledTx.maxFeePerGas.toString(), toWei("10", "gwei"));
+    });
     // TODO: Figure out how to test situations where the `transaction.send()` fails but `.call()` does not
     it("waitForMine = false doesn't hang if transaction hash errors", async function () {
       const erc20Contract = await ERC20.new("1").send({ from: accounts[0] });
