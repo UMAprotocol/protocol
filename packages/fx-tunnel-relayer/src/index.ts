@@ -2,7 +2,7 @@ import MaticJs from "@maticnetwork/maticjs";
 import { Web3ClientPlugin } from "@maticnetwork/maticjs-web3";
 import { averageBlockTimeSeconds, getWeb3, getWeb3ByChainId } from "@uma/common";
 import { getAbi, getAddress } from "@uma/contracts-node";
-import { GasEstimator, Logger, delay, waitForLogger } from "@uma/financial-templates-lib";
+import { Logger, delay, waitForLogger } from "@uma/financial-templates-lib";
 import retry from "async-retry";
 import { config } from "dotenv";
 import Web3 from "web3";
@@ -42,8 +42,6 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     ]);
     const polygonLookbackBlocks = Math.ceil(config.lookback / polygonAverageBlockTime);
     const polygonEarliestBlockToQuery = Math.max(polygonCurrentBlock.number - polygonLookbackBlocks, 0);
-
-    const gasEstimator = new GasEstimator(logger);
 
     // Setup Polygon client:
     MaticJs.use(Web3ClientPlugin);
@@ -89,7 +87,6 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     const relayer = new Relayer(
       logger,
       accounts[0],
-      gasEstimator,
       maticPOSClient,
       oracleChildTunnel,
       oracleRootTunnel,
@@ -102,9 +99,6 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     for (;;) {
       await retry(
         async () => {
-          // Update state.
-          await gasEstimator.update();
-
           await relayer.fetchAndRelayMessages();
         },
         {

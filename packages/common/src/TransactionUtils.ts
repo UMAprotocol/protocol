@@ -46,6 +46,8 @@ const argv = minimist(process.argv.slice(), {});
  * has a pending tx then the runner will automatically send the transaction from the next EOA.
  * @param waitForMine {Boolean} informs if the transaction runner should wait until the tx is mined or return early once
  * it has a transaction hash. Useful when sending many transactions in quick succession.
+ * @param maxFeePerGasMultiplier {number} multiplier applied to the provided maxFeePerGas on London transactions so that
+ * the transaction is still included if the base fee rises. Callers that already add headroom can pass 1.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt, return value and
  * transaction config. Note that the transaction receipt will be a promise if waitForMine is false.
  */
@@ -55,12 +57,14 @@ export const runTransaction = async ({
   transactionConfig,
   availableAccounts = 1,
   waitForMine = true,
+  maxFeePerGasMultiplier = 2,
 }: {
   web3: Web3;
   transaction: ContractSendMethod;
   transactionConfig: AugmentedSendOptions;
   availableAccounts?: number;
   waitForMine?: boolean;
+  maxFeePerGasMultiplier?: number;
 }): Promise<ExecutedTransaction> => {
   // Use a cast version of web3 to enable callers to not have to define the `nonces` mapping in the web3 object.
   const web3 = _web3 as AugmentedWeb3;
@@ -129,14 +133,15 @@ export const runTransaction = async ({
     let transactionHash: string;
 
     // If the config contains maxPriorityFeePerGas then this is a London transaction. In this case, simply use the
-    // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
-    // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
+    // provided config settings but scale the maxFeePerGas by maxFeePerGasMultiplier (double by default) to ensure the
+    // transaction is included, even if the base fee spikes up. The difference between the realized base fee and
+    // maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
       // If waitForMine is set (default) then code blocks until the transaction is mined and a receipt is returned.
       if (waitForMine) {
         receipt = ((await transaction.send({
           ...transactionConfig,
-          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+          maxFeePerGas: Math.ceil(parseInt(transactionConfig.maxFeePerGas.toString()) * maxFeePerGasMultiplier),
           type: "0x2",
         } as SendOptions)) as unknown) as TransactionReceipt;
         transactionHash = receipt.transactionHash;
@@ -146,7 +151,7 @@ export const runTransaction = async ({
       else {
         receipt = (transaction.send({
           ...transactionConfig,
-          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+          maxFeePerGas: Math.ceil(parseInt(transactionConfig.maxFeePerGas.toString()) * maxFeePerGasMultiplier),
           type: "0x2",
         } as SendOptions) as unknown) as PromiEvent<TransactionReceipt>;
         transactionHash = await new Promise((resolve, reject) => {
