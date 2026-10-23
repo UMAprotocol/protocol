@@ -18,10 +18,15 @@ jobs:
       - run:
           name: Install Foundry
           command: |
+            # foundryup >= 0.0.9 rejects releases without a Sigstore attestation, which this nightly predates.
             export FOUNDRY_VERSION=nightly-70cd140131cd49875c6f31626bdfae08eba35386
-            curl -fsSL https://foundry.paradigm.xyz | SHELL=/bin/bash bash
+            export FOUNDRY_SHA256=47f0dfd28cc6ad162a47315fb847c985ee5c6b9f03f4b2f6aed657e492a45350
+            curl -fsSL --retry 5 -o /tmp/foundry.tar.gz "https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}/foundry_nightly_linux_amd64.tar.gz"
+            echo "${FOUNDRY_SHA256}  /tmp/foundry.tar.gz" | sha256sum -c -
+            mkdir -p /home/circleci/.foundry/bin
+            tar -xzf /tmp/foundry.tar.gz -C /home/circleci/.foundry/bin
             export PATH="/home/circleci/.foundry/bin:$PATH"
-            foundryup --install "$FOUNDRY_VERSION"
+            forge --version
       - save_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
