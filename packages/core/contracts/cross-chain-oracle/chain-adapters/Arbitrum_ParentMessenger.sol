@@ -137,7 +137,7 @@ contract Arbitrum_ParentMessenger is Arbitrum_Messenger, ParentMessengerInterfac
 
     /**
      * @notice Process a received message from the child messenger via the canonical message bridge.
-     * @dev The caller must be the the child messenger, sent over the canonical message bridge.
+     * @dev The caller must be the child messenger, sent over the canonical message bridge.
      * @dev Note that only the OracleHub can receive messages from the child messenger. Therefore we can always forward
      * these messages to this contract. The OracleHub must implement processMessageFromChild to handle this message.
      * @param data data message sent from the child messenger. Should be an encoded function call or packed data.

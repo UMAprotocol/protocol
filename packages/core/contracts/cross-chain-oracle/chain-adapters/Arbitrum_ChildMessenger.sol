@@ -70,7 +70,7 @@ contract Arbitrum_ChildMessenger is AVM_CrossDomainEnabled, ChildMessengerInterf
 
     /**
      * @notice Process a received message from the parent messenger via the canonical message bridge.
-     * @dev The caller must be the the parent messenger, sent over the canonical message bridge.
+     * @dev The caller must be the parent messenger, sent over the canonical message bridge.
      * @param data data message sent from the L1 messenger. Should be an encoded function call or packed data.
      * @param target desired recipient of `data`. Target must implement the `processMessageFromParent` function. Having
      * this as a param enables the L1 Messenger to send messages to arbitrary addresses on the L1. This is primarily

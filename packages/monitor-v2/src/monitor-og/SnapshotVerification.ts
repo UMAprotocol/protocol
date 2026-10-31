@@ -466,7 +466,7 @@ const verifyProposalChoices = (proposal: SnapshotProposalGraphql, params: Monito
     return { verified: true };
   }
 
-  // Verify that the the single-choice proposal has exactly one matching approval choice.
+  // Verify that the single-choice proposal has exactly one matching approval choice.
   const matchingChoices = proposal.choices.filter((choice) =>
     params.approvalChoices.map((approvalChoice) => approvalChoice.toLowerCase()).includes(choice.toLowerCase())
   );

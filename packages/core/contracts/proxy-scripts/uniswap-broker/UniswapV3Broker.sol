@@ -94,7 +94,7 @@ contract UniswapV3Broker {
             uint256 inputAmountForStep;
 
             // If zeroForOne is true, then we are moving the price UP. In this case we need to ensure that if the next
-            // tick price is more than the target price, we set the set the the next step price to the target price. This
+            // tick price is more than the target price, we set the set the next step price to the target price. This
             // ensures that the price does not undershoot when the next tick is the last tick. Else, traverse the whole tick.
             if (zeroForOne) {
                 step.sqrtPriceNextX96 = nextTickPriceX96 > sqrtRatioTargetX96 ? sqrtRatioTargetX96 : nextTickPriceX96;
