@@ -4,7 +4,7 @@
 # Check if you have foundry installed. If not, install it for you.
 
 export PATH="$HOME/.foundry/bin:$PATH"
-FOUNDRY_VERSION="${FOUNDRY_VERSION:-nightly-70cd140131cd49875c6f31626bdfae08eba35386}"
+FOUNDRY_VERSION="${FOUNDRY_VERSION:-1.5.1}"
 
 if ! command -v forge &>/dev/null; then
     echo "Foundry not installed. Installing foundry for you..."
@@ -23,9 +23,21 @@ if [ ! -d "./lib" ] || [ -z "$(ls -A ./lib)" ] || [ -z "$(ls -A ./lib/forge-std)
     mv .gitignore .gitignore.tmp
     mkdir temp
     cd temp
-    forge init --force --no-commit # Init the forge project to get the required libraries.
+    forge init --force --no-git # Init the forge project to get the required libraries.
     mv ./lib ../                   # Move the required foundry components to root of core.
     cd ..
     rm -rf temp                    # Clean up.
     mv .gitignore.tmp .gitignore
+fi
+
+# Localize aliased OpenZeppelin v5 packages under packages/core/node_modules so tools like
+# forge coverage can resolve relative imports during source analysis.
+mkdir -p ./node_modules/@openzeppelin
+
+if [ ! -e "./node_modules/@openzeppelin/contracts-v5" ] && [ -d "../../node_modules/@openzeppelin/contracts-v5" ]; then
+    ln -s ../../../../node_modules/@openzeppelin/contracts-v5 ./node_modules/@openzeppelin/contracts-v5
+fi
+
+if [ ! -e "./node_modules/@openzeppelin/contracts-upgradeable-v5" ] && [ -d "../../node_modules/@openzeppelin/contracts-upgradeable-v5" ]; then
+    ln -s ../../../../node_modules/@openzeppelin/contracts-upgradeable-v5 ./node_modules/@openzeppelin/contracts-upgradeable-v5
 fi
