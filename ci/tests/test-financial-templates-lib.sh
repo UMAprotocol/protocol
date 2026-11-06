@@ -3,7 +3,7 @@
 cat << EOF
   test-financial-templates-lib-hardhat:
     docker:
-      - image: cimg/node:lts
+      - image: cimg/node:22.11
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 9000000 -p 9545
     working_directory: ~/protocol
