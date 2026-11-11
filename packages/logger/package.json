@@ -8,6 +8,7 @@
     "@google-cloud/trace-agent": "^5.1.6",
     "@pagerduty/pdjs": "^2.2.4",
     "@uma/common": "^2.40.0",
+    "axios": "^1.10.0",
     "bn.js": "^4.11.9",
     "discord.js": "^14.11.0",
     "dotenv": "^9.0.0",
