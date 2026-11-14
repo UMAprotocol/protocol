@@ -6,8 +6,10 @@ import { Logger, delay, waitForLogger } from "@uma/financial-templates-lib";
 import retry from "async-retry";
 import { config } from "dotenv";
 import Web3 from "web3";
+import type { Contract } from "web3-eth-contract";
 import winston from "winston";
 
+import { ROOT_TUNNEL_CHUNKED_RELAYER_ABI } from "./chunkedRelayerAbi";
 import { SKIP_THRESHOLD_SECONDS } from "./constants";
 import { earliestBlockForLookback } from "./lookback";
 import { safeErrorMessage } from "./safeErrorMessage";
@@ -75,6 +77,17 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       await getAddress("OracleRootTunnel", ethNetworkId)
     );
 
+    let chunkedRelayer: Contract | undefined;
+    if (config.chunkedRelayerAddress !== undefined) {
+      const code = await web3.eth.getCode(config.chunkedRelayerAddress);
+      if (!code || code === "0x") throw new Error("CHUNKED_RELAYER_ADDRESS has no contract code on Ethereum");
+      chunkedRelayer = new web3.eth.Contract(ROOT_TUNNEL_CHUNKED_RELAYER_ABI, config.chunkedRelayerAddress);
+      const rootTunnel: string = await chunkedRelayer.methods.rootTunnel().call();
+      if (rootTunnel.toLowerCase() !== oracleRootTunnel.options.address.toLowerCase()) {
+        throw new Error("CHUNKED_RELAYER_ADDRESS relays to a different root tunnel than OracleRootTunnel");
+      }
+    }
+
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
@@ -82,6 +95,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       message: "Relayer started 🌉",
       oracleChildTunnel: oracleChildTunnel.options.address,
       oracleRootTunnel: oracleRootTunnel.options.address,
+      chunkedRelayer: config.chunkedRelayerAddress ?? null,
       polygonEarliestBlockToQuery: polygonEarliestBlockToQuery,
       polygonLatestBlockToQuery: polygonCurrentBlock.number,
     });
@@ -96,7 +110,9 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       polygonWeb3,
       polygonEarliestBlockToQuery,
       polygonCurrentBlock.number,
-      config.maxCalldataBytes
+      config.maxCalldataBytes,
+      chunkedRelayer,
+      config.maxChunkedProofBytes
     );
 
     for (;;) {
