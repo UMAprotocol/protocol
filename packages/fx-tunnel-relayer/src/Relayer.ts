@@ -2,6 +2,7 @@ import { Contract, EventData } from "web3-eth-contract";
 import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
 import type Web3 from "web3";
 import { safeErrorMessage } from "./safeErrorMessage";
+import { MAX_CHUNK_SIZE, SplitExitPayload, chunkHex, splitExitPayload } from "./exitPayload";
 
 import { BASE_FEE_MULTIPLIER, MAX_PRIORITY_FEE_PER_GAS_WEI } from "./constants";
 
@@ -10,8 +11,18 @@ import { BASE_FEE_MULTIPLIER, MAX_PRIORITY_FEE_PER_GAS_WEI } from "./constants";
 // - Source: https://github.com/maticnetwork/matic.js/blob/564c5502d856c2b1870f4b3ff465df70ade47d2e/src/root/POSRootChainManager.ts#L15
 const POLYGON_MESSAGE_SENT_EVENT_SIG = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
 
+const calldataLength = (transaction: { encodeABI: () => string }): number => (transaction.encodeABI().length - 2) / 2;
+const isEmptyCode = (code: string | null | undefined): boolean => !code || code === "0x";
+// EIP-7825 per-transaction gas limit cap on Ethereum.
+export const MAX_TRANSACTION_GAS = 16_777_216;
+// runTransaction sends with a gas limit of the estimate times this buffer.
+const RUN_TRANSACTION_GAS_LIMIT_BUFFER = 1.25;
+
 export class Relayer {
   private readonly warnedOversizeMessages = new Set<string>();
+  // Chunk data contract addresses known to be deployed, to skip on-chain lookups for chunks shared between messages.
+  private readonly storedChunks = new Set<string>();
+  private readonly reportedTooLargeMessages = new Set<string>();
   constructor(
     readonly logger: any,
     readonly account: string,
@@ -22,7 +33,12 @@ export class Relayer {
     readonly polygonWeb3: Web3,
     readonly polygonEarliestBlockToQuery: number,
     readonly polygonLatestBlockToQuery: number,
-    readonly maxCalldataBytes = 120_000
+    readonly maxCalldataBytes = 120_000,
+    // Optional RootTunnelChunkedRelayer used for proofs above maxCalldataBytes. If undefined, they are skipped with a warn.
+    readonly chunkedRelayer?: Contract,
+    // Proofs above this size are not relayed through the chunked relayer: the root tunnel would need more gas than the
+    // per-transaction cap to process them, so storing their chunks would only waste gas.
+    readonly maxChunkedProofBytes = 360_000
   ) {}
 
   // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
@@ -168,19 +184,9 @@ export class Relayer {
 
     try {
       const transaction = this.oracleRootTunnel.methods.receiveMessage(proof);
-      const calldataBytes = (transaction.encodeABI().length - 2) / 2;
+      const calldataBytes = calldataLength(transaction);
       if (calldataBytes > this.maxCalldataBytes) {
-        const key = `${transactionHash}:${messageIndex}`;
-        if (!this.warnedOversizeMessages.has(key)) {
-          this.logger.warn({
-            at: "Relayer#relayMessage",
-            message: "Oversize relay calldata: needs manual relay",
-            transactionHash,
-            messageIndex,
-            calldataBytes,
-          });
-          this.warnedOversizeMessages.add(key);
-        }
+        await this._handleOversizeProof(proof, transactionHash, messageIndex, calldataBytes);
         return;
       }
       this.logger.debug({
@@ -228,6 +234,189 @@ export class Relayer {
         error: safeErrorMessage(error),
       });
       return;
+    }
+  }
+
+  // Handles a proof whose receiveMessage calldata exceeds maxCalldataBytes. Already processed exits are skipped. With a
+  // chunked relayer configured the proof is relayed through it; otherwise (or if the payload cannot be parsed) a warn is
+  // logged once per message so that it can be relayed manually. Errors thrown here are handled by the caller's catch.
+  async _handleOversizeProof(
+    proof: string,
+    transactionHash: string,
+    messageIndex: number,
+    calldataBytes: number
+  ): Promise<void> {
+    let payload: SplitExitPayload | undefined;
+    let parseError: string | undefined;
+    try {
+      payload = splitExitPayload(proof);
+    } catch (error) {
+      parseError = safeErrorMessage(error);
+    }
+
+    if (payload) {
+      let processed: boolean | undefined;
+      try {
+        processed = await this.oracleRootTunnel.methods.processedExits(payload.exitHash).call();
+      } catch (error) {
+        // Without the precheck, storing chunks could waste gas on an exit that is already processed.
+        if (this.chunkedRelayer) throw error;
+        this.logger.debug({
+          at: "Relayer#relayMessage",
+          message: "Failed to check whether oversize exit was processed",
+          transactionHash,
+          messageIndex,
+          error: safeErrorMessage(error),
+        });
+      }
+      if (processed) {
+        this.logger.debug({
+          at: "Relayer#relayMessage",
+          message: "Oversize exit already processed by root tunnel, skipping",
+          transactionHash,
+          messageIndex,
+          exitHash: payload.exitHash,
+        });
+        return;
+      }
+      if (this.chunkedRelayer) {
+        const proofBytes = (proof.length - 2) / 2;
+        if (proofBytes > this.maxChunkedProofBytes) {
+          const key = `${transactionHash}:${messageIndex}`;
+          if (!this.reportedTooLargeMessages.has(key)) {
+            this.logger.error({
+              at: "Relayer#relayMessage",
+              message: "Proof too large to relay on Ethereum: needs DVM request outside the tunnel",
+              transactionHash,
+              messageIndex,
+              proofBytes,
+              maxChunkedProofBytes: this.maxChunkedProofBytes,
+            });
+            this.reportedTooLargeMessages.add(key);
+          }
+          return;
+        }
+        await this._relayChunked(this.chunkedRelayer, payload, transactionHash, messageIndex, proofBytes);
+        return;
+      }
+    }
+
+    const key = `${transactionHash}:${messageIndex}`;
+    if (!this.warnedOversizeMessages.has(key)) {
+      this.logger.warn({
+        at: "Relayer#relayMessage",
+        message: "Oversize relay calldata: needs manual relay",
+        transactionHash,
+        messageIndex,
+        calldataBytes,
+        ...(this.chunkedRelayer ? { error: `Could not parse exit payload: ${parseError}` } : {}),
+      });
+      this.warnedOversizeMessages.add(key);
+    }
+  }
+
+  // Relays an oversize proof through RootTunnelChunkedRelayer: stores the payload body (items 0..8) in data contracts of
+  // at most MAX_CHUNK_SIZE bytes, then calls relay(prefix, chunks, suffix), which calls receiveMessage with the rebuilt
+  // proof. Chunks are content addressed (CREATE2 with salt keccak256(chunk)), so chunks already on chain, e.g. stored
+  // for another message of the same Polygon transaction or by an earlier interrupted run, are reused and not re-sent.
+  async _relayChunked(
+    chunkedRelayer: Contract,
+    payload: SplitExitPayload,
+    transactionHash: string,
+    messageIndex: number,
+    proofBytes: number
+  ): Promise<void> {
+    const chunks = chunkHex(payload.body, MAX_CHUNK_SIZE);
+    const pointers: string[] = [];
+    let chunksStored = 0;
+    let chunksReused = 0;
+    for (const chunk of chunks) {
+      const pointer: string = await chunkedRelayer.methods.chunkAddress(chunk).call();
+      if (this.storedChunks.has(pointer) || !isEmptyCode(await this.web3.eth.getCode(pointer))) {
+        chunksReused++;
+      } else {
+        const transaction = chunkedRelayer.methods.storeChunk(chunk);
+        this._assertCalldataWithinLimit(transaction, "storeChunk");
+        const gasFees = await this._getGasFees();
+        await runTransaction({
+          web3: this.web3,
+          transaction,
+          transactionConfig: { ...gasFees, from: this.account },
+          availableAccounts: 1,
+          maxFeePerGasMultiplier: 1,
+        });
+        // runTransaction waits for the receipt, so a failed store throws before the pointer is recorded.
+        chunksStored++;
+      }
+      this.storedChunks.add(pointer);
+      pointers.push(pointer);
+    }
+
+    const transaction = chunkedRelayer.methods.relay(payload.prefix, pointers, payload.suffix);
+    this._assertCalldataWithinLimit(transaction, "relay");
+    const relayContext = {
+      transactionHash,
+      messageIndex,
+      proofBytes,
+      chunkCount: pointers.length,
+      chunksStored,
+      chunksReused,
+    };
+    this.logger.debug({
+      at: "Relayer#relayMessage",
+      message: "Submitting chunked proof",
+      ...relayContext,
+      account: this.account,
+    });
+    let relayTransactionHash: string;
+    try {
+      // runTransaction simulates the relay before sending, so a revert or out-of-gas fails here without spending gas.
+      // Its gas limit is the estimate times RUN_TRANSACTION_GAS_LIMIT_BUFFER, which must also fit the per-transaction
+      // cap or nodes reject the transaction, so check that first for a clear error.
+      const estimatedGas = await transaction.estimateGas({ from: this.account });
+      if (Math.floor(estimatedGas * RUN_TRANSACTION_GAS_LIMIT_BUFFER) > MAX_TRANSACTION_GAS) {
+        throw new Error(
+          `relay gas estimate ${estimatedGas} with a ${RUN_TRANSACTION_GAS_LIMIT_BUFFER}x buffer exceeds the ` +
+            `${MAX_TRANSACTION_GAS} per-transaction gas cap; lower MAX_CHUNKED_PROOF_BYTES`
+        );
+      }
+      const gasFees = await this._getGasFees();
+      ({ transactionHash: relayTransactionHash } = await runTransaction({
+        web3: this.web3,
+        transaction,
+        transactionConfig: { ...gasFees, from: this.account },
+        availableAccounts: 1,
+        maxFeePerGasMultiplier: 1,
+      }));
+    } catch (error) {
+      // Already processed exits are logged at debug level by the caller.
+      if (safeErrorMessage(error).includes("EXIT_ALREADY_PROCESSED")) throw error;
+      // The stored chunks stay on chain and are reused, so later runs only repeat the simulation.
+      this.logger.error({
+        at: "Relayer#relayMessage",
+        message: "Chunked relay failed after storing chunks🚨",
+        ...relayContext,
+        error: safeErrorMessage(error),
+      });
+      return;
+    }
+    this.logger.info({
+      at: "Relayer#relayMessage",
+      message: "Submitted chunked relay proof!🕴🏼",
+      tx: relayTransactionHash,
+      polygonTransactionHash: transactionHash,
+      messageIndex,
+      proofBytes,
+      chunkCount: pointers.length,
+      chunksStored,
+      chunksReused,
+    });
+  }
+
+  _assertCalldataWithinLimit(transaction: { encodeABI: () => string }, method: string): void {
+    const bytes = calldataLength(transaction);
+    if (bytes > this.maxCalldataBytes) {
+      throw new Error(`${method} calldata of ${bytes} bytes exceeds MAX_CALLDATA_BYTES ${this.maxCalldataBytes}`);
     }
   }
 
