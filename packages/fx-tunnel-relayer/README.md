@@ -59,3 +59,23 @@ const proof = await posClient.exitUtil.buildPayloadForExit(
 - Detect `MessageSent` events emitted by the `OracleChildTunnel` on Polygon whenever a cross-chain price request is submitted to it, usually by the `OptimisticOracle` but can be sent by any registered contract.
 - Attempt to construct a proof for the transaction hashes containing the `MessageSent` events. This step will fail and exit silently if the hash has not been checkpointed to Ethereum yet.
 - Include the proof in a `receiveMessage` function call to the `OracleRootTunnel`. This step will fail and exit silently if the proof has already been included in a call.
+
+# Oversize proofs and lookback
+
+`MAX_CALLDATA_BYTES` defaults to `120000` and must be a positive integer. The limit covers the complete ABI-encoded
+`receiveMessage(bytes)` calldata, including its selector, offset, length and padding. Calldata above the limit is not
+simulated or sent. Each skipped transaction/message pair produces one `warn` per relayer instance with its Polygon
+transaction hash, message index and byte count. The standard PagerDuty transports accept `error` and above, so these
+warnings do not page. A new serverless invocation can warn again; there is no persistent suppression store.
+
+Logs contain event identifiers and bounded error messages, not proofs, transaction calldata or full receipt/event
+objects. Provider URLs and long hexadecimal strings are redacted from error messages before the 2048-character limit.
+
+The lookback starts at the first Polygon block whose timestamp is at or after the latest block timestamp minus `LOOKBACK`.
+It no longer assumes Polygon's average block time. Common block-time defaults for other bots are unchanged.
+
+An age alert needs a separate change: inspect checkpointed messages older than a configurable threshold (for example,
+6 hours), query `processedExits` on the root tunnel for each exact exit hash, and emit a deduplicated error for unprocessed
+exits before they leave the lookback. Persist the exit identity and alert state across serverless runs and keep checking
+pending exits after they leave the event window. The current matic.js exit-hash helper needs validation for nonzero message
+indices before use here. This PR does not add that monitor or claim that oversize messages were delivered.

@@ -1,6 +1,6 @@
 import MaticJs from "@maticnetwork/maticjs";
 import { Web3ClientPlugin } from "@maticnetwork/maticjs-web3";
-import { averageBlockTimeSeconds, getWeb3, getWeb3ByChainId } from "@uma/common";
+import { getWeb3, getWeb3ByChainId } from "@uma/common";
 import { getAbi, getAddress } from "@uma/contracts-node";
 import { Logger, delay, waitForLogger } from "@uma/financial-templates-lib";
 import retry from "async-retry";
@@ -9,6 +9,8 @@ import Web3 from "web3";
 import winston from "winston";
 
 import { SKIP_THRESHOLD_SECONDS } from "./constants";
+import { earliestBlockForLookback } from "./lookback";
+import { safeErrorMessage } from "./safeErrorMessage";
 import { Relayer } from "./Relayer";
 import { RelayerConfig } from "./RelayerConfig";
 import { isTooCloseToRoundEnd, secondsUntilRoundEnd } from "./timeUtils";
@@ -36,12 +38,12 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     const polygonChainId = config.chainId;
     const polygonWeb3 = polygonChainId !== "" ? getWeb3ByChainId(Number(polygonChainId)) : web3;
     const polygonNetworkId = await polygonWeb3.eth.net.getId();
-    const [polygonAverageBlockTime, polygonCurrentBlock] = await Promise.all([
-      averageBlockTimeSeconds(polygonNetworkId),
-      polygonWeb3.eth.getBlock("latest"),
-    ]);
-    const polygonLookbackBlocks = Math.ceil(config.lookback / polygonAverageBlockTime);
-    const polygonEarliestBlockToQuery = Math.max(polygonCurrentBlock.number - polygonLookbackBlocks, 0);
+    const polygonCurrentBlock = await polygonWeb3.eth.getBlock("latest");
+    const polygonEarliestBlockToQuery = await earliestBlockForLookback(
+      polygonWeb3,
+      polygonCurrentBlock,
+      config.lookback
+    );
 
     // Setup Polygon client:
     MaticJs.use(Web3ClientPlugin);
@@ -93,7 +95,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       web3,
       polygonWeb3,
       polygonEarliestBlockToQuery,
-      polygonCurrentBlock.number
+      polygonCurrentBlock.number,
+      config.maxCalldataBytes
     );
 
     for (;;) {
@@ -109,7 +112,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
             logger.debug({
               at: "FxTunnelRelayer#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error,
+              error: safeErrorMessage(error),
             });
           },
         }
@@ -146,7 +149,7 @@ if (require.main === module) {
       Logger.error({
         at: "FxTunnelRelayer#index",
         message: "FxTunnelRelayer execution error🚨",
-        error: typeof error === "string" ? new Error(error) : error,
+        error: safeErrorMessage(error),
       });
       await waitForLogger(Logger);
       process.exit(1);
