@@ -20,6 +20,11 @@ import {
 import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
 import type { Config as PagerDutyV2Config } from "../shared/PagerDutyV2Transport";
 import { createConfig as pagerDutyV2CreateConfig } from "../shared/PagerDutyV2Transport";
+import {
+  IncidentIOTransport,
+  Config as IncidentIOConfig,
+  createConfig as incidentIOCreateConfig,
+} from "./IncidentIOTransport";
 import { DiscordTransport } from "./DiscordTransport";
 import type Transport from "winston-transport";
 import dotenv from "dotenv";
@@ -42,6 +47,7 @@ interface TransportsConfig {
   pdApiToken?: string;
   pagerDutyConfig?: PagerDutyConfig;
   pagerDutyV2Config?: PagerDutyV2Config;
+  incidentIOConfig?: IncidentIOConfig;
 }
 
 export function createTransports(transportsConfig: TransportsConfig = {}): Transport[] {
@@ -117,6 +123,14 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
       // this will throw an error if an invalid configuration is present
       if (!disabled) {
         transports.push(new PagerDutyV2Transport({ level: "error" }, pagerDutyV2CreateConfig(pagerDutyV2Config)));
+      }
+    }
+
+    if (transportsConfig.incidentIOConfig || process.env.INCIDENT_IO_CONFIG) {
+      const { disabled = false, ...incidentIOConfig } =
+        transportsConfig.incidentIOConfig ?? JSON.parse(process.env.INCIDENT_IO_CONFIG || "null");
+      if (!disabled) {
+        transports.push(new IncidentIOTransport({ level: "error" }, incidentIOCreateConfig(incidentIOConfig)));
       }
     }
   }
