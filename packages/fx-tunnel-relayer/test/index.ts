@@ -1,3 +1,4 @@
+import MaticJs from "@maticnetwork/maticjs";
 import winston from "winston";
 import { assert } from "chai";
 import { Contract } from "web3-eth-contract";
@@ -44,6 +45,7 @@ describe("index.ts", function () {
     process.env = originalEnv;
   });
   afterEach(function () {
+    sinon.restore();
     if (clock) {
       clock.restore();
     }
@@ -75,6 +77,8 @@ describe("index.ts", function () {
     await registry.methods.registerContract([], owner).send({ from: owner });
   });
   beforeEach(async function () {
+    // These tests have no relay events; avoid the SDK network metadata HTTP request.
+    sinon.stub(MaticJs.POSClient.prototype, "init").resolves();
     // Deploy new tunnel contracts so that event logs are fresh for each test
     oracleChild = await OracleChildTunnel.new(fxChild.options.address, finder.options.address).send({ from: owner });
     oracleRoot = await OracleRootTunnel.new(checkpointManager, fxRoot.options.address, finder.options.address).send({

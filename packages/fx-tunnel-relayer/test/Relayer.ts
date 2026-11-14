@@ -154,6 +154,61 @@ describe("Relayer unit tests", function () {
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
   });
+  it("skips oversize calldata before fee lookup or send and warns once per message", async function () {
+    const txn = await oracleChild.methods
+      .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
+      .send({ from: owner });
+    const proof = "0x" + "ab".repeat(120_000);
+    maticPosClient.exitUtil.buildPayloadForExit = async () => proof;
+    const fees = sinon.spy(relayer, "_getGasFees");
+    await relayer.fetchAndRelayMessages();
+    await relayer.fetchAndRelayMessages();
+    assert.isFalse(fees.called);
+    const warnings = spy.getCalls().filter((log: any) => log.lastArg.level === "warn");
+    assert.lengthOf(warnings, 1);
+    assert.equal(warnings[0].lastArg.transactionHash, txn.transactionHash);
+    assert.equal(warnings[0].lastArg.messageIndex, 0);
+    assert.equal(warnings[0].lastArg.calldataBytes, 120_068);
+    assert.include(warnings[0].lastArg.message, "needs manual relay");
+    assert.notInclude(JSON.stringify(spy.getCalls().map((call: any) => call.lastArg)), proof);
+  });
+  it("allows calldata exactly at the configured limit", async function () {
+    await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
+    const proof = utf8ToHex("Test proof");
+    const size = (oracleRoot.methods.receiveMessage(proof).encodeABI().length - 2) / 2;
+    const bounded = new Relayer(
+      spyLogger,
+      owner,
+      maticPosClient,
+      oracleChild,
+      oracleRoot,
+      web3,
+      polygonWeb3,
+      0,
+      100,
+      size
+    );
+    await bounded.fetchAndRelayMessages();
+    assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
+    assert.notInclude(JSON.stringify(spy.getCalls().map((call: any) => call.lastArg)), proof);
+  });
+  it("redacts proof and provider URL from construction errors", async function () {
+    await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
+    const proof = "0x" + "cd".repeat(150_000);
+    maticPosClient.exitUtil.buildPayloadForExit = async () => {
+      throw Object.assign(new Error("provider https://example.invalid/secret data=" + proof + "x".repeat(4000)), {
+        data: proof,
+      });
+    };
+    await relayer.fetchAndRelayMessages();
+    const log = spy.getCall(-1).lastArg;
+    assert.isAtMost(log.error.length, 2048);
+    assert.notInclude(JSON.stringify(log), proof);
+    assert.notInclude(JSON.stringify(log), "secret");
+    assert.notProperty(log, "messageEvent");
+    assert.notProperty(log, "chainBlockInfo");
+    assert.equal(log.messageIndex, 0);
+  });
   it("prices the relay transaction from the latest block's base fee", async function () {
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
 
@@ -373,6 +428,35 @@ describe("Relayer unit tests", function () {
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Failed to submit proof to root tunnel"));
+  });
+  it("bounds runTransaction errors and retains Polygon transaction and message identity", async function () {
+    const txn = await oracleChild.methods
+      .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
+      .send({ from: owner });
+    const data = "0x" + "ab".repeat(120_000);
+    const error = Object.assign(new Error(`RPC wss://example.invalid/api-secret data=${data} ${"x".repeat(3000)}`), {
+      transaction: { data },
+      proof: data,
+    });
+    const transaction = oracleRoot.methods.receiveMessage(utf8ToHex("Test proof"));
+    sinon.stub(transaction, "call").rejects(error);
+    sinon.stub(transaction, "estimateGas").resolves(100_000);
+    const send = sinon.spy(transaction, "send");
+    const method = sinon.stub(oracleRoot.methods, "receiveMessage").returns(transaction);
+    try {
+      await relayer.fetchAndRelayMessages();
+      const log = spy.getCall(-1).lastArg;
+      assert.include(log.message, "Failed to submit proof to root tunnel");
+      assert.equal(log.transactionHash, txn.transactionHash);
+      assert.equal(log.messageIndex, 0);
+      assert.isAtMost(log.error.length, 2048);
+      assert.include(log.error, "[redacted hex data]");
+      assert.notInclude(JSON.stringify(log), data);
+      assert.notInclude(JSON.stringify(log), "api-secret");
+      assert.isFalse(send.called);
+    } finally {
+      method.restore();
+    }
   });
   it("does not log error when submitting proof to RootTunnel reverts because the proof has already been submitted", async function () {
     // Manually override RootTunnelMock such that receiveMessage() always reverts and the error message indicates that
