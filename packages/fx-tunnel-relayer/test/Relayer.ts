@@ -429,6 +429,35 @@ describe("Relayer unit tests", function () {
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Failed to submit proof to root tunnel"));
   });
+  it("bounds runTransaction errors and retains Polygon transaction and message identity", async function () {
+    const txn = await oracleChild.methods
+      .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
+      .send({ from: owner });
+    const data = "0x" + "ab".repeat(120_000);
+    const error = Object.assign(new Error(`RPC wss://example.invalid/api-secret data=${data} ${"x".repeat(3000)}`), {
+      transaction: { data },
+      proof: data,
+    });
+    const transaction = oracleRoot.methods.receiveMessage(utf8ToHex("Test proof"));
+    sinon.stub(transaction, "call").rejects(error);
+    sinon.stub(transaction, "estimateGas").resolves(100_000);
+    const send = sinon.spy(transaction, "send");
+    const method = sinon.stub(oracleRoot.methods, "receiveMessage").returns(transaction);
+    try {
+      await relayer.fetchAndRelayMessages();
+      const log = spy.getCall(-1).lastArg;
+      assert.include(log.message, "Failed to submit proof to root tunnel");
+      assert.equal(log.transactionHash, txn.transactionHash);
+      assert.equal(log.messageIndex, 0);
+      assert.isAtMost(log.error.length, 2048);
+      assert.include(log.error, "[redacted hex data]");
+      assert.notInclude(JSON.stringify(log), data);
+      assert.notInclude(JSON.stringify(log), "api-secret");
+      assert.isFalse(send.called);
+    } finally {
+      method.restore();
+    }
+  });
   it("does not log error when submitting proof to RootTunnel reverts because the proof has already been submitted", async function () {
     // Manually override RootTunnelMock such that receiveMessage() always reverts and the error message indicates that
     // the proof has already been submitted.
