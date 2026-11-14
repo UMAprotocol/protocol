@@ -1,3 +1,4 @@
+import MaticJs from "@maticnetwork/maticjs";
 import winston from "winston";
 import { assert } from "chai";
 import { Contract } from "web3-eth-contract";
@@ -6,7 +7,7 @@ import { run } from "../src/index";
 import { interfaceName, ZERO_ADDRESS, RegistryRolesEnum } from "@uma/common";
 
 import { SpyTransport } from "@uma/financial-templates-lib";
-import { getAbi } from "@uma/contracts-node";
+import { getAbi, getAddress } from "@uma/contracts-node";
 import { PHASE_LENGTH_SECONDS, SKIP_THRESHOLD_SECONDS } from "../src/constants";
 
 const { getContract, deployments, web3 } = require("hardhat");
@@ -44,6 +45,7 @@ describe("index.ts", function () {
     process.env = originalEnv;
   });
   afterEach(function () {
+    sinon.restore();
     if (clock) {
       clock.restore();
     }
@@ -75,6 +77,8 @@ describe("index.ts", function () {
     await registry.methods.registerContract([], owner).send({ from: owner });
   });
   beforeEach(async function () {
+    // These tests have no relay events; avoid the SDK network metadata HTTP request.
+    sinon.stub(MaticJs.POSClient.prototype, "init").resolves();
     // Deploy new tunnel contracts so that event logs are fresh for each test
     oracleChild = await OracleChildTunnel.new(fxChild.options.address, finder.options.address).send({ from: owner });
     oracleRoot = await OracleRootTunnel.new(checkpointManager, fxRoot.options.address, finder.options.address).send({
@@ -164,4 +168,46 @@ describe("index.ts", function () {
       "Expected run() to proceed past the skip check and report no messages"
     );
   });
+
+  it("validates CHUNKED_RELAYER_ADDRESS against the root tunnel on startup", async function () {
+    let ChunkedRelayer;
+    try {
+      ChunkedRelayer = getContract("RootTunnelChunkedRelayer");
+    } catch {
+      this.skip(); // Requires packages/core compiled with RootTunnelChunkedRelayer.
+    }
+    clock = sinon.useFakeTimers({
+      now: (2 * PHASE_LENGTH_SECONDS + PHASE_LENGTH_SECONDS / 2) * 1000,
+      toFake: ["Date"],
+    });
+    process.env.POLLING_DELAY = "0";
+    process.env.CHAIN_ID = "";
+    // The OracleRootTunnel deployment saved above points at oracleChild's address.
+    const rootTunnel = await getAddress("OracleRootTunnel", await web3.eth.net.getId());
+    const matching = await ChunkedRelayer.new(rootTunnel).send({ from: owner });
+    const other = await ChunkedRelayer.new(oracleRoot.options.address).send({ from: owner });
+    try {
+      process.env.CHUNKED_RELAYER_ADDRESS = owner; // EOA without code.
+      await assertRejects(run(spyLogger, web3), "has no contract code");
+      process.env.CHUNKED_RELAYER_ADDRESS = other.options.address;
+      await assertRejects(run(spyLogger, web3), "different root tunnel");
+
+      process.env.CHUNKED_RELAYER_ADDRESS = matching.options.address;
+      await run(spyLogger, web3);
+      const started = spy.getCalls().find((call: any) => call.lastArg.message.includes("Relayer started"));
+      assert.equal(started.lastArg.chunkedRelayer, matching.options.address);
+    } finally {
+      delete process.env.CHUNKED_RELAYER_ADDRESS;
+    }
+  });
 });
+
+async function assertRejects(promise: Promise<unknown>, message: string): Promise<void> {
+  try {
+    await promise;
+  } catch (error) {
+    assert.include((error as Error).message, message);
+    return;
+  }
+  assert.fail(`Expected rejection including "${message}"`);
+}

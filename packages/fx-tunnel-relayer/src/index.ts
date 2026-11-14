@@ -1,14 +1,18 @@
 import MaticJs from "@maticnetwork/maticjs";
 import { Web3ClientPlugin } from "@maticnetwork/maticjs-web3";
-import { averageBlockTimeSeconds, getWeb3, getWeb3ByChainId } from "@uma/common";
+import { getWeb3, getWeb3ByChainId } from "@uma/common";
 import { getAbi, getAddress } from "@uma/contracts-node";
 import { Logger, delay, waitForLogger } from "@uma/financial-templates-lib";
 import retry from "async-retry";
 import { config } from "dotenv";
 import Web3 from "web3";
+import type { Contract } from "web3-eth-contract";
 import winston from "winston";
 
+import { ROOT_TUNNEL_CHUNKED_RELAYER_ABI } from "./chunkedRelayerAbi";
 import { SKIP_THRESHOLD_SECONDS } from "./constants";
+import { earliestBlockForLookback } from "./lookback";
+import { safeErrorMessage } from "./safeErrorMessage";
 import { Relayer } from "./Relayer";
 import { RelayerConfig } from "./RelayerConfig";
 import { isTooCloseToRoundEnd, secondsUntilRoundEnd } from "./timeUtils";
@@ -36,12 +40,12 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     const polygonChainId = config.chainId;
     const polygonWeb3 = polygonChainId !== "" ? getWeb3ByChainId(Number(polygonChainId)) : web3;
     const polygonNetworkId = await polygonWeb3.eth.net.getId();
-    const [polygonAverageBlockTime, polygonCurrentBlock] = await Promise.all([
-      averageBlockTimeSeconds(polygonNetworkId),
-      polygonWeb3.eth.getBlock("latest"),
-    ]);
-    const polygonLookbackBlocks = Math.ceil(config.lookback / polygonAverageBlockTime);
-    const polygonEarliestBlockToQuery = Math.max(polygonCurrentBlock.number - polygonLookbackBlocks, 0);
+    const polygonCurrentBlock = await polygonWeb3.eth.getBlock("latest");
+    const polygonEarliestBlockToQuery = await earliestBlockForLookback(
+      polygonWeb3,
+      polygonCurrentBlock,
+      config.lookback
+    );
 
     // Setup Polygon client:
     MaticJs.use(Web3ClientPlugin);
@@ -73,6 +77,17 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       await getAddress("OracleRootTunnel", ethNetworkId)
     );
 
+    let chunkedRelayer: Contract | undefined;
+    if (config.chunkedRelayerAddress !== undefined) {
+      const code = await web3.eth.getCode(config.chunkedRelayerAddress);
+      if (!code || code === "0x") throw new Error("CHUNKED_RELAYER_ADDRESS has no contract code on Ethereum");
+      chunkedRelayer = new web3.eth.Contract(ROOT_TUNNEL_CHUNKED_RELAYER_ABI, config.chunkedRelayerAddress);
+      const rootTunnel: string = await chunkedRelayer.methods.rootTunnel().call();
+      if (rootTunnel.toLowerCase() !== oracleRootTunnel.options.address.toLowerCase()) {
+        throw new Error("CHUNKED_RELAYER_ADDRESS relays to a different root tunnel than OracleRootTunnel");
+      }
+    }
+
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
@@ -80,6 +95,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       message: "Relayer started 🌉",
       oracleChildTunnel: oracleChildTunnel.options.address,
       oracleRootTunnel: oracleRootTunnel.options.address,
+      chunkedRelayer: config.chunkedRelayerAddress ?? null,
       polygonEarliestBlockToQuery: polygonEarliestBlockToQuery,
       polygonLatestBlockToQuery: polygonCurrentBlock.number,
     });
@@ -93,7 +109,10 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       web3,
       polygonWeb3,
       polygonEarliestBlockToQuery,
-      polygonCurrentBlock.number
+      polygonCurrentBlock.number,
+      config.maxCalldataBytes,
+      chunkedRelayer,
+      config.maxChunkedProofBytes
     );
 
     for (;;) {
@@ -109,7 +128,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
             logger.debug({
               at: "FxTunnelRelayer#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error,
+              error: safeErrorMessage(error),
             });
           },
         }
@@ -146,7 +165,7 @@ if (require.main === module) {
       Logger.error({
         at: "FxTunnelRelayer#index",
         message: "FxTunnelRelayer execution error🚨",
-        error: typeof error === "string" ? new Error(error) : error,
+        error: safeErrorMessage(error),
       });
       await waitForLogger(Logger);
       process.exit(1);
