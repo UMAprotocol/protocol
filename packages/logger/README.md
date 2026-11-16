@@ -70,15 +70,18 @@ through the consumer's secret configuration. It has a `destination` object with
 `url`, `token` (the source token, not a workspace API key), and `urgency` (`high`,
 `low`, or `severity_based`), plus optional `customServices` destinations keyed by
 `notificationPath`. Use the same service mapping as `PAGER_DUTY_V2_CONFIG`.
-Keep PagerDuty configured: these are independent transports and each receives
-error-level events. Omitting the new configuration or setting `disabled: true`
-disables only incident.io. Do not store source credentials in Git.
+Keep PagerDuty configured: these are independent transports. Fixed-urgency and
+support-hours destinations receive error events; `severity_based` destinations
+receive errors as high urgency and warnings as low urgency. Info and debug events
+do not page. Omitting the new configuration, setting `disabled: true`, or supplying
+invalid JSON/schema disables only incident.io and reports a generic startup error;
+PagerDuty and the logger still start. Do not store source credentials in Git.
 
 Each existing trigger-only log occurrence remains a separate alert unless the
 producer supplies `incidentDeduplicationKey`. That key is scoped by bot identifier
 and notification path; all delivery retries reuse it. The transport tracks pending
-requests for `waitForLogger`, retries transient failures within a bounded budget,
-and sanitizes delivery errors. Logger silence does not resolve alerts; existing
+requests for `waitForLogger`, retries transient failures within the logger's
+mandatory drain window, and sanitizes delivery errors. Logger silence does not resolve alerts; existing
 producer recovery semantics must be implemented separately before final cutover.
 A destination can specify daily `supportHours` with `timeZone`, `startHour` and
 `endHour`: high urgency inside the half-open interval, low outside. For the

@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "crypto";
 import * as ss from "superstruct";
 import { TransportError } from "./TransportError";
 import { delay } from "../helpers/delay";
+import { removeAnchorTextFromLinks } from "./Formatters";
 
 const Destination = ss.object({
   url: ss.pattern(ss.string(), /^https:\/\/api\.incident\.io\/v2\/alert_events\/http\/[A-Za-z0-9_-]+$/),
@@ -41,7 +42,14 @@ export function pagingUrgency(destination: Config["destination"], level: string,
     return hour >= startHour && hour < endHour ? "high" : "low";
   }
   const urgency = destination.urgency ?? "high";
-  return urgency === "severity_based" ? (["warn", "warning", "info"].includes(level) ? "low" : "high") : urgency;
+  return urgency === "severity_based" ? (["warn", "warning"].includes(level) ? "low" : "high") : urgency;
+}
+
+function shouldDeliver(destination: Config["destination"], level: unknown): boolean {
+  const normalizedLevel = String(level).toLowerCase();
+  if (["error", "fatal", "critical"].includes(normalizedLevel)) return true;
+  const severityBased = destination.supportHours === undefined && destination.urgency === "severity_based";
+  return severityBased && ["warn", "warning"].includes(normalizedLevel);
 }
 
 const MAX_ATTEMPTS = 3;
@@ -58,18 +66,32 @@ export function retryDelay(retryAfter: unknown, attempt: number): number {
 export class IncidentIOTransport extends Transport {
   private pending = 0;
   get isFlushed(): boolean {
-    return this.pending === 0;
+    return this.pending === 0 && this.writableLength === 0;
+  }
+  async flush(): Promise<void> {
+    // Mark this transport for waitForLogger's mandatory drain window and support direct draining in tests/callers.
+    while (!this.isFlushed) await delay(0.05);
   }
   constructor(options: ConstructorParameters<typeof Transport>[0], private readonly config: Config) {
     super(options);
   }
 
   async log(info: any, callback: (error?: unknown) => void): Promise<void> {
+    const destination = this.config.customServices?.[info.notificationPath] ?? this.config.destination;
+    if (!shouldDeliver(destination, info.level)) {
+      callback();
+      return;
+    }
     this.pending++;
+    // Acknowledge the write to Winston before delivery. Returning an async delivery error through this callback
+    // strands later buffered records; report it separately through the transport error event instead.
+    callback();
     try {
-      const destination = this.config.customServices?.[info.notificationPath] ?? this.config.destination;
-
       const title = `${info.level}: ${info.at} ⭢ ${info.message}`;
+      const normalizedInfo = {
+        ...info,
+        ...(typeof info.mrkdwn === "string" ? { mrkdwn: removeAnchorTextFromLinks(info.mrkdwn) } : {}),
+      };
       // Match the existing trigger-only logger semantics: each log occurrence
       // is separate unless its producer supplies a stable key. Retries of this
       // send always reuse the same key. Never infer recovery from quiet logs.
@@ -79,18 +101,17 @@ export class IncidentIOTransport extends Transport {
         .digest("hex");
       const payload = {
         title: title.slice(0, 1024),
-        description: typeof info.mrkdwn === "string" ? info.mrkdwn : title,
+        description: typeof normalizedInfo.mrkdwn === "string" ? normalizedInfo.mrkdwn : title,
         status: "firing",
         deduplication_key: deduplicationKey,
         metadata: {
-          ...info,
+          ...normalizedInfo,
           paging_urgency: pagingUrgency(destination, info.level),
         },
       };
       await this.deliver(destination, payload);
-      callback();
     } catch (error) {
-      callback(new TransportError("incident.io", error, info));
+      this.emit("error", new TransportError("incident.io", error, info));
     } finally {
       this.pending--;
     }

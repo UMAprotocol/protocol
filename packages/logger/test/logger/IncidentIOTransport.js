@@ -1,6 +1,7 @@
 const { assert } = require("chai");
 const sinon = require("sinon");
 const axios = require("axios");
+const winston = require("winston");
 const {
   IncidentIOTransport,
   createConfig,
@@ -9,9 +10,18 @@ const {
 } = require("../../dist/logger/IncidentIOTransport");
 const { createTransports } = require("../../dist/logger/Transports");
 const { PagerDutyV2Transport } = require("../../dist/logger/PagerDutyV2Transport");
+const { waitForLogger } = require("../../dist/logger/Logger");
 const destination = { url: "https://api.incident.io/v2/alert_events/http/fixture", token: "fixture", urgency: "high" };
 const info = { level: "error", at: "Bot", message: "failed", "bot-identifier": "prod-relayer" };
-const send = (transport, event) => new Promise((resolve) => transport.log(event, resolve));
+const send = async (transport, event) => {
+  let emittedError;
+  const onError = (error) => (emittedError = error);
+  transport.once("error", onError);
+  await new Promise((resolve) => transport.log(event, resolve));
+  await transport.flush();
+  transport.removeListener("error", onError);
+  return emittedError;
+};
 const accept = async (_url, body) => ({
   status: 202,
   data: { status: "accepted", deduplication_key: body.deduplication_key },
@@ -29,6 +39,36 @@ describe("IncidentIOTransport", function () {
     });
     assert.equal(transports.filter((x) => x instanceof PagerDutyV2Transport).length, 1);
     assert.equal(transports.filter((x) => x instanceof IncidentIOTransport).length, 1);
+    assert.equal(transports.find((x) => x instanceof IncidentIOTransport).level, "warn");
+  });
+  it("keeps PagerDuty when incident.io configuration is invalid", function () {
+    const consoleError = sinon.stub(console, "error");
+    const transports = createTransports({
+      createConsoleTransport: false,
+      pagerDutyV2Config: { integrationKey: "fixture" },
+      incidentIOConfig: { destination: { ...destination, url: "https://example.test/secret", token: "secret" } },
+    });
+    assert.equal(transports.filter((x) => x instanceof PagerDutyV2Transport).length, 1);
+    assert.equal(transports.filter((x) => x instanceof IncidentIOTransport).length, 0);
+    sinon.assert.calledOnceWithExactly(consoleError, "Invalid INCIDENT_IO_CONFIG; incident.io transport disabled");
+    assert.notInclude(JSON.stringify(consoleError.firstCall.args), "secret");
+  });
+  it("keeps PagerDuty when INCIDENT_IO_CONFIG is malformed JSON", function () {
+    const original = process.env.INCIDENT_IO_CONFIG;
+    const consoleError = sinon.stub(console, "error");
+    process.env.INCIDENT_IO_CONFIG = "{not-json";
+    try {
+      const transports = createTransports({
+        createConsoleTransport: false,
+        pagerDutyV2Config: { integrationKey: "fixture" },
+      });
+      assert.equal(transports.filter((x) => x instanceof PagerDutyV2Transport).length, 1);
+      assert.equal(transports.filter((x) => x instanceof IncidentIOTransport).length, 0);
+      sinon.assert.calledOnceWithExactly(consoleError, "Invalid INCIDENT_IO_CONFIG; incident.io transport disabled");
+    } finally {
+      if (original === undefined) delete process.env.INCIDENT_IO_CONFIG;
+      else process.env.INCIDENT_IO_CONFIG = original;
+    }
   });
   it("keeps one key across retries and does not mutate the log event", async function () {
     const post = sinon.stub(axios, "post");
@@ -57,6 +97,38 @@ describe("IncidentIOTransport", function () {
     assert.equal(post.getCall(2).args[1].deduplication_key, post.getCall(3).args[1].deduplication_key);
     assert.notEqual(post.getCall(3).args[1].deduplication_key, post.getCall(4).args[1].deduplication_key);
   });
+  it("sends warnings only to severity-based destinations", async function () {
+    const post = sinon.stub(axios, "post").callsFake(accept);
+    const severityBased = { ...destination, urgency: "severity_based" };
+    const supportHours = {
+      ...severityBased,
+      supportHours: { timeZone: "America/New_York", startHour: 2, endHour: 18 },
+    };
+    const transport = new IncidentIOTransport(
+      { level: "warn" },
+      createConfig({ destination: severityBased, customServices: { fixed: destination, supportHours } })
+    );
+    await send(transport, { ...info, level: "warn" });
+    await send(transport, { ...info, level: "info" });
+    await send(transport, { ...info, level: "debug" });
+    await send(transport, { ...info, level: "warn", notificationPath: "fixed" });
+    await send(transport, { ...info, level: "warn", notificationPath: "supportHours" });
+    await send(transport, { ...info, notificationPath: "fixed" });
+    assert.equal(post.callCount, 2);
+    assert.equal(post.firstCall.args[1].metadata.paging_urgency, "low");
+    assert.equal(post.secondCall.args[1].metadata.paging_urgency, "high");
+  });
+  it("normalizes incident markdown without mutating the shared log event", async function () {
+    const post = sinon.stub(axios, "post").callsFake(accept);
+    const event = { ...info, mrkdwn: "See <https://example.test/path|the runbook>" };
+    const transport = new IncidentIOTransport({}, createConfig({ destination }));
+    await send(transport, event);
+    await send(transport, { ...info, mrkdwn: "See https://example.test/path" });
+    assert.equal(post.firstCall.args[1].description, "See https://example.test/path");
+    assert.equal(post.firstCall.args[1].metadata.mrkdwn, "See https://example.test/path");
+    assert.equal(post.secondCall.args[1].metadata.mrkdwn, post.firstCall.args[1].metadata.mrkdwn);
+    assert.equal(event.mrkdwn, "See <https://example.test/path|the runbook>");
+  });
   it("routes notification paths and redacts delivery failures", async function () {
     const post = sinon.stub(axios, "post").resolves({ status: 401, data: { message: "secret URL and token" } });
     const other = { ...destination, url: "https://api.incident.io/v2/alert_events/http/other" };
@@ -67,6 +139,23 @@ describe("IncidentIOTransport", function () {
     assert.notInclude(JSON.stringify(error), "secret URL and token");
     assert.include(error.originalError.message, "401");
     assert.isTrue(transport.isFlushed);
+  });
+  it("continues draining later Winston messages after a delivery failure", async function () {
+    const post = sinon.stub(axios, "post");
+    post.onFirstCall().resolves({ status: 401, data: { message: "rejected" } });
+    post.callsFake(accept);
+    const transport = new IncidentIOTransport({ level: "warn" }, createConfig({ destination }));
+    const logger = winston.createLogger({ transports: [transport] });
+    const errors = [];
+    logger.on("error", (error) => errors.push(error));
+    logger.error({ ...info, message: "first" });
+    logger.error({ ...info, message: "second" });
+    logger.error({ ...info, message: "third" });
+    await transport.flush();
+    assert.equal(post.callCount, 3);
+    assert.lengthOf(errors, 1);
+    assert.isTrue(transport.isFlushed);
+    logger.close();
   });
   it("waits for Retry-After before retrying a 429", async function () {
     const clock = sinon.useFakeTimers();
@@ -79,6 +168,27 @@ describe("IncidentIOTransport", function () {
     await clock.tickAsync(1);
     assert.isUndefined(await result);
     assert.equal(post.callCount, 2);
+  });
+  it("uses waitForLogger's mandatory window to finish Retry-After delivery", async function () {
+    const clock = sinon.useFakeTimers();
+    const post = sinon.stub(axios, "post");
+    post.onFirstCall().resolves({ status: 429, headers: { "retry-after": "7" } });
+    post.callsFake(accept);
+    const transport = new IncidentIOTransport({ level: "warn" }, createConfig({ destination }));
+    const logger = winston.createLogger({ transports: [transport] });
+    logger.flushTimeout = 0;
+    logger.mandatoryFlushTimeout = 10;
+    logger.error(info);
+    let finished = false;
+    const waiting = waitForLogger(logger).then(() => (finished = true));
+    await clock.tickAsync(6999);
+    assert.isFalse(finished);
+    assert.equal(post.callCount, 1);
+    await clock.tickAsync(51);
+    await waiting;
+    assert.equal(post.callCount, 2);
+    assert.isTrue(transport.isFlushed);
+    logger.close();
   });
   it("caps Retry-After at 30s and backs off exponentially without it", function () {
     assert.equal(retryDelay("120", 1), 30);

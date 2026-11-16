@@ -127,10 +127,18 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
     }
 
     if (transportsConfig.incidentIOConfig || process.env.INCIDENT_IO_CONFIG) {
-      const { disabled = false, ...incidentIOConfig } =
-        transportsConfig.incidentIOConfig ?? JSON.parse(process.env.INCIDENT_IO_CONFIG || "null");
-      if (!disabled) {
-        transports.push(new IncidentIOTransport({ level: "error" }, incidentIOCreateConfig(incidentIOConfig)));
+      try {
+        const { disabled = false, ...incidentIOConfig } =
+          transportsConfig.incidentIOConfig ?? JSON.parse(process.env.INCIDENT_IO_CONFIG || "null");
+        if (!disabled) {
+          // Warnings are filtered again after selecting their destination: only severity-based destinations receive
+          // them, while fixed and support-hours destinations preserve error-only delivery.
+          transports.push(new IncidentIOTransport({ level: "warn" }, incidentIOCreateConfig(incidentIOConfig)));
+        }
+      } catch (_) {
+        // incident.io is an optional comparison path. Never expose its credential-bearing configuration or prevent
+        // the independently configured PagerDuty transport and logger from starting when this config is invalid.
+        console.error("Invalid INCIDENT_IO_CONFIG; incident.io transport disabled");
       }
     }
   }
