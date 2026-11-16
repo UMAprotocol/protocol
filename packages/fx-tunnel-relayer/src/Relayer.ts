@@ -1,6 +1,7 @@
 import { Contract, EventData } from "web3-eth-contract";
 import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
 import type Web3 from "web3";
+import { safeErrorMessage } from "./safeErrorMessage";
 
 import { BASE_FEE_MULTIPLIER, MAX_PRIORITY_FEE_PER_GAS_WEI } from "./constants";
 
@@ -10,6 +11,7 @@ import { BASE_FEE_MULTIPLIER, MAX_PRIORITY_FEE_PER_GAS_WEI } from "./constants";
 const POLYGON_MESSAGE_SENT_EVENT_SIG = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
 
 export class Relayer {
+  private readonly warnedOversizeMessages = new Set<string>();
   constructor(
     readonly logger: any,
     readonly account: string,
@@ -19,7 +21,8 @@ export class Relayer {
     readonly web3: Web3,
     readonly polygonWeb3: Web3,
     readonly polygonEarliestBlockToQuery: number,
-    readonly polygonLatestBlockToQuery: number
+    readonly polygonLatestBlockToQuery: number,
+    readonly maxCalldataBytes = 120_000
   ) {}
 
   // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
@@ -101,7 +104,7 @@ export class Relayer {
         at: "Relayer#relayMessage",
         message: "Failed to fetch receipt for MessageSent transaction hash 📛",
         transactionHash,
-        error,
+        error: safeErrorMessage(error),
       });
       return undefined;
     }
@@ -139,10 +142,8 @@ export class Relayer {
       messageIndex,
     });
 
-    let chainBlockInfo; // Only used for debugging purposes upon error.
     let proof;
     try {
-      chainBlockInfo = await this.maticPosClient.exitUtil.getChainBlockInfo(transactionHash);
       // Proof construction logic copied from:
       // - https://maticnetwork.github.io/matic.js/docs/advanced/exit-util/
       proof = await this.maticPosClient.exitUtil.buildPayloadForExit(
@@ -156,25 +157,44 @@ export class Relayer {
       this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to derive proof for MessageSent transaction hash 📛",
-        messageEvent,
-        chainBlockInfo,
-        error,
+        transactionHash,
+        blockNumber,
+        logIndex: messageEvent.logIndex,
+        messageIndex,
+        error: safeErrorMessage(error),
       });
       return;
     }
 
-    // Simulate and submit receiveMessage transaction with proof as input.
-    this.logger.debug({
-      at: "Relayer#relayMessage",
-      message: "Submitting proof",
-      proof: proof,
-      account: this.account,
-    });
     try {
+      const transaction = this.oracleRootTunnel.methods.receiveMessage(proof);
+      const calldataBytes = (transaction.encodeABI().length - 2) / 2;
+      if (calldataBytes > this.maxCalldataBytes) {
+        const key = `${transactionHash}:${messageIndex}`;
+        if (!this.warnedOversizeMessages.has(key)) {
+          this.logger.warn({
+            at: "Relayer#relayMessage",
+            message: "Oversize relay calldata: needs manual relay",
+            transactionHash,
+            messageIndex,
+            calldataBytes,
+          });
+          this.warnedOversizeMessages.add(key);
+        }
+        return;
+      }
+      this.logger.debug({
+        at: "Relayer#relayMessage",
+        message: "Submitting proof",
+        transactionHash,
+        messageIndex,
+        calldataBytes,
+        account: this.account,
+      });
       const gasFees = await this._getGasFees();
-      const { transactionHash } = await runTransaction({
+      const { transactionHash: relayTransactionHash } = await runTransaction({
         web3: this.web3,
-        transaction: this.oracleRootTunnel.methods.receiveMessage(proof),
+        transaction,
         transactionConfig: { ...gasFees, from: this.account },
         availableAccounts: 1,
         // gasFees already leaves headroom over the base fee, so send maxFeePerGas as is rather than doubling it.
@@ -183,13 +203,15 @@ export class Relayer {
       this.logger.info({
         at: "Relayer#relayMessage",
         message: "Submitted relay proof!🕴🏼",
-        tx: transactionHash,
-        messageEvent,
+        tx: relayTransactionHash,
+        polygonTransactionHash: messageEvent.transactionHash,
+        blockNumber,
+        logIndex: messageEvent.logIndex,
         messageIndex,
       });
     } catch (error) {
       // If the proof was already submitted, then don't emit an error level log.
-      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) {
+      if (safeErrorMessage(error).includes("EXIT_ALREADY_PROCESSED")) {
         this.logger.debug({
           at: "Relayer#relayMessage",
           message: "Exit proof already processed by root tunnel, skipping",
@@ -201,7 +223,9 @@ export class Relayer {
       this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to submit proof to root tunnel🚨",
-        error,
+        transactionHash,
+        messageIndex,
+        error: safeErrorMessage(error),
       });
       return;
     }
