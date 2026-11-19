@@ -30,6 +30,14 @@ if [ ! -d "./lib" ] || [ -z "$(ls -A ./lib)" ] || [ -z "$(ls -A ./lib/forge-std)
     mv .gitignore.tmp .gitignore
 fi
 
+# The dispute-router profile resolves @openzeppelin/foundry-upgrades and its forge-std from this submodule, which a
+# normal clone leaves empty.
+DISPUTE_ROUTER_UPGRADES="./dispute-router/lib/openzeppelin-foundry-upgrades"
+if [ ! -f "$DISPUTE_ROUTER_UPGRADES/lib/forge-std/src/Test.sol" ] && git rev-parse --is-inside-work-tree &>/dev/null; then
+    echo "Initializing dispute-router submodules"
+    git submodule update --init --recursive -- "$DISPUTE_ROUTER_UPGRADES"
+fi
+
 # Localize aliased OpenZeppelin v5 packages under packages/core/node_modules so tools like
 # forge coverage can resolve relative imports during source analysis.
 mkdir -p ./node_modules/@openzeppelin
