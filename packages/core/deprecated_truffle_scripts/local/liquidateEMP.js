@@ -1,5 +1,5 @@
 /**
- * @notice Liquidates 1000 tokens of the the sponsor's position, where the sponsor is accounts[0] and the liquidator
+ * @notice Liquidates 1000 tokens of the sponsor's position, where the sponsor is accounts[0] and the liquidator
  * is accounts[1]. Useful when paired with the `DeployEMP.js` script which deploys an EMP with a minimum
  * sponsor position of 1000 tokens.
  *
