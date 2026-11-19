@@ -10,6 +10,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Initialize dispute-router dependencies
+          command: git submodule update --init --recursive -- packages/core/dispute-router/lib/openzeppelin-foundry-upgrades
+      - run:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
       - run:
@@ -18,14 +21,10 @@ jobs:
       - run:
           name: Install Foundry
           command: |
-            # foundryup >= 0.0.9 refuses nightlies without a Sigstore attestation, so pin this one by SHA-256 instead.
-            export FOUNDRY_VERSION=nightly-70cd140131cd49875c6f31626bdfae08eba35386
-            export FOUNDRY_SHA256=47f0dfd28cc6ad162a47315fb847c985ee5c6b9f03f4b2f6aed657e492a45350
-            curl -fsSL --retry 5 -o /tmp/foundry.tar.gz "https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}/foundry_nightly_linux_amd64.tar.gz"
-            echo "${FOUNDRY_SHA256}  /tmp/foundry.tar.gz" | sha256sum -c -
-            mkdir -p /home/circleci/.foundry/bin
-            tar -xzf /tmp/foundry.tar.gz -C /home/circleci/.foundry/bin
-            /home/circleci/.foundry/bin/forge --version
+            export FOUNDRY_VERSION=1.5.1
+            curl -fsSL https://foundry.paradigm.xyz | SHELL=/bin/bash bash
+            export PATH="/home/circleci/.foundry/bin:$PATH"
+            foundryup --install "$FOUNDRY_VERSION"
       - save_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -45,7 +44,9 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y rsync
       - run:
           name: Run build
-          command: yarn qbuild
+          command: |
+            export PATH="/home/circleci/.foundry/bin:$PATH"
+            yarn qbuild
       - run:
           name: Modified packages
           command: ./ci/check_lerna_packages.sh
