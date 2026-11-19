@@ -21,10 +21,14 @@ jobs:
       - run:
           name: Install Foundry
           command: |
-            export FOUNDRY_VERSION=1.5.1
-            curl -fsSL https://foundry.paradigm.xyz | SHELL=/bin/bash bash
-            export PATH="/home/circleci/.foundry/bin:$PATH"
-            foundryup --install "$FOUNDRY_VERSION"
+            # Pin the release tarball by SHA-256 rather than piping the unpinned foundryup installer.
+            export FOUNDRY_VERSION=v1.5.1
+            export FOUNDRY_SHA256=73640b01bd9ed29fdb4965085099371f8cf0dbbec3e2086cf54564efc4dcfe88
+            curl -fsSL --retry 5 -o /tmp/foundry.tar.gz "https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}/foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz"
+            echo "${FOUNDRY_SHA256}  /tmp/foundry.tar.gz" | sha256sum -c -
+            mkdir -p /home/circleci/.foundry/bin
+            tar -xzf /tmp/foundry.tar.gz -C /home/circleci/.foundry/bin
+            /home/circleci/.foundry/bin/forge --version
       - save_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
