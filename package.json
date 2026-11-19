@@ -83,8 +83,5 @@
       "packages/*"
     ]
   },
-  "dependencies": {
-    "@openzeppelin/contracts-upgradeable": "4.9.6",
-    "@openzeppelin/contracts-upgradeable-v5": "npm:@openzeppelin/contracts-upgradeable@^5.0.0"
-  }
+  "dependencies": {}
 }
