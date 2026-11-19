@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.22;
 
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { DisputeRouter } from "../src/DisputeRouter.sol";
@@ -163,6 +164,7 @@ contract DisputeRouterTest is Test {
     ERC1967Proxy public proxy;
 
     TestableOracleChildTunnel public oracle;
+    TestableOracleChildTunnel public legacyOracle;
     MockFinder public mockFinder;
     MockRegistry public mockRegistry;
 
@@ -194,11 +196,15 @@ contract DisputeRouterTest is Test {
         // Deploy TestableOracleChildTunnel (mimics real OracleChildTunnel behavior)
         oracle = new TestableOracleChildTunnel(address(mockFinder));
 
+        legacyOracle = new TestableOracleChildTunnel(address(mockFinder));
+        legacyOracle.registerContract(requester);
+
         // Register requester contract with DisputeRouter
         mockRegistry.registerContract(requester);
 
         // Deploy implementation
-        implementation = new DisputeRouter(FinderInterface(address(mockFinder)));
+        implementation =
+            new DisputeRouter(FinderInterface(address(mockFinder)), OracleAncillaryInterface(address(legacyOracle)));
 
         // Prepare initialization data
         bytes memory initData = abi.encodeWithSelector(
@@ -213,10 +219,12 @@ contract DisputeRouterTest is Test {
 
         // Register DisputeRouter with the oracle so it can forward requests
         oracle.registerContract(address(router));
+        legacyOracle.registerContract(address(router));
     }
 
     function test_Initialization() public {
         assertEq(address(router.oracle()), address(oracle));
+        assertEq(address(router.legacyOracle()), address(legacyOracle));
         assertEq(router.council(), council);
         assertEq(router.forwardDelay(), forwardDelay);
         assertEq(router.owner(), owner);
@@ -224,6 +232,37 @@ contract DisputeRouterTest is Test {
         // Cannot reinitialize
         vm.expectRevert();
         router.initialize(OracleAncillaryInterface(address(oracle)), council, forwardDelay, owner);
+    }
+
+    function test_OwnershipRequiresAcceptanceAndCannotBeRenounced() public {
+        address nextOwner = makeAddr("nextOwner");
+        vm.prank(owner);
+        router.transferOwnership(nextOwner);
+        assertEq(router.owner(), owner);
+        assertEq(router.pendingOwner(), nextOwner);
+
+        vm.prank(owner);
+        router.setForwardDelay(7200);
+        vm.prank(makeAddr("unrelatedAccount"));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, makeAddr("unrelatedAccount"))
+        );
+        router.acceptOwnership();
+
+        vm.prank(nextOwner);
+        router.acceptOwnership();
+        assertEq(router.owner(), nextOwner);
+        assertEq(router.pendingOwner(), address(0));
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, owner));
+        router.setForwardDelay(3600);
+        vm.prank(nextOwner);
+        router.setForwardDelay(3600);
+
+        vm.prank(nextOwner);
+        vm.expectRevert(DisputeRouter.OwnershipRenunciationDisabled.selector);
+        router.renounceOwnership();
+        assertEq(router.owner(), nextOwner);
     }
 
     function test_AdminFunctions() public {
@@ -261,6 +300,97 @@ contract DisputeRouterTest is Test {
     // ========================================
     // Core Resolution Paths
     // ========================================
+
+    function testFuzz_LegacyRequestResolvesAfterCutover(int256 price) public {
+        vm.prank(requester);
+        legacyOracle.requestPrice(testIdentifier, testTime, testAncillaryData);
+
+        vm.prank(requester);
+        assertFalse(router.hasPrice(testIdentifier, testTime, testAncillaryData));
+        vm.prank(requester);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DisputeRouter.PriceWasNeverRequested.selector, testIdentifier, testTime, testAncillaryData
+            )
+        );
+        router.getPrice(testIdentifier, testTime, testAncillaryData);
+
+        legacyOracle.resolvePrice(testIdentifier, testTime, testAncillaryData, price);
+
+        vm.startPrank(requester);
+        assertTrue(router.hasPrice(testIdentifier, testTime, testAncillaryData));
+        assertEq(router.getPrice(testIdentifier, testTime, testAncillaryData), price);
+        vm.stopPrank();
+        assertEq(oracle.requestCount(), 0);
+    }
+
+    function test_LegacyPriceSurvivesOracleChange() public {
+        vm.prank(requester);
+        legacyOracle.requestPrice(testIdentifier, testTime, testAncillaryData);
+        legacyOracle.resolvePrice(testIdentifier, testTime, testAncillaryData, testPrice);
+
+        TestableOracleChildTunnel newOracle = new TestableOracleChildTunnel(address(mockFinder));
+        vm.prank(owner);
+        router.setOracle(address(newOracle));
+
+        vm.startPrank(requester);
+        assertTrue(router.hasPrice(testIdentifier, testTime, testAncillaryData));
+        assertEq(router.getPrice(testIdentifier, testTime, testAncillaryData), testPrice);
+        vm.stopPrank();
+    }
+
+    function test_KnownRequestDoesNotUseLegacyPrice() public {
+        vm.prank(requester);
+        legacyOracle.requestPrice(testIdentifier, testTime, testAncillaryData);
+        legacyOracle.resolvePrice(testIdentifier, testTime, testAncillaryData, testPrice);
+
+        vm.prank(requester);
+        router.requestPrice(testIdentifier, testTime, testAncillaryData);
+        vm.prank(requester);
+        assertFalse(router.hasPrice(testIdentifier, testTime, testAncillaryData));
+        vm.prank(requester);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DisputeRouter.PriceNotYetResolved.selector, testIdentifier, testTime, testAncillaryData
+            )
+        );
+        router.getPrice(testIdentifier, testTime, testAncillaryData);
+
+        vm.prank(council);
+        router.escalateNow(testIdentifier, testTime, testAncillaryData);
+        vm.prank(requester);
+        assertFalse(router.hasPrice(testIdentifier, testTime, testAncillaryData));
+
+        oracle.resolvePrice(testIdentifier, testTime, testAncillaryData, testPrice + 1);
+        vm.prank(requester);
+        assertEq(router.getPrice(testIdentifier, testTime, testAncillaryData), testPrice + 1);
+    }
+
+    function test_UnknownRequestWithoutLegacyOracle() public {
+        DisputeRouter noLegacyImplementation =
+            new DisputeRouter(FinderInterface(address(mockFinder)), OracleAncillaryInterface(address(0)));
+        DisputeRouter noLegacyRouter = DisputeRouter(
+            address(
+                new ERC1967Proxy(
+                    address(noLegacyImplementation),
+                    abi.encodeCall(
+                        DisputeRouter.initialize,
+                        (OracleAncillaryInterface(address(oracle)), council, forwardDelay, owner)
+                    )
+                )
+            )
+        );
+
+        vm.startPrank(requester);
+        assertFalse(noLegacyRouter.hasPrice(testIdentifier, testTime, testAncillaryData));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DisputeRouter.PriceWasNeverRequested.selector, testIdentifier, testTime, testAncillaryData
+            )
+        );
+        noLegacyRouter.getPrice(testIdentifier, testTime, testAncillaryData);
+        vm.stopPrank();
+    }
 
     function test_PublicForwardAfterDelay() public {
         vm.prank(requester);

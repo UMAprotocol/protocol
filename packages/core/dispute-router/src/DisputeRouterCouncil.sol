@@ -2,6 +2,7 @@
 pragma solidity 0.8.22;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -71,21 +72,22 @@ interface IManagedOptimisticOracleV2ForCouncil {
 
 /**
  * @title DisputeRouterCouncil
+ * @custom:security-contact https://docs.umaproject.org/dev-ref/bug-bounty
  * @notice Wraps the router council role with owner-managed operators that can locally resolve configured managed
  * requests or bypass the router forwarding delay for operator-selected Optimistic Oracle-backed router requests.
  * @dev Managed resolution validates MOOv2 request metadata before setting local router prices. Escalation does not
  * inspect Optimistic Oracle state; operator authorization and router-entry existence are the gate. Operators are
  * trusted to select router entries that should go to the underlying oracle instead of local managed resolution.
  */
-contract DisputeRouterCouncil is Ownable, ReentrancyGuard, Multicall {
+contract DisputeRouterCouncil is Ownable2Step, ReentrancyGuard, Multicall {
     int256 public constant TOO_EARLY_RESPONSE = type(int256).min;
     uint256 private constant LEGACY_DEFAULT_LIVENESS = 2 hours;
 
     DisputeRouter public immutable router;
     IManagedOptimisticOracleV2ForCouncil public immutable mooV2;
 
-    mapping(address => bool) public operators;
-    mapping(bytes32 => bool) public earlyRequestIdentifiers;
+    mapping(address operator => bool allowed) public operators;
+    mapping(bytes32 identifier => bool allowed) public earlyRequestIdentifiers;
 
     event EarlyRequestIdentifierUpdated(bytes32 indexed identifier, bool allowed);
     event OperatorUpdated(address indexed operator, bool allowed);
@@ -116,6 +118,7 @@ contract DisputeRouterCouncil is Ownable, ReentrancyGuard, Multicall {
     error ManagedRequestNotEventBased(address requester, bytes32 identifier, uint256 timestamp, bytes ancillaryData);
     error UnsettledFollowUpRequest(address requester, uint256 timestamp, bytes ancillaryData);
     error ZeroAddress();
+    error OwnershipRenunciationDisabled();
 
     /**
      * @notice Reverts unless the caller is an approved council operator.
@@ -140,6 +143,13 @@ contract DisputeRouterCouncil is Ownable, ReentrancyGuard, Multicall {
 
         router = _router;
         mooV2 = _mooV2;
+    }
+
+    /**
+     * @notice Disables ownership renunciation to preserve council administration.
+     */
+    function renounceOwnership() public view override onlyOwner {
+        revert OwnershipRenunciationDisabled();
     }
 
     /**
@@ -282,6 +292,8 @@ contract DisputeRouterCouncil is Ownable, ReentrancyGuard, Multicall {
      * @notice Returns the DVM timestamp that the managed Optimistic Oracle uses for an event-based OO request.
      * @dev Caller must only pass an event-based request. Mirrors ManagedOptimisticOracleV2 proposalTime handling and
      * the legacy fallback for event-based requests created before proposalTime was populated.
+     * @param request Event-based managed request whose DVM timestamp is derived.
+     * @return The proposal timestamp used to identify the DVM request.
      */
     function _getDvmRequestTimestamp(IManagedOptimisticOracleV2ForCouncil.Request memory request)
         private
@@ -299,6 +311,11 @@ contract DisputeRouterCouncil is Ownable, ReentrancyGuard, Multicall {
 
     /**
      * @notice Reverts unless a managed request is disputed and event-based.
+     * @param requester Requester recorded for the managed request.
+     * @param identifier Price identifier for the request.
+     * @param timestamp Original managed request timestamp.
+     * @param ancillaryData Original managed request ancillary data.
+     * @param request Managed request metadata to validate.
      */
     function _requireDisputedEventBasedManagedRequest(
         address requester,

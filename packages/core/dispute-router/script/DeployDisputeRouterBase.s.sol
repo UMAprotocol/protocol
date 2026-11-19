@@ -14,6 +14,7 @@ abstract contract DeployDisputeRouterBase is Script {
     struct RouterCommonConfig {
         address finder;
         address oracle;
+        address legacyOracle;
         uint64 forwardDelay;
         address owner;
     }
@@ -48,7 +49,8 @@ abstract contract DeployDisputeRouterBase is Script {
         internal
         returns (DisputeRouter implementation, address proxy)
     {
-        implementation = new DisputeRouter(FinderInterface(config.finder));
+        implementation =
+            new DisputeRouter(FinderInterface(config.finder), OracleAncillaryInterface(config.legacyOracle));
         console2.log("Implementation deployed at:", address(implementation));
 
         proxy = UnsafeUpgrades.deployUUPSProxy(
@@ -90,6 +92,7 @@ abstract contract DeployDisputeRouterBase is Script {
     function _loadRouterCommonConfig(address deployer) internal view returns (RouterCommonConfig memory config) {
         config.finder = vm.envOr("FINDER", address(0));
         config.oracle = vm.envOr("ORACLE", address(0));
+        config.legacyOracle = vm.envOr("LEGACY_ORACLE", address(0));
         config.forwardDelay = uint64(vm.envOr("FORWARD_DELAY", uint256(3600)));
         config.owner = vm.envOr("OWNER", deployer);
     }
@@ -158,6 +161,7 @@ abstract contract DeployDisputeRouterBase is Script {
         console2.log("Deployer:", deployer);
         console2.log("Finder:", config.router.finder);
         console2.log("Oracle:", config.router.oracle);
+        console2.log("Legacy Oracle:", config.router.legacyOracle);
         console2.log("Council:", config.council);
         console2.log("Forward Delay:", config.router.forwardDelay);
         console2.log("Owner:", config.router.owner);
@@ -167,6 +171,7 @@ abstract contract DeployDisputeRouterBase is Script {
         console2.log("Deployer:", deployer);
         console2.log("Finder:", config.router.finder);
         console2.log("Oracle:", config.router.oracle);
+        console2.log("Legacy Oracle:", config.router.legacyOracle);
         console2.log("Managed OOv2:", config.council.mooV2);
         console2.log("Forward Delay:", config.router.forwardDelay);
         console2.log("Final Owner:", config.router.owner);
@@ -188,8 +193,7 @@ abstract contract DeployDisputeRouterBase is Script {
         address proxy,
         address council,
         uint64 forwardDelay,
-        address oracle,
-        address owner
+        address oracle
     )
         internal
         view
@@ -201,7 +205,9 @@ abstract contract DeployDisputeRouterBase is Script {
         console2.log("Council:", council);
         console2.log("Forward Delay:", forwardDelay, "seconds");
         console2.log("Oracle:", oracle);
-        console2.log("Owner:", owner);
+        console2.log("Legacy Oracle:", address(implementation.legacyOracle()));
+        console2.log("Owner:", DisputeRouter(proxy).owner());
+        console2.log("Pending Owner:", DisputeRouter(proxy).pendingOwner());
         console2.log("Chain ID:", block.chainid);
         console2.log("");
         console2.log("DisputeRouter Proxy Address:", proxy);
@@ -213,8 +219,7 @@ abstract contract DeployDisputeRouterBase is Script {
         address council,
         uint64 forwardDelay,
         address oracle,
-        address mooV2,
-        address owner
+        address mooV2
     )
         internal
         view
@@ -227,7 +232,14 @@ abstract contract DeployDisputeRouterBase is Script {
         console2.log("Managed OOv2:", mooV2);
         console2.log("Forward Delay:", forwardDelay, "seconds");
         console2.log("Oracle:", oracle);
-        console2.log("Owner:", owner);
+        console2.log("Legacy Oracle:", address(implementation.legacyOracle()));
+        console2.log("Router Owner:", DisputeRouter(proxy).owner());
+        console2.log("Router Pending Owner:", DisputeRouter(proxy).pendingOwner());
+        console2.log("Council Owner:", DisputeRouterCouncil(council).owner());
+        console2.log("Council Pending Owner:", DisputeRouterCouncil(council).pendingOwner());
+        if (DisputeRouter(proxy).pendingOwner() != address(0)) {
+            console2.log("Ownership handoff incomplete: OWNER must call acceptOwnership() on router and council.");
+        }
         console2.log("Chain ID:", block.chainid);
         console2.log("");
         console2.log("DisputeRouter Proxy Address:", proxy);

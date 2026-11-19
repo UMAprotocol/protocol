@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.22;
 
+import { console2 } from "forge-std/Script.sol";
 import { DisputeRouterCouncil } from "../src/DisputeRouterCouncil.sol";
 import { DeployDisputeRouterBase } from "./DeployDisputeRouterBase.s.sol";
 
@@ -12,7 +13,7 @@ import { DeployDisputeRouterBase } from "./DeployDisputeRouterBase.s.sol";
  * - MNEMONIC: Required. Mnemonic for the deployer wallet.
  * - ROUTER: Required. DisputeRouter proxy address.
  * - MOO_V2: Required. ManagedOptimisticOracleV2 address used for managed requests.
- * - OWNER: Optional. Final owner of the council wrapper, defaults to deployer.
+ * - OWNER: Optional. Pending owner of the council wrapper, defaults to deployer. Must accept ownership.
  * - INITIAL_OPERATOR: Optional. Initial operator to whitelist during deployment.
  * - EARLY_REQUEST_IDENTIFIERS: Optional. JSON array of identifier names to allow for TOO_EARLY_RESPONSE.
  *   Defaults to ["YES_OR_NO_QUERY","MULTIPLE_CHOICE_QUERY"].
@@ -41,5 +42,11 @@ contract DeployDisputeRouterCouncil is DeployDisputeRouterBase {
         }
 
         vm.stopBroadcast();
+
+        console2.log("Council Owner:", council.owner());
+        console2.log("Council Pending Owner:", council.pendingOwner());
+        if (council.pendingOwner() != address(0)) {
+            console2.log("Ownership handoff incomplete: OWNER must call acceptOwnership() on the council.");
+        }
     }
 }

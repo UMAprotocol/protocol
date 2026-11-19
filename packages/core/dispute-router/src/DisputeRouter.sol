@@ -2,7 +2,7 @@
 pragma solidity 0.8.22;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
@@ -16,12 +16,13 @@ import { OracleInterfaces } from "@uma/core/data-verification-mechanism/implemen
 
 /**
  * @title DisputeRouter
+ * @custom:security-contact https://docs.umaproject.org/dev-ref/bug-bounty
  * @notice Routes UMA-style price disputes to either a permissioned council or the underlying Oracle.
  */
 contract DisputeRouter is
     Initializable,
     UUPSUpgradeable,
-    OwnableUpgradeable,
+    Ownable2StepUpgradeable,
     ReentrancyGuardUpgradeable,
     OracleAncillaryInterface
 {
@@ -40,6 +41,9 @@ contract DisputeRouter is
     error PriceNotYetResolved(bytes32 identifier, uint256 time, bytes ancillaryData);
 
     error ZeroAddress();
+    error OwnershipRenunciationDisabled();
+    error InvalidForwardBudget();
+    error ForwardBudgetExceeded(uint256 blockNumber);
 
     // ========== STRUCTS ==========
 
@@ -63,7 +67,11 @@ contract DisputeRouter is
         OracleAncillaryInterface oracle;
         address council;
         uint64 forwardDelay;
-        mapping(bytes32 => PriceRequest) priceRequests;
+        mapping(bytes32 requestId => PriceRequest request) priceRequests;
+        // Appended fields: zero configuration activates defaults, including for existing proxies.
+        uint256 forwardBudgetBlock;
+        uint32 forwardedInBlock;
+        uint32 maxForwardsPerBlock;
     }
 
     // keccak256(abi.encode(uint256(keccak256("uma.storage.DisputeRouter")) - 1)) & ~bytes32(uint256(0xff))
@@ -79,6 +87,8 @@ contract DisputeRouter is
     // ========== IMMUTABLES ==========
 
     FinderInterface public immutable finder;
+    OracleAncillaryInterface public immutable legacyOracle;
+    uint32 public constant DEFAULT_MAX_FORWARDS_PER_BLOCK = 1;
 
     // ========== EVENTS ==========
 
@@ -100,6 +110,8 @@ contract DisputeRouter is
     event CouncilChanged(address indexed newCouncil);
     event ForwardDelayChanged(uint64 newDelay);
     event OracleChanged(address indexed newOracle);
+    event ForwardBudgetChanged(uint32 maxForwardsPerBlock);
+    event RequestDeferred(bytes32 indexed requestId);
 
     // ========== MODIFIERS ==========
 
@@ -119,10 +131,12 @@ contract DisputeRouter is
      * @notice Constructs the implementation contract and permanently sets immutables.
      * @dev Uses _disableInitializers() to prevent initializing the implementation itself.
      * @param _finder UMA Finder used to locate Registry implementation for contract registration checks.
+     * @param _legacyOracle Previous oracle for requests absent from this router; zero disables the fallback.
      */
-    constructor(FinderInterface _finder) {
+    constructor(FinderInterface _finder, OracleAncillaryInterface _legacyOracle) {
         if (address(_finder) == address(0)) revert ZeroAddress();
         finder = _finder;
+        legacyOracle = _legacyOracle;
         _disableInitializers();
     }
 
@@ -148,6 +162,7 @@ contract DisputeRouter is
         if (_owner == address(0)) revert ZeroAddress();
 
         __Ownable_init(_owner);
+        __Ownable2Step_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
@@ -155,6 +170,13 @@ contract DisputeRouter is
         $.oracle = _oracle;
         $.council = _council;
         $.forwardDelay = _forwardDelay;
+    }
+
+    /**
+     * @notice Disables ownership renunciation to preserve configuration and upgrade access.
+     */
+    function renounceOwnership() public view override onlyOwner {
+        revert OwnershipRenunciationDisabled();
     }
 
     // ========== PUBLIC VIEW GETTERS ==========
@@ -184,6 +206,21 @@ contract DisputeRouter is
     }
 
     /**
+     * @notice Returns this proxy's per-block forwarding limit and usage in the current block.
+     * @dev Zero stored configuration uses the nonzero default; there is no unlimited mode.
+     * Counts all forwarding paths and callers, not admissions or local council resolutions.
+     * @return maxForwards Maximum forwarding calls allowed per block.
+     * @return usedForwards Forwarding calls already consumed in the current block.
+     */
+    function forwardBudget() external view returns (uint32 maxForwards, uint32 usedForwards) {
+        DisputeRouterStorage storage $ = _getStorage();
+        maxForwards = _forwardBudgetLimit($);
+        if ($.forwardBudgetBlock == block.number) {
+            usedForwards = $.forwardedInBlock;
+        }
+    }
+
+    /**
      * @notice Returns the price request data for a given request ID.
      * @param requestId The keccak256 hash of (identifier, time, ancillaryData).
      * @return requestTimestamp When the request was created.
@@ -206,7 +243,7 @@ contract DisputeRouter is
      * @notice Requests a price with ancillary data and caches it locally.
      * @dev
      * - Restricted to UMA-registered calling contracts.
-     * - When forwardDelay == 0, also forwards immediately to the oracle.
+     * - When forwardDelay == 0, forwards immediately if the shared budget permits; otherwise caches for retry.
      * - Returns early if the request already exists (idempotent).
      * @param identifier Price identifier.
      * @param time Timestamp of price request.
@@ -278,7 +315,9 @@ contract DisputeRouter is
         uint256 requiredTime = uint256(request.requestTimestamp) + uint256($.forwardDelay);
         if (getCurrentTime() < requiredTime) revert DelayNotPassed(getCurrentTime(), requiredTime);
 
-        _forwardRequestToOracleAndMark($, request, identifier, time, ancillaryData);
+        if (!_forwardRequestToOracleAndMark($, request, identifier, time, ancillaryData)) {
+            revert ForwardBudgetExceeded(block.number);
+        }
 
         emit RequestForwarded(msg.sender, identifier, time, ancillaryData, address($.oracle));
     }
@@ -305,7 +344,9 @@ contract DisputeRouter is
         _revertIfResolved(request, requestId);
         _revertIfForwarded(request, requestId);
 
-        _forwardRequestToOracleAndMark($, request, identifier, time, ancillaryData);
+        if (!_forwardRequestToOracleAndMark($, request, identifier, time, ancillaryData)) {
+            revert ForwardBudgetExceeded(block.number);
+        }
 
         emit RequestForwarded(msg.sender, identifier, time, ancillaryData, address($.oracle));
     }
@@ -318,7 +359,7 @@ contract DisputeRouter is
      * @param identifier Price identifier.
      * @param time Timestamp (seconds since epoch) that was requested.
      * @param ancillaryData Ancillary data (arbitrary bytes) used when requesting the price.
-     * @return True if the price is available either from local cache (council resolution) or from the oracle (if forwarded).
+     * @return True if a price is available locally, from the forwarding oracle, or from the legacy oracle.
      */
     function hasPrice(
         bytes32 identifier,
@@ -378,12 +419,25 @@ contract DisputeRouter is
 
     /**
      * @notice Updates the forwarding delay (in seconds).
-     * @dev Setting to 0 enables passthrough mode (requests are forwarded immediately on ingestion).
+     * @dev Setting to 0 enables best-effort passthrough; saturated requests are cached for later forwarding.
      * @param newDelay New delay value in seconds.
      */
     function setForwardDelay(uint64 newDelay) external onlyOwner {
         _getStorage().forwardDelay = newDelay;
         emit ForwardDelayChanged(newDelay);
+    }
+
+    /**
+     * @notice Updates the nonzero forwarding limit without resetting existing consumption.
+     * @dev Owner is trusted to choose the operational limit. Lowering it can prevent more forwards this block.
+     * This meters calls only, not ancillary-data bytes, complete receipts or exit proofs.
+     * @param maxForwards Maximum forwarding calls allowed per block; must be nonzero.
+     */
+    function setForwardBudget(uint32 maxForwards) external onlyOwner {
+        if (maxForwards == 0) revert InvalidForwardBudget();
+        DisputeRouterStorage storage $ = _getStorage();
+        $.maxForwardsPerBlock = maxForwards;
+        emit ForwardBudgetChanged(maxForwards);
     }
 
     /**
@@ -428,11 +482,13 @@ contract DisputeRouter is
 
         emit RequestAdded(msg.sender, identifier, time, ancillaryData);
 
-        // Forward immediately if forwardDelay is 0 (passthrough mode)
+        // Best-effort passthrough: saturation must not prevent admitting an OO dispute.
         if ($.forwardDelay == 0) {
-            request.forwardedTimestamp = now64;
-            $.oracle.requestPrice(identifier, time, ancillaryData);
-            emit RequestForwarded(msg.sender, identifier, time, ancillaryData, address($.oracle));
+            if (_forwardRequestToOracleAndMark($, request, identifier, time, ancillaryData)) {
+                emit RequestForwarded(msg.sender, identifier, time, ancillaryData, address($.oracle));
+            } else {
+                emit RequestDeferred(requestId);
+            }
         }
     }
 
@@ -461,7 +517,13 @@ contract DisputeRouter is
             }
         }
 
-        if (request.requestTimestamp == 0) return (false, 0, GetPriceError.NeverRequested);
+        if (request.requestTimestamp == 0) {
+            // Requests made before the Finder cutover remain in the legacy oracle.
+            if (address(legacyOracle) != address(0) && legacyOracle.hasPrice(identifier, time, ancillaryData)) {
+                return (true, legacyOracle.getPrice(identifier, time, ancillaryData), GetPriceError.None);
+            }
+            return (false, 0, GetPriceError.NeverRequested);
+        }
         return (false, 0, GetPriceError.NotYetResolved);
     }
 
@@ -505,9 +567,28 @@ contract DisputeRouter is
         bytes memory ancillaryData
     )
         internal
+        returns (bool)
     {
+        if (!_tryConsumeForwardBudget($)) return false;
         request.forwardedTimestamp = uint64(getCurrentTime());
         $.oracle.requestPrice(identifier, time, ancillaryData);
+        return true;
+    }
+
+    function _forwardBudgetLimit(DisputeRouterStorage storage $) private view returns (uint32 maxForwards) {
+        maxForwards = $.maxForwardsPerBlock;
+        if (maxForwards == 0) maxForwards = DEFAULT_MAX_FORWARDS_PER_BLOCK;
+    }
+
+    function _tryConsumeForwardBudget(DisputeRouterStorage storage $) private returns (bool) {
+        uint256 count = $.forwardBudgetBlock == block.number ? $.forwardedInBlock : 0;
+        if (count >= _forwardBudgetLimit($)) return false;
+
+        // Consume before the external call. Reverts roll consumption back with the forwarding operation.
+        $.forwardBudgetBlock = block.number;
+        // count is below the uint32 limit, so count + 1 fits before narrowing.
+        $.forwardedInBlock = uint32(count + 1);
+        return true;
     }
 
     function _requireRegisteredContract() internal view {

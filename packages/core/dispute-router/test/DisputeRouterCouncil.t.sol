@@ -410,7 +410,7 @@ contract DisputeRouterCouncilTest is Test {
         mockRegistry.registerContract(address(mooV2));
         mockRegistry.registerContract(address(ooV2));
 
-        implementation = new DisputeRouter(FinderInterface(address(mockFinder)));
+        implementation = new DisputeRouter(FinderInterface(address(mockFinder)), OracleAncillaryInterface(address(0)));
         bytes memory initData = abi.encodeWithSelector(
             DisputeRouter.initialize.selector,
             OracleAncillaryInterface(address(oracle)),
@@ -434,6 +434,35 @@ contract DisputeRouterCouncilTest is Test {
         councilWrapper.setEarlyRequestIdentifier(YES_OR_NO_QUERY, true);
         councilWrapper.setEarlyRequestIdentifier(MULTIPLE_CHOICE_QUERY, true);
         vm.stopPrank();
+    }
+
+    function test_OwnershipRequiresAcceptanceAndCannotBeRenounced() public {
+        address nextOwner = makeAddr("nextOwner");
+        vm.prank(owner);
+        councilWrapper.transferOwnership(nextOwner);
+        assertEq(councilWrapper.owner(), owner);
+        assertEq(councilWrapper.pendingOwner(), nextOwner);
+
+        vm.prank(owner);
+        councilWrapper.setOperator(nonOperator, true);
+        vm.prank(nonOperator);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, nonOperator));
+        councilWrapper.acceptOwnership();
+
+        vm.prank(nextOwner);
+        councilWrapper.acceptOwnership();
+        assertEq(councilWrapper.owner(), nextOwner);
+        assertEq(councilWrapper.pendingOwner(), address(0));
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, owner));
+        councilWrapper.setOperator(nonOperator, false);
+        vm.prank(nextOwner);
+        councilWrapper.setOperator(nonOperator, false);
+
+        vm.prank(nextOwner);
+        vm.expectRevert(DisputeRouterCouncil.OwnershipRenunciationDisabled.selector);
+        councilWrapper.renounceOwnership();
+        assertEq(councilWrapper.owner(), nextOwner);
     }
 
     function test_ConstructorRevertsWithZeroRouter() public {
@@ -561,6 +590,34 @@ contract DisputeRouterCouncilTest is Test {
         );
         assertEq(router.getPrice(rawIdentifier, followUpRequestTimestamp, followUpStampedAncillaryData), settledPrice);
         vm.stopPrank();
+    }
+
+    function test_MulticallCannotBypassSharedForwardBudget() public {
+        _requestDvmRequest(rawIdentifier, requestTime, "one");
+        _requestDvmRequest(rawIdentifier, requestTime + 1, "two");
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeCall(
+            DisputeRouterCouncil.escalateOptimisticOracleRequest, (rawIdentifier, requestTime, bytes("one"))
+        );
+        data[1] = abi.encodeCall(
+            DisputeRouterCouncil.escalateOptimisticOracleRequest, (rawIdentifier, requestTime + 1, bytes("two"))
+        );
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(DisputeRouter.ForwardBudgetExceeded.selector, block.number));
+        councilWrapper.multicall(data);
+        assertEq(oracle.requestCount(), 0); // The entire multicall reverted, including its first forward.
+        (, uint32 usedCount) = router.forwardBudget();
+        assertEq(usedCount, 0);
+
+        vm.prank(operator);
+        councilWrapper.escalateOptimisticOracleRequest(rawIdentifier, requestTime, "one");
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(DisputeRouter.ForwardBudgetExceeded.selector, block.number));
+        councilWrapper.escalateOptimisticOracleRequest(rawIdentifier, requestTime + 1, "two");
+        vm.roll(block.number + 1);
+        vm.prank(operator);
+        councilWrapper.escalateOptimisticOracleRequest(rawIdentifier, requestTime + 1, "two");
+        assertEq(oracle.requestCount(), 2);
     }
 
     function test_MulticallBubblesCustomErrors() public {

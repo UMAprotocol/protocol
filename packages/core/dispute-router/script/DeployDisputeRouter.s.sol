@@ -18,6 +18,7 @@ import { DeployDisputeRouterBase } from "./DeployDisputeRouterBase.s.sol";
  * Environment variables:
  * - MNEMONIC: Required. The mnemonic phrase for the deployer wallet
  * - FINDER: Required. Address of the Finder contract
+ * - LEGACY_ORACLE: Optional. Previous oracle for pre-cutover requests (defaults to zero, disabling fallback).
  * - ORACLE: Required. Address of the Oracle contract (e.g., OracleChildTunnel)
  * - COUNCIL: Required. Address of the Council
  * - FORWARD_DELAY: Optional. Delay in seconds before forwarding (defaults to 3600, set to 0 for passthrough mode)
@@ -45,9 +46,7 @@ contract DeployDisputeRouter is DeployDisputeRouterBase {
 
         vm.stopBroadcast();
 
-        _logRouterSummary(
-            implementation, proxy, config.council, config.router.forwardDelay, config.router.oracle, config.router.owner
-        );
+        _logRouterSummary(implementation, proxy, config.council, config.router.forwardDelay, config.router.oracle);
     }
 }
 
@@ -58,10 +57,11 @@ contract DeployDisputeRouter is DeployDisputeRouterBase {
  * Environment variables:
  * - MNEMONIC: Required. Mnemonic for the deployer wallet.
  * - FINDER: Required. Address of the Finder contract.
+ * - LEGACY_ORACLE: Optional. Previous oracle for pre-cutover requests (defaults to zero, disabling fallback).
  * - ORACLE: Required. Address of the Oracle contract (e.g., OracleChildTunnel).
  * - MOO_V2: Required. ManagedOptimisticOracleV2 address used for managed requests.
  * - FORWARD_DELAY: Optional. Delay in seconds before forwarding (defaults to 3600, set to 0 for passthrough mode).
- * - OWNER: Optional. Final owner for both router and council wrapper, defaults to deployer.
+ * - OWNER: Optional. Pending owner for both contracts, defaults to deployer. Must accept ownership on each contract.
  * - INITIAL_OPERATOR: Optional. Initial operator to whitelist during deployment.
  * - EARLY_REQUEST_IDENTIFIERS: Optional. JSON array of identifier names to allow for TOO_EARLY_RESPONSE.
  *   Defaults to ["YES_OR_NO_QUERY","MULTIPLE_CHOICE_QUERY"].
@@ -102,8 +102,7 @@ contract DeployDisputeRouterWithCouncil is DeployDisputeRouterBase {
             address(council),
             config.router.forwardDelay,
             config.router.oracle,
-            config.council.mooV2,
-            config.router.owner
+            config.council.mooV2
         );
     }
 }
