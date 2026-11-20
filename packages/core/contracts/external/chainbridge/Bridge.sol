@@ -121,6 +121,7 @@ contract Bridge is Pausable, AccessControl {
         _setRoleAdmin(RELAYER_ROLE, DEFAULT_ADMIN_ROLE);
 
         for (uint256 i; i < initialRelayers.length; i++) {
+            require(!hasRole(RELAYER_ROLE, initialRelayers[i]), "duplicate initial relayer");
             grantRole(RELAYER_ROLE, initialRelayers[i]);
             _totalRelayers++;
         }
