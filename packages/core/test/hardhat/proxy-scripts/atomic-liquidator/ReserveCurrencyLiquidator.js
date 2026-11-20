@@ -496,7 +496,7 @@ describe("ReserveTokenLiquidator", function () {
     const convertCollateral = Convert(9);
     const convertSynthetic = Convert(9);
 
-    // create a new router and pair to re-initalize from fresh.
+    // create a new router and pair to re-initialize from fresh.
     factory = (await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer })).contract;
     router = (
       await createContractObjectFromJson(UniswapV2Router02, web3).new(
