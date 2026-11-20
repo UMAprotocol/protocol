@@ -35,8 +35,10 @@ Export the required environment:
 export MNEMONIC=<YOUR-MNEMONIC>
 export NODE_URL_1=http://localhost:9545
 export NODE_URL_137=http://localhost:9546
-export ROUTER_ADDRESS=<DISPUTE-ROUTER-PROXY>
 ```
+
+The scripts target the deployed `DisputeRouter` proxy `0x90326E769C9371AFd379eAB03Bbd3c4d4ca4e783` by default; set
+`ROUTER_ADDRESS` to override it.
 
 Make sure the wallet corresponding to the `MNEMONIC` is funded on the forked mainnet (use `hardhat_setBalance` if
 needed).
@@ -74,7 +76,7 @@ yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/2_V
 
 ## Cutover on public networks
 
-Export `NODE_URL_1`, `NODE_URL_137` and `ROUTER_ADDRESS` pointing to public networks.
+Export `NODE_URL_1` and `NODE_URL_137` pointing to public networks.
 
 Propose the governance vote on mainnet (authenticate to `gcloud` first):
 

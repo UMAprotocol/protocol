@@ -3,7 +3,7 @@
 // - NODE_URL_1: Mainnet node URL (not required when using localhost for a forked network).
 // - GCKMS_WALLET: (optional) GCKMS wallet name, impersonates the proposer on a fork if not set.
 // - UMIP_NUMBER: Number in UMIP repository.
-// - ROUTER_ADDRESS: DisputeRouter proxy address on Polygon.
+// - ROUTER_ADDRESS: (optional) DisputeRouter proxy address on Polygon, defaults to the deployed proxy.
 // Then run the script with:
 //   yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/0_Propose.ts --network <network>
 
@@ -27,11 +27,11 @@ import {
 } from "../common";
 import { getContractInstance } from "../../utils/contracts";
 import { GovernanceMessages, relayGovernanceMessages } from "../../utils/relay";
+import { getRouterAddress } from "./common";
 
 async function main() {
   const umipNumber = getUmipNumber();
-  if (!process.env.ROUTER_ADDRESS) throw new Error("ROUTER_ADDRESS is not set");
-  const routerAddress = ethersUtils.getAddress(process.env.ROUTER_ADDRESS);
+  const routerAddress = getRouterAddress();
   const polygonChainId = networksNumber["polygon"];
 
   const proposerSigner = await getProposerSigner(PROPOSER_ADDRESS);

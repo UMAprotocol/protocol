@@ -1,7 +1,7 @@
 // This script verifies the DisputeRouter cutover proposal has been properly executed on Polygon.
 // Export following environment variables:
 // - NODE_URL_137: Polygon or its fork node URL.
-// - ROUTER_ADDRESS: DisputeRouter proxy address on Polygon.
+// - ROUTER_ADDRESS: (optional) DisputeRouter proxy address on Polygon, defaults to the deployed proxy.
 // Then run the script with:
 //   yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/2_Verify.ts --network <network>
 
@@ -11,10 +11,10 @@ import { FinderEthers, getAddress, OptimisticOracleV3Ethers, RegistryEthers } fr
 import { utils as ethersUtils } from "ethers";
 import { getJsonRpcProvider, networksNumber } from "../common";
 import { getContractInstanceWithProvider } from "../../utils/contracts";
+import { getRouterAddress } from "./common";
 
 async function main() {
-  if (!process.env.ROUTER_ADDRESS) throw new Error("ROUTER_ADDRESS is not set");
-  const routerAddress = ethersUtils.getAddress(process.env.ROUTER_ADDRESS);
+  const routerAddress = getRouterAddress();
 
   const provider = getJsonRpcProvider("polygon");
   const finder = await getContractInstanceWithProvider<FinderEthers>("Finder", provider);
