@@ -135,6 +135,55 @@ interface CutoverStore {
 
 interface CutoverOOv3 {
     function cachedOracle() external view returns (address);
+    function getMinimumBond(address currency) external view returns (uint256);
+    function assertTruth(
+        bytes calldata claim,
+        address asserter,
+        address callbackRecipient,
+        address escalationManager,
+        uint64 liveness,
+        IERC20 currency,
+        uint256 bond,
+        bytes32 identifier,
+        bytes32 domainId
+    )
+        external
+        returns (bytes32);
+    function disputeAssertion(bytes32 assertionId, address disputer) external;
+    function syncUmaParams(bytes32 identifier, address currency) external;
+    function settleAssertion(bytes32 assertionId) external;
+    function getAssertionResult(bytes32 assertionId) external view returns (bool);
+}
+
+/// @dev Polymarket V1 UmaCtfAdapter question state.
+struct AdapterQuestion {
+    uint256 requestTimestamp;
+    uint256 reward;
+    uint256 proposalBond;
+    uint256 liveness;
+    uint256 manualResolutionTimestamp;
+    bool resolved;
+    bool paused;
+    bool reset;
+    bool refund;
+    address rewardToken;
+    address creator;
+    bytes ancillaryData;
+}
+
+interface CutoverCtfAdapter {
+    function initialize(
+        bytes calldata ancillaryData,
+        address rewardToken,
+        uint256 reward,
+        uint256 proposalBond,
+        uint256 liveness
+    )
+        external
+        returns (bytes32 questionID);
+    function getQuestion(bytes32 questionID) external view returns (AdapterQuestion memory);
+    function ready(bytes32 questionID) external view returns (bool);
+    function resolve(bytes32 questionID) external;
 }
 
 /// @dev Real Polygon Optimistic Oracles dispute into the deployed DisputeRouter after the governance cutover.
@@ -158,12 +207,17 @@ contract PolygonCutoverForkTest is Test {
     CutoverRegistry internal constant REGISTRY = CutoverRegistry(0x5f25B1647FA8EAea0E15EDD413C7afcBe613B6f4);
     address internal constant STORE = 0xE58480CA74f1A819faFd777BEDED4E2D5629943d;
     IERC20 internal constant USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    // Polygon OOv3 assertions use native USDC and ASSERT_TRUTH2; ASSERT_TRUTH is not whitelisted on Polygon.
+    IERC20 internal constant NATIVE_USDC = IERC20(0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359);
+    bytes32 internal constant ASSERT_TRUTH2 = "ASSERT_TRUTH2";
 
     CutoverOptimisticOracle internal constant OO_V1 =
         CutoverOptimisticOracle(0xBb1A8db2D4350976a11cdfA60A1d43f97710Da49);
     CutoverOptimisticOracle internal constant OO_V2 =
         CutoverOptimisticOracle(0xeE3Afe347D5C74317041E2618C49534dAf887c24);
     CutoverOOv3 internal constant OO_V3 = CutoverOOv3(0x5953f2538F613E05bAED8A5AeFa8e6622467AD3D);
+    // UmaCtfAdapter on OOv2 currently creating Polymarket V1 requests.
+    CutoverCtfAdapter internal constant CTF_ADAPTER = CutoverCtfAdapter(0x056E680AAe1F3BE339e375070B56FcbB326fa297);
     CutoverManagedOracle internal constant MOO_V2 = CutoverManagedOracle(0x2C0367a9DB231dDeBd88a94b4f6461a6e47C58B1);
     CutoverReporter internal constant REPORTER = CutoverReporter(0x53703Dd6129d723066b6362510E5aE2fECd48218);
     // Current holders of the reporter requester, reporter initializer, MOOv2 proposer whitelist and resolver roles.
@@ -194,6 +248,7 @@ contract PolygonCutoverForkTest is Test {
     bytes32 internal constant MESSAGE_SENT = keccak256("MessageSent(bytes)");
 
     struct DvmRequest {
+        bytes32 identifier;
         uint256 time;
         bytes ancillaryData;
     }
@@ -334,10 +389,21 @@ contract PolygonCutoverForkTest is Test {
         DvmRequest memory requestA = _routerRequest(logsA, address(OO_V2));
         (uint256 timeB, Vm.Log[] memory logsB) = _ooDispute(OO_V2, questionB);
         DvmRequest memory requestB = _routerRequest(logsB, address(OO_V2));
+        (, Vm.Log[] memory logsC) = _ooDispute(OO_V2, "q: dispute router cutover fork test, held in same block");
+        DvmRequest memory requestC = _routerRequest(logsC, address(OO_V2));
+        // Admission is not metered by the forward budget: all disputes in one block are held.
+        _assertHeld(requestA);
+        _assertHeld(requestB);
+        _assertHeld(requestC);
 
         bytes memory parentA = _escalate(hsm, requestA);
+        vm.expectRevert(abi.encodeWithSelector(DisputeRouter.ForwardBudgetExceeded.selector, block.number));
+        _execute(
+            BACKUP, abi.encodeCall(COUNCIL.escalateOptimisticOracleRequest, (ID, requestB.time, requestB.ancillaryData))
+        );
         vm.roll(block.number + 1);
         bytes memory parentB = _escalate(BACKUP, requestB);
+        _assertHeld(requestC);
 
         _pushDvmPrice(requestA, parentA, YES);
         _pushDvmPrice(requestB, parentB, NO);
@@ -392,6 +458,7 @@ contract PolygonCutoverForkTest is Test {
         (, uint256 t0) = _reporterQuestion(rules);
         DvmRequest memory request = _mooProposeAndDispute(t0, rules);
         bytes memory p4 = abi.encodeCall(COUNCIL.resolveManagedAsTooEarly, (address(REPORTER), ID, t0, rules));
+        // The AccessManager rejects these callers before the council runs, so the follow-up time is a placeholder.
         bytes memory copy =
             abi.encodeCall(COUNCIL.resolveManagedFromSettledFollowUp, (address(REPORTER), ID, t0, t0 + 1, rules));
         bytes memory escalate =
@@ -511,6 +578,114 @@ contract PolygonCutoverForkTest is Test {
         _assertCanCall(hsmAfterEffect, P4, true);
     }
 
+    // 10. A Polymarket V2 dispute forwarded to the DVM settles and resolves the reporter with the DVM outcome.
+    function test_ReporterDisputeForwardedToDvmResolvesReporter() public {
+        _cutover();
+        bytes memory rules = "q: dispute router cutover fork test, reporter DVM";
+        (bytes32 requestId, uint256 t0) = _reporterQuestion(rules);
+        DvmRequest memory first = _mooProposeAndDispute(t0, rules);
+        uint256 t1 = REPORTER.getRequest(requestId).requestTimestamp;
+        DvmRequest memory second = _mooProposeAndDispute(t1, rules);
+
+        (uint64 requestedAt,,,) = ROUTER.priceRequests(_id(first));
+        vm.warp(requestedAt + FORWARD_DELAY);
+        vm.recordLogs();
+        ROUTER.forwardPriceRequest(ID, first.time, first.ancillaryData);
+        bytes memory parentFirst = _tunnelRequest(vm.getRecordedLogs(), address(ROUTER), first);
+        vm.roll(block.number + 1);
+        bytes memory parentSecond = _escalate(hsm, second);
+        vm.expectRevert(abi.encodeWithSelector(DisputeRouter.CannotResolveAfterForwarding.selector, _id(second)));
+        _execute(hsm, abi.encodeCall(COUNCIL.resolveManagedAsTooEarly, (address(REPORTER), ID, t1, rules)));
+
+        _pushDvmPrice(first, parentFirst, YES);
+        _pushDvmPrice(second, parentSecond, NO);
+        _mooSettle(t0, rules, MOO_PROPOSER);
+        assertFalse(REPORTER.getRequest(requestId).resolved, "superseded request does not resolve the reporter");
+        _mooSettle(t1, rules, disputer);
+        assertTrue(REPORTER.getRequest(requestId).resolved);
+        assertEq(REPORTER.getRequest(requestId).outcome, NO);
+    }
+
+    // 11. Polymarket V1 (UmaCtfAdapter on OOv2): the first dispute resets the question, the second is escalated and
+    // the DVM answer resolves the market.
+    function test_PolymarketV1AdapterDisputeEscalatedThenResolved() public {
+        _cutover();
+        vm.prank(requester);
+        bytes32 questionId =
+            CTF_ADAPTER.initialize("q: dispute router cutover fork test, Polymarket V1", address(USDC), 0, BOND, 0);
+        AdapterQuestion memory question = CTF_ADAPTER.getQuestion(questionId);
+        uint256 t0 = question.requestTimestamp;
+        vm.warp(block.timestamp + 1);
+        DvmRequest memory first = _routerRequest(
+            _ooProposeAndDispute(OO_V2, address(CTF_ADAPTER), t0, question.ancillaryData), address(OO_V2)
+        );
+        _assertHeld(first);
+        question = CTF_ADAPTER.getQuestion(questionId);
+        assertTrue(question.reset, "first dispute resets the question");
+        uint256 t1 = question.requestTimestamp;
+        assertGt(t1, t0);
+
+        vm.warp(block.timestamp + 1);
+        DvmRequest memory second = _routerRequest(
+            _ooProposeAndDispute(OO_V2, address(CTF_ADAPTER), t1, question.ancillaryData), address(OO_V2)
+        );
+        _assertHeld(second);
+        question = CTF_ADAPTER.getQuestion(questionId);
+        assertEq(question.requestTimestamp, t1, "second dispute keeps the question on the disputed request");
+        assertTrue(question.refund);
+        assertFalse(CTF_ADAPTER.ready(questionId));
+
+        bytes memory parentSecond = _escalate(hsm, second);
+        vm.roll(block.number + 1);
+        bytes memory parentFirst = _escalate(hsm, first);
+        _pushDvmPrice(second, parentSecond, NO);
+        _pushDvmPrice(first, parentFirst, YES);
+        assertTrue(CTF_ADAPTER.ready(questionId));
+
+        uint256 balance = USDC.balanceOf(disputer);
+        CTF_ADAPTER.resolve(questionId);
+        assertTrue(CTF_ADAPTER.getQuestion(questionId).resolved);
+        assertEq(
+            USDC.balanceOf(disputer) - balance, BOND + BOND - BOND / 2 + finalFee, "resolve settles the OOv2 bonds"
+        );
+        // The request superseded by the reset still settles its bonds.
+        _ooSettleFor(OO_V2, address(CTF_ADAPTER), t0, question.ancillaryData, proposer);
+    }
+
+    // 12. OOv3 keeps its cached tunnel until anyone syncs it; disputes on either side of the sync settle.
+    function test_OOv3DisputesBeforeAndAfterSyncSettle() public {
+        _cutover();
+        (bytes32 preSync, Vm.Log[] memory preLogs) = _ooV3AssertAndDispute("dispute router cutover fork test, pre-sync");
+        (DvmRequest memory preRequest, bytes memory preParent) = _tunnelRequestFrom(preLogs, address(OO_V3));
+
+        vm.prank(makeAddr("anyone"));
+        OO_V3.syncUmaParams(ASSERT_TRUTH2, address(NATIVE_USDC));
+        assertEq(OO_V3.cachedOracle(), address(ROUTER));
+
+        (bytes32 postSync, Vm.Log[] memory postLogs) =
+            _ooV3AssertAndDispute("dispute router cutover fork test, post-sync");
+        DvmRequest memory postRequest = _routerRequest(postLogs, address(OO_V3));
+        _assertHeld(postRequest);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DisputeRouter.PriceWasNeverRequested.selector,
+                preRequest.identifier,
+                preRequest.time,
+                preRequest.ancillaryData
+            )
+        );
+        OO_V3.settleAssertion(preSync);
+
+        _pushDvmPrice(preRequest, preParent, YES);
+        OO_V3.settleAssertion(preSync);
+        assertTrue(OO_V3.getAssertionResult(preSync), "pre-sync dispute settles through the legacy fallback");
+
+        bytes memory postParent = _escalate(hsm, postRequest);
+        _pushDvmPrice(postRequest, postParent, NO);
+        OO_V3.settleAssertion(postSync);
+        assertFalse(OO_V3.getAssertionResult(postSync));
+    }
+
     // ========== Governance and role setup ==========
 
     /// @dev Effect of the governance proposal on Polygon, as executed by GovernorChildTunnel.
@@ -605,7 +780,10 @@ contract PolygonCutoverForkTest is Test {
     function _escalate(address caller, DvmRequest memory request) internal returns (bytes memory parentData) {
         vm.recordLogs();
         _execute(
-            caller, abi.encodeCall(COUNCIL.escalateOptimisticOracleRequest, (ID, request.time, request.ancillaryData))
+            caller,
+            abi.encodeCall(
+                COUNCIL.escalateOptimisticOracleRequest, (request.identifier, request.time, request.ancillaryData)
+            )
         );
         parentData = _tunnelRequest(vm.getRecordedLogs(), address(ROUTER), request);
         (, uint64 forwardedAt, bool resolved,) = ROUTER.priceRequests(_id(request));
@@ -617,7 +795,7 @@ contract PolygonCutoverForkTest is Test {
     function _pushDvmPrice(DvmRequest memory request, bytes memory parentData, int256 price) internal {
         vm.prank(FX_CHILD);
         CutoverChildTunnel(CHILD)
-            .processMessageFromRoot(1, ROOT_TUNNEL, abi.encode(ID, request.time, parentData, price));
+            .processMessageFromRoot(1, ROOT_TUNNEL, abi.encode(request.identifier, request.time, parentData, price));
     }
 
     function _routerRequest(Vm.Log[] memory logs, address oo) internal pure returns (DvmRequest memory request) {
@@ -626,7 +804,7 @@ contract PolygonCutoverForkTest is Test {
             assertFalse(logs[i].emitter == CHILD, "dispute must not reach the tunnel");
             if (logs[i].emitter == address(ROUTER) && logs[i].topics[0] == DisputeRouter.RequestAdded.selector) {
                 assertEq(logs[i].topics[1], bytes32(uint256(uint160(oo))));
-                assertEq(logs[i].topics[2], ID);
+                request.identifier = logs[i].topics[2];
                 (request.time, request.ancillaryData) = abi.decode(logs[i].data, (uint256, bytes));
                 found = true;
             }
@@ -647,14 +825,13 @@ contract PolygonCutoverForkTest is Test {
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].emitter == CHILD && logs[i].topics[0] == PRICE_REQUEST_BRIDGED) {
                 assertEq(logs[i].topics[1], bytes32(uint256(uint160(bridgedRequester))));
-                bytes32 identifier;
-                (identifier, request.time, request.ancillaryData) = abi.decode(logs[i].data, (bytes32, uint256, bytes));
-                assertEq(identifier, ID);
+                (request.identifier, request.time, request.ancillaryData) =
+                    abi.decode(logs[i].data, (bytes32, uint256, bytes));
                 found = true;
             }
         }
         assertTrue(found, "request must be bridged by the tunnel");
-        parentData = _parentData(logs, request.time);
+        parentData = _parentData(logs, request);
     }
 
     function _tunnelRequest(
@@ -671,17 +848,24 @@ contract PolygonCutoverForkTest is Test {
         assertEq(_id(request), _id(expected));
     }
 
-    function _parentData(Vm.Log[] memory logs, uint256 time) internal pure returns (bytes memory parentData) {
+    function _parentData(
+        Vm.Log[] memory logs,
+        DvmRequest memory request
+    )
+        internal
+        pure
+        returns (bytes memory parentData)
+    {
         bool sent;
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].emitter != CHILD) continue;
             if (logs[i].topics[0] == PRICE_REQUEST_ADDED) {
-                assertEq(logs[i].topics[1], ID);
+                assertEq(logs[i].topics[1], request.identifier);
                 uint256 parentTime;
                 (parentTime, parentData) = abi.decode(logs[i].data, (uint256, bytes));
-                assertEq(parentTime, time);
+                assertEq(parentTime, request.time);
             } else if (logs[i].topics[0] == MESSAGE_SENT) {
-                assertEq(abi.decode(logs[i].data, (bytes)), abi.encode(ID, time, parentData));
+                assertEq(abi.decode(logs[i].data, (bytes)), abi.encode(request.identifier, request.time, parentData));
                 sent = true;
             }
         }
@@ -705,11 +889,11 @@ contract PolygonCutoverForkTest is Test {
 
     function _routerHasPrice(DvmRequest memory request) internal returns (bool) {
         vm.prank(address(OO_V2));
-        return ROUTER.hasPrice(ID, request.time, request.ancillaryData);
+        return ROUTER.hasPrice(request.identifier, request.time, request.ancillaryData);
     }
 
     function _id(DvmRequest memory request) internal pure returns (bytes32) {
-        return keccak256(abi.encode(ID, request.time, request.ancillaryData));
+        return keccak256(abi.encode(request.identifier, request.time, request.ancillaryData));
     }
 
     // ========== OOv1 / OOv2 ==========
@@ -726,24 +910,62 @@ contract PolygonCutoverForkTest is Test {
         oo.requestPrice(ID, time, question, USDC, 0);
         oo.setBond(ID, time, question, BOND);
         vm.stopPrank();
+        logs = _ooProposeAndDispute(oo, requester, time, question);
+    }
+
+    function _ooProposeAndDispute(
+        CutoverOptimisticOracle oo,
+        address ooRequester,
+        uint256 time,
+        bytes memory question
+    )
+        internal
+        returns (Vm.Log[] memory logs)
+    {
         _fund(proposer, address(oo), BOND + finalFee);
         _fund(disputer, address(oo), BOND + finalFee);
         vm.prank(proposer);
-        oo.proposePrice(requester, ID, time, question, YES);
+        oo.proposePrice(ooRequester, ID, time, question, YES);
 
         uint256 storeBalance = USDC.balanceOf(STORE);
         vm.recordLogs();
         vm.prank(disputer);
-        oo.disputePrice(requester, ID, time, question);
+        oo.disputePrice(ooRequester, ID, time, question);
         logs = vm.getRecordedLogs();
         assertEq(USDC.balanceOf(STORE) - storeBalance, finalFee + BOND / 2, "final fee and burned bond to Store");
     }
 
     function _ooSettle(CutoverOptimisticOracle oo, uint256 time, bytes memory question, address winner) internal {
+        _ooSettleFor(oo, requester, time, question, winner);
+    }
+
+    function _ooSettleFor(
+        CutoverOptimisticOracle oo,
+        address ooRequester,
+        uint256 time,
+        bytes memory question,
+        address winner
+    )
+        internal
+    {
         uint256 balance = USDC.balanceOf(winner);
-        uint256 payout = oo.settle(requester, ID, time, question);
+        uint256 payout = oo.settle(ooRequester, ID, time, question);
         assertEq(payout, BOND + BOND - BOND / 2 + finalFee);
         assertEq(USDC.balanceOf(winner) - balance, payout);
+    }
+
+    function _ooV3AssertAndDispute(bytes memory claim) internal returns (bytes32 assertionId, Vm.Log[] memory logs) {
+        uint256 bond = OO_V3.getMinimumBond(address(NATIVE_USDC));
+        _fund(NATIVE_USDC, proposer, address(OO_V3), bond);
+        _fund(NATIVE_USDC, disputer, address(OO_V3), bond);
+        vm.prank(proposer);
+        assertionId = OO_V3.assertTruth(
+            claim, proposer, address(0), address(0), LIVENESS, NATIVE_USDC, bond, ASSERT_TRUTH2, bytes32(0)
+        );
+        vm.recordLogs();
+        vm.prank(disputer);
+        OO_V3.disputeAssertion(assertionId, disputer);
+        logs = vm.getRecordedLogs();
     }
 
     // ========== OOReporter / Managed OOv2 ==========
@@ -803,8 +1025,12 @@ contract PolygonCutoverForkTest is Test {
     }
 
     function _fund(address account, address spender, uint256 amount) internal {
-        deal(address(USDC), account, USDC.balanceOf(account) + amount);
+        _fund(USDC, account, spender, amount);
+    }
+
+    function _fund(IERC20 token, address account, address spender, uint256 amount) internal {
+        deal(address(token), account, token.balanceOf(account) + amount);
         vm.prank(account);
-        USDC.approve(spender, type(uint256).max);
+        token.approve(spender, type(uint256).max);
     }
 }
