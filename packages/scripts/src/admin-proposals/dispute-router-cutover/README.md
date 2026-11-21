@@ -51,7 +51,7 @@ Impersonate accounts and seed the proposer wallet on the forked mainnet:
 Propose the governance vote on the forked mainnet:
 
 ```sh
-UMIP_NUMBER=<UMIP-NUMBER> yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/0_Propose.ts --network localhost
+yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/0_Propose.ts --network localhost
 ```
 
 Simulate the vote on the proposal without executing it yet:
@@ -77,10 +77,13 @@ yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/2_V
 
 Export `NODE_URL_1` and `NODE_URL_137` pointing to public networks.
 
+There is no UMIP for this change. The voter dapp shows the title and description of the `umip` Contentful entry whose
+`number` matches the admin proposal number, so publish that entry before the vote starts.
+
 Propose the governance vote on mainnet (authenticate to `gcloud` first):
 
 ```sh
-UMIP_NUMBER=<UMIP-NUMBER> GCKMS_WALLET=deployer yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/0_Propose.ts --network mainnet
+GCKMS_WALLET=deployer yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/0_Propose.ts --network mainnet
 ```
 
 If the vote is resolved to approve the cutover, execute the proposal on mainnet and wait for it to be relayed to

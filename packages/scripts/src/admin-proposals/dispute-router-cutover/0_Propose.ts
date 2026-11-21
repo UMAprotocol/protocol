@@ -2,7 +2,6 @@
 // Export following environment variables:
 // - NODE_URL_1: Mainnet node URL (not required when using localhost for a forked network).
 // - GCKMS_WALLET: (optional) GCKMS wallet name, impersonates the proposer on a fork if not set.
-// - UMIP_NUMBER: Number in UMIP repository.
 // - ROUTER_ADDRESS: (optional) DisputeRouter proxy address on Polygon, defaults to the deployed proxy.
 // Then run the script with:
 //   yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/0_Propose.ts --network <network>
@@ -14,17 +13,15 @@ import {
   AdminProposalTransaction,
   approveProposerBond,
   getProposerSigner,
-  getUmipNumber,
   networksNumber,
   PROPOSER_ADDRESS,
   submitAdminProposal,
 } from "../common";
 import { getContractInstance } from "../../utils/contracts";
 import { GovernanceMessages, relayGovernanceMessages } from "../../utils/relay";
-import { getRouterAddress } from "./common";
+import { DISCOURSE_URL, getRouterAddress } from "./common";
 
 async function main() {
-  const umipNumber = getUmipNumber();
   const routerAddress = getRouterAddress();
   const polygonChainId = networksNumber["polygon"];
 
@@ -65,7 +62,7 @@ async function main() {
 
   await approveProposerBond(proposerSigner);
 
-  const proposalExplanation = `UMIP-${umipNumber}: Set DisputeRouter ${routerAddress} as Oracle on Polygon`;
+  const proposalExplanation = `UMA Upgrade: Implementing the Dispute Router. Sets DisputeRouter ${routerAddress} as Oracle on Polygon. ${DISCOURSE_URL}`;
   await submitAdminProposal(proposerSigner, adminProposalTransactions, proposalExplanation);
 }
 

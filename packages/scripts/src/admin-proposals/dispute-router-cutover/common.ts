@@ -1,5 +1,7 @@
 import { utils as ethersUtils } from "ethers";
 
+export const DISCOURSE_URL = "https://discourse.uma.xyz/t/uma-upgrade-implementing-the-dispute-router/2326";
+
 // DisputeRouter proxy deployed on Polygon.
 const DEFAULT_ROUTER_ADDRESS = "0x90326E769C9371AFd379eAB03Bbd3c4d4ca4e783";
 
