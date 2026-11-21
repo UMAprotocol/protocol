@@ -8,7 +8,6 @@ These scripts propose, execute and verify a governance vote that makes the deplo
    legacy prices
 3. `Registry.removeMember(CONTRACT_CREATOR, GovernorChildTunnel)`
 4. `Finder.changeImplementationAddress("Oracle", DisputeRouter)`
-5. `OptimisticOracleV3.syncUmaParams(bytes32(""), address(0))`, so the cached OOv3 oracle switches in the same batch
 
 Start with building the packages from the root of the repository:
 

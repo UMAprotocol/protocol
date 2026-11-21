@@ -7,15 +7,9 @@
 // Then run the script with:
 //   yarn hardhat run packages/scripts/src/admin-proposals/dispute-router-cutover/0_Propose.ts --network <network>
 
-import {
-  FinderEthers,
-  getAddress,
-  GovernorRootTunnelEthers,
-  OptimisticOracleV3Ethers,
-  RegistryEthers,
-} from "@uma/contracts-node";
+import { FinderEthers, getAddress, GovernorRootTunnelEthers, RegistryEthers } from "@uma/contracts-node";
 import { interfaceName, RegistryRolesEnum } from "@uma/common";
-import { constants as ethersConstants, utils as ethersUtils } from "ethers";
+import { utils as ethersUtils } from "ethers";
 import {
   AdminProposalTransaction,
   approveProposerBond,
@@ -39,11 +33,6 @@ async function main() {
   const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnel");
   const registry = await getContractInstance<RegistryEthers>("Registry", undefined, polygonChainId);
   const finder = await getContractInstance<FinderEthers>("Finder", undefined, polygonChainId);
-  const optimisticOracleV3 = await getContractInstance<OptimisticOracleV3Ethers>(
-    "OptimisticOracleV3",
-    undefined,
-    polygonChainId
-  );
   const governorChildTunnelAddress = await getAddress("GovernorChildTunnel", polygonChainId);
 
   // Registering the router lets it call OracleChildTunnel.requestPrice and read prices from the legacy oracle.
@@ -65,14 +54,6 @@ async function main() {
       tx: await finder.populateTransaction.changeImplementationAddress(
         ethersUtils.formatBytes32String(interfaceName.Oracle),
         routerAddress
-      ),
-    },
-    // OOv3 caches the Oracle address, so sync it in the same batch to switch atomically.
-    {
-      targetAddress: optimisticOracleV3.address,
-      tx: await optimisticOracleV3.populateTransaction.syncUmaParams(
-        ethersUtils.formatBytes32String(""),
-        ethersConstants.AddressZero
       ),
     },
   ];

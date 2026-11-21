@@ -7,7 +7,7 @@
 
 import { strict as assert } from "assert";
 import { interfaceName, RegistryRolesEnum } from "@uma/common";
-import { FinderEthers, getAddress, OptimisticOracleV3Ethers, RegistryEthers } from "@uma/contracts-node";
+import { FinderEthers, getAddress, RegistryEthers } from "@uma/contracts-node";
 import { utils as ethersUtils } from "ethers";
 import { getJsonRpcProvider, networksNumber } from "../common";
 import { getContractInstanceWithProvider } from "../../utils/contracts";
@@ -19,10 +19,6 @@ async function main() {
   const provider = getJsonRpcProvider("polygon");
   const finder = await getContractInstanceWithProvider<FinderEthers>("Finder", provider);
   const registry = await getContractInstanceWithProvider<RegistryEthers>("Registry", provider);
-  const optimisticOracleV3 = await getContractInstanceWithProvider<OptimisticOracleV3Ethers>(
-    "OptimisticOracleV3",
-    provider
-  );
   const governorChildTunnelAddress = await getAddress("GovernorChildTunnel", networksNumber["polygon"]);
 
   assert.equal(
@@ -36,11 +32,6 @@ async function main() {
 
   assert(!(await registry.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, governorChildTunnelAddress)));
   console.log(` ✅ GovernorChildTunnel ${governorChildTunnelAddress} does not hold CONTRACT_CREATOR role`);
-
-  assert.equal(await optimisticOracleV3.cachedOracle(), routerAddress);
-  console.log(
-    ` ✅ DisputeRouter ${routerAddress} is cached as Oracle in OptimisticOracleV3 ${optimisticOracleV3.address}`
-  );
 }
 
 main().then(
