@@ -19,7 +19,7 @@ import {
 } from "../common";
 import { getContractInstance } from "../../utils/contracts";
 import { GovernanceMessages, relayGovernanceMessages } from "../../utils/relay";
-import { DISCOURSE_URL, getRouterAddress } from "./common";
+import { getRouterAddress } from "./common";
 
 async function main() {
   const routerAddress = getRouterAddress();
@@ -62,7 +62,7 @@ async function main() {
 
   await approveProposerBond(proposerSigner);
 
-  const proposalExplanation = `UMA Upgrade: Implementing the Dispute Router. Sets DisputeRouter ${routerAddress} as Oracle on Polygon. ${DISCOURSE_URL}`;
+  const proposalExplanation = "UMA Upgrade: Implementing the Dispute Router";
   await submitAdminProposal(proposerSigner, adminProposalTransactions, proposalExplanation);
 }
 
