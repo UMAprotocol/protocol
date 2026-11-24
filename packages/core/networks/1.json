@@ -206,5 +206,9 @@
   {
     "contractName": "OriginValidator",
     "address": "0xed883ce9bb10416FF3113FDB4Abcb9830617aD27"
+  },
+  {
+    "contractName": "RootTunnelChunkedRelayer",
+    "address": "0x15cd96996E15e1a6880DDb5067F1E0A2b6dC1Fa3"
   }
 ]
