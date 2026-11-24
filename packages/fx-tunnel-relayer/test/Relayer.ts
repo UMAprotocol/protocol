@@ -454,6 +454,46 @@ describe("Relayer unit tests", function () {
     assert.equal(nonDebugEvents.length, 0);
     assert.isTrue(lastSpyLogIncludes(spy, "No MessageSent events emitted by OracleChildTunnel"));
   });
+  it("relays only the RELAY_TX_HASHES transactions, even outside the lookback window", async function () {
+    const txnHashes: string[] = [];
+    for (const ancillaryData of ["request:1", "request:2"]) {
+      const txn = await oracleChild.methods
+        .requestPrice(testIdentifier, testTimestamp, utf8ToHex(ancillaryData))
+        .send({ from: owner });
+      txnHashes.push(txn.transactionHash);
+    }
+    const provenTxHashes: (string | undefined)[] = [];
+    const _maticPosClient: MaticPosClient = {
+      exitUtil: {
+        ...maticPosClient.exitUtil,
+        buildPayloadForExit: async (burnTxHash?: string) => {
+          provenTxHashes.push(burnTxHash);
+          return utf8ToHex("Test proof");
+        },
+      },
+    };
+    // The lookback window starts after both transactions, so the targeted one can only come from its receipt.
+    const nextBlock = (await web3.eth.getBlockNumber()) + 1;
+    const _relayer: any = new Relayer(
+      spyLogger,
+      owner,
+      _maticPosClient,
+      oracleChild,
+      oracleRoot,
+      web3,
+      polygonWeb3,
+      nextBlock,
+      nextBlock,
+      undefined,
+      undefined,
+      undefined,
+      [txnHashes[1]]
+    );
+    await _relayer.fetchAndRelayMessages();
+
+    assert.deepEqual(provenTxHashes, [txnHashes[1]]);
+    assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
+  });
   it("logs error when it fails to construct a proof", async function () {
     // Construct PosClient that always fails to construct a proof.
     const _maticPosClient: MaticPosClient = {

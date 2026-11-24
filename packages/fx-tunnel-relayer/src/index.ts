@@ -96,6 +96,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       oracleChildTunnel: oracleChildTunnel.options.address,
       oracleRootTunnel: oracleRootTunnel.options.address,
       chunkedRelayer: config.chunkedRelayerAddress ?? null,
+      relayTxHashes: config.relayTxHashes,
       polygonEarliestBlockToQuery: polygonEarliestBlockToQuery,
       polygonLatestBlockToQuery: polygonCurrentBlock.number,
     });
@@ -112,7 +113,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       polygonCurrentBlock.number,
       config.maxCalldataBytes,
       chunkedRelayer,
-      config.maxChunkedProofBytes
+      config.maxChunkedProofBytes,
+      config.relayTxHashes
     );
 
     for (;;) {

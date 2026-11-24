@@ -10,6 +10,10 @@ This bot is specific to the Polygon-Ethereum communication layer whose architect
 - Optionally set MAX_CALLDATA_BYTES (default 120000), CHUNKED_RELAYER_ADDRESS (a `RootTunnelChunkedRelayer` used to
   relay proofs above that limit) and MAX_CHUNKED_PROOF_BYTES (default 360000); see
   [Oversize proofs](#oversize-proofs-and-lookback).
+- Optionally set RELAY_TX_HASHES (comma-separated Polygon transaction hashes) to relay the OracleChildTunnel messages
+  of those transactions instead of scanning the `LOOKBACK` window. Use it as a one-off for transactions that left the
+  window: widening `LOOKBACK` instead rebuilds a proof for every message in the wider window. Already processed exits
+  are handled as in a normal run.
 - `node ./dist/src/index.js --network mainnet_mnemonic` or `ts-node ./src/index.js --network mainnet_mnemonic`.
 
 # Why is a bot needed to relay messages from Polygon to Ethereum?

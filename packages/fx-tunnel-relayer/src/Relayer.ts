@@ -38,40 +38,17 @@ export class Relayer {
     readonly chunkedRelayer?: Contract,
     // Proofs above this size are not relayed through the chunked relayer: the root tunnel would need more gas than the
     // per-transaction cap to process them, so storing their chunks would only waste gas.
-    readonly maxChunkedProofBytes = 360_000
+    readonly maxChunkedProofBytes = 360_000,
+    // Polygon transactions to relay instead of scanning the lookback window. Lets specific transactions that left the
+    // window be relayed without widening it, which would rebuild a proof for every message in the wider window.
+    readonly relayTxHashes: string[] = []
   ) {}
 
   // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
   // with a proof derived from the Polygon transaction hash that was checkpointed to Mainnet.
   async fetchAndRelayMessages(): Promise<void> {
-    this.logger.debug({
-      at: "Relayer#relayMessage",
-      message: "Checking for Polygon oracle messages that can be relayed to Ethereum",
-      polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
-      oracleChildTunnel: this.oracleChildTunnel.options.address,
-      oracleRootTunnel: this.oracleRootTunnel.options.address,
-    });
-
-    // First, query OracleChildTunnel on Polygon for any MessageSent events.
-    // For some reason, the fromBlock filter doesn't work on local hardhat tests so I added this filter to explicitly
-    // remove events with block numbers older than the window.
-    const { eventData, web3RequestCount } = await getEventsWithPaginatedBlockSearch(
-      this.oracleChildTunnel,
-      "MessageSent",
-      this.polygonEarliestBlockToQuery,
-      this.polygonLatestBlockToQuery,
-      3490 // Polygon Infura RPC limits you to 3500 blocks
-    );
-    // This .filter shouldn't be neccessary and it isn't in prod (empirically) but for some reason without this it
-    // fails the test "ignores events older than earliest polygon block to query"
-    const messageSentEvents = eventData.filter((e: EventData) => e.blockNumber >= this.polygonEarliestBlockToQuery);
-    this.logger.debug({
-      at: "Relayer#relayMessage",
-      message: "Found MessageSent events",
-      polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
-      eventCount: messageSentEvents.length,
-      web3RequestCount,
-    });
+    const messageSentEvents =
+      this.relayTxHashes.length > 0 ? await this._getTargetedMessageSentEvents() : await this._scanMessageSentEvents();
     // For any found events, grab its block number and check whether it has been checkpointed yet to the
     // CheckpointManager on Ethereum.
     if (messageSentEvents.length > 0) {
@@ -105,6 +82,82 @@ export class Relayer {
       });
       return;
     }
+  }
+
+  async _scanMessageSentEvents(): Promise<EventData[]> {
+    this.logger.debug({
+      at: "Relayer#relayMessage",
+      message: "Checking for Polygon oracle messages that can be relayed to Ethereum",
+      polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
+      oracleChildTunnel: this.oracleChildTunnel.options.address,
+      oracleRootTunnel: this.oracleRootTunnel.options.address,
+    });
+
+    // First, query OracleChildTunnel on Polygon for any MessageSent events.
+    // For some reason, the fromBlock filter doesn't work on local hardhat tests so I added this filter to explicitly
+    // remove events with block numbers older than the window.
+    const { eventData, web3RequestCount } = await getEventsWithPaginatedBlockSearch(
+      this.oracleChildTunnel,
+      "MessageSent",
+      this.polygonEarliestBlockToQuery,
+      this.polygonLatestBlockToQuery,
+      3490 // Polygon Infura RPC limits you to 3500 blocks
+    );
+    // This .filter shouldn't be neccessary and it isn't in prod (empirically) but for some reason without this it
+    // fails the test "ignores events older than earliest polygon block to query"
+    const messageSentEvents = eventData.filter((e: EventData) => e.blockNumber >= this.polygonEarliestBlockToQuery);
+    this.logger.debug({
+      at: "Relayer#relayMessage",
+      message: "Found MessageSent events",
+      polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
+      eventCount: messageSentEvents.length,
+      web3RequestCount,
+    });
+    return messageSentEvents;
+  }
+
+  // Reads the OracleChildTunnel MessageSent events of RELAY_TX_HASHES straight from their receipts.
+  async _getTargetedMessageSentEvents(): Promise<EventData[]> {
+    const childTunnel = this.oracleChildTunnel.options.address.toLowerCase();
+    const messageSentEvents: EventData[] = [];
+    for (const transactionHash of this.relayTxHashes) {
+      let receipt;
+      try {
+        receipt = await this.polygonWeb3.eth.getTransactionReceipt(transactionHash);
+        if (!receipt) throw new Error("Transaction receipt not found");
+      } catch (error) {
+        this.logger.error({
+          at: "Relayer#relayMessage",
+          message: "Failed to fetch receipt for targeted Polygon transaction 📛",
+          transactionHash,
+          error: safeErrorMessage(error),
+        });
+        continue;
+      }
+      const { blockNumber } = receipt;
+      const events = receipt.logs
+        .filter(
+          (log) =>
+            log.address.toLowerCase() === childTunnel &&
+            log.topics.length > 0 &&
+            log.topics[0].toLowerCase() === POLYGON_MESSAGE_SENT_EVENT_SIG
+        )
+        .map((log) => ({ transactionHash, blockNumber, logIndex: log.logIndex } as EventData));
+      if (events.length === 0)
+        this.logger.warn({
+          at: "Relayer#relayMessage",
+          message: "Targeted Polygon transaction has no OracleChildTunnel MessageSent events",
+          transactionHash,
+        });
+      messageSentEvents.push(...events);
+    }
+    this.logger.debug({
+      at: "Relayer#relayMessage",
+      message: "Found MessageSent events in targeted transactions",
+      transactionCount: this.relayTxHashes.length,
+      eventCount: messageSentEvents.length,
+    });
+    return messageSentEvents;
   }
 
   // Returns the log indices of all MessageSent events in a Polygon transaction, in order. The receipt is read from the

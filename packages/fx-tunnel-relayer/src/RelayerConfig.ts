@@ -18,6 +18,8 @@ export class RelayerConfig {
   // Largest proof relayed through the chunked relayer. Above it, the root tunnel's gas use for the rebuilt proof exceeds
   // the per-transaction gas cap, so no chunks are stored and an error is logged instead.
   readonly maxChunkedProofBytes: number;
+  // Polygon transactions to relay instead of scanning the lookback window. Empty unless RELAY_TX_HASHES is set.
+  readonly relayTxHashes: string[];
 
   constructor(env: ProcessEnv) {
     const {
@@ -29,6 +31,7 @@ export class RelayerConfig {
       MAX_CALLDATA_BYTES,
       CHUNKED_RELAYER_ADDRESS,
       MAX_CHUNKED_PROOF_BYTES,
+      RELAY_TX_HASHES,
     } = env;
 
     this.maxCalldataBytes = MAX_CALLDATA_BYTES === undefined ? 120_000 : Number(MAX_CALLDATA_BYTES);
@@ -46,6 +49,14 @@ export class RelayerConfig {
       }
       this.chunkedRelayerAddress = toChecksumAddress(CHUNKED_RELAYER_ADDRESS);
     }
+    const relayTxHashes = (RELAY_TX_HASHES || "")
+      .split(",")
+      .map((hash) => hash.trim().toLowerCase())
+      .filter((hash) => hash !== "");
+    if (relayTxHashes.some((hash) => !/^0x[0-9a-f]{64}$/.test(hash))) {
+      throw new Error("RELAY_TX_HASHES must be a comma-separated list of transaction hashes");
+    }
+    this.relayTxHashes = Array.from(new Set(relayTxHashes));
     this.chainId = CHAIN_ID || "";
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
