@@ -96,12 +96,21 @@ For an oversize proof the relayer first computes the exit hash exactly as `FxBas
   larger proof stores no chunks and logs one `error` per message and relayer instance, "Proof too large to relay on
   Ethereum: needs DVM request outside the tunnel", with the Polygon transaction hash, message index and proof size.
   Already processed exits stay silent.
-- The `relay` transaction is simulated only after its chunks are stored. If the simulation fails (a revert or out of
-  gas), or if the gas estimate times `runTransaction`'s 1.25 gas-limit buffer is above the per-transaction cap, the bot
-  logs an `error` ("Chunked relay failed after storing chunks") with the error message, and does not send. Later runs
-  reuse the stored chunks, repeat only the simulation and log the error again until the message is relayed or leaves
-  the lookback. The `360000` default comes from these measurements: with the 1.25 buffer, proofs above roughly
-  366 KB would fail this check after their chunks are stored.
+- Before storing any chunk, the bot simulates the exact `relay` call with `eth_call`, passing a state override that
+  places at each missing chunk address the code `storeChunk` would deploy, and a gas limit of 16,777,216 / 1.25 / 1.02
+  (13,158,600). A relay that succeeds within that gas has an estimate whose `runTransaction` gas limit (estimate times
+  1.25) fits the per-transaction cap; the extra 2% covers `eth_estimateGas` returning up to 1.5% above the minimum
+  (geth and reth stop their search within that error ratio). If the simulation fails (a revert such as an invalid proof, or out of gas), the
+  bot stores no chunks and logs an `error` ("Chunked relay simulation failed, no chunks stored") with the error
+  message on every run until the message is relayed or leaves the lookback. An `EXIT_ALREADY_PROCESSED` revert is
+  logged at `debug` level instead. Every `storeChunk` is checked against `MAX_CALLDATA_BYTES` before the first one is
+  sent. This requires the `CUSTOM_NODE_URL` provider to support the state override parameter of `eth_call`. A provider
+  that rejects it produces the same error, so the bot never pays for chunks it could not simulate.
+- After the chunks are stored, the `relay` transaction is simulated and checked against the gas cap again before it is
+  sent; a failure there logs "Chunked relay failed after storing chunks" and later runs reuse the stored chunks. The
+  `360000` default comes from the measurements above: interpolated, proofs above roughly 360 KB need more than the
+  13,158,600 simulation gas. A proof just under the default that still needs more fails the pre-storage simulation
+  without storing chunks.
 
 Logs contain event identifiers and bounded error messages, not proofs, transaction calldata or full receipt/event
 objects. Provider URLs and long hexadecimal strings are redacted from error messages before the 2048-character limit.

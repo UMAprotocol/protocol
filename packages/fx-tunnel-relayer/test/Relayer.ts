@@ -3,7 +3,7 @@ import { assert } from "chai";
 import { Contract } from "web3-eth-contract";
 import type Web3 from "web3";
 import sinon from "sinon";
-import { Relayer } from "../src/Relayer";
+import { RELAY_SIMULATION_GAS, Relayer } from "../src/Relayer";
 import { getAbi } from "@uma/contracts-node";
 import { SpyTransport, lastSpyLogIncludes } from "@uma/financial-templates-lib";
 import { ZERO_ADDRESS, interfaceName, RegistryRolesEnum } from "@uma/common";
@@ -60,7 +60,9 @@ const buildOversizeProof = (logIndex: number) =>
 
 // Stand-in for a RootTunnelChunkedRelayer: chunk addresses are derived from the chunk hash, storeChunk "deploys" by
 // recording the chunk (served through a web3.eth.getCode stub) and relay records its arguments. Transactions go through
-// runTransaction unchanged; only call/estimateGas/send are faked and encodeABI uses the real ABI.
+// runTransaction unchanged; only call/estimateGas/send are faked and encodeABI uses the real ABI. simulateRelay serves the
+// raw eth_call pre-relay simulation and, like relay, reverts unless every chunk has the code storeChunk would deploy,
+// either on "chain" or through the state override, and runs out of gas if relayEstimatedGas exceeds the call's gas.
 interface FakeChunkedRelayer {
   contract: any;
   deployed: Map<string, string>;
@@ -69,11 +71,14 @@ interface FakeChunkedRelayer {
   relayCalls: { prefix: string; chunks: string[]; suffix: string; calldataBytes: number }[];
   relayCallError?: Error;
   relayEstimatedGas: number;
+  simulateCalls: number;
+  simulateRelay: (params: any[]) => string;
 }
 const createFakeChunkedRelayer = (): FakeChunkedRelayer => {
   const encoder = new web3.eth.Contract(ROOT_TUNNEL_CHUNKED_RELAYER_ABI);
   const addressOf = (chunk: string): string =>
     web3.utils.toChecksumAddress("0x" + web3.utils.keccak256(chunk).slice(-40));
+  const chunksByAddress = new Map<string, string>();
   let sendCount = 0;
   const sendable = (
     encoded: string,
@@ -96,11 +101,32 @@ const createFakeChunkedRelayer = (): FakeChunkedRelayer => {
     storeCalls: [],
     relayCalls: [],
     relayEstimatedGas: 600_000,
+    simulateCalls: 0,
+    simulateRelay: ([{ data, gas }, , stateOverride]) => {
+      fake.simulateCalls++;
+      const { chunks } = web3.eth.abi.decodeParameters(
+        [
+          { name: "prefix", type: "bytes" },
+          { name: "chunks", type: "address[]" },
+          { name: "suffix", type: "bytes" },
+        ],
+        "0x" + data.slice(10)
+      );
+      for (const pointer of chunks) {
+        const chunk = chunksByAddress.get(pointer);
+        const injected = chunk !== undefined && stateOverride?.[pointer]?.code === "0x00" + chunk.slice(2);
+        if (!fake.deployed.has(pointer) && !injected) throw new Error("execution reverted: Missing chunk");
+      }
+      if (fake.relayCallError) throw fake.relayCallError;
+      if (fake.relayEstimatedGas > Number(gas)) throw new Error("out of gas");
+      return "0x";
+    },
   };
   fake.contract.methods = {
     chunkAddress: (chunk: string) => ({
       call: async () => {
         fake.chunkAddressCalls++;
+        chunksByAddress.set(addressOf(chunk), chunk);
         return addressOf(chunk);
       },
     }),
@@ -640,11 +666,56 @@ describe("Relayer unit tests", function () {
         fake?.contract,
         maxChunkedProofBytes
       );
-    const stubGetCode = (fake: FakeChunkedRelayer) =>
-      sinon.stub(web3.eth, "getCode").callsFake((async (address: string) => {
+    // Raw JSON-RPC requests the Relayer sends through the provider, with the original send for everything else.
+    const stubProviderSend = (
+      handle: (payload: any, send: (payload: any) => Promise<any>) => Promise<any> | undefined
+    ) => {
+      const provider = web3.currentProvider;
+      const originalSend = provider.send.bind(provider);
+      const send = (payload: any) =>
+        new Promise<any>((resolve, reject) =>
+          originalSend(payload, (error: any, response: any) => (error ? reject(error) : resolve(response)))
+        );
+      sinon.stub(provider, "send").callsFake((payload: any, callback: any) => {
+        const handled = handle(payload, send) ?? send(payload);
+        handled.then((response) => callback(null, response), callback);
+      });
+    };
+    // Hardhat 2.13 rejects the eth_call state override parameter, so apply it with hardhat_setCode inside a snapshot that
+    // is reverted after the call.
+    const emulateStateOverrides = () =>
+      stubProviderSend((payload, send) => {
+        const [call, block, stateOverride] = payload.params ?? [];
+        if (payload.method !== "eth_call" || stateOverride === undefined) return undefined;
+        const rpc = (method: string, params: any[]) => send({ jsonrpc: "2.0", id: payload.id, method, params });
+        return (async () => {
+          const { result: snapshot } = await rpc("evm_snapshot", []);
+          try {
+            for (const [address, { code }] of Object.entries<any>(stateOverride))
+              await rpc("hardhat_setCode", [address, code]);
+            return await send({ ...payload, params: [call, block] });
+          } finally {
+            await rpc("evm_revert", [snapshot]);
+          }
+        })();
+      });
+    // Serves getCode and the pre-relay simulation of the fake chunked relayer.
+    const stubFakeChain = (fake: FakeChunkedRelayer) => {
+      stubProviderSend((payload) => {
+        if (payload.method !== "eth_call" || payload.params?.[0]?.to !== fake.contract.options.address)
+          return undefined;
+        const { jsonrpc, id } = payload;
+        try {
+          return Promise.resolve({ jsonrpc, id, result: fake.simulateRelay(payload.params) });
+        } catch (error) {
+          return Promise.resolve({ jsonrpc, id, error: { code: 3, message: (error as Error).message } });
+        }
+      });
+      return sinon.stub(web3.eth, "getCode").callsFake((async (address: string) => {
         const chunk = fake.deployed.get(address);
         return chunk === undefined ? "0x" : "0x00" + chunk.slice(2);
       }) as any);
+    };
     const stubProcessedExits = (result: boolean | Error) =>
       sinon.stub(oracleRoot.methods, "processedExits").returns({
         call: async () => {
@@ -713,7 +784,7 @@ describe("Relayer unit tests", function () {
         .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
         .send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       const fees = sinon.spy(Relayer.prototype, "_getGasFees");
       await (await relayerWith(fake)).fetchAndRelayMessages();
 
@@ -767,7 +838,7 @@ describe("Relayer unit tests", function () {
         ])
         .send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      const getCode = stubGetCode(fake);
+      const getCode = stubFakeChain(fake);
       await (await relayerWith(fake)).fetchAndRelayMessages();
 
       const chunkCount = chunkHex(splitExitPayload(buildOversizeProof(0)).body).length;
@@ -786,18 +857,21 @@ describe("Relayer unit tests", function () {
       );
       // The second message reuses chunks from the in-memory cache without on-chain lookups.
       assert.equal(getCode.callCount, chunkCount);
+      // Only the first message, with chunks missing, is simulated before storage.
+      assert.equal(fake.simulateCalls, 1);
 
       // A new relayer instance (e.g. the next serverless run) finds the chunks on chain and does not store them again.
       await (await relayerWith(fake)).fetchAndRelayMessages();
       assert.lengthOf(fake.storeCalls, chunkCount);
       assert.lengthOf(fake.relayCalls, 4);
       assert.equal(getCode.callCount, 2 * chunkCount);
+      assert.equal(fake.simulateCalls, 1);
     });
 
     it("does not store chunks for exits that were already processed", async function () {
       await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       stubProcessedExits(true);
       await (await relayerWith(fake)).fetchAndRelayMessages();
       assert.equal(fake.chunkAddressCalls, 0);
@@ -812,7 +886,7 @@ describe("Relayer unit tests", function () {
     it("does not store chunks when the processedExits precheck fails", async function () {
       await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       stubProcessedExits(new Error("rpc down"));
       await (await relayerWith(fake)).fetchAndRelayMessages();
       assert.lengthOf(fake.storeCalls, 0);
@@ -824,9 +898,10 @@ describe("Relayer unit tests", function () {
     it("logs at debug level when the relay simulation reverts with EXIT_ALREADY_PROCESSED", async function () {
       await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       fake.relayCallError = new Error("execution reverted: FxRootTunnel: EXIT_ALREADY_PROCESSED");
       await (await relayerWith(fake)).fetchAndRelayMessages();
+      assert.lengthOf(fake.storeCalls, 0);
       assert.lengthOf(fake.relayCalls, 0);
       assert.lengthOf(
         logs().filter((log: any) => log.level !== "debug"),
@@ -835,16 +910,18 @@ describe("Relayer unit tests", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "Exit proof already processed"));
     });
 
-    it("logs a bounded, redacted error when the relay simulation reverts", async function () {
+    it("stores no chunks and logs a bounded, redacted error when the relay simulation reverts", async function () {
       await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
       const proof = buildOversizeProof(0);
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       fake.relayCallError = new Error(`execution reverted: FxRootTunnel: INVALID_RECEIPT_PROOF data=${proof}`);
       await (await relayerWith(fake)).fetchAndRelayMessages();
+      assert.lengthOf(fake.storeCalls, 0);
+      assert.lengthOf(fake.relayCalls, 0);
       const errors = logsAtLevel("error");
       assert.lengthOf(errors, 1);
-      assert.equal(errors[0].message, "Chunked relay failed after storing chunks🚨");
+      assert.equal(errors[0].message, "Chunked relay simulation failed, no chunks stored🚨");
       assert.include(errors[0].error, "INVALID_RECEIPT_PROOF");
       assert.include(errors[0].error, "[redacted hex data]");
       assert.equal(errors[0].messageIndex, 0);
@@ -856,7 +933,7 @@ describe("Relayer unit tests", function () {
       const proof = "0x" + "ab".repeat(120_000);
       maticPosClient.exitUtil.buildPayloadForExit = async () => proof;
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       await (await relayerWith(fake)).fetchAndRelayMessages();
       assert.equal(fake.chunkAddressCalls, 0);
       const warnings = logsAtLevel("warn");
@@ -869,7 +946,7 @@ describe("Relayer unit tests", function () {
     it("refuses to send a storeChunk transaction above the calldata limit", async function () {
       await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       await (await relayerWith(fake, 20_000)).fetchAndRelayMessages();
       assert.lengthOf(fake.storeCalls, 0);
       assert.lengthOf(fake.relayCalls, 0);
@@ -885,7 +962,7 @@ describe("Relayer unit tests", function () {
       const proof = buildOversizeProof(0);
       const proofBytes = (proof.length - 2) / 2;
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       const relayer = await relayerWith(fake, 120_000, proofBytes - 1);
       await relayer.fetchAndRelayMessages();
       await relayer.fetchAndRelayMessages();
@@ -906,7 +983,7 @@ describe("Relayer unit tests", function () {
     it("relays proofs exactly at MAX_CHUNKED_PROOF_BYTES", async function () {
       await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       await (await relayerWith(fake, 120_000, (buildOversizeProof(0).length - 2) / 2)).fetchAndRelayMessages();
       assert.lengthOf(fake.relayCalls, 1);
       assert.lengthOf(logsAtLevel("error"), 0);
@@ -915,7 +992,7 @@ describe("Relayer unit tests", function () {
     it("is silent for already processed exits above MAX_CHUNKED_PROOF_BYTES", async function () {
       await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
+      stubFakeChain(fake);
       stubProcessedExits(true);
       await (await relayerWith(fake, 120_000, 1000)).fetchAndRelayMessages();
       assert.lengthOf(
@@ -924,29 +1001,43 @@ describe("Relayer unit tests", function () {
       );
     });
 
-    it("logs an error on every run when the relay would exceed the per-transaction gas cap", async function () {
+    it("stores no chunks when the simulated relay would exceed the per-transaction gas cap", async function () {
       await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
       const fake = createFakeChunkedRelayer();
-      stubGetCode(fake);
-      // 14M gas passes simulation, but runTransaction's 1.25x gas limit (17.5M) is above the 16,777,216 cap.
+      stubFakeChain(fake);
+      // 14M is above RELAY_SIMULATION_GAS, so the simulation runs out of gas.
       fake.relayEstimatedGas = 14_000_000;
-      const chunkCount = chunkHex(splitExitPayload(buildOversizeProof(0)).body).length;
-      await (await relayerWith(fake)).fetchAndRelayMessages();
       await (await relayerWith(fake)).fetchAndRelayMessages();
 
-      assert.lengthOf(fake.storeCalls, chunkCount); // Stored once, reused on the second run.
+      assert.lengthOf(fake.storeCalls, 0);
       assert.lengthOf(fake.relayCalls, 0);
       const errors = logsAtLevel("error");
-      assert.lengthOf(errors, 2);
-      for (const error of errors) {
-        assert.equal(error.message, "Chunked relay failed after storing chunks🚨");
-        assert.include(error.error, "per-transaction gas cap");
-        assert.equal(error.chunkCount, chunkCount);
-        assert.equal(error.messageIndex, 0);
-      }
-      assert.equal(errors[0].chunksStored, chunkCount);
-      assert.equal(errors[1].chunksReused, chunkCount);
+      assert.lengthOf(errors, 1);
+      assert.equal(errors[0].message, "Chunked relay simulation failed, no chunks stored🚨");
+      assert.include(errors[0].error, "out of gas");
+      assert.equal(errors[0].simulationGas, RELAY_SIMULATION_GAS);
+      assert.equal(errors[0].chunkCount, chunkHex(splitExitPayload(buildOversizeProof(0)).body).length);
+      assert.equal(errors[0].chunksStored, 0);
       assert.lengthOf(logsAtLevel("info"), 0);
+    });
+
+    it("logs an error when the relay of already stored chunks would exceed the per-transaction gas cap", async function () {
+      await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
+      const fake = createFakeChunkedRelayer();
+      stubFakeChain(fake);
+      for (const chunk of chunkHex(splitExitPayload(buildOversizeProof(0)).body))
+        fake.deployed.set(await fake.contract.methods.chunkAddress(chunk).call(), chunk);
+      // runTransaction's 1.25x gas limit for 14M (17.5M) is above the 16,777,216 cap.
+      fake.relayEstimatedGas = 14_000_000;
+      await (await relayerWith(fake)).fetchAndRelayMessages();
+
+      assert.equal(fake.simulateCalls, 0);
+      assert.lengthOf(fake.storeCalls, 0);
+      assert.lengthOf(fake.relayCalls, 0);
+      const errors = logsAtLevel("error");
+      assert.lengthOf(errors, 1);
+      assert.equal(errors[0].message, "Chunked relay failed after storing chunks🚨");
+      assert.include(errors[0].error, "per-transaction gas cap");
     });
 
     it("local ABI matches the RootTunnelChunkedRelayer artifact", function () {
@@ -986,6 +1077,7 @@ describe("Relayer unit tests", function () {
         ])
         .send({ from: owner });
       const fromBlock = aggregate.blockNumber + 1;
+      emulateStateOverrides();
       const relayer = new Relayer(
         spyLogger,
         owner,

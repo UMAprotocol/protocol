@@ -1,6 +1,7 @@
 import { Contract, EventData } from "web3-eth-contract";
 import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
 import type Web3 from "web3";
+import type { JsonRpcResponse } from "web3-core-helpers";
 import { safeErrorMessage } from "./safeErrorMessage";
 import { MAX_CHUNK_SIZE, SplitExitPayload, chunkHex, splitExitPayload } from "./exitPayload";
 
@@ -17,12 +18,17 @@ const isEmptyCode = (code: string | null | undefined): boolean => !code || code 
 export const MAX_TRANSACTION_GAS = 16_777_216;
 // runTransaction sends with a gas limit of the estimate times this buffer.
 const RUN_TRANSACTION_GAS_LIMIT_BUFFER = 1.25;
+// Gas given to the pre-storage relay simulation: a relay that succeeds within it has an estimate whose buffered gas
+// limit fits MAX_TRANSACTION_GAS. The extra 2% covers eth_estimateGas overshoot: geth (>= 1.13) and reth stop the
+// binary search within a 1.5% error ratio and return the upper bound.
+export const RELAY_SIMULATION_GAS = Math.floor(MAX_TRANSACTION_GAS / RUN_TRANSACTION_GAS_LIMIT_BUFFER / 1.02);
 
 export class Relayer {
   private readonly warnedOversizeMessages = new Set<string>();
   // Chunk data contract addresses known to be deployed, to skip on-chain lookups for chunks shared between messages.
   private readonly storedChunks = new Set<string>();
   private readonly reportedTooLargeMessages = new Set<string>();
+  private rpcId = 0;
   constructor(
     readonly logger: any,
     readonly account: string,
@@ -372,6 +378,8 @@ export class Relayer {
   // at most MAX_CHUNK_SIZE bytes, then calls relay(prefix, chunks, suffix), which calls receiveMessage with the rebuilt
   // proof. Chunks are content addressed (CREATE2 with salt keccak256(chunk)), so chunks already on chain, e.g. stored
   // for another message of the same Polygon transaction or by an earlier interrupted run, are reused and not re-sent.
+  // Before storing any chunk, the relay is simulated with the missing chunks injected through a state override, so a
+  // proof the root tunnel rejects or a relay above the gas cap does not pay for chunk storage.
   async _relayChunked(
     chunkedRelayer: Contract,
     payload: SplitExitPayload,
@@ -381,27 +389,14 @@ export class Relayer {
   ): Promise<void> {
     const chunks = chunkHex(payload.body, MAX_CHUNK_SIZE);
     const pointers: string[] = [];
-    let chunksStored = 0;
-    let chunksReused = 0;
+    const missingChunks: { pointer: string; chunk: string }[] = [];
     for (const chunk of chunks) {
       const pointer: string = await chunkedRelayer.methods.chunkAddress(chunk).call();
       if (this.storedChunks.has(pointer) || !isEmptyCode(await this.web3.eth.getCode(pointer))) {
-        chunksReused++;
+        this.storedChunks.add(pointer);
       } else {
-        const transaction = chunkedRelayer.methods.storeChunk(chunk);
-        this._assertCalldataWithinLimit(transaction, "storeChunk");
-        const gasFees = await this._getGasFees();
-        await runTransaction({
-          web3: this.web3,
-          transaction,
-          transactionConfig: { ...gasFees, from: this.account },
-          availableAccounts: 1,
-          maxFeePerGasMultiplier: 1,
-        });
-        // runTransaction waits for the receipt, so a failed store throws before the pointer is recorded.
-        chunksStored++;
+        missingChunks.push({ pointer, chunk });
       }
-      this.storedChunks.add(pointer);
       pointers.push(pointer);
     }
 
@@ -412,9 +407,58 @@ export class Relayer {
       messageIndex,
       proofBytes,
       chunkCount: pointers.length,
-      chunksStored,
-      chunksReused,
+      chunksStored: missingChunks.length,
+      chunksReused: pointers.length - missingChunks.length,
     };
+
+    if (missingChunks.length > 0) {
+      const storeTransactions = missingChunks.map(({ pointer, chunk }) => {
+        const storeTransaction = chunkedRelayer.methods.storeChunk(chunk);
+        this._assertCalldataWithinLimit(storeTransaction, "storeChunk");
+        return { pointer, storeTransaction };
+      });
+      // Simulates the relay with each missing chunk placed at its pointer as the runtime code storeChunk would deploy
+      // (0x00 STOP byte ++ data). Sent as raw JSON-RPC because web3 v1 contract methods cannot pass a state override.
+      const call = {
+        from: this.account,
+        to: chunkedRelayer.options.address,
+        data: transaction.encodeABI(),
+        gas: this.web3.utils.numberToHex(RELAY_SIMULATION_GAS),
+      };
+      const stateOverride = Object.fromEntries(
+        missingChunks.map(({ pointer, chunk }) => [pointer, { code: "0x00" + chunk.slice(2) }])
+      );
+      try {
+        await this._sendRpc("eth_call", [call, "latest", stateOverride]);
+      } catch (error) {
+        // Already processed exits are logged at debug level by the caller.
+        if (safeErrorMessage(error).includes("EXIT_ALREADY_PROCESSED")) throw error;
+        // Fails closed, also when the provider does not support state overrides: storing chunks for a relay that
+        // could not be simulated risks paying for every chunk of a proof that can never be relayed.
+        this.logger.error({
+          at: "Relayer#relayMessage",
+          message: "Chunked relay simulation failed, no chunks stored🚨",
+          ...relayContext,
+          chunksStored: 0,
+          simulationGas: RELAY_SIMULATION_GAS,
+          error: safeErrorMessage(error),
+        });
+        return;
+      }
+      for (const { pointer, storeTransaction } of storeTransactions) {
+        const gasFees = await this._getGasFees();
+        await runTransaction({
+          web3: this.web3,
+          transaction: storeTransaction,
+          transactionConfig: { ...gasFees, from: this.account },
+          availableAccounts: 1,
+          maxFeePerGasMultiplier: 1,
+        });
+        // runTransaction waits for the receipt, so a failed store throws before the pointer is recorded.
+        this.storedChunks.add(pointer);
+      }
+    }
+
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Submitting chunked proof",
@@ -461,9 +505,22 @@ export class Relayer {
       messageIndex,
       proofBytes,
       chunkCount: pointers.length,
-      chunksStored,
-      chunksReused,
+      chunksStored: relayContext.chunksStored,
+      chunksReused: relayContext.chunksReused,
     });
+  }
+
+  async _sendRpc(method: string, params: unknown[]): Promise<string> {
+    const provider = this.web3.currentProvider;
+    if (!provider || typeof provider === "string" || !provider.send) throw new Error("Provider has no send method");
+    const send = provider.send.bind(provider);
+    const id = ++this.rpcId;
+    const response = await new Promise<JsonRpcResponse | undefined>((resolve, reject) =>
+      send({ jsonrpc: "2.0", id, method, params }, (error, result) => (error ? reject(error) : resolve(result)))
+    );
+    if (response?.error) throw new Error(`${method}: ${response.error.message}`);
+    if (typeof response?.result !== "string") throw new Error(`${method}: missing result`);
+    return response.result;
   }
 
   _assertCalldataWithinLimit(transaction: { encodeABI: () => string }, method: string): void {
@@ -486,4 +543,4 @@ export class Relayer {
     return { maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: maxPriorityFeePerGas.toString() };
   }
 }
-module.exports = { Relayer };
+module.exports = { Relayer, RELAY_SIMULATION_GAS };
