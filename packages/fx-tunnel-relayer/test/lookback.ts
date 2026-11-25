@@ -24,4 +24,28 @@ describe("timestamp lookback and calldata config", function () {
       assert.throws(() => new RelayerConfig({ MAX_CALLDATA_BYTES: value }), "MAX_CALLDATA_BYTES");
     }
   });
+  it("defaults MAX_CHUNKED_PROOF_BYTES to 360000 and validates overrides", function () {
+    assert.equal(new RelayerConfig({}).maxChunkedProofBytes, 360_000);
+    assert.equal(new RelayerConfig({ MAX_CHUNKED_PROOF_BYTES: "350000" }).maxChunkedProofBytes, 350_000);
+    for (const value of ["", "0", "-1", "1.5", "NaN", "Infinity"]) {
+      assert.throws(() => new RelayerConfig({ MAX_CHUNKED_PROOF_BYTES: value }), "MAX_CHUNKED_PROOF_BYTES");
+    }
+  });
+  it("leaves the chunked relayer unset by default and validates CHUNKED_RELAYER_ADDRESS", function () {
+    assert.isUndefined(new RelayerConfig({}).chunkedRelayerAddress);
+    assert.isUndefined(new RelayerConfig({ CHUNKED_RELAYER_ADDRESS: "" }).chunkedRelayerAddress);
+    const checksummed = "0x52908400098527886E0F7030069857D2E4169EE7";
+    assert.equal(
+      new RelayerConfig({ CHUNKED_RELAYER_ADDRESS: checksummed.toLowerCase() }).chunkedRelayerAddress,
+      checksummed
+    );
+    for (const value of [
+      "0x0000000000000000000000000000000000000000",
+      "0x1234",
+      "not an address",
+      "0x52908400098527886e0F7030069857D2E4169EE7", // bad checksum
+    ]) {
+      assert.throws(() => new RelayerConfig({ CHUNKED_RELAYER_ADDRESS: value }), "CHUNKED_RELAYER_ADDRESS");
+    }
+  });
 });

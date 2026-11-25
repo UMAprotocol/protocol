@@ -7,6 +7,13 @@ This bot is specific to the Polygon-Ethereum communication layer whose architect
 - `yarn build` to compile code.
 - Set environment variables including required `CUSTOM_NODE_URL` and `POLYGON_CUSTOM_NODE_URL` values which correspond to Ethereum and Polygon nodes respectively.
 - Optionally set SKIP_THRESHOLD_SECONDS (seconds to skip relay when close to end of phase; default 14400 = 4 hours).
+- Optionally set MAX_CALLDATA_BYTES (default 120000), CHUNKED_RELAYER_ADDRESS (a `RootTunnelChunkedRelayer` used to
+  relay proofs above that limit) and MAX_CHUNKED_PROOF_BYTES (default 360000); see
+  [Oversize proofs](#oversize-proofs-and-lookback).
+- Optionally set RELAY_TX_HASHES (comma-separated Polygon transaction hashes) to relay the OracleChildTunnel messages
+  of those transactions instead of scanning the `LOOKBACK` window. Use it as a one-off for transactions that left the
+  window: widening `LOOKBACK` instead rebuilds a proof for every message in the wider window. Already processed exits
+  are handled as in a normal run.
 - `node ./dist/src/index.js --network mainnet_mnemonic` or `ts-node ./src/index.js --network mainnet_mnemonic`.
 
 # Why is a bot needed to relay messages from Polygon to Ethereum?
@@ -63,10 +70,47 @@ const proof = await posClient.exitUtil.buildPayloadForExit(
 # Oversize proofs and lookback
 
 `MAX_CALLDATA_BYTES` defaults to `120000` and must be a positive integer. The limit covers the complete ABI-encoded
-`receiveMessage(bytes)` calldata, including its selector, offset, length and padding. Calldata above the limit is not
-simulated or sent. Each skipped transaction/message pair produces one `warn` per relayer instance with its Polygon
-transaction hash, message index and byte count. The standard PagerDuty transports accept `error` and above, so these
-warnings do not page. A new serverless invocation can warn again; there is no persistent suppression store.
+`receiveMessage(bytes)` calldata, including its selector, offset, length and padding. Calldata above the limit is never
+sent to `receiveMessage` directly. Proofs from Polygon transactions that batch many messages exceed it because the
+receipt with all its logs appears twice in the payload.
+
+For an oversize proof the relayer first computes the exit hash exactly as `FxBaseRootTunnel` does
+(`keccak256(abi.encodePacked(blockNumber, nibbles(branchMask), logIndex))`) and skips the message at `debug` level if
+`processedExits` on the root tunnel is already true, e.g. after a manual relay. Then:
+
+- If `CHUNKED_RELAYER_ADDRESS` is unset, each unprocessed transaction/message pair produces one `warn` per relayer
+  instance with its Polygon transaction hash, message index and byte count ("needs manual relay"). The standard
+  PagerDuty transports accept `error` and above, so these warnings do not page. A new serverless invocation can warn
+  again; there is no persistent suppression store.
+- If `CHUNKED_RELAYER_ADDRESS` is set to a `RootTunnelChunkedRelayer` deployment, the relayer splits the payload into
+  its RLP list header, items 0-8 and the encoded log index, stores items 0-8 in data contracts of at most 24575 bytes
+  with `storeChunk` (one transaction per chunk not yet on chain) and then calls `relay(prefix, chunks, suffix)`, which
+  calls `receiveMessage` with the rebuilt proof. Chunks are content addressed, so messages from the same Polygon
+  transaction, and runs after an interruption, reuse chunks that are already deployed. Every transaction is checked
+  against `MAX_CALLDATA_BYTES` before it is sent. At startup the bot checks that the address has code and that its
+  `rootTunnel()` is the `OracleRootTunnel`. A payload that cannot be parsed as a 10-item exit payload falls back to
+  the warning above. Storing a full chunk costs about 5.4M gas.
+- `MAX_CHUNKED_PROOF_BYTES` (positive integer, default `360000`) bounds the chunked path. The root tunnel's own memory
+  cost grows superlinearly with proof size: mainnet-fork measurements of `relay` through the real `OracleRootTunnel`
+  were 4.35M gas for 134 KB, 7.35M for 220 KB and 21.1M for 519 KB, above the 16,777,216 per-transaction gas cap. A
+  larger proof stores no chunks and logs one `error` per message and relayer instance, "Proof too large to relay on
+  Ethereum: needs DVM request outside the tunnel", with the Polygon transaction hash, message index and proof size.
+  Already processed exits stay silent.
+- Before storing any chunk, the bot simulates the exact `relay` call with `eth_call`, passing a state override that
+  places at each missing chunk address the code `storeChunk` would deploy, and a gas limit of 16,777,216 / 1.25 / 1.02
+  (13,158,600). A relay that succeeds within that gas has an estimate whose `runTransaction` gas limit (estimate times
+  1.25) fits the per-transaction cap; the extra 2% covers `eth_estimateGas` returning up to 1.5% above the minimum
+  (geth and reth stop their search within that error ratio). If the simulation fails (a revert such as an invalid proof, or out of gas), the
+  bot stores no chunks and logs an `error` ("Chunked relay simulation failed, no chunks stored") with the error
+  message on every run until the message is relayed or leaves the lookback. An `EXIT_ALREADY_PROCESSED` revert is
+  logged at `debug` level instead. Every `storeChunk` is checked against `MAX_CALLDATA_BYTES` before the first one is
+  sent. This requires the `CUSTOM_NODE_URL` provider to support the state override parameter of `eth_call`. A provider
+  that rejects it produces the same error, so the bot never pays for chunks it could not simulate.
+- After the chunks are stored, the `relay` transaction is simulated and checked against the gas cap again before it is
+  sent; a failure there logs "Chunked relay failed after storing chunks" and later runs reuse the stored chunks. The
+  `360000` default comes from the measurements above: interpolated, proofs above roughly 360 KB need more than the
+  13,158,600 simulation gas. A proof just under the default that still needs more fails the pre-storage simulation
+  without storing chunks.
 
 Logs contain event identifiers and bounded error messages, not proofs, transaction calldata or full receipt/event
 objects. Provider URLs and long hexadecimal strings are redacted from error messages before the 2048-character limit.
@@ -74,8 +118,9 @@ objects. Provider URLs and long hexadecimal strings are redacted from error mess
 The lookback starts at the first Polygon block whose timestamp is at or after the latest block timestamp minus `LOOKBACK`.
 It no longer assumes Polygon's average block time. Common block-time defaults for other bots are unchanged.
 
-An age alert needs a separate change: inspect checkpointed messages older than a configurable threshold (for example,
-6 hours), query `processedExits` on the root tunnel for each exact exit hash, and emit a deduplicated error for unprocessed
-exits before they leave the lookback. Persist the exit identity and alert state across serverless runs and keep checking
-pending exits after they leave the event window. The current matic.js exit-hash helper needs validation for nonzero message
-indices before use here. This PR does not add that monitor or claim that oversize messages were delivered.
+The `processedExits` check covers oversize proofs only, and only while their events are inside the lookback. An age
+alert still needs a separate change: inspect checkpointed messages older than a configurable threshold (for example,
+6 hours), query `processedExits` for each exit hash (the relayer's `splitExitPayload` computes it from the proof for any
+message index), and emit a deduplicated error for unprocessed exits before they leave the lookback. Persist the exit
+identity and alert state across serverless runs and keep checking pending exits after they leave the event window.
+The bot does not add that monitor.
