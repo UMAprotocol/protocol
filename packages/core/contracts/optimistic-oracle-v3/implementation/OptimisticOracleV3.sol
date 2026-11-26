@@ -466,21 +466,22 @@ contract OptimisticOracleV3 is OptimisticOracleV3Interface, Lockable, Ownable, M
         return EscalationManagerInterface(em).isDisputeAllowed(assertionId, msg.sender);
     }
 
-    // Validates if the identifier is whitelisted by first checking the cache. If not whitelisted in the cache then
-    // checks it from the identifier whitelist contract and caches result.
+    // Validates the identifier against the live whitelist. Cache writes persist only for successful assertions.
     function _validateAndCacheIdentifier(bytes32 identifier) internal returns (bool) {
-        if (cachedIdentifiers[identifier]) return true;
         cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
         return cachedIdentifiers[identifier];
     }
 
-    // Validates if the currency is whitelisted by first checking the cache. If not whitelisted in the cache then
-    // checks it from the collateral whitelist contract and caches whitelist status and final fee.
+    // Validates the currency against the live whitelist. Existing cached fees require syncUmaParams to refresh,
+    // including after whitelist removal and re-addition: a rejected assertion cannot persist cache invalidation.
     function _validateAndCacheCurrency(address currency) internal returns (bool) {
-        if (cachedCurrencies[currency].isWhitelisted) return true;
-        cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
-        cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
-        return cachedCurrencies[currency].isWhitelisted;
+        bool isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
+        if (!isWhitelisted) return false;
+        if (!cachedCurrencies[currency].isWhitelisted) {
+            cachedCurrencies[currency].isWhitelisted = true;
+            cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+        }
+        return true;
     }
 
     // Sends assertion resolved callback to the callback recipient and escalation manager (if set).
