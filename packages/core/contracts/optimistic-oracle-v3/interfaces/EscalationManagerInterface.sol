@@ -10,7 +10,7 @@ import "./OptimisticOracleV3CallbackRecipientInterface.sol";
 interface EscalationManagerInterface is OptimisticOracleV3CallbackRecipientInterface {
     // Assertion policy parameters as returned by the escalation manager.
     struct AssertionPolicy {
-        bool blockAssertion; // If true, the the assertion should be blocked.
+        bool blockAssertion; // If true, the assertion should be blocked.
         bool arbitrateViaEscalationManager; // If true, the escalation manager will arbitrate the assertion.
         bool discardOracle; // If true, the Optimistic Oracle V3 should discard the oracle price.
         bool validateDisputers; // If true, the escalation manager will validate the disputers.
